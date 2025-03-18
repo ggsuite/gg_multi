@@ -21,10 +21,11 @@ void main() {
     test('should be executable', () async {
       // Execute bin/kidney_core.dart and check if it prints help
       final result = await Process.run(
-        './bin/kidney_core.dart',
-        ['my-command'],
+        'dart',
+        ['./bin/kidney_core.dart', 'my-command'],
         stdoutEncoding: utf8,
         stderrEncoding: utf8,
+        runInShell: true,
       );
 
       final expectedMessages = [
