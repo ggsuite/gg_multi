@@ -1,0 +1,169 @@
+// @license
+// Copyright (c) 2019 - 2025 Dr. Gabriel Gatzsche. All Rights Reserved.
+//
+// Use of this source code is governed by terms that can be
+// found in the LICENSE file in the root of this package.
+
+import 'dart:io';
+
+import 'package:mocktail/mocktail.dart';
+import 'package:test/test.dart';
+import 'package:kidney_core/src/backend/git_cloner.dart';
+
+// A mock class for the ProcessRunner function.
+class MockProcessRunner extends Mock {
+  Future<ProcessResult> call(String executable, List<String> arguments);
+}
+
+void main() {
+  // Group all tests for GitCloner
+  group('GitCloner', () {
+    late Directory tempDir;
+    late GitCloner gitCloner;
+    late MockProcessRunner mockProcessRunner;
+
+    // Setup before each test
+    setUp(() async {
+      // Create a temporary directory for testing
+      tempDir = await Directory.systemTemp.createTemp('git_cloner_test');
+      // Initialize the mock process runner
+      mockProcessRunner = MockProcessRunner();
+      // Create a GitCloner instance with the injected mock process runner
+      gitCloner = GitCloner(processRunner: mockProcessRunner.call);
+    });
+
+    // Cleanup the temporary directory after each test
+    tearDown(() async {
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    group('cloneRepo', () {
+      test('successfully clones a repository when process returns exit code 0',
+          () async {
+        // Arrange
+        const repoUrl = 'https://github.com/example/repo.git';
+        // Create a target directory path inside the temporary directory
+        final targetDirectory =
+            '${tempDir.path}${Platform.pathSeparator}cloned_repo';
+
+        // Ensure that the parent directory does not yet exist
+        final parentDir = Directory(targetDirectory).parent;
+        if (await parentDir.exists()) {
+          await parentDir.delete(recursive: true);
+        }
+        expect(await parentDir.exists(), isFalse);
+
+        // Stub the mock process runner to return a successful ProcessResult
+        when(() => mockProcessRunner('git', any())).thenAnswer(
+          (_) async => ProcessResult(123, 0, 'Cloned successfully', ''),
+        );
+
+        // Act
+        await gitCloner.cloneRepo(repoUrl, targetDirectory);
+
+        // Assert
+        // Verify that the process runner was called with the correct arguments
+        verify(
+          () => mockProcessRunner(
+            'git',
+            any(
+              that: equals([
+                'clone',
+                repoUrl,
+                targetDirectory,
+              ]),
+            ),
+          ),
+        ).called(1);
+
+        // Check that the parent directory now exists
+        expect(await parentDir.exists(), isTrue);
+      });
+
+      test('throws an exception when the clone process fails', () async {
+        // Arrange
+        const repoUrl = 'https://github.com/example/failure.git';
+        final targetDirectory =
+            '${tempDir.path}${Platform.pathSeparator}failed_clone';
+
+        // Stub the mock process runner to return a failing ProcessResult
+        when(() => mockProcessRunner('git', any())).thenAnswer(
+          (_) async => ProcessResult(456, 1, '', 'Error cloning repository'),
+        );
+
+        // Act & Assert
+        expect(
+          () async => await gitCloner.cloneRepo(repoUrl, targetDirectory),
+          throwsA(
+            predicate(
+              (e) =>
+                  e is Exception &&
+                  e.toString() ==
+                      'Exception: Failed to clone repo from $repoUrl: '
+                          'Error cloning repository',
+            ),
+          ),
+        );
+
+        // Verify that the process runner was called
+        verify(
+          () => mockProcessRunner(
+            'git',
+            any(
+              that: equals([
+                'clone',
+                repoUrl,
+                targetDirectory,
+              ]),
+            ),
+          ),
+        ).called(1);
+      });
+
+      test('ensures parent directory is created if it does not exist',
+          () async {
+        // Arrange
+        const repoUrl = 'https://github.com/example/repo.git';
+        // Choosing a target directory in a nested non-existent structure
+        final targetDirectory =
+            '${tempDir.path}${Platform.pathSeparator}nonexistent'
+            '${Platform.pathSeparator}cloned_repo';
+        final parentDir = Directory(targetDirectory).parent;
+
+        // Make sure the parent directory does not exist
+        if (await parentDir.exists()) {
+          await parentDir.delete(recursive: true);
+        }
+        expect(await parentDir.exists(), isFalse);
+
+        // Stub the process runner to return success
+        when(() => mockProcessRunner('git', any())).thenAnswer(
+          (_) async => ProcessResult(789, 0, 'Cloned successfully', ''),
+        );
+
+        // Act
+        await gitCloner.cloneRepo(repoUrl, targetDirectory);
+
+        // Assert
+        // The parent directory should have been created
+        expect(await parentDir.exists(), isTrue);
+
+        // Verify that the process runner was called correctly
+        verify(
+          () => mockProcessRunner(
+            'git',
+            any(
+              that: equals([
+                'clone',
+                repoUrl,
+                targetDirectory,
+              ]),
+            ),
+          ),
+        ).called(1);
+      });
+    });
+  });
+}

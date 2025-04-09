@@ -1,0 +1,48 @@
+// @license
+// Copyright (c) 2019 - 2025 Dr. Gabriel Gatzsche. All Rights Reserved.
+//
+// Use of this source code is governed by terms that can be
+// found in the LICENSE file in the root of this package.
+
+import 'dart:io';
+
+/// Typedef for a process runner function.
+typedef ProcessRunner = Future<ProcessResult> Function(String, List<String>);
+
+/// A class responsible for cloning git repositories.
+class GitCloner {
+  /// The function used to run system processes.
+  final ProcessRunner processRunner;
+
+  /// Constructor accepts an optional [processRunner]
+  /// to enable testing by injection.
+  GitCloner({ProcessRunner? processRunner})
+      : processRunner = processRunner ?? Process.run;
+
+  /// Clones the repository from [repoUrl] into [targetDirectory].
+  /// Throws an exception if cloning fails.
+  Future<void> cloneRepo(
+    String repoUrl,
+    String targetDirectory,
+  ) async {
+    // Ensure the parent directory exists.
+    final directory = Directory(targetDirectory);
+    if (!directory.parent.existsSync()) {
+      await directory.parent.create(recursive: true);
+    }
+    // Run the git clone command using the injected process runner.
+    final result = await processRunner(
+      'git',
+      <String>[
+        'clone',
+        repoUrl,
+        targetDirectory,
+      ],
+    );
+    if (result.exitCode != 0) {
+      throw Exception(
+        'Failed to clone repo from $repoUrl: ${result.stderr}',
+      );
+    }
+  }
+}
