@@ -88,8 +88,28 @@ void main() {
       );
     });
 
-    test('should clone repositories when target is an organization URL',
-        () async {
+    test(
+        'should clone single repository '
+        'when target is a git SSH URL', () async {
+      const repoUrl = 'git@github.com:ggsuite/kidney_core.git';
+      await runner.run(['add', repoUrl]);
+      verify(
+        () => mockGitCloner.cloneRepo(
+          repoUrl,
+          any(),
+        ),
+      ).called(1);
+      expect(
+        logMessages,
+        equals([
+          'added repository kidney_core from $repoUrl',
+        ]),
+      );
+    });
+
+    test(
+        'should clone repositories when '
+        'target is an organization URL', () async {
       // Create a separate runner with a custom
       // repoFetcher to simulate GitHub API response
       final orgRunner = CommandRunner<void>('test', 'Test for AddCommand Org');

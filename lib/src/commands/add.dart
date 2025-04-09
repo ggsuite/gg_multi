@@ -95,7 +95,9 @@ class AddCommand extends Command<dynamic> {
     } else {
       // Single repository cloning.
       String repoUrl;
-      if (targetArg.startsWith('http')) {
+      if (targetArg.startsWith('git@')) {
+        repoUrl = targetArg;
+      } else if (targetArg.startsWith('http')) {
         repoUrl = targetArg;
       } else if (targetArg.contains('/')) {
         // Assume format "username/repo".
@@ -104,21 +106,35 @@ class AddCommand extends Command<dynamic> {
         // Assume repo name, default organization same as repo name.
         repoUrl = 'https://github.com/$targetArg/$targetArg.git';
       }
-      // Extract repository name from the URL.
-      String repoName;
-      try {
-        final Uri uri = Uri.parse(repoUrl);
-        repoName = uri.pathSegments.last;
-        if (repoName.endsWith('.git')) {
-          repoName = repoName.substring(0, repoName.length - 4);
-        }
-      } catch (e) {
-        repoName = targetArg;
-      }
+      final String repoName = _extractRepoName(repoUrl);
       final String destination =
           '$masterWorkspacePath${Platform.pathSeparator}$repoName';
       await gitCloner.cloneRepo(repoUrl, destination);
       ggLog('added repository $repoName from $repoUrl');
+    }
+  }
+
+  /// Extracts repository name from a git URL supporting SSH and HTTPS.
+  String _extractRepoName(String repoUrl) {
+    // Check if the URL is an SSH URL
+    if (repoUrl.startsWith('git@')) {
+      // Expected SSH format: git@github.com:username/repo.git
+      final sshRegex = RegExp(r'^(?:git@[^:]+:)([^/]+)/(.+?)(?:\.git)?$');
+      final match = sshRegex.firstMatch(repoUrl);
+      if (match != null) {
+        return match.group(2)!;
+      }
+    }
+    // Fallback to URI parsing for other formats.
+    try {
+      final uri = Uri.parse(repoUrl);
+      var repoName = uri.pathSegments.last;
+      if (repoName.endsWith('.git')) {
+        repoName = repoName.substring(0, repoName.length - 4);
+      }
+      return repoName;
+    } catch (e) {
+      return repoUrl;
     }
   }
 }
