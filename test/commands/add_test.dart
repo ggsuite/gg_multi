@@ -108,6 +108,45 @@ void main() {
     });
 
     test(
+        'should clone single repository when '
+        'target is a URL without .git', () async {
+      const urlWithoutGit = 'https://github.com/ggsuite/kidney_core';
+      await runner.run(['add', urlWithoutGit]);
+      verify(
+        () => mockGitCloner.cloneRepo(
+          'https://github.com/ggsuite/kidney_core.git',
+          any(),
+        ),
+      ).called(1);
+      expect(
+        logMessages,
+        equals([
+          'added repository kidney_core from '
+              'https://github.com/ggsuite/kidney_core.git',
+        ]),
+      );
+    });
+
+    test(
+        'should clone single repository '
+        'when target is a URL with trailing #', () async {
+      const urlWithHash = 'https://github.com/ggsuite/kidney_core#';
+      await runner.run(['add', urlWithHash]);
+      verify(
+        () => mockGitCloner.cloneRepo(
+          'https://github.com/ggsuite/kidney_core.git',
+          any(),
+        ),
+      ).called(1);
+      expect(
+        logMessages,
+        equals([
+          'added repository kidney_core from https://github.com/ggsuite/kidney_core.git',
+        ]),
+      );
+    });
+
+    test(
         'should clone repositories when '
         'target is an organization URL', () async {
       // Create a separate runner with a custom
