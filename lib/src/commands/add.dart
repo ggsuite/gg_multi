@@ -27,10 +27,13 @@ class AddCommand extends Command<dynamic> {
     required this.ggLog,
     GitCloner? gitCloner,
     Future<http.Response> Function(Uri)? repoFetcher,
-    this.workspacePath,
+    String? workspacePath,
     // coverage:ignore-start
   })  : gitCloner = gitCloner ?? GitCloner(),
-        repoFetcher = repoFetcher ?? http.get;
+        repoFetcher = repoFetcher ?? http.get,
+        workspacePath = workspacePath ??
+            '${Directory.current.path}${Platform.pathSeparator}'
+                'kidney_ws_master';
   // coverage:ignore-end
 
   /// The log function.
@@ -59,10 +62,6 @@ class AddCommand extends Command<dynamic> {
       throw UsageException('Missing target parameter.', usage);
     }
     final String targetArg = argResults!.rest[0];
-
-    // Define the master workspace directory path.
-    final String masterWorkspacePath = workspacePath ??
-        '${Directory.current.path}${Platform.pathSeparator}kidney_ws_master';
 
     if (targetArg.startsWith('http')) {
       // Remove trailing '#' if present.
@@ -96,7 +95,7 @@ class AddCommand extends Command<dynamic> {
           final cloneUrl = repoJson['clone_url'] as String?;
           if (repoName == null || cloneUrl == null) continue;
           final String destination =
-              '$masterWorkspacePath${Platform.pathSeparator}$repoName';
+              '$workspacePath${Platform.pathSeparator}$repoName';
           await gitCloner.cloneRepo(cloneUrl, destination);
           ggLog('added repository $repoName from $cloneUrl');
         }
@@ -108,7 +107,7 @@ class AddCommand extends Command<dynamic> {
         }
         final String repoName = _extractRepoName(repoUrl);
         final String destination =
-            '$masterWorkspacePath${Platform.pathSeparator}$repoName';
+            '$workspacePath${Platform.pathSeparator}$repoName';
         await gitCloner.cloneRepo(repoUrl, destination);
         ggLog('added repository $repoName from $repoUrl');
       }
@@ -117,7 +116,7 @@ class AddCommand extends Command<dynamic> {
       final String repoUrl = targetArg;
       final String repoName = _extractRepoName(repoUrl);
       final String destination =
-          '$masterWorkspacePath${Platform.pathSeparator}$repoName';
+          '$workspacePath${Platform.pathSeparator}$repoName';
       await gitCloner.cloneRepo(repoUrl, destination);
       ggLog('added repository $repoName from $repoUrl');
     } else if (targetArg.contains('/')) {
@@ -125,7 +124,7 @@ class AddCommand extends Command<dynamic> {
       final String repoUrl = 'https://github.com/$targetArg.git';
       final String repoName = _extractRepoName(repoUrl);
       final String destination =
-          '$masterWorkspacePath${Platform.pathSeparator}$repoName';
+          '$workspacePath${Platform.pathSeparator}$repoName';
       await gitCloner.cloneRepo(repoUrl, destination);
       ggLog('added repository $repoName from $repoUrl');
     } else {
@@ -133,7 +132,7 @@ class AddCommand extends Command<dynamic> {
       final String repoUrl = 'https://github.com/$targetArg/$targetArg.git';
       final String repoName = _extractRepoName(repoUrl);
       final String destination =
-          '$masterWorkspacePath${Platform.pathSeparator}$repoName';
+          '$workspacePath${Platform.pathSeparator}$repoName';
       await gitCloner.cloneRepo(repoUrl, destination);
       ggLog('added repository $repoName from $repoUrl');
     }

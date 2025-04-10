@@ -103,5 +103,16 @@ void main() {
       // The repository organization should be 'unknown'
       expect(messages, contains('unknown'));
     });
+
+    // Added test for the scenario where no repositories exist
+    test('should print "No organizations found." if master workspace is empty',
+        () async {
+      final command = ListOrganizationsCommand(
+        ggLog: messages.add,
+        workspacePath: masterDir.path, // masterDir is empty
+      );
+      await command.run();
+      expect(messages, contains('No organizations found.'));
+    });
   });
 }
