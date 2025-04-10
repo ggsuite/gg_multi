@@ -7,7 +7,7 @@
 import 'dart:io';
 
 import 'package:test/test.dart';
-import 'package:kidney_core/src/commands/list/list_deps.dart';
+import 'package:kidney_core/src/commands/list/deps.dart';
 
 void main() {
   group('ListDepsCommand', () {
@@ -64,6 +64,19 @@ dev_dependencies:
         messages,
         contains('pubspec.yaml not found in current directory.'),
       );
+    });
+
+    test('handles invalid pubspec content', () async {
+      final pubspecPath =
+          '${tempDir.path}${Platform.pathSeparator}pubspec.yaml';
+      File(pubspecPath).writeAsStringSync('invalid pubspec content');
+      final command = ListDepsCommand(
+        ggLog: messages.add,
+        pubspecPath: pubspecPath,
+      );
+      command.run();
+      expect(messages.isNotEmpty, isTrue);
+      expect(messages[0], startsWith('Error parsing pubspec.yaml:'));
     });
   });
 }

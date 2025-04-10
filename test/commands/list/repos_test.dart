@@ -7,7 +7,7 @@
 import 'dart:io';
 
 import 'package:test/test.dart';
-import 'package:kidney_core/src/commands/list/list_repos.dart';
+import 'package:kidney_core/src/commands/list/repos.dart';
 
 void main() {
   group('ListReposCommand', () {
@@ -52,7 +52,8 @@ void main() {
       File('${repo2.path}${Platform.pathSeparator}.git'
               '${Platform.pathSeparator}config')
           .writeAsStringSync(
-              'url = https://github.com/microsoft/project123.git');
+        'url = https://github.com/microsoft/project123.git',
+      );
 
       final command = ListReposCommand(
         ggLog: messages.add,
@@ -62,6 +63,21 @@ void main() {
 
       expect(messages, contains('json_dart v.3.5.2 (dart) from inlavigo'));
       expect(messages, contains('project123 v.1.0.0 (dart) from microsoft'));
+    });
+
+    test('handles empty master workspace directory', () async {
+      final emptyDir =
+          Directory('${tempDir.path}${Platform.pathSeparator}empty_master')
+            ..createSync();
+      final command = ListReposCommand(
+        ggLog: messages.add,
+        workspacePath: emptyDir.path,
+      );
+      await command.run();
+      expect(
+        messages,
+        contains('No repositories found in the master workspace.'),
+      );
     });
   });
 }

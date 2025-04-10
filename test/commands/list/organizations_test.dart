@@ -7,7 +7,7 @@
 import 'dart:io';
 
 import 'package:test/test.dart';
-import 'package:kidney_core/src/commands/list/list_organizations.dart';
+import 'package:kidney_core/src/commands/list/organizations.dart';
 
 void main() {
   group('ListOrganizationsCommand', () {
@@ -81,6 +81,27 @@ void main() {
         messages,
         contains('microsoft -- https://github.com/orgs/microsoft/'),
       );
+    });
+
+    test('handles unknown organization from invalid git config', () async {
+      final masterPath = masterDir.path;
+      final repo = Directory('$masterPath${Platform.pathSeparator}repo_unknown')
+        ..createSync();
+      File('${repo.path}${Platform.pathSeparator}pubspec.yaml')
+          .writeAsStringSync('name: repo_unknown\nversion: 1.0.0');
+      Directory('${repo.path}${Platform.pathSeparator}.git').createSync();
+      File('${repo.path}${Platform.pathSeparator}.git'
+              '${Platform.pathSeparator}config')
+          .writeAsStringSync('invalid config content');
+
+      final command = ListOrganizationsCommand(
+        ggLog: messages.add,
+        workspacePath: masterDir.path,
+      );
+      await command.run();
+
+      // The repository organization should be 'unknown'
+      expect(messages, contains('unknown'));
     });
   });
 }

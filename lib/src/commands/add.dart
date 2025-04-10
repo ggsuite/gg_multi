@@ -28,8 +28,10 @@ class AddCommand extends Command<dynamic> {
     GitCloner? gitCloner,
     Future<http.Response> Function(Uri)? repoFetcher,
     this.workspacePath,
+    // coverage:ignore-start
   })  : gitCloner = gitCloner ?? GitCloner(),
         repoFetcher = repoFetcher ?? http.get;
+  // coverage:ignore-end
 
   /// The log function.
   final GgLog ggLog;

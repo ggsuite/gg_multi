@@ -7,9 +7,9 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'list/list_repos.dart';
-import 'list/list_organizations.dart';
-import 'list/list_deps.dart';
+import 'list/repos.dart';
+import 'list/organizations.dart';
+import 'list/deps.dart';
 import 'package:gg_log/gg_log.dart';
 
 /// Command to list items from the master workspace.

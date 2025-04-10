@@ -6,9 +6,11 @@
 
 import 'dart:io';
 
+import 'package:gg_args/gg_args.dart';
+import 'package:kidney_core/src/commands/list/deps.dart';
+import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/list.dart';
-import 'package:kidney_core/src/commands/list/list_deps.dart';
 
 void main() {
   group('ListCommand interactive', () {
@@ -51,8 +53,9 @@ void main() {
     });
 
     test('chooses organizations', () async {
-      final repo1 = Directory('${masterDir.path}${Platform.pathSeparator}repo1')
-        ..createSync();
+      final repo1 = Directory(
+        '${masterDir.path}${Platform.pathSeparator}repo1',
+      )..createSync();
       File('${repo1.path}${Platform.pathSeparator}pubspec.yaml')
           .writeAsStringSync('name: repo1\nversion: 2.0.0');
       final gitDir1 = Directory('${repo1.path}${Platform.pathSeparator}.git')
@@ -60,8 +63,9 @@ void main() {
       File('${gitDir1.path}${Platform.pathSeparator}config')
           .writeAsStringSync('url = https://github.com/testorg/repo1.git');
 
-      final repo2 = Directory('${masterDir.path}${Platform.pathSeparator}repo2')
-        ..createSync();
+      final repo2 = Directory(
+        '${masterDir.path}${Platform.pathSeparator}repo2',
+      )..createSync();
       File('${repo2.path}${Platform.pathSeparator}pubspec.yaml')
           .writeAsStringSync('name: repo2\nversion: 1.0.0');
       final gitDir2 = Directory('${repo2.path}${Platform.pathSeparator}.git')
@@ -113,6 +117,24 @@ dev_dependencies:
       );
       await listCommand.run();
       expect(messages, contains('Invalid choice.'));
+    });
+
+    // .......................................................................
+    test('should show all sub commands', () async {
+      final listCommand = ListCommand(
+        ggLog: messages.add,
+        workspacePath: masterDir.path,
+      );
+      // Update the directory path to use the correct path separator
+      final commandsDir = Directory(
+        path.join('lib', 'src', 'commands', 'list'),
+      );
+      final (subCommands, errorMessage) = await missingSubCommands(
+        directory: commandsDir,
+        command: listCommand,
+      );
+
+      expect(subCommands, isEmpty, reason: errorMessage);
     });
   });
 }
