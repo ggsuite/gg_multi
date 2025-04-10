@@ -6,6 +6,7 @@
 
 import 'dart:io';
 
+import 'package:args/command_runner.dart';
 import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/list/deps.dart';
 
@@ -37,11 +38,17 @@ dev_dependencies:
       final pubspecPath =
           '${tempDir.path}${Platform.pathSeparator}pubspec.yaml';
       File(pubspecPath).writeAsStringSync(pubspecContent);
-      final command = ListDepsCommand(
-        ggLog: messages.add,
-        pubspecPath: pubspecPath,
+
+      // Use CommandRunner to run the command
+      final runner = CommandRunner<void>('test', 'Test ListDepsCommand');
+      runner.addCommand(
+        ListDepsCommand(
+          ggLog: messages.add,
+          pubspecPath: pubspecPath,
+        ),
       );
-      command.run();
+      await runner.run(['deps']);
+
       expect(messages[0], 'project123 v.1.0.0 (dart)');
       expect(messages[1], contains('json_dart'));
       expect(messages[1], contains('^3.5.2'));
@@ -55,11 +62,16 @@ dev_dependencies:
       if (File(pubspecPath).existsSync()) {
         File(pubspecPath).deleteSync();
       }
-      final command = ListDepsCommand(
-        ggLog: messages.add,
-        pubspecPath: pubspecPath,
+
+      final runner = CommandRunner<void>('test', 'Test ListDepsCommand');
+      runner.addCommand(
+        ListDepsCommand(
+          ggLog: messages.add,
+          pubspecPath: pubspecPath,
+        ),
       );
-      command.run();
+      await runner.run(['deps']);
+
       expect(
         messages,
         contains('pubspec.yaml not found in current directory.'),
@@ -70,11 +82,16 @@ dev_dependencies:
       final pubspecPath =
           '${tempDir.path}${Platform.pathSeparator}pubspec.yaml';
       File(pubspecPath).writeAsStringSync('invalid pubspec content');
-      final command = ListDepsCommand(
-        ggLog: messages.add,
-        pubspecPath: pubspecPath,
+
+      final runner = CommandRunner<void>('test', 'Test ListDepsCommand');
+      runner.addCommand(
+        ListDepsCommand(
+          ggLog: messages.add,
+          pubspecPath: pubspecPath,
+        ),
       );
-      command.run();
+      await runner.run(['deps']);
+
       expect(messages.isNotEmpty, isTrue);
       expect(messages[0], startsWith('Error parsing pubspec.yaml:'));
     });

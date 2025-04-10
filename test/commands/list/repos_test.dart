@@ -6,6 +6,7 @@
 
 import 'dart:io';
 
+import 'package:args/command_runner.dart';
 import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/list/repos.dart';
 
@@ -55,11 +56,14 @@ void main() {
         'url = https://github.com/microsoft/project123.git',
       );
 
-      final command = ListReposCommand(
-        ggLog: messages.add,
-        workspacePath: masterDir.path,
+      final runner = CommandRunner<void>('test', 'Test ListReposCommand');
+      runner.addCommand(
+        ListReposCommand(
+          ggLog: messages.add,
+          workspacePath: masterDir.path,
+        ),
       );
-      await command.run();
+      await runner.run(['repos']);
 
       expect(messages, contains('json_dart v.3.5.2 (dart) from inlavigo'));
       expect(messages, contains('project123 v.1.0.0 (dart) from microsoft'));
@@ -69,11 +73,14 @@ void main() {
       final emptyDir =
           Directory('${tempDir.path}${Platform.pathSeparator}empty_master')
             ..createSync();
-      final command = ListReposCommand(
-        ggLog: messages.add,
-        workspacePath: emptyDir.path,
+      final runner = CommandRunner<void>('test', 'Test ListReposCommand');
+      runner.addCommand(
+        ListReposCommand(
+          ggLog: messages.add,
+          workspacePath: emptyDir.path,
+        ),
       );
-      await command.run();
+      await runner.run(['repos']);
       expect(
         messages,
         contains('No repositories found in the master workspace.'),
