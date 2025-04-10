@@ -27,10 +27,9 @@ class AddCommand extends Command<dynamic> {
     required this.ggLog,
     GitCloner? gitCloner,
     Future<http.Response> Function(Uri)? repoFetcher,
-    // coverage:ignore-start
+    this.workspacePath,
   })  : gitCloner = gitCloner ?? GitCloner(),
         repoFetcher = repoFetcher ?? http.get;
-  // coverage:ignore-end
 
   /// The log function.
   final GgLog ggLog;
@@ -40,6 +39,9 @@ class AddCommand extends Command<dynamic> {
 
   /// Function to fetch repositories from the organization API.
   final Future<http.Response> Function(Uri) repoFetcher;
+
+  /// Optional workspace path override.
+  final String? workspacePath;
 
   @override
   String get name => 'add';
@@ -57,7 +59,7 @@ class AddCommand extends Command<dynamic> {
     final String targetArg = argResults!.rest[0];
 
     // Define the master workspace directory path.
-    final String masterWorkspacePath =
+    final String masterWorkspacePath = workspacePath ??
         '${Directory.current.path}${Platform.pathSeparator}kidney_ws_master';
 
     if (targetArg.startsWith('http')) {

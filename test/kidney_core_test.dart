@@ -40,8 +40,12 @@ void main() {
 
       // .......................................................................
       test('should show all sub commands', () async {
+        // Update the directory path to use the correct path separator
+        final commandsDir = Directory(
+          'lib${Platform.pathSeparator}src${Platform.pathSeparator}commands',
+        );
         final (subCommands, errorMessage) = await missingSubCommands(
-          directory: Directory('lib/src/commands'),
+          directory: commandsDir,
           command: kidneyCore,
         );
 

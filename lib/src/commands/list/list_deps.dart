@@ -12,13 +12,16 @@ import 'package:pubspec_parse/pubspec_parse.dart';
 
 /// Command to list dependencies of the current project.
 class ListDepsCommand extends Command<dynamic> {
-  /// Constructor.
-  ListDepsCommand({required this.ggLog}) {
+  /// Constructor with optional pubspec path.
+  ListDepsCommand({required this.ggLog, this.pubspecPath}) {
     _addArgs();
   }
 
   /// The log function.
   final GgLog ggLog;
+
+  /// Optional pubspec path override.
+  final String? pubspecPath;
 
   @override
   String get name => 'deps';
@@ -38,9 +41,8 @@ class ListDepsCommand extends Command<dynamic> {
 
   @override
   void run() {
-    // final depthStr = argResults?['depth'] as String?;
-    // final depth = int.tryParse(depthStr ?? '1') ?? 1;
-    final pubspecFile = File('pubspec.yaml');
+    final String targetPubspec = pubspecPath ?? 'pubspec.yaml';
+    final pubspecFile = File(targetPubspec);
     if (!pubspecFile.existsSync()) {
       ggLog('pubspec.yaml not found in current directory.');
       return;

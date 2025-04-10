@@ -7,22 +7,26 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'list_repos.dart';
-import 'list_organizations.dart';
-import 'list_deps.dart';
+import 'list/list_repos.dart';
+import 'list/list_organizations.dart';
+import 'list/list_deps.dart';
 import 'package:gg_log/gg_log.dart';
 
 /// Command to list items from the master workspace.
 /// If no subcommand is provided, it asks the user to choose.
 class ListCommand extends Command<dynamic> {
-  /// Constructor accepting a log function and optional input provider.
+  /// Constructor accepting a log function, optional input provider,
+  /// and optional workspace path.
   ListCommand({
     required this.ggLog,
     this.inputProvider,
+    this.workspacePath,
   }) {
     // Add subcommands for listing repos, organizations, and deps.
-    addSubcommand(ListReposCommand(ggLog: ggLog));
-    addSubcommand(ListOrganizationsCommand(ggLog: ggLog));
+    addSubcommand(ListReposCommand(ggLog: ggLog, workspacePath: workspacePath));
+    addSubcommand(
+      ListOrganizationsCommand(ggLog: ggLog, workspacePath: workspacePath),
+    );
     addSubcommand(ListDepsCommand(ggLog: ggLog));
   }
 
@@ -32,6 +36,9 @@ class ListCommand extends Command<dynamic> {
   /// Function to get user input; defaults to stdin.readLineSync.
   final String? Function()? inputProvider;
 
+  /// Optional workspace path override.
+  final String? workspacePath;
+
   @override
   String get name => 'list';
 
@@ -40,8 +47,9 @@ class ListCommand extends Command<dynamic> {
 
   @override
   Future<void> run() async {
-    // If a subcommand is provided, command runner will call its run.
-    if (argResults!.rest.isNotEmpty) {
+    // Use null-aware operator to safeguard against null argResults.
+    final rest = argResults?.rest ?? [];
+    if (rest.isNotEmpty) {
       return;
     }
     // Interactive prompt.
@@ -55,11 +63,15 @@ class ListCommand extends Command<dynamic> {
     switch (choice.toLowerCase().trim()) {
       case 'r':
       case 'repos':
-        await ListReposCommand(ggLog: ggLog).run();
+        await ListReposCommand(ggLog: ggLog, workspacePath: workspacePath)
+            .run();
         break;
       case 'o':
       case 'organizations':
-        await ListOrganizationsCommand(ggLog: ggLog).run();
+        await ListOrganizationsCommand(
+          ggLog: ggLog,
+          workspacePath: workspacePath,
+        ).run();
         break;
       case 'd':
       case 'deps':

@@ -7,24 +7,22 @@
 import 'dart:io';
 
 import 'package:test/test.dart';
-import 'package:kidney_core/src/commands/list_deps.dart';
+import 'package:kidney_core/src/commands/list/list_deps.dart';
 
 void main() {
   group('ListDepsCommand', () {
     late Directory tempDir;
-    late String originalDir;
     final messages = <String>[];
 
     setUp(() {
       messages.clear();
       tempDir = Directory.systemTemp.createTempSync('list_deps_test');
-      originalDir = Directory.current.path;
-      Directory.current = tempDir.path;
     });
 
     tearDown(() {
-      Directory.current = originalDir;
-      tempDir.deleteSync(recursive: true);
+      if (tempDir.existsSync()) {
+        tempDir.deleteSync(recursive: true);
+      }
     });
 
     test('lists dependencies from pubspec.yaml', () async {
@@ -36,8 +34,13 @@ dependencies:
 dev_dependencies:
   json_serializer: ^1.4.2
 ''';
-      File('pubspec.yaml').writeAsStringSync(pubspecContent);
-      final command = ListDepsCommand(ggLog: messages.add);
+      final pubspecPath =
+          '${tempDir.path}${Platform.pathSeparator}pubspec.yaml';
+      File(pubspecPath).writeAsStringSync(pubspecContent);
+      final command = ListDepsCommand(
+        ggLog: messages.add,
+        pubspecPath: pubspecPath,
+      );
       command.run();
       expect(messages[0], 'project123 v.1.0.0 (dart)');
       expect(messages[1], contains('json_dart'));
@@ -47,10 +50,15 @@ dev_dependencies:
     });
 
     test('handles missing pubspec.yaml', () async {
-      if (File('pubspec.yaml').existsSync()) {
-        File('pubspec.yaml').deleteSync();
+      final pubspecPath =
+          '${tempDir.path}${Platform.pathSeparator}pubspec.yaml';
+      if (File(pubspecPath).existsSync()) {
+        File(pubspecPath).deleteSync();
       }
-      final command = ListDepsCommand(ggLog: messages.add);
+      final command = ListDepsCommand(
+        ggLog: messages.add,
+        pubspecPath: pubspecPath,
+      );
       command.run();
       expect(
         messages,

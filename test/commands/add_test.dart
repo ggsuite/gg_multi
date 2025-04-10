@@ -5,13 +5,13 @@
 // found in the LICENSE file in the root of this package.
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:http/http.dart' as http;
 import 'package:kidney_core/src/backend/git_cloner.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
-
 import 'package:kidney_core/src/commands/add.dart';
 
 // Create a mock for GitCloner
@@ -22,25 +22,35 @@ void main() {
     late MockGitCloner mockGitCloner;
     late List<String> logMessages;
     late CommandRunner<void> runner;
+    late Directory tempDir;
+    late String masterWorkspacePath;
 
     setUp(() {
       mockGitCloner = MockGitCloner();
       logMessages = [];
-      // Simulate successful cloning for single repository cases
       when(() => mockGitCloner.cloneRepo(any(), any()))
           .thenAnswer((_) async {});
       runner = CommandRunner<void>('test', 'Test for AddCommand');
+      tempDir = Directory.systemTemp.createTempSync('add_test');
+      masterWorkspacePath =
+          '${tempDir.path}${Platform.pathSeparator}kidney_ws_master';
       runner.addCommand(
         AddCommand(
           ggLog: logMessages.add,
           gitCloner: mockGitCloner,
+          workspacePath: masterWorkspacePath,
         ),
       );
     });
 
+    tearDown(() {
+      if (tempDir.existsSync()) {
+        tempDir.deleteSync(recursive: true);
+      }
+    });
+
     test('should clone single repository when target is a repo name', () async {
       await runner.run(['add', 'myrepo']);
-      // Expected URL for a repo name is 'https://github.com/myrepo/myrepo.git'
       verify(
         () => mockGitCloner.cloneRepo(
           'https://github.com/myrepo/myrepo.git',
@@ -149,13 +159,12 @@ void main() {
     test(
         'should clone repositories when '
         'target is an organization URL', () async {
-      // Create a separate runner with a custom
-      // repoFetcher to simulate GitHub API response
       final orgRunner = CommandRunner<void>('test', 'Test for AddCommand Org');
       orgRunner.addCommand(
         AddCommand(
           ggLog: logMessages.add,
           gitCloner: mockGitCloner,
+          workspacePath: masterWorkspacePath,
           repoFetcher: (uri) async {
             final expectedApi =
                 Uri.parse('https://api.github.com/orgs/myorganization/repos');
@@ -208,6 +217,7 @@ void main() {
         AddCommand(
           ggLog: logMessages.add,
           gitCloner: mockGitCloner,
+          workspacePath: masterWorkspacePath,
           repoFetcher: (uri) async {
             final expectedApi =
                 Uri.parse('https://api.github.com/orgs/emptyorg/repos');
@@ -231,6 +241,7 @@ void main() {
         AddCommand(
           ggLog: logMessages.add,
           gitCloner: mockGitCloner,
+          workspacePath: masterWorkspacePath,
           repoFetcher: (uri) async {
             final expectedApi =
                 Uri.parse('https://api.github.com/orgs/errororg/repos');
@@ -271,8 +282,8 @@ void main() {
         AddCommand(
           ggLog: logMessages.add,
           gitCloner: mockGitCloner,
+          workspacePath: masterWorkspacePath,
           repoFetcher: (uri) async {
-            // This should not be called as the URL is invalid
             return http.Response('[]', 200);
           },
         ),
