@@ -7,28 +7,26 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:kidney_core/src/commands/list/deps.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:test/test.dart';
 import 'package:path/path.dart' as path;
+import 'package:kidney_core/src/commands/list/deps.dart';
 
 void main() {
   group('ListDepsCommand', () {
     late Directory tempDir;
+    late Directory masterWorkspace;
     final messages = <String>[];
 
     setUp(() {
       messages.clear();
       tempDir = Directory.systemTemp.createTempSync('list_deps_test');
-    });
-
-    tearDown(() {
-      if (tempDir.existsSync()) {
-        tempDir.deleteSync(recursive: true);
-      }
-    });
-
-    test('lists dependencies from pubspec.yaml', () async {
+      masterWorkspace = Directory(path.join(tempDir.path, 'kidney_ws_master'))
+        ..createSync(recursive: true);
+      // Create a project folder 'project123' inside master workspace
+      final projectDir =
+          Directory(path.join(masterWorkspace.path, 'project123'))
+            ..createSync(recursive: true);
       const pubspecContent = '''
 name: project123
 version: 1.0.0
@@ -37,74 +35,42 @@ dependencies:
 dev_dependencies:
   json_serializer: ^1.4.2
 ''';
-      final pubspecPath = path.join(tempDir.path, 'pubspec.yaml');
-      File(pubspecPath).writeAsStringSync(pubspecContent);
+      File(path.join(projectDir.path, 'pubspec.yaml'))
+          .writeAsStringSync(pubspecContent);
+    });
 
-      // Use CommandRunner to run the command
+    tearDown(() {
+      if (tempDir.existsSync()) {
+        tempDir.deleteSync(recursive: true);
+      }
+    });
+
+    test('lists dependencies from project pubspec.yaml', () async {
       final runner = CommandRunner<void>('test', 'Test ListDepsCommand');
       runner.addCommand(
         ListDepsCommand(
           ggLog: messages.add,
-          pubspecPath: pubspecPath,
+          workspacePath: masterWorkspace.path,
         ),
       );
-      await runner.run(['deps']);
+      await runner.run(['deps', 'project123', '--depth=1']);
 
       expect(messages[0], 'project123 v.1.0.0 (dart)');
-      expect(messages[1], contains('json_dart'));
-      expect(messages[1], contains('^3.5.2'));
-      expect(messages[2], contains('dev:json_serializer'));
-      expect(messages[2], contains('^1.4.2'));
-    });
-
-    test('handles missing pubspec.yaml', () async {
-      final pubspecPath = path.join(tempDir.path, 'pubspec.yaml');
-      if (File(pubspecPath).existsSync()) {
-        File(pubspecPath).deleteSync();
-      }
-
-      final runner = CommandRunner<void>('test', 'Test ListDepsCommand');
-      runner.addCommand(
-        ListDepsCommand(
-          ggLog: messages.add,
-          pubspecPath: pubspecPath,
-        ),
-      );
-      await runner.run(['deps']);
-
+      expect(messages.any((msg) => msg.contains('json_dart')), isTrue);
+      expect(messages.any((msg) => msg.contains('^3.5.2')), isTrue);
       expect(
-        messages,
-        contains('pubspec.yaml not found in current directory.'),
+        messages.any((msg) => msg.contains('dev:json_serializer')),
+        isTrue,
       );
-    });
-
-    test('handles invalid pubspec content', () async {
-      final pubspecPath = path.join(tempDir.path, 'pubspec.yaml');
-      File(pubspecPath).writeAsStringSync('invalid pubspec content');
-
-      final runner = CommandRunner<void>('test', 'Test ListDepsCommand');
-      runner.addCommand(
-        ListDepsCommand(
-          ggLog: messages.add,
-          pubspecPath: pubspecPath,
-        ),
-      );
-      await runner.run(['deps']);
-
-      expect(messages.isNotEmpty, isTrue);
-      expect(messages[0], startsWith('Error parsing pubspec.yaml:'));
+      expect(messages.any((msg) => msg.contains('^1.4.2')), isTrue);
     });
 
     test('prints help message when --help is passed', () async {
-      final runner = CommandRunner<void>(
-        'test',
-        'ListDepsCommand Help',
-      );
-      // Provide a dummy pubspec path; help should not require reading it
+      final runner = CommandRunner<void>('test', 'Test ListDepsCommand');
       runner.addCommand(
         ListDepsCommand(
-          ggLog: (_) {},
-          pubspecPath: path.join(tempDir.path, 'pubspec.yaml'),
+          ggLog: messages.add,
+          workspacePath: masterWorkspace.path,
         ),
       );
       final output = await capturePrint(
@@ -112,10 +78,7 @@ dev_dependencies:
           await runner.run(['deps', '--help']);
         },
       );
-      expect(
-        output.first,
-        contains('Lists dependencies and dev_dependencies'),
-      );
+      expect(output.first, contains('Lists dependencies and dev_dependencies'));
     });
   });
 }

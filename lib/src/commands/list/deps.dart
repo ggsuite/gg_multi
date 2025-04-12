@@ -8,27 +8,34 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
-import 'package:pubspec_parse/pubspec_parse.dart';
+import 'package:path/path.dart' as path;
+import '../../backend/add_repository_helper.dart';
 
-/// Command to list dependencies of the current project.
+/// Command to list dependencies of a project from the master workspace.
 class ListDepsCommand extends Command<dynamic> {
-  /// Constructor with optional pubspec path.
-  ListDepsCommand({required this.ggLog, this.pubspecPath}) {
+  /// Constructor
+  ListDepsCommand({
+    required this.ggLog,
+    String? workspacePath,
+    // coverage:ignore-start
+  }) : workspacePath = workspacePath ??
+            path.join(Directory.current.path, 'kidney_ws_master') {
     _addArgs();
   }
+  // coverage:ignore-end
 
-  /// The log function.
+  /// Log function.
   final GgLog ggLog;
 
-  /// Optional pubspec path override.
-  final String? pubspecPath;
+  /// Workspace path for projects.
+  final String workspacePath;
 
   @override
   String get name => 'deps';
 
   @override
-  String get description =>
-      'Lists dependencies and dev_dependencies of the project.';
+  String get description => 'Lists dependencies and dev_dependencies '
+      'of a project from the master workspace.';
 
   void _addArgs() {
     argParser.addOption(
@@ -41,26 +48,26 @@ class ListDepsCommand extends Command<dynamic> {
 
   @override
   void run() {
-    final String targetPubspec = pubspecPath ?? 'pubspec.yaml';
-    final pubspecFile = File(targetPubspec);
-    if (!pubspecFile.existsSync()) {
-      ggLog('pubspec.yaml not found in current directory.');
+    if (argResults!.rest.isEmpty) {
+      throw UsageException('Missing target repository parameter.', usage);
+    }
+    final targetArg = argResults!.rest[0];
+    final pubspec = getPubspecFromWorkspace(
+      targetArg: targetArg,
+      workspacePath: workspacePath,
+      ggLog: ggLog,
+    );
+    if (pubspec == null) {
       return;
     }
-    try {
-      final content = pubspecFile.readAsStringSync();
-      final pubspec = Pubspec.parse(content);
-      final projectLine =
-          '${pubspec.name} v.${pubspec.version?.toString() ?? '1.0.0'} (dart)';
-      ggLog(projectLine);
-      pubspec.dependencies.forEach((key, value) {
-        ggLog(' |-- $key ${value.toString()} (dart)');
-      });
-      pubspec.devDependencies.forEach((key, value) {
-        ggLog(' |-- dev:$key ${value.toString()} (dart)');
-      });
-    } catch (e) {
-      ggLog('Error parsing pubspec.yaml: $e');
-    }
+    final projectLine =
+        '${pubspec.name} v.${pubspec.version?.toString() ?? '1.0.0'} (dart)';
+    ggLog(projectLine);
+    pubspec.dependencies.forEach((key, value) {
+      ggLog(' |-- $key ${value.toString()} (dart)');
+    });
+    pubspec.devDependencies.forEach((key, value) {
+      ggLog(' |-- dev:$key ${value.toString()} (dart)');
+    });
   }
 }

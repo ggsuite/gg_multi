@@ -7,6 +7,7 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:kidney_core/src/backend/git_cloner.dart';
 import 'package:kidney_core/src/commands/add_deps.dart';
 import 'package:mocktail/mocktail.dart';
@@ -18,28 +19,26 @@ class MockGitCloner extends Mock implements GitCloner {}
 void main() {
   group('AddDepsCommand', () {
     late Directory tempDir;
-    late String originalDir;
+    late Directory dirNoPubspec;
+    late Directory dirProject;
     late List<String> logMessages;
     late MockGitCloner mockGitCloner;
     late CommandRunner<void> runner;
     late String workspacePath;
 
     setUp(() {
-      originalDir = Directory.current.path;
-      tempDir = Directory.systemTemp.createTempSync('add_deps_test');
-      Directory.current = tempDir;
-      logMessages = [];
       mockGitCloner = MockGitCloner();
-      when(
-        () => mockGitCloner.cloneRepo(
-          any(),
-          any(),
-        ),
-      ).thenAnswer(
-        (_) async {},
-      );
+      logMessages = [];
+      when(() => mockGitCloner.cloneRepo(any(), any()))
+          .thenAnswer((_) async {});
+      tempDir = Directory.systemTemp.createTempSync('add_deps_test');
       workspacePath = path.join(tempDir.path, 'kidney_ws_master');
+      // Create workspace directories
       Directory(workspacePath).createSync(recursive: true);
+      dirNoPubspec = Directory(path.join(workspacePath, 'no_pubspec'))
+        ..createSync(recursive: true);
+      dirProject = Directory(path.join(workspacePath, 'project'))
+        ..createSync(recursive: true);
       runner = CommandRunner<void>('test', 'Test AddDepsCommand');
       runner.addCommand(
         AddDepsCommand(
@@ -51,8 +50,9 @@ void main() {
     });
 
     tearDown(() {
-      Directory.current = Directory(originalDir);
-      tempDir.deleteSync(recursive: true);
+      if (tempDir.existsSync()) {
+        tempDir.deleteSync(recursive: true);
+      }
     });
 
     test('iterates over dependencies and dev_dependencies', () async {
@@ -65,10 +65,10 @@ dependencies:
 dev_dependencies:
   json_serializer: ^1.4.2
 ''';
-      File(path.join(tempDir.path, 'pubspec.yaml'))
+      File(path.join(dirProject.path, 'pubspec.yaml'))
           .writeAsStringSync(pubspecContent);
 
-      await runner.run(['add-deps']);
+      await runner.run(['add-deps', 'project']);
 
       verify(
         () => mockGitCloner.cloneRepo(
@@ -103,14 +103,11 @@ dev_dependencies:
     });
 
     test('logs message when pubspec.yaml not found', () async {
-      final pubspecFile = File(path.join(tempDir.path, 'pubspec.yaml'));
-      if (pubspecFile.existsSync()) {
-        pubspecFile.deleteSync();
-      }
-      await runner.run(['add-deps']);
+      await runner.run(['add-deps', 'no_pubspec']);
       expect(
         logMessages,
-        contains('pubspec.yaml not found in current directory.'),
+        contains('pubspec.yaml not found in project '
+            'no_pubspec in workspace $workspacePath.'),
       );
     });
 
@@ -118,15 +115,29 @@ dev_dependencies:
       const pubspecContent = '''
 name: test_project
 version: 1.0.0
-dependencies: {}
-dev_dependencies: {}
+dependencies:
+dev_dependencies:
 ''';
-      File(path.join(tempDir.path, 'pubspec.yaml'))
+      File(path.join(dirNoPubspec.path, 'pubspec.yaml'))
           .writeAsStringSync(pubspecContent);
-      await runner.run(['add-deps']);
+      await runner.run(['add-deps', 'no_pubspec']);
       expect(
         logMessages,
-        contains('No dependencies found in pubspec.yaml.'),
+        contains('No dependencies found in pubspec.yaml '
+            'for project test_project.'),
+      );
+    });
+
+    test('prints help message when --help is passed', () async {
+      final output = await capturePrint(
+        code: () async {
+          await runner.run(['add-deps', '--help']);
+        },
+      );
+      expect(
+        output.first,
+        contains('Iterates over all dependencies '
+            'specified in pubspec.yaml'),
       );
     });
   });

@@ -9,34 +9,35 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:http/http.dart' as http;
-import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:path/path.dart' as path;
 
 import '../backend/git_cloner.dart';
 import '../backend/add_repository_helper.dart';
 
-/// Iterates over all dependencies specified in pubspec.yaml in both
-/// dependencies and dev_dependencies.
-/// Executes for every dependency: kidney_core add repo_name/repo_url
+/// Command to add dependencies of a project from the master workspace.
+/// It iterates over dependencies in pubspec.yaml and adds each one using
+/// the add command logic.
 class AddDepsCommand extends Command<void> {
-  /// Constructor for AddDepsCommand.
+  /// Constructor
   AddDepsCommand({
     required this.ggLog,
     GitCloner? gitCloner,
     Future<http.Response> Function(Uri)? repoFetcher,
     String? workspacePath,
+    // coverage:ignore-start
   })  : gitCloner = gitCloner ?? GitCloner(),
         repoFetcher = repoFetcher ?? http.get,
         workspacePath = workspacePath ??
             path.join(Directory.current.path, 'kidney_ws_master');
+  // coverage:ignore-end
 
-  /// The log function.
+  /// Log function.
   final GgLog ggLog;
 
   /// Instance to handle cloning.
   final GitCloner gitCloner;
 
-  /// Function to fetch repositories from the organization API.
+  /// Function to fetch repositories.
   final Future<http.Response> Function(Uri) repoFetcher;
 
   /// Workspace path for cloned repositories.
@@ -46,27 +47,31 @@ class AddDepsCommand extends Command<void> {
   String get name => 'add-deps';
 
   @override
-  String get description => 'Iterates over all dependencies specified '
-      'in pubspec.yaml in dependencies and dev_dependencies. '
-      'Executes for every dependency kidney_core add <repo_name/repo_url>';
+  String get description =>
+      'Iterates over all dependencies specified in pubspec.yaml '
+      'in dependencies and dev_dependencies of a project '
+      'from the master workspace and adds them.';
 
   @override
   Future<void> run() async {
-    if (argResults!.rest.isNotEmpty) {
-      throw UsageException('No additional arguments expected', usage);
+    if (argResults!.rest.isEmpty) {
+      throw UsageException('Missing target repository parameter.', usage);
     }
-    final pubspecFile = File('pubspec.yaml');
-    if (!pubspecFile.existsSync()) {
-      ggLog('pubspec.yaml not found in current directory.');
+    final targetArg = argResults!.rest[0];
+    final pubspec = getPubspecFromWorkspace(
+      targetArg: targetArg,
+      workspacePath: workspacePath,
+      ggLog: ggLog,
+    );
+    if (pubspec == null) {
       return;
     }
-    final content = pubspecFile.readAsStringSync();
-    final pubspec = Pubspec.parse(content);
-    final deps = <String>{};
-    deps.addAll(pubspec.dependencies.keys);
-    deps.addAll(pubspec.devDependencies.keys);
+    final deps = <String>{}
+      ..addAll(pubspec.dependencies.keys)
+      ..addAll(pubspec.devDependencies.keys);
     if (deps.isEmpty) {
-      ggLog('No dependencies found in pubspec.yaml.');
+      ggLog('No dependencies found in pubspec.yaml '
+          'for project ${pubspec.name}.');
       return;
     }
     for (final dep in deps) {

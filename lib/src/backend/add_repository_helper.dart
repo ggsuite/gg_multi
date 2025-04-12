@@ -5,12 +5,13 @@
 // found in the LICENSE file in the root of this package.
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:gg_log/gg_log.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
-
 import 'git_cloner.dart';
+import 'package:pubspec_parse/pubspec_parse.dart';
 
 /// Helper function to add a repository given a target argument.
 /// It supports various formats like URLs, SSH links, and plain names.
@@ -22,17 +23,24 @@ Future<void> addRepositoryHelper({
   required Future<http.Response> Function(Uri) repoFetcher,
   required String workspacePath,
 }) async {
-  if (targetArg.startsWith('http')) {
+  // Try to parse the target argument as a URI
+  final parsedUri = Uri.tryParse(targetArg);
+  if (parsedUri != null &&
+      (parsedUri.scheme == 'http' || parsedUri.scheme == 'https') &&
+      parsedUri.host.isNotEmpty) {
+    // targetArg is a valid HTTP/HTTPS URL
     String cleanedUrl = targetArg;
     if (cleanedUrl.endsWith('#')) {
       cleanedUrl = cleanedUrl.substring(0, cleanedUrl.length - 1);
     }
     final uri = Uri.parse(cleanedUrl);
-    if (uri.pathSegments.isEmpty) {
+    // If there are no meaningful path segments, treat it as invalid
+    if (uri.pathSegments.isEmpty ||
+        (uri.pathSegments.length == 1 && uri.path.trim() == '')) {
       throw Exception('Invalid organization URL provided: $cleanedUrl');
     }
     if (uri.pathSegments.length < 2) {
-      // Treat as organization URL.
+      // Treat as organization URL
       final String orgName = uri.pathSegments.last;
       final String apiUrl = 'https://api.github.com/orgs/$orgName/repos';
       final response = await repoFetcher(Uri.parse(apiUrl));
@@ -55,31 +63,31 @@ Future<void> addRepositoryHelper({
         ggLog('added repository $repoName from $cloneUrl');
       }
     } else {
-      // Treat as a repository URL.
+      // Treat as a repository URL
       String repoUrl = cleanedUrl;
       if (!repoUrl.endsWith('.git')) {
         repoUrl = '$repoUrl.git';
       }
-      final String repoName = _extractRepoName(repoUrl);
+      final String repoName = extractRepoName(repoUrl);
       final String destination = path.join(workspacePath, repoName);
       await gitCloner.cloneRepo(repoUrl, destination);
       ggLog('added repository $repoName from $repoUrl');
     }
   } else if (targetArg.startsWith('git@')) {
     final String repoUrl = targetArg;
-    final String repoName = _extractRepoName(repoUrl);
+    final String repoName = extractRepoName(repoUrl);
     final String destination = path.join(workspacePath, repoName);
     await gitCloner.cloneRepo(repoUrl, destination);
     ggLog('added repository $repoName from $repoUrl');
   } else if (targetArg.contains('/')) {
     final String repoUrl = 'https://github.com/$targetArg.git';
-    final String repoName = _extractRepoName(repoUrl);
+    final String repoName = extractRepoName(repoUrl);
     final String destination = path.join(workspacePath, repoName);
     await gitCloner.cloneRepo(repoUrl, destination);
     ggLog('added repository $repoName from $repoUrl');
   } else {
     final String repoUrl = 'https://github.com/$targetArg/$targetArg.git';
-    final String repoName = _extractRepoName(repoUrl);
+    final String repoName = extractRepoName(repoUrl);
     final String destination = path.join(workspacePath, repoName);
     await gitCloner.cloneRepo(repoUrl, destination);
     ggLog('added repository $repoName from $repoUrl');
@@ -87,7 +95,7 @@ Future<void> addRepositoryHelper({
 }
 
 /// Extracts the repository name from a git URL supporting SSH and HTTPS.
-String _extractRepoName(String repoUrl) {
+String extractRepoName(String repoUrl) {
   if (repoUrl.startsWith('git@')) {
     final sshRegex = RegExp(r'^(?:git@[^:]+:)([^/]+)/(.+?)(?:\.git)?$');
     final match = sshRegex.firstMatch(repoUrl);
@@ -104,5 +112,29 @@ String _extractRepoName(String repoUrl) {
     return repoName;
   } catch (e) {
     return repoUrl;
+  }
+}
+
+/// Retrieves the Pubspec for a repository in the master workspace.
+/// Returns null if pubspec.yaml is not found or parsing fails.
+Pubspec? getPubspecFromWorkspace({
+  required String targetArg,
+  required String workspacePath,
+  required GgLog ggLog,
+}) {
+  final repoName = extractRepoName(targetArg);
+  final pubspecPath = path.join(workspacePath, repoName, 'pubspec.yaml');
+  final pubspecFile = File(pubspecPath);
+  if (!pubspecFile.existsSync()) {
+    ggLog('pubspec.yaml not found in '
+        'project $repoName in workspace $workspacePath.');
+    return null;
+  }
+  try {
+    final content = pubspecFile.readAsStringSync();
+    return Pubspec.parse(content);
+  } catch (e) {
+    ggLog('Error parsing pubspec.yaml: $e');
+    return null;
   }
 }
