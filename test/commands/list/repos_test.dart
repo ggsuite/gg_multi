@@ -7,6 +7,7 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/list/repos.dart';
 
@@ -85,6 +86,25 @@ void main() {
         messages,
         contains('No repositories found in the master workspace.'),
       );
+    });
+
+    test('prints help message when --help is passed', () async {
+      final runner = CommandRunner<void>(
+        'test',
+        'ListReposCommand Help',
+      );
+      runner.addCommand(
+        ListReposCommand(
+          ggLog: (_) {},
+          workspacePath: masterDir.path,
+        ),
+      );
+      final output = await capturePrint(
+        code: () async {
+          await runner.run(['repos', '--help']);
+        },
+      );
+      expect(output.first, contains('Lists all repos'));
     });
   });
 }

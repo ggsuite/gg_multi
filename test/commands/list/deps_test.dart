@@ -7,8 +7,9 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/list/deps.dart';
+import 'package:gg_capture_print/gg_capture_print.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('ListDepsCommand', () {
@@ -94,6 +95,29 @@ dev_dependencies:
 
       expect(messages.isNotEmpty, isTrue);
       expect(messages[0], startsWith('Error parsing pubspec.yaml:'));
+    });
+
+    test('prints help message when --help is passed', () async {
+      final runner = CommandRunner<void>(
+        'test',
+        'ListDepsCommand Help',
+      );
+      // Provide a dummy pubspec path; help should not require reading it
+      runner.addCommand(
+        ListDepsCommand(
+          ggLog: (_) {},
+          pubspecPath: '${tempDir.path}${Platform.pathSeparator}pubspec.yaml',
+        ),
+      );
+      final output = await capturePrint(
+        code: () async {
+          await runner.run(['deps', '--help']);
+        },
+      );
+      expect(
+        output.first,
+        contains('Lists dependencies and dev_dependencies'),
+      );
     });
   });
 }

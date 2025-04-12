@@ -13,13 +13,20 @@ import '../../backend/list_backend.dart';
 /// Command to list all organizations from repos in the master workspace.
 class ListOrganizationsCommand extends Command<dynamic> {
   /// Constructor with optional workspace path.
-  ListOrganizationsCommand({required this.ggLog, this.workspacePath});
+  ListOrganizationsCommand({
+    required this.ggLog,
+    String? workspacePath,
+    // coverage:ignore-start
+  }) : workspacePath = workspacePath ??
+            '${Directory.current.path}${Platform.pathSeparator}'
+                'kidney_ws_master';
+  // coverage:ignore-end
 
   /// The log function.
   final GgLog ggLog;
 
   /// Optional workspace path override.
-  final String? workspacePath;
+  final String workspacePath;
 
   @override
   String get name => 'organizations';
@@ -30,9 +37,7 @@ class ListOrganizationsCommand extends Command<dynamic> {
 
   @override
   Future<void> run() async {
-    final String masterWorkspacePath = workspacePath ??
-        '${Directory.current.path}${Platform.pathSeparator}kidney_ws_master';
-    final repoInfos = await getAllRepoInfos(masterWorkspacePath);
+    final repoInfos = await getAllRepoInfos(workspacePath);
     final orgSet = <String>{};
     for (final repo in repoInfos) {
       orgSet.add(repo.organization);

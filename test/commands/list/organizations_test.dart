@@ -7,6 +7,7 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/list/organizations.dart';
 
@@ -72,9 +73,13 @@ void main() {
       await runner.run(['organizations']);
 
       expect(
-          messages, contains('inlavigo -- https://github.com/orgs/inlavigo/'));
-      expect(messages,
-          contains('microsoft -- https://github.com/orgs/microsoft/'));
+        messages,
+        contains('inlavigo -- https://github.com/orgs/inlavigo/'),
+      );
+      expect(
+        messages,
+        contains('microsoft -- https://github.com/orgs/microsoft/'),
+      );
     });
 
     test('handles unknown organization from invalid git config', () async {
@@ -119,6 +124,25 @@ void main() {
       );
       await runner.run(['organizations']);
       expect(messages, contains('No organizations found.'));
+    });
+
+    test('prints help message when --help is passed', () async {
+      final runner = CommandRunner<void>(
+        'test',
+        'ListOrganizationsCommand Help',
+      );
+      runner.addCommand(
+        ListOrganizationsCommand(
+          ggLog: (_) {},
+          workspacePath: masterDir.path,
+        ),
+      );
+      final output = await capturePrint(
+        code: () async {
+          await runner.run(['organizations', '--help']);
+        },
+      );
+      expect(output.first, contains('Lists all organizations'));
     });
   });
 }
