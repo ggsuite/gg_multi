@@ -7,6 +7,7 @@
 import 'package:args/command_runner.dart';
 import './commands/my_command.dart';
 import './commands/add.dart';
+import './commands/add_deps.dart';
 import './commands/list.dart';
 import 'package:gg_log/gg_log.dart';
 
@@ -17,12 +18,12 @@ class KidneyCore extends Command<dynamic> {
     addSubcommand(MyCommand(ggLog: ggLog));
     addSubcommand(AddCommand(ggLog: ggLog));
     addSubcommand(ListCommand(ggLog: ggLog));
+    addSubcommand(AddDepsCommand(ggLog: ggLog));
   }
 
   /// The log function
   final GgLog ggLog;
 
-  // ...........................................................................
   @override
   final name = 'kidneyCore';
   @override
