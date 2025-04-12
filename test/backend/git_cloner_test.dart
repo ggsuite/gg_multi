@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 import 'package:kidney_core/src/backend/git_cloner.dart';
+import 'package:path/path.dart' as path;
 
 // A mock class for the ProcessRunner function.
 class MockProcessRunner extends Mock {
@@ -45,8 +46,7 @@ void main() {
         // Arrange
         const repoUrl = 'https://github.com/example/repo.git';
         // Create a target directory path inside the temporary directory
-        final targetDirectory =
-            '${tempDir.path}${Platform.pathSeparator}cloned_repo';
+        final targetDirectory = path.join(tempDir.path, 'cloned_repo');
 
         // Ensure that the parent directory does not yet exist
         final parentDir = Directory(targetDirectory).parent;
@@ -85,8 +85,7 @@ void main() {
       test('throws an exception when the clone process fails', () async {
         // Arrange
         const repoUrl = 'https://github.com/example/failure.git';
-        final targetDirectory =
-            '${tempDir.path}${Platform.pathSeparator}failed_clone';
+        final targetDirectory = path.join(tempDir.path, 'failed_clone');
 
         // Stub the mock process runner to return a failing ProcessResult
         when(() => mockProcessRunner('git', any())).thenAnswer(
@@ -127,9 +126,11 @@ void main() {
         // Arrange
         const repoUrl = 'https://github.com/example/repo.git';
         // Choosing a target directory in a nested non-existent structure
-        final targetDirectory =
-            '${tempDir.path}${Platform.pathSeparator}nonexistent'
-            '${Platform.pathSeparator}cloned_repo';
+        final targetDirectory = path.join(
+          tempDir.path,
+          'nonexistent',
+          'cloned_repo',
+        );
         final parentDir = Directory(targetDirectory).parent;
 
         // Make sure the parent directory does not exist
