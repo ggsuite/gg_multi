@@ -5,7 +5,6 @@
 // found in the LICENSE file in the root of this package.
 
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -45,14 +44,8 @@ void main() {
         const targetArg = 'http://github.com/user/repo#';
         final mockGitCloner = MockGitCloner();
         // Stub cloneRepo to complete normally
-        when(
-          () => mockGitCloner.cloneRepo(
-            any(),
-            any(),
-          ),
-        ).thenAnswer(
-          (_) async {},
-        );
+        when(() => mockGitCloner.cloneRepo(any(), any()))
+            .thenAnswer((_) async {});
 
         // Dummy repoFetcher that should never be used in this branch
         Future<http.Response> repoFetcher(Uri uri) async {
@@ -88,14 +81,8 @@ void main() {
         // where the URL has less than 2 path segments.
         const targetArg = 'http://github.com/myorg';
         final mockGitCloner = MockGitCloner();
-        when(
-          () => mockGitCloner.cloneRepo(
-            any(),
-            any(),
-          ),
-        ).thenAnswer(
-          (_) async {},
-        );
+        when(() => mockGitCloner.cloneRepo(any(), any()))
+            .thenAnswer((_) async {});
 
         // Build a fake repo list response with two repositories
         final repoList = [
@@ -125,9 +112,8 @@ void main() {
           final repoName = repo['name']!;
           final cloneUrl = repo['clone_url']!;
           final destination = path.join(workspacePath, repoName);
-          verify(
-            () => mockGitCloner.cloneRepo(cloneUrl, destination),
-          ).called(1);
+          verify(() => mockGitCloner.cloneRepo(cloneUrl, destination))
+              .called(1);
           expect(logs, contains('added repository $repoName from $cloneUrl'));
         }
       });
@@ -137,14 +123,8 @@ void main() {
         const targetArg = 'http://github.com/myorg';
         final mockGitCloner = MockGitCloner();
         // Since no repos found, cloneRepo should not be called
-        when(
-          () => mockGitCloner.cloneRepo(
-            any(),
-            any(),
-          ),
-        ).thenAnswer(
-          (_) async {},
-        );
+        when(() => mockGitCloner.cloneRepo(any(), any()))
+            .thenAnswer((_) async {});
 
         Future<http.Response> repoFetcher(Uri uri) async {
           return http.Response(jsonEncode([]), 200);
@@ -165,20 +145,13 @@ void main() {
         verifyNever(() => mockGitCloner.cloneRepo(any(), any()));
       });
 
-      test(
-          'Throws exception for HTTP '
-          'organization URL with invalid status', () async {
+      test('Throws exception for HTTP organization URL with invalid status',
+          () async {
         // Test organization branch when repoFetcher returns error response
         const targetArg = 'http://github.com/myorg';
         final mockGitCloner = MockGitCloner();
-        when(
-          () => mockGitCloner.cloneRepo(
-            any(),
-            any(),
-          ),
-        ).thenAnswer(
-          (_) async {},
-        );
+        when(() => mockGitCloner.cloneRepo(any(), any()))
+            .thenAnswer((_) async {});
 
         Future<http.Response> repoFetcher(Uri uri) async {
           return http.Response('Error fetching repos', 404);
@@ -194,8 +167,9 @@ void main() {
           ),
           throwsA(
             predicate(
-              (e) => e.toString().contains('Failed to fetch repositories '
-                  'for organization myorg'),
+              (e) => e.toString().contains(
+                    'Failed to fetch repositories for organization myorg',
+                  ),
             ),
           ),
         );
@@ -206,9 +180,8 @@ void main() {
       test('Processes SSH URL correctly', () async {
         const targetArg = 'git@github.com:user/repo.git';
         final mockGitCloner = MockGitCloner();
-        when(
-          () => mockGitCloner.cloneRepo(any(), any()),
-        ).thenAnswer((_) async {});
+        when(() => mockGitCloner.cloneRepo(any(), any()))
+            .thenAnswer((_) async {});
 
         // Dummy repoFetcher not used in this branch
         Future<http.Response> repoFetcher(Uri uri) async {
@@ -224,9 +197,8 @@ void main() {
         );
 
         final expectedDestination = path.join(workspacePath, 'repo');
-        verify(
-          () => mockGitCloner.cloneRepo(targetArg, expectedDestination),
-        ).called(1);
+        verify(() => mockGitCloner.cloneRepo(targetArg, expectedDestination))
+            .called(1);
         expect(logs, contains('added repository repo from $targetArg'));
       });
     });
@@ -235,9 +207,8 @@ void main() {
       test('Processes target with slash correctly', () async {
         const targetArg = 'user/repo';
         final mockGitCloner = MockGitCloner();
-        when(
-          () => mockGitCloner.cloneRepo(any(), any()),
-        ).thenAnswer((_) async {});
+        when(() => mockGitCloner.cloneRepo(any(), any()))
+            .thenAnswer((_) async {});
 
         Future<http.Response> repoFetcher(Uri uri) async {
           fail('repoFetcher should not be called for target with slash branch');
@@ -264,9 +235,8 @@ void main() {
       test('Processes plain target correctly', () async {
         const targetArg = 'repo';
         final mockGitCloner = MockGitCloner();
-        when(
-          () => mockGitCloner.cloneRepo(any(), any()),
-        ).thenAnswer((_) async {});
+        when(() => mockGitCloner.cloneRepo(any(), any()))
+            .thenAnswer((_) async {});
 
         Future<http.Response> repoFetcher(Uri uri) async {
           fail('repoFetcher should not be called for plain target branch');
@@ -294,9 +264,8 @@ void main() {
         // When targetArg URL has no path segments
         const targetArg = 'http://github.com';
         final mockGitCloner = MockGitCloner();
-        when(
-          () => mockGitCloner.cloneRepo(any(), any()),
-        ).thenAnswer((_) async {});
+        when(() => mockGitCloner.cloneRepo(any(), any()))
+            .thenAnswer((_) async {});
 
         Future<http.Response> repoFetcher(Uri uri) async {
           fail('repoFetcher should not be called when URL is invalid');
@@ -320,27 +289,27 @@ void main() {
         );
       });
     });
+  });
 
-    // NEW TEST: Covering pubspec parsing error branch
-    test('Logs error when pubspec.yaml parsing fails', () {
-      // Create a temporary directory for test
-      final testDir =
-          Directory.systemTemp.createTempSync('pubspec_parse_error_test');
-      final pubspecPath = path.join(testDir.path, 'pubspec.yaml');
-      File(pubspecPath).writeAsStringSync('invalid content');
-      final logList = <String>[];
+  group('extractRepoName', () {
+    test('returns repo name for SSH URL', () {
+      final repoName = extractRepoName('git@github.com:owner/repo.git');
+      expect(repoName, equals('repo'));
+    });
 
-      final result = getPubspecFromWorkspace(
-        targetArg: testDir.path,
-        workspacePath: testDir.parent.path,
-        ggLog: (msg) => logList.add(msg),
-      );
-      expect(result, isNull);
-      expect(
-        logList.any((msg) => msg.contains('Error parsing pubspec.yaml:')),
-        isTrue,
-      );
-      testDir.deleteSync(recursive: true);
+    test('returns repo name for HTTP URL with .git', () {
+      final repoName = extractRepoName('https://github.com/owner/repo.git');
+      expect(repoName, equals('repo'));
+    });
+
+    test('returns repo name for HTTP URL without .git', () {
+      final repoName = extractRepoName('https://github.com/owner/repo');
+      expect(repoName, equals('repo'));
+    });
+
+    test('returns original string for invalid URL', () {
+      final repoName = extractRepoName('not a url');
+      expect(repoName, equals('not a url'));
     });
   });
 }

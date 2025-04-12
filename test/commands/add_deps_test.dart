@@ -116,7 +116,6 @@ dev_dependencies:
 name: test_project
 version: 1.0.0
 dependencies:
-
 dev_dependencies:
 ''';
       File(path.join(dirNoPubspec.path, 'pubspec.yaml'))
@@ -141,6 +140,39 @@ dev_dependencies:
         logMessages.any((m) => m.contains('Error parsing pubspec.yaml:')),
         isTrue,
       );
+    });
+
+    test('throws exception when target repository parameter is missing',
+        () async {
+      final newRunner = CommandRunner<void>('test', 'Test Missing Target');
+      newRunner.addCommand(
+        AddDepsCommand(
+          ggLog: logMessages.add,
+          gitCloner: mockGitCloner,
+          workspacePath: workspacePath,
+        ),
+      );
+      await expectLater(
+        newRunner.run(['add-deps']),
+        throwsA(isA<UsageException>()),
+      );
+    });
+
+    test('throws exception when dependency addition fails', () async {
+      // Create a pubspec with a dependency that will trigger failure
+      const pubspecContent = '''
+name: test_project
+version: 1.0.0
+dependencies:
+  fail_dep: ^1.0.0
+''';
+      File(path.join(dirProject.path, 'pubspec.yaml'))
+          .writeAsStringSync(pubspecContent);
+
+      when(() => mockGitCloner.cloneRepo(any(), any()))
+          .thenThrow(Exception('clone failed'));
+
+      await expectLater(runner.run(['add-deps', 'project']), throwsException);
     });
 
     test('prints help message when --help is passed', () async {
