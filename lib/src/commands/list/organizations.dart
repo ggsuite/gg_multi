@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
 import '../../backend/list_backend.dart';
+import 'package:path/path.dart' as path;
 
 /// Command to list all organizations from repos in the master workspace.
 class ListOrganizationsCommand extends Command<dynamic> {
@@ -18,8 +19,7 @@ class ListOrganizationsCommand extends Command<dynamic> {
     String? workspacePath,
     // coverage:ignore-start
   }) : workspacePath = workspacePath ??
-            '${Directory.current.path}${Platform.pathSeparator}'
-                'kidney_ws_master';
+            path.join(Directory.current.path, 'kidney_ws_master');
   // coverage:ignore-end
 
   /// The log function.

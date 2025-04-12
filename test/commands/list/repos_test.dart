@@ -8,6 +8,7 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
+import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/list/repos.dart';
 
@@ -20,9 +21,8 @@ void main() {
     setUp(() {
       messages.clear();
       tempDir = Directory.systemTemp.createTempSync('list_repos_test');
-      masterDir = Directory(
-        '${tempDir.path}${Platform.pathSeparator}kidney_ws_master',
-      )..createSync(recursive: true);
+      masterDir = Directory(path.join(tempDir.path, 'kidney_ws_master'))
+        ..createSync(recursive: true);
     });
 
     tearDown(() {
@@ -33,27 +33,17 @@ void main() {
 
     test('lists repositories correctly', () async {
       final masterPath = masterDir.path;
-      final repo1 = Directory('$masterPath${Platform.pathSeparator}json_dart')
-        ..createSync();
-      File(
-        '${repo1.path}${Platform.pathSeparator}pubspec.yaml',
-      ).writeAsStringSync('name: json_dart\nversion: 3.5.2');
-      Directory(
-        '${repo1.path}${Platform.pathSeparator}.git',
-      ).createSync();
-      File(
-        '${repo1.path}${Platform.pathSeparator}.git'
-        '${Platform.pathSeparator}config',
-      ).writeAsStringSync('url = https://github.com/inlavigo/json_dart.git');
+      final repo1 = Directory(path.join(masterPath, 'json_dart'))..createSync();
+      File(path.join(repo1.path, 'pubspec.yaml'))
+          .writeAsStringSync('name: json_dart\nversion: 3.5.2');
+      Directory(path.join(repo1.path, '.git')).createSync();
+      File(path.join(repo1.path, '.git', 'config'))
+          .writeAsStringSync('url = https://github.com/inlavigo/json_dart.git');
 
-      final repo2 = Directory('$masterPath${Platform.pathSeparator}project123')
+      final repo2 = Directory(path.join(masterPath, 'project123'))
         ..createSync();
-      Directory(
-        '${repo2.path}${Platform.pathSeparator}.git',
-      ).createSync();
-      File('${repo2.path}${Platform.pathSeparator}.git'
-              '${Platform.pathSeparator}config')
-          .writeAsStringSync(
+      Directory(path.join(repo2.path, '.git')).createSync();
+      File(path.join(repo2.path, '.git', 'config')).writeAsStringSync(
         'url = https://github.com/microsoft/project123.git',
       );
 
@@ -71,9 +61,8 @@ void main() {
     });
 
     test('handles empty master workspace directory', () async {
-      final emptyDir =
-          Directory('${tempDir.path}${Platform.pathSeparator}empty_master')
-            ..createSync();
+      final emptyDir = Directory(path.join(tempDir.path, 'empty_master'))
+        ..createSync();
       final runner = CommandRunner<void>('test', 'Test ListReposCommand');
       runner.addCommand(
         ListReposCommand(

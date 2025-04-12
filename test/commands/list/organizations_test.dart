@@ -10,6 +10,7 @@ import 'package:args/command_runner.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/list/organizations.dart';
+import 'package:path/path.dart' as path;
 
 void main() {
   group('ListOrganizationsCommand', () {
@@ -20,9 +21,8 @@ void main() {
     setUp(() {
       messages.clear();
       tempDir = Directory.systemTemp.createTempSync('list_org_test');
-      masterDir = Directory(
-        '${tempDir.path}${Platform.pathSeparator}kidney_ws_master',
-      )..createSync(recursive: true);
+      masterDir = Directory(path.join(tempDir.path, 'kidney_ws_master'))
+        ..createSync(recursive: true);
     });
 
     tearDown(() {
@@ -33,31 +33,25 @@ void main() {
 
     test('lists organizations uniquely sorted', () async {
       final masterPath = masterDir.path;
-      final repo1 = Directory('$masterPath${Platform.pathSeparator}repo1')
-        ..createSync();
-      File('${repo1.path}${Platform.pathSeparator}pubspec.yaml')
+      final repo1 = Directory(path.join(masterPath, 'repo1'))..createSync();
+      File(path.join(repo1.path, 'pubspec.yaml'))
           .writeAsStringSync('name: repo1\nversion: 3.0.0');
-      Directory('${repo1.path}${Platform.pathSeparator}.git').createSync();
-      File('${repo1.path}${Platform.pathSeparator}.git'
-              '${Platform.pathSeparator}config')
+      Directory(path.join(repo1.path, '.git')).createSync();
+      File(path.join(repo1.path, '.git', 'config'))
           .writeAsStringSync('url = https://github.com/inlavigo/repo1.git');
 
-      final repo2 = Directory('$masterPath${Platform.pathSeparator}repo2')
-        ..createSync();
-      File('${repo2.path}${Platform.pathSeparator}pubspec.yaml')
+      final repo2 = Directory(path.join(masterPath, 'repo2'))..createSync();
+      File(path.join(repo2.path, 'pubspec.yaml'))
           .writeAsStringSync('name: repo2\nversion: 2.5.0');
-      Directory('${repo2.path}${Platform.pathSeparator}.git').createSync();
-      File('${repo2.path}${Platform.pathSeparator}.git'
-              '${Platform.pathSeparator}config')
+      Directory(path.join(repo2.path, '.git')).createSync();
+      File(path.join(repo2.path, '.git', 'config'))
           .writeAsStringSync('url = https://github.com/microsoft/repo2.git');
 
-      final repo3 = Directory('$masterPath${Platform.pathSeparator}repo3')
-        ..createSync();
-      File('${repo3.path}${Platform.pathSeparator}pubspec.yaml')
+      final repo3 = Directory(path.join(masterPath, 'repo3'))..createSync();
+      File(path.join(repo3.path, 'pubspec.yaml'))
           .writeAsStringSync('name: repo3\nversion: 1.0.0');
-      Directory('${repo3.path}${Platform.pathSeparator}.git').createSync();
-      File('${repo3.path}${Platform.pathSeparator}.git'
-              '${Platform.pathSeparator}config')
+      Directory(path.join(repo3.path, '.git')).createSync();
+      File(path.join(repo3.path, '.git', 'config'))
           .writeAsStringSync('url = https://github.com/inlavigo/repo3.git');
 
       final runner = CommandRunner<void>(
@@ -84,13 +78,12 @@ void main() {
 
     test('handles unknown organization from invalid git config', () async {
       final masterPath = masterDir.path;
-      final repo = Directory('$masterPath${Platform.pathSeparator}repo_unknown')
+      final repo = Directory(path.join(masterPath, 'repo_unknown'))
         ..createSync();
-      File('${repo.path}${Platform.pathSeparator}pubspec.yaml')
+      File(path.join(repo.path, 'pubspec.yaml'))
           .writeAsStringSync('name: repo_unknown\nversion: 1.0.0');
-      Directory('${repo.path}${Platform.pathSeparator}.git').createSync();
-      File('${repo.path}${Platform.pathSeparator}.git'
-              '${Platform.pathSeparator}config')
+      Directory(path.join(repo.path, '.git')).createSync();
+      File(path.join(repo.path, '.git', 'config'))
           .writeAsStringSync('invalid config content');
 
       final runner = CommandRunner<void>(

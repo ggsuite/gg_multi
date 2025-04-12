@@ -23,7 +23,7 @@ void main() {
       messages.clear();
       tempDir = Directory.systemTemp.createTempSync('list_test');
       masterDir = Directory(
-        '${tempDir.path}${Platform.pathSeparator}kidney_ws_master',
+        path.join(tempDir.path, 'kidney_ws_master'),
       )..createSync(recursive: true);
     });
 

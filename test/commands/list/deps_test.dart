@@ -10,6 +10,7 @@ import 'package:args/command_runner.dart';
 import 'package:kidney_core/src/commands/list/deps.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:test/test.dart';
+import 'package:path/path.dart' as path;
 
 void main() {
   group('ListDepsCommand', () {
@@ -36,8 +37,7 @@ dependencies:
 dev_dependencies:
   json_serializer: ^1.4.2
 ''';
-      final pubspecPath =
-          '${tempDir.path}${Platform.pathSeparator}pubspec.yaml';
+      final pubspecPath = path.join(tempDir.path, 'pubspec.yaml');
       File(pubspecPath).writeAsStringSync(pubspecContent);
 
       // Use CommandRunner to run the command
@@ -58,8 +58,7 @@ dev_dependencies:
     });
 
     test('handles missing pubspec.yaml', () async {
-      final pubspecPath =
-          '${tempDir.path}${Platform.pathSeparator}pubspec.yaml';
+      final pubspecPath = path.join(tempDir.path, 'pubspec.yaml');
       if (File(pubspecPath).existsSync()) {
         File(pubspecPath).deleteSync();
       }
@@ -80,8 +79,7 @@ dev_dependencies:
     });
 
     test('handles invalid pubspec content', () async {
-      final pubspecPath =
-          '${tempDir.path}${Platform.pathSeparator}pubspec.yaml';
+      final pubspecPath = path.join(tempDir.path, 'pubspec.yaml');
       File(pubspecPath).writeAsStringSync('invalid pubspec content');
 
       final runner = CommandRunner<void>('test', 'Test ListDepsCommand');
@@ -106,7 +104,7 @@ dev_dependencies:
       runner.addCommand(
         ListDepsCommand(
           ggLog: (_) {},
-          pubspecPath: '${tempDir.path}${Platform.pathSeparator}pubspec.yaml',
+          pubspecPath: path.join(tempDir.path, 'pubspec.yaml'),
         ),
       );
       final output = await capturePrint(

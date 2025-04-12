@@ -13,6 +13,7 @@ import 'package:kidney_core/src/backend/git_cloner.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/add.dart';
+import 'package:path/path.dart' as path;
 
 // Create a mock for GitCloner
 class MockGitCloner extends Mock implements GitCloner {}
@@ -32,8 +33,7 @@ void main() {
           .thenAnswer((_) async {});
       runner = CommandRunner<void>('test', 'Test for AddCommand');
       tempDir = Directory.systemTemp.createTempSync('add_test');
-      masterWorkspacePath =
-          '${tempDir.path}${Platform.pathSeparator}kidney_ws_master';
+      masterWorkspacePath = path.join(tempDir.path, 'kidney_ws_master');
       runner.addCommand(
         AddCommand(
           ggLog: logMessages.add,
