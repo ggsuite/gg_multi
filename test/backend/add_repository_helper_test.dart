@@ -5,6 +5,7 @@
 // found in the LICENSE file in the root of this package.
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -74,6 +75,31 @@ void main() {
 
         // Verify ggLog contains the correct success message
         expect(logs, contains('added repository repo from $expectedRepoUrl'));
+      });
+
+      test('Processes repository URL that already ends with .git', () async {
+        // This test ensures that no extra .git is appended if it already exists
+        const targetArg = 'https://github.com/user/repo.git';
+        final mockGitCloner = MockGitCloner();
+        when(() => mockGitCloner.cloneRepo(any(), any()))
+            .thenAnswer((_) async {});
+
+        Future<http.Response> repoFetcher(Uri uri) async {
+          fail('repoFetcher should not be called for repository URL branch');
+        }
+
+        await addRepositoryHelper(
+          targetArg: targetArg,
+          ggLog: ggLog,
+          gitCloner: mockGitCloner,
+          repoFetcher: repoFetcher,
+          workspacePath: workspacePath,
+        );
+
+        final expectedDestination = path.join(workspacePath, 'repo');
+        verify(() => mockGitCloner.cloneRepo(targetArg, expectedDestination))
+            .called(1);
+        expect(logs, contains('added repository repo from $targetArg'));
       });
 
       test('Processes organization URL and clones multiple repos', () async {
@@ -266,7 +292,6 @@ void main() {
         final mockGitCloner = MockGitCloner();
         when(() => mockGitCloner.cloneRepo(any(), any()))
             .thenAnswer((_) async {});
-
         Future<http.Response> repoFetcher(Uri uri) async {
           fail('repoFetcher should not be called when URL is invalid');
         }
@@ -283,6 +308,37 @@ void main() {
             predicate(
               (e) => e.toString().contains(
                     'Invalid organization URL provided: http://github.com',
+                  ),
+            ),
+          ),
+        );
+      });
+
+      test(
+          'Throws exception for invalid '
+          'organization URL with whitespace in path', () async {
+        // This test simulates a URL with a
+        // path that is only whitespace after trimming
+        const targetArg = 'http://github.com/ ';
+        final mockGitCloner = MockGitCloner();
+        when(() => mockGitCloner.cloneRepo(any(), any()))
+            .thenAnswer((_) async {});
+        Future<http.Response> repoFetcher(Uri uri) async {
+          fail('repoFetcher should not be called when URL is invalid');
+        }
+
+        expect(
+          () async => await addRepositoryHelper(
+            targetArg: targetArg,
+            ggLog: ggLog,
+            gitCloner: mockGitCloner,
+            repoFetcher: repoFetcher,
+            workspacePath: workspacePath,
+          ),
+          throwsA(
+            predicate(
+              (e) => e.toString().contains(
+                    'Invalid organization URL provided: http://github.com/',
                   ),
             ),
           ),
@@ -310,6 +366,55 @@ void main() {
     test('returns original string for invalid URL', () {
       final repoName = extractRepoName('not a url');
       expect(repoName, equals('not a url'));
+    });
+  });
+
+  group('getPubspecFromWorkspace', () {
+    test('returns null and logs error when pubspec.yaml parsing fails', () {
+      // Create a temporary directory to simulate a workspace
+      final tempDir = Directory.systemTemp.createTempSync('pubspec_fail_test');
+      final wsPath = tempDir.path;
+      // Create a directory for a project named 'bad_project'
+      final projectDir = Directory(path.join(wsPath, 'bad_project'))
+        ..createSync(recursive: true);
+      // Write an invalid pubspec.yaml
+      final pubspecFile = File(path.join(projectDir.path, 'pubspec.yaml'));
+      pubspecFile.writeAsStringSync('invalid content');
+
+      final List<String> localLogs = [];
+      final result = getPubspecFromWorkspace(
+        targetArg: 'bad_project',
+        workspacePath: wsPath,
+        ggLog: (msg) => localLogs.add(msg),
+      );
+      expect(result, isNull);
+      expect(
+        localLogs.any((msg) => msg.contains('Error parsing pubspec.yaml:')),
+        isTrue,
+      );
+      tempDir.deleteSync(recursive: true);
+    });
+
+    test('returns null and logs message when pubspec.yaml not found', () {
+      // Create a temporary directory to simulate a workspace
+      final tempDir = Directory.systemTemp.createTempSync(
+        'nosuch_project_test',
+      );
+      final wsPath = tempDir.path;
+      // Do not create the project directory, so pubspec.yaml is missing
+      final List<String> localLogs = [];
+      final result = getPubspecFromWorkspace(
+        targetArg: 'nosuch_project',
+        workspacePath: wsPath,
+        ggLog: (msg) => localLogs.add(msg),
+      );
+      expect(result, isNull);
+      expect(
+        localLogs.first,
+        contains('pubspec.yaml not found in '
+            'project nosuch_project in workspace'),
+      );
+      tempDir.deleteSync(recursive: true);
     });
   });
 }

@@ -6,3 +6,4 @@
 
 - Initial boilerplate.
 - Add readme
+- Add tests

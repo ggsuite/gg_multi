@@ -36,12 +36,12 @@ Future<void> addRepositoryHelper({
     final uri = Uri.parse(cleanedUrl);
     // If there are no meaningful path segments, treat it as invalid
     if (uri.pathSegments.isEmpty ||
-        (uri.pathSegments.length == 1 && uri.path.trim() == '')) {
+        uri.pathSegments.every((segment) => segment.trim().isEmpty)) {
       throw Exception('Invalid organization URL provided: $cleanedUrl');
     }
     if (uri.pathSegments.length < 2) {
       // Treat as organization URL
-      final String orgName = uri.pathSegments.last;
+      final String orgName = uri.pathSegments.last.trim();
       final String apiUrl = 'https://api.github.com/orgs/$orgName/repos';
       final response = await repoFetcher(Uri.parse(apiUrl));
       if (response.statusCode != 200) {
