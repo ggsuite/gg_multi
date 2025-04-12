@@ -5,6 +5,7 @@
 // found in the LICENSE file in the root of this package.
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -318,6 +319,28 @@ void main() {
           ),
         );
       });
+    });
+
+    // NEW TEST: Covering pubspec parsing error branch
+    test('Logs error when pubspec.yaml parsing fails', () {
+      // Create a temporary directory for test
+      final testDir =
+          Directory.systemTemp.createTempSync('pubspec_parse_error_test');
+      final pubspecPath = path.join(testDir.path, 'pubspec.yaml');
+      File(pubspecPath).writeAsStringSync('invalid content');
+      final logList = <String>[];
+
+      final result = getPubspecFromWorkspace(
+        targetArg: testDir.path,
+        workspacePath: testDir.parent.path,
+        ggLog: (msg) => logList.add(msg),
+      );
+      expect(result, isNull);
+      expect(
+        logList.any((msg) => msg.contains('Error parsing pubspec.yaml:')),
+        isTrue,
+      );
+      testDir.deleteSync(recursive: true);
     });
   });
 }

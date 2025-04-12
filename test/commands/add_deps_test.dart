@@ -116,6 +116,7 @@ dev_dependencies:
 name: test_project
 version: 1.0.0
 dependencies:
+
 dev_dependencies:
 ''';
       File(path.join(dirNoPubspec.path, 'pubspec.yaml'))
@@ -123,8 +124,22 @@ dev_dependencies:
       await runner.run(['add-deps', 'no_pubspec']);
       expect(
         logMessages,
-        contains('No dependencies found in pubspec.yaml '
-            'for project test_project.'),
+        contains(
+          'No dependencies found in pubspec.yaml for project test_project.',
+        ),
+      );
+    });
+
+    test('does nothing if pubspec.yaml parsing fails', () async {
+      final invalidDir = Directory(path.join(workspacePath, 'invalid_pubspec'))
+        ..createSync(recursive: true);
+      File(path.join(invalidDir.path, 'pubspec.yaml'))
+          .writeAsStringSync('bad content');
+      logMessages.clear();
+      await runner.run(['add-deps', 'invalid_pubspec']);
+      expect(
+        logMessages.any((m) => m.contains('Error parsing pubspec.yaml:')),
+        isTrue,
       );
     });
 

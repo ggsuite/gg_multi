@@ -53,6 +53,7 @@ dev_dependencies:
           workspacePath: masterWorkspace.path,
         ),
       );
+
       await runner.run(['deps', 'project123', '--depth=1']);
 
       expect(messages[0], 'project123 v.1.0.0 (dart)');
@@ -79,6 +80,18 @@ dev_dependencies:
         },
       );
       expect(output.first, contains('Lists dependencies and dev_dependencies'));
+    });
+
+    test('throws UsageException when target repository parameter is missing',
+        () async {
+      final runner = CommandRunner<void>('test', 'Test Missing Target');
+      runner.addCommand(
+        ListDepsCommand(
+          ggLog: messages.add,
+          workspacePath: masterWorkspace.path,
+        ),
+      );
+      await expectLater(runner.run(['deps']), throwsA(isA<UsageException>()));
     });
   });
 }
