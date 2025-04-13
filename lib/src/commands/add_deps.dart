@@ -82,7 +82,7 @@ class AddDepsCommand extends Command<void> {
     }
     for (final dep in deps) {
       try {
-        final repoUrl = await _fetchDependencyRepoUrl(
+        final repoUrl = await fetchDependencyRepoUrl(
           dep,
           packageFetcher: packageFetcher,
         );
@@ -111,7 +111,7 @@ class AddDepsCommand extends Command<void> {
 
 /// Fetches the repository URL for a package from pub.dev.
 /// Returns the repository URL as a string if found, otherwise null.
-Future<String?> _fetchDependencyRepoUrl(
+Future<String?> fetchDependencyRepoUrl(
   String packageName, {
   Future<http.Response> Function(Uri)? packageFetcher,
 }) async {

@@ -201,6 +201,78 @@ dependencies:
       );
     });
 
+    test('logs skipping message when no repository URL found for dependency',
+        () async {
+      const pubspecContent = '''
+name: test_project
+version: 1.0.0
+dependencies:
+  no_repo_dep: ^1.0.0
+''';
+      File(path.join(dirProject.path, 'pubspec.yaml'))
+          .writeAsStringSync(pubspecContent);
+
+      // Override the packageFetcher to return JSON without a repository key
+      runner = CommandRunner<void>('test', 'Test AddDepsCommand');
+      runner.addCommand(
+        AddDepsCommand(
+          ggLog: logMessages.add,
+          gitCloner: mockGitCloner,
+          workspacePath: workspacePath,
+          packageFetcher: (uri) async {
+            final data = {
+              'latest': {
+                'pubspec': <String, String>{},
+              },
+            };
+            return http.Response(jsonEncode(data), 200);
+          },
+        ),
+      );
+
+      await runner.run(['add-deps', 'project']);
+      expect(
+        logMessages,
+        contains('No repository URL found for '
+            'dependency no_repo_dep on pub.dev, skipping.'),
+      );
+    });
+
+    test('logs error when packageFetcher throws exception for dependency',
+        () async {
+      const pubspecContent = '''
+name: test_project
+version: 1.0.0
+dependencies:
+  fail_fetch_dep: ^1.0.0
+''';
+      File(path.join(dirProject.path, 'pubspec.yaml'))
+          .writeAsStringSync(pubspecContent);
+
+      // Override the packageFetcher to throw an exception
+      runner = CommandRunner<void>('test', 'Test AddDepsCommand');
+      runner.addCommand(
+        AddDepsCommand(
+          ggLog: logMessages.add,
+          gitCloner: mockGitCloner,
+          workspacePath: workspacePath,
+          packageFetcher: (uri) async {
+            throw Exception('fetch error');
+          },
+        ),
+      );
+
+      await runner.run(['add-deps', 'project']);
+      expect(
+        logMessages.any(
+          (msg) =>
+              msg.contains('Failed to fetch repository info for dependency '
+                  'fail_fetch_dep: Exception: fetch error'),
+        ),
+        isTrue,
+      );
+    });
+
     test('prints help message when --help is passed', () async {
       final output = await capturePrint(
         code: () async {
