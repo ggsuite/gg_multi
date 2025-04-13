@@ -4,6 +4,7 @@
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
@@ -12,6 +13,7 @@ import 'package:kidney_core/src/backend/git_cloner.dart';
 import 'package:kidney_core/src/commands/add_deps.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
+import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 
 class MockGitCloner extends Mock implements GitCloner {}
@@ -45,6 +47,19 @@ void main() {
           ggLog: logMessages.add,
           gitCloner: mockGitCloner,
           workspacePath: workspacePath,
+          packageFetcher: (uri) async {
+            final segments = uri.pathSegments;
+            final packageName = segments.isNotEmpty ? segments.last : '';
+            final data = {
+              'latest': {
+                'pubspec': {
+                  'repository':
+                      'https://github.com/$packageName/$packageName.git',
+                },
+              },
+            };
+            return http.Response(jsonEncode(data), 200);
+          },
         ),
       );
     });
@@ -116,6 +131,7 @@ dev_dependencies:
 name: test_project
 version: 1.0.0
 dependencies:
+
 dev_dependencies:
 ''';
       File(path.join(dirNoPubspec.path, 'pubspec.yaml'))
@@ -158,8 +174,7 @@ dev_dependencies:
       );
     });
 
-    test('throws exception when dependency addition fails', () async {
-      // Create a pubspec with a dependency that will trigger failure
+    test('logs error and continues when dependency addition fails', () async {
       const pubspecContent = '''
 name: test_project
 version: 1.0.0
@@ -172,7 +187,18 @@ dependencies:
       when(() => mockGitCloner.cloneRepo(any(), any()))
           .thenThrow(Exception('clone failed'));
 
-      await expectLater(runner.run(['add-deps', 'project']), throwsException);
+      // Running should not throw exception:
+      await runner.run(['add-deps', 'project']);
+
+      // Check that an error message has been logged.
+      expect(
+        logMessages.any(
+          (msg) => msg.contains('Failed to clone dependency fail_dep from '
+              'https://github.com/fail_dep/fail_dep.git: '
+              'Exception: clone failed'),
+        ),
+        isTrue,
+      );
     });
 
     test('prints help message when --help is passed', () async {
