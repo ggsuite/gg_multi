@@ -286,4 +286,147 @@ dependencies:
       );
     });
   });
+
+  group('fetchDependencyRepoUrl', () {
+    const packageName = 'test_pkg';
+
+    test('throws exception when response status is not 200', () async {
+      Future<http.Response> fakeFetcher(Uri uri) async {
+        return http.Response('Not Found', 404);
+      }
+
+      expect(
+        () async => await fetchDependencyRepoUrl(
+          packageName,
+          packageFetcher: fakeFetcher,
+        ),
+        throwsA(
+          predicate(
+            (e) =>
+                e is Exception &&
+                e.toString().contains(
+                      'Failed to fetch package info from pub.dev for $packageName',
+                    ),
+          ),
+        ),
+      );
+    });
+
+    test('returns null when JSON does not contain latest key', () async {
+      Future<http.Response> fakeFetcher(Uri uri) async {
+        return http.Response('{}', 200);
+      }
+
+      final result = await fetchDependencyRepoUrl(
+        packageName,
+        packageFetcher: fakeFetcher,
+      );
+      expect(result, isNull);
+    });
+
+    test('returns null when latest exists but no pubspec key', () async {
+      Future<http.Response> fakeFetcher(Uri uri) async {
+        return http.Response('{"latest": {}}', 200);
+      }
+
+      final result = await fetchDependencyRepoUrl(
+        packageName,
+        packageFetcher: fakeFetcher,
+      );
+      expect(result, isNull);
+    });
+
+    test('returns null when pubspec exists but no repository key', () async {
+      Future<http.Response> fakeFetcher(Uri uri) async {
+        return http.Response(
+          '{"latest": {"pubspec": {}}}',
+          200,
+        );
+      }
+
+      final result = await fetchDependencyRepoUrl(
+        packageName,
+        packageFetcher: fakeFetcher,
+      );
+      expect(result, isNull);
+    });
+
+    test('returns repository URL when valid JSON provided', () async {
+      const repoUrl = 'https://github.com/test_pkg/test_pkg.git';
+      Future<http.Response> fakeFetcher(Uri uri) async {
+        return http.Response(
+          '{"latest": {"pubspec": {"repository": "$repoUrl"}}}',
+          200,
+        );
+      }
+
+      final result = await fetchDependencyRepoUrl(
+        packageName,
+        packageFetcher: fakeFetcher,
+      );
+      expect(result, equals(repoUrl));
+    });
+
+    test('propagates exception from packageFetcher', () async {
+      Future<http.Response> fakeFetcher(Uri uri) async {
+        throw Exception('Fetcher error');
+      }
+
+      expect(
+        () async => await fetchDependencyRepoUrl(
+          packageName,
+          packageFetcher: fakeFetcher,
+        ),
+        throwsA(isA<Exception>()),
+      );
+    });
+
+    test('throws error when response body is invalid JSON', () async {
+      Future<http.Response> fakeFetcher(Uri uri) async {
+        return http.Response('invalid json', 200);
+      }
+
+      expect(
+        () async => await fetchDependencyRepoUrl(
+          packageName,
+          packageFetcher: fakeFetcher,
+        ),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('throws error when latest is not a map', () async {
+      Future<http.Response> fakeFetcher(Uri uri) async {
+        return http.Response(
+          '{"latest": "not a map"}',
+          200,
+        );
+      }
+
+      expect(
+        () async => await fetchDependencyRepoUrl(
+          packageName,
+          packageFetcher: fakeFetcher,
+        ),
+        throwsA(isA<TypeError>()),
+      );
+    });
+
+    test('throws error when pubspec is not a map', () async {
+      Future<http.Response> fakeFetcher(Uri uri) async {
+        return http.Response(
+          '{"latest": {"pubspec": "not a map"}}',
+          200,
+        );
+      }
+
+      expect(
+        () async => await fetchDependencyRepoUrl(
+          packageName,
+          packageFetcher: fakeFetcher,
+        ),
+        throwsA(isA<TypeError>()),
+      );
+    });
+  });
 }
