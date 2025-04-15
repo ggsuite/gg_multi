@@ -29,13 +29,12 @@ void main() {
     late String workspacePath;
 
     setUp(() {
-      mockGitCloner = MockGitCloner();
       logMessages = [];
+      mockGitCloner = MockGitCloner();
       when(() => mockGitCloner.cloneRepo(any(), any()))
           .thenAnswer((_) async {});
       tempDir = Directory.systemTemp.createTempSync('add_deps_test');
       workspacePath = path.join(tempDir.path, 'kidney_ws_master');
-      // Create workspace directories
       Directory(workspacePath).createSync(recursive: true);
       dirNoPubspec = Directory(path.join(workspacePath, 'no_pubspec'))
         ..createSync(recursive: true);
@@ -187,10 +186,8 @@ dependencies:
       when(() => mockGitCloner.cloneRepo(any(), any()))
           .thenThrow(Exception('clone failed'));
 
-      // Running should not throw exception:
       await runner.run(['add-deps', 'project']);
 
-      // Check that an error message has been logged.
       expect(
         logMessages.any(
           (msg) => msg.contains('Failed to clone dependency fail_dep from '
@@ -249,7 +246,6 @@ dependencies:
       File(path.join(dirProject.path, 'pubspec.yaml'))
           .writeAsStringSync(pubspecContent);
 
-      // Override the packageFetcher to throw an exception
       runner = CommandRunner<void>('test', 'Test AddDepsCommand');
       runner.addCommand(
         AddDepsCommand(
@@ -281,8 +277,60 @@ dependencies:
       );
       expect(
         output.first,
-        contains('Iterates over all dependencies '
-            'specified in pubspec.yaml'),
+        contains('Iterates over all dependencies specified in pubspec.yaml'),
+      );
+    });
+
+    test('ignores dependencies with dart-lang repository URL', () async {
+      final runner2 = CommandRunner<void>('test', 'Test AddDepsCommand');
+      runner2.addCommand(
+        AddDepsCommand(
+          ggLog: logMessages.add,
+          gitCloner: mockGitCloner,
+          workspacePath: workspacePath,
+          packageFetcher: (uri) async {
+            final segments = uri.pathSegments;
+            final pkgName = segments.isNotEmpty ? segments.last : '';
+            if (pkgName == 'dart_dep') {
+              return http.Response(
+                '{"latest": {"pubspec": {"repository": "https://github.com/dart-lang/dart_dep.git"}}}',
+                200,
+              );
+            } else if (pkgName == 'other_dep') {
+              return http.Response(
+                '{"latest": {"pubspec": {"repository": "https://github.com/other_dep/other_dep.git"}}}',
+                200,
+              );
+            }
+            return http.Response('{}', 200);
+          },
+        ),
+      );
+      const pubspecContent = '''
+name: test_project
+version: 1.0.0
+dependencies:
+  dart_dep: ^1.0.0
+  other_dep: ^1.0.0
+''';
+      File(path.join(dirProject.path, 'pubspec.yaml'))
+          .writeAsStringSync(pubspecContent);
+      await runner2.run(['add-deps', 'project']);
+      verifyNever(
+        () => mockGitCloner.cloneRepo(
+          'https://github.com/dart-lang/dart_dep.git',
+          any(),
+        ),
+      );
+      verify(
+        () => mockGitCloner.cloneRepo(
+          'https://github.com/other_dep/other_dep.git',
+          any(),
+        ),
+      ).called(1);
+      expect(
+        logMessages.first,
+        contains('Ignoring dependency dart_dep from dart-lang repository'),
       );
     });
   });

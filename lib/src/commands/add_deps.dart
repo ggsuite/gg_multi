@@ -91,6 +91,11 @@ class AddDepsCommand extends Command<void> {
               'dependency $dep on pub.dev, skipping.');
           continue;
         }
+        // New check: ignore dependencies whose repo URL starts with dart-lang
+        if (repoUrl.startsWith('https://github.com/dart-lang/')) {
+          ggLog('Ignoring dependency $dep from dart-lang repository: $repoUrl');
+          continue;
+        }
         try {
           await addRepositoryHelper(
             targetArg: repoUrl,
