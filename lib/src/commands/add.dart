@@ -22,6 +22,8 @@ import '../backend/add_repository_helper.dart';
 /// of the current Directory (kidney_ws_master)
 /// and logs every repository that was added:
 /// "added repository repo_name from repo_url".
+///
+/// Use the "--force" flag to overwrite an existing repository.
 class AddCommand extends Command<dynamic> {
   /// Constructor for AddCommand.
   AddCommand({
@@ -33,8 +35,15 @@ class AddCommand extends Command<dynamic> {
   })  : gitCloner = gitCloner ?? GitCloner(),
         repoFetcher = repoFetcher ?? http.get,
         workspacePath = workspacePath ??
-            path.join(Directory.current.path, 'kidney_ws_master');
-  // coverage:ignore-end
+            path.join(Directory.current.path, 'kidney_ws_master') {
+    // coverage:ignore-end
+    argParser.addFlag(
+      'force',
+      negatable: false,
+      help: 'Force overwrite an already added repository.',
+      defaultsTo: false,
+    );
+  }
 
   /// The log function.
   final GgLog ggLog;
@@ -57,17 +66,18 @@ class AddCommand extends Command<dynamic> {
 
   @override
   Future<void> run() async {
-    // Ensure a target parameter is provided.
     if (argResults!.rest.isEmpty) {
       throw UsageException('Missing target parameter.', usage);
     }
     final String targetArg = argResults!.rest[0];
+    final bool force = argResults!['force'] as bool;
     await addRepositoryHelper(
       targetArg: targetArg,
       ggLog: ggLog,
       gitCloner: gitCloner,
       repoFetcher: repoFetcher,
       workspacePath: workspacePath,
+      force: force,
     );
   }
 }

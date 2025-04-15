@@ -24,6 +24,7 @@ typedef RepoFetcher = Future<http.Response> Function(Uri uri);
 void main() {
   // Common variables used in tests
   late List<String> logs;
+  late Directory tempWorkspace;
   late String workspacePath;
 
   // Setup a simple ggLog function that appends messages to logs list
@@ -33,8 +34,15 @@ void main() {
 
   setUp(() {
     logs = [];
-    // For testing, we use a dummy workspace path
-    workspacePath = 'dummy_workspace';
+    // Use a temporary directory for the workspace
+    tempWorkspace = Directory.systemTemp.createTempSync('dummy_workspace_test');
+    workspacePath = tempWorkspace.path;
+  });
+
+  tearDown(() {
+    if (tempWorkspace.existsSync()) {
+      tempWorkspace.deleteSync(recursive: true);
+    }
   });
 
   group('addRepositoryHelper', () {
@@ -59,6 +67,7 @@ void main() {
           gitCloner: mockGitCloner,
           repoFetcher: repoFetcher,
           workspacePath: workspacePath,
+          force: false,
         );
 
         // The URL should have the trailing '#' removed and appended with .git
@@ -78,7 +87,6 @@ void main() {
       });
 
       test('Processes repository URL that already ends with .git', () async {
-        // This test ensures that no extra .git is appended if it already exists
         const targetArg = 'https://github.com/user/repo.git';
         final mockGitCloner = MockGitCloner();
         when(() => mockGitCloner.cloneRepo(any(), any()))
@@ -94,6 +102,7 @@ void main() {
           gitCloner: mockGitCloner,
           repoFetcher: repoFetcher,
           workspacePath: workspacePath,
+          force: false,
         );
 
         final expectedDestination = path.join(workspacePath, 'repo');
@@ -131,6 +140,7 @@ void main() {
           gitCloner: mockGitCloner,
           repoFetcher: repoFetcher,
           workspacePath: workspacePath,
+          force: false,
         );
 
         // Verify cloneRepo called for each repository
@@ -162,6 +172,7 @@ void main() {
           gitCloner: mockGitCloner,
           repoFetcher: repoFetcher,
           workspacePath: workspacePath,
+          force: false,
         );
 
         // Expect ggLog to log that no repositories were found
@@ -173,7 +184,6 @@ void main() {
 
       test('Throws exception for HTTP organization URL with invalid status',
           () async {
-        // Test organization branch when repoFetcher returns error response
         const targetArg = 'http://github.com/myorg';
         final mockGitCloner = MockGitCloner();
         when(() => mockGitCloner.cloneRepo(any(), any()))
@@ -190,6 +200,7 @@ void main() {
             gitCloner: mockGitCloner,
             repoFetcher: repoFetcher,
             workspacePath: workspacePath,
+            force: false,
           ),
           throwsA(
             predicate(
@@ -209,7 +220,6 @@ void main() {
         when(() => mockGitCloner.cloneRepo(any(), any()))
             .thenAnswer((_) async {});
 
-        // Dummy repoFetcher not used in this branch
         Future<http.Response> repoFetcher(Uri uri) async {
           fail('repoFetcher should not be called for SSH URL branch');
         }
@@ -220,6 +230,7 @@ void main() {
           gitCloner: mockGitCloner,
           repoFetcher: repoFetcher,
           workspacePath: workspacePath,
+          force: false,
         );
 
         final expectedDestination = path.join(workspacePath, 'repo');
@@ -246,12 +257,16 @@ void main() {
           gitCloner: mockGitCloner,
           repoFetcher: repoFetcher,
           workspacePath: workspacePath,
+          force: false,
         );
 
         const expectedRepoUrl = 'https://github.com/user/repo.git';
         final expectedDestination = path.join(workspacePath, 'repo');
         verify(
-          () => mockGitCloner.cloneRepo(expectedRepoUrl, expectedDestination),
+          () => mockGitCloner.cloneRepo(
+            expectedRepoUrl,
+            expectedDestination,
+          ),
         ).called(1);
         expect(logs, contains('added repository repo from $expectedRepoUrl'));
       });
@@ -274,12 +289,16 @@ void main() {
           gitCloner: mockGitCloner,
           repoFetcher: repoFetcher,
           workspacePath: workspacePath,
+          force: false,
         );
 
         const expectedRepoUrl = 'https://github.com/repo/repo.git';
         final expectedDestination = path.join(workspacePath, 'repo');
         verify(
-          () => mockGitCloner.cloneRepo(expectedRepoUrl, expectedDestination),
+          () => mockGitCloner.cloneRepo(
+            expectedRepoUrl,
+            expectedDestination,
+          ),
         ).called(1);
         expect(logs, contains('added repository repo from $expectedRepoUrl'));
       });
@@ -287,7 +306,6 @@ void main() {
 
     group('Invalid HTTP URL with empty path segments', () {
       test('Throws exception for invalid organization URL', () async {
-        // When targetArg URL has no path segments
         const targetArg = 'http://github.com';
         final mockGitCloner = MockGitCloner();
         when(() => mockGitCloner.cloneRepo(any(), any()))
@@ -303,6 +321,7 @@ void main() {
             gitCloner: mockGitCloner,
             repoFetcher: repoFetcher,
             workspacePath: workspacePath,
+            force: false,
           ),
           throwsA(
             predicate(
@@ -315,10 +334,8 @@ void main() {
       });
 
       test(
-          'Throws exception for invalid '
-          'organization URL with whitespace in path', () async {
-        // This test simulates a URL with a
-        // path that is only whitespace after trimming
+          'Throws exception for invalid organization URL '
+          'with whitespace in path', () async {
         const targetArg = 'http://github.com/ ';
         final mockGitCloner = MockGitCloner();
         when(() => mockGitCloner.cloneRepo(any(), any()))
@@ -334,6 +351,7 @@ void main() {
             gitCloner: mockGitCloner,
             repoFetcher: repoFetcher,
             workspacePath: workspacePath,
+            force: false,
           ),
           throwsA(
             predicate(
@@ -343,6 +361,58 @@ void main() {
             ),
           ),
         );
+      });
+    });
+
+    group('Force flag behavior', () {
+      test('force clone: deletes existing directory before cloning', () async {
+        const repoName = 'repo';
+        final destination = path.join(workspacePath, repoName);
+        Directory(destination).createSync(recursive: true);
+        File(path.join(destination, 'dummy.txt')).writeAsStringSync('data');
+
+        final mockGitCloner = MockGitCloner();
+        when(() => mockGitCloner.cloneRepo(any(), any()))
+            .thenAnswer((_) async {});
+
+        await addRepositoryHelper(
+          targetArg: 'repo',
+          ggLog: ggLog,
+          gitCloner: mockGitCloner,
+          repoFetcher: (uri) async => http.Response('{}', 200),
+          workspacePath: workspacePath,
+          force: true,
+        );
+
+        verify(
+          () => mockGitCloner.cloneRepo(
+            'https://github.com/repo/repo.git',
+            any(),
+          ),
+        ).called(1);
+      });
+
+      test('non-force: logs already added if destination exists', () async {
+        const repoName = 'repo';
+        final destination = path.join(workspacePath, repoName);
+        Directory(destination).createSync(recursive: true);
+        File(path.join(destination, 'dummy.txt')).writeAsStringSync('data');
+
+        final mockGitCloner = MockGitCloner();
+        when(() => mockGitCloner.cloneRepo(any(), any()))
+            .thenAnswer((_) async {});
+
+        await addRepositoryHelper(
+          targetArg: 'repo',
+          ggLog: ggLog,
+          gitCloner: mockGitCloner,
+          repoFetcher: (uri) async => http.Response('{}', 200),
+          workspacePath: workspacePath,
+          force: false,
+        );
+
+        verifyNever(() => mockGitCloner.cloneRepo(any(), any()));
+        expect(logs, contains('repo already added.'));
       });
     });
   });
@@ -371,13 +441,10 @@ void main() {
 
   group('getPubspecFromWorkspace', () {
     test('returns null and logs error when pubspec.yaml parsing fails', () {
-      // Create a temporary directory to simulate a workspace
       final tempDir = Directory.systemTemp.createTempSync('pubspec_fail_test');
       final wsPath = tempDir.path;
-      // Create a directory for a project named 'bad_project'
       final projectDir = Directory(path.join(wsPath, 'bad_project'))
         ..createSync(recursive: true);
-      // Write an invalid pubspec.yaml
       final pubspecFile = File(path.join(projectDir.path, 'pubspec.yaml'));
       pubspecFile.writeAsStringSync('invalid content');
 
@@ -396,12 +463,9 @@ void main() {
     });
 
     test('returns null and logs message when pubspec.yaml not found', () {
-      // Create a temporary directory to simulate a workspace
-      final tempDir = Directory.systemTemp.createTempSync(
-        'nosuch_project_test',
-      );
+      final tempDir =
+          Directory.systemTemp.createTempSync('nosuch_project_test');
       final wsPath = tempDir.path;
-      // Do not create the project directory, so pubspec.yaml is missing
       final List<String> localLogs = [];
       final result = getPubspecFromWorkspace(
         targetArg: 'nosuch_project',
@@ -411,8 +475,9 @@ void main() {
       expect(result, isNull);
       expect(
         localLogs.first,
-        contains('pubspec.yaml not found in '
-            'project nosuch_project in workspace'),
+        contains(
+          'pubspec.yaml not found in project nosuch_project in workspace',
+        ),
       );
       tempDir.deleteSync(recursive: true);
     });

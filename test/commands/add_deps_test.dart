@@ -305,7 +305,8 @@ dependencies:
             (e) =>
                 e is Exception &&
                 e.toString().contains(
-                      'Failed to fetch package info from pub.dev for $packageName',
+                      'Failed to fetch package info '
+                      'from pub.dev for $packageName',
                     ),
           ),
         ),

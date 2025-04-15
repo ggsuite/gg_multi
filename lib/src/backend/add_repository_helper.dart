@@ -16,25 +16,44 @@ import 'package:pubspec_parse/pubspec_parse.dart';
 /// Helper function to add a repository given a target argument.
 /// It supports various formats like URLs, SSH links, and plain names.
 /// For organization URLs, it fetches all repositories and clones them.
+///
+/// The [force] parameter determines whether an existing cloned
+/// repository should be overwritten. If false and the destination
+/// already exists and is not empty, the function logs "repo already added."
+/// If true, the existing directory is deleted before cloning.
 Future<void> addRepositoryHelper({
   required String targetArg,
   required GgLog ggLog,
   required GitCloner gitCloner,
   required Future<http.Response> Function(Uri) repoFetcher,
   required String workspacePath,
+  bool force = false,
 }) async {
-  // Try to parse the target argument as a URI
+  // Local helper function to attempt cloning or skip if already exists.
+  Future<void> attemptClone(String repoUrl, String repoName) async {
+    final destination = path.join(workspacePath, repoName);
+    final destDir = Directory(destination);
+    if (destDir.existsSync() && destDir.listSync().isNotEmpty) {
+      if (!force) {
+        ggLog('$repoName already added.');
+        return;
+      } else {
+        await destDir.delete(recursive: true);
+      }
+    }
+    await gitCloner.cloneRepo(repoUrl, destination);
+    ggLog('added repository $repoName from $repoUrl');
+  }
+
   final parsedUri = Uri.tryParse(targetArg);
   if (parsedUri != null &&
       (parsedUri.scheme == 'http' || parsedUri.scheme == 'https') &&
       parsedUri.host.isNotEmpty) {
-    // targetArg is a valid HTTP/HTTPS URL
     String cleanedUrl = targetArg;
     if (cleanedUrl.endsWith('#')) {
       cleanedUrl = cleanedUrl.substring(0, cleanedUrl.length - 1);
     }
     final uri = Uri.parse(cleanedUrl);
-    // If there are no meaningful path segments, treat it as invalid
     if (uri.pathSegments.isEmpty ||
         uri.pathSegments.every((segment) => segment.trim().isEmpty)) {
       throw Exception('Invalid organization URL provided: $cleanedUrl');
@@ -58,9 +77,7 @@ Future<void> addRepositoryHelper({
         final repoName = repoJson['name'] as String?;
         final cloneUrl = repoJson['clone_url'] as String?;
         if (repoName == null || cloneUrl == null) continue;
-        final String destination = path.join(workspacePath, repoName);
-        await gitCloner.cloneRepo(cloneUrl, destination);
-        ggLog('added repository $repoName from $cloneUrl');
+        await attemptClone(cloneUrl, repoName);
       }
     } else {
       // Treat as a repository URL
@@ -69,28 +86,20 @@ Future<void> addRepositoryHelper({
         repoUrl = '$repoUrl.git';
       }
       final String repoName = extractRepoName(repoUrl);
-      final String destination = path.join(workspacePath, repoName);
-      await gitCloner.cloneRepo(repoUrl, destination);
-      ggLog('added repository $repoName from $repoUrl');
+      await attemptClone(repoUrl, repoName);
     }
   } else if (targetArg.startsWith('git@')) {
     final String repoUrl = targetArg;
     final String repoName = extractRepoName(repoUrl);
-    final String destination = path.join(workspacePath, repoName);
-    await gitCloner.cloneRepo(repoUrl, destination);
-    ggLog('added repository $repoName from $repoUrl');
+    await attemptClone(repoUrl, repoName);
   } else if (targetArg.contains('/')) {
     final String repoUrl = 'https://github.com/$targetArg.git';
     final String repoName = extractRepoName(repoUrl);
-    final String destination = path.join(workspacePath, repoName);
-    await gitCloner.cloneRepo(repoUrl, destination);
-    ggLog('added repository $repoName from $repoUrl');
+    await attemptClone(repoUrl, repoName);
   } else {
     final String repoUrl = 'https://github.com/$targetArg/$targetArg.git';
     final String repoName = extractRepoName(repoUrl);
-    final String destination = path.join(workspacePath, repoName);
-    await gitCloner.cloneRepo(repoUrl, destination);
-    ggLog('added repository $repoName from $repoUrl');
+    await attemptClone(repoUrl, repoName);
   }
 }
 
