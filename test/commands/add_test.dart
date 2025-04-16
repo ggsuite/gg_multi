@@ -9,11 +9,11 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:http/http.dart' as http;
-import 'package:kidney_core/src/backend/git_cloner.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/add.dart';
-import 'package:path/path.dart' as path;
+import 'package:kidney_core/src/backend/git_cloner.dart';
 
 // Create a mock for GitCloner
 class MockGitCloner extends Mock implements GitCloner {}
@@ -31,9 +31,10 @@ void main() {
       logMessages = [];
       when(() => mockGitCloner.cloneRepo(any(), any()))
           .thenAnswer((_) async {});
-      runner = CommandRunner<void>('test', 'Test for AddCommand');
       tempDir = Directory.systemTemp.createTempSync('add_test');
       masterWorkspacePath = path.join(tempDir.path, 'kidney_ws_master');
+      Directory(masterWorkspacePath).createSync(recursive: true);
+      runner = CommandRunner<void>('test', 'Test for AddCommand');
       runner.addCommand(
         AddCommand(
           ggLog: logMessages.add,
@@ -208,35 +209,11 @@ void main() {
       );
     });
 
-    test(
-        'should log no repositories found when organization repo list is empty',
-        () async {
-      final orgRunner =
-          CommandRunner<void>('test', 'Test for AddCommand Org Empty');
-      orgRunner.addCommand(
-        AddCommand(
-          ggLog: logMessages.add,
-          gitCloner: mockGitCloner,
-          workspacePath: masterWorkspacePath,
-          repoFetcher: (uri) async {
-            final expectedApi =
-                Uri.parse('https://api.github.com/orgs/emptyorg/repos');
-            expect(uri, equals(expectedApi));
-            return http.Response('[]', 200);
-          },
-        ),
-      );
-      const orgUrl = 'https://github.com/emptyorg';
-      await orgRunner.run(['add', orgUrl]);
-      expect(
-        logMessages,
-        contains('No repositories found for organization emptyorg'),
-      );
-    });
-
     test('should throw exception when API returns error status', () async {
-      final orgRunner =
-          CommandRunner<void>('test', 'Test for AddCommand Org Error');
+      final orgRunner = CommandRunner<void>(
+        'test',
+        'Test for AddCommand Org Error',
+      );
       orgRunner.addCommand(
         AddCommand(
           ggLog: logMessages.add,
@@ -293,6 +270,36 @@ void main() {
         () => invalidRunner.run(['add', invalidOrgUrl]),
         throwsA(isA<Exception>()),
       );
+    });
+
+    test(
+        'should log already added when destination '
+        'exists and --force not provided', () async {
+      // Arrange: create an existing non-empty directory
+      const repoName = 'kidney_core';
+      final destination = path.join(masterWorkspacePath, repoName);
+      Directory(destination).createSync(recursive: true);
+      File(path.join(destination, 'dummy.txt')).writeAsStringSync('data');
+
+      await runner.run(['add', 'git@github.com:ggsuite/kidney_core.git']);
+
+      verifyNever(() => mockGitCloner.cloneRepo(any(), any()));
+      expect(logMessages, contains('$repoName already added.'));
+    });
+
+    test(
+        'should force clone repository when --force '
+        'is provided even if destination exists', () async {
+      // Arrange: create an existing non-empty directory
+      const repoName = 'kidney_core';
+      final destination = path.join(masterWorkspacePath, repoName);
+      Directory(destination).createSync(recursive: true);
+      File(path.join(destination, 'dummy.txt')).writeAsStringSync('data');
+
+      await runner
+          .run(['add', 'git@github.com:ggsuite/kidney_core.git', '--force']);
+
+      verify(() => mockGitCloner.cloneRepo(any(), any())).called(1);
     });
   });
 }

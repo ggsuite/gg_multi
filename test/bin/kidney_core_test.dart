@@ -34,27 +34,28 @@ void main() {
         'is mandatory.',
       ];
 
-      final stdout = result.stdout as String;
+      // Concatenate stdout and stderr
+      final output = (result.stdout as String) + (result.stderr as String);
 
       for (final msg in expectedMessages) {
-        expect(stdout, contains(msg));
+        expect(output, contains(msg));
       }
     });
-  });
 
-  // ###########################################################################
-  group('run(args, log)', () {
-    group('with args=[--param, value]', () {
-      test('should print "value"', () async {
-        // Execute bin/kidney_core.dart and check if it prints "value"
-        final messages = <String>[];
-        await run(args: ['my-command', '--input', '5'], ggLog: messages.add);
+    // #########################################################################
+    group('run(args, log)', () {
+      group('with args=[--param, value]', () {
+        test('should print "value"', () async {
+          // Execute bin/kidney_core.dart and check if it prints "value"
+          final messages = <String>[];
+          await run(args: ['my-command', '--input', '5'], ggLog: messages.add);
 
-        final expectedMessages = ['Running my-command with param 5'];
+          final expectedMessages = ['Running my-command with param 5'];
 
-        for (final msg in expectedMessages) {
-          expect(hasLog(messages, msg), isTrue);
-        }
+          for (final msg in expectedMessages) {
+            expect(hasLog(messages, msg), isTrue);
+          }
+        });
       });
     });
   });

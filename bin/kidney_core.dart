@@ -21,8 +21,13 @@ Future<void> run({
 
 // .............................................................................
 Future<void> main(List<String> args) async {
-  await run(
-    args: args,
-    ggLog: print,
-  );
+  try {
+    await run(
+      args: args,
+      ggLog: print,
+    );
+  } catch (e) {
+    // Print the error message for usage exceptions
+    print(e);
+  }
 }
