@@ -6,9 +6,21 @@
 
 import 'dart:io';
 import 'package:args/command_runner.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/remove.dart';
+
+// A fake Directory class for testing
+// purposes that always reports non-existence.
+class _FakeDirectory extends Fake implements Directory {
+  final String _path;
+  _FakeDirectory(this._path);
+  @override
+  String get path => _path;
+  @override
+  bool existsSync() => false;
+}
 
 void main() {
   group('RemoveCommand', () {
@@ -84,8 +96,7 @@ void main() {
       );
       expect(
         messages,
-        contains('This repo is used by the following feature '
-            'branches:'),
+        contains('This repo is used by the following feature branches:'),
       );
       expect(messages, contains(' - kidney_ws_feature1'));
       expect(messages, contains('Please remove these branches first.'));
@@ -107,6 +118,55 @@ void main() {
       expect(
         () => runner.run(['remove']),
         throwsA(isA<UsageException>()),
+      );
+    });
+
+    test('logs "Root path not found" when rootPath does not exist', () async {
+      // Arrange
+      final nonExistingPath = path.join(tempDir.path, 'nonexistent_workspace');
+      final localRunner = CommandRunner<void>('test', 'RemoveCommand Test')
+        ..addCommand(
+          RemoveCommand(ggLog: messages.add, rootPath: nonExistingPath),
+        );
+
+      // Act
+      await localRunner.run(['remove', 'anyRepo']);
+
+      // Assert
+      expect(messages, contains('Root path not found: $nonExistingPath'));
+    });
+
+    test('logs repository folder not found when deletion target does not exist',
+        () async {
+      // Arrange
+      // Create the kidney_ws_master workspace if not exists
+      final masterWsPath = path.join(tempDir.path, 'kidney_ws_master');
+      final masterDir = Directory(masterWsPath);
+      if (!masterDir.existsSync()) {
+        masterDir.createSync(recursive: true);
+      }
+      // Create a repo folder so that it gets detected in the scanning phase
+      final repoFolderPath = path.join(masterWsPath, 'missingRepo');
+      Directory(repoFolderPath).createSync(recursive: true);
+      // Now, do not physically delete it here,
+      // but inject a fake Directory for deletion
+      final runnerWithFake =
+          CommandRunner<void>('test', 'RemoveCommand Fake Test')
+            ..addCommand(
+              RemoveCommand(
+                ggLog: messages.add,
+                rootPath: tempDir.path,
+                directoryFactory: (p) => _FakeDirectory(p),
+              ),
+            );
+
+      // Act
+      await runnerWithFake.run(['remove', 'missingRepo']);
+
+      // Assert
+      expect(
+        messages,
+        contains('Repository folder not found: $repoFolderPath'),
       );
     });
   });

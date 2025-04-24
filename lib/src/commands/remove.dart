@@ -10,6 +10,10 @@ import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 import '../backend/add_repository_helper.dart';
 
+/// Typedef for creating Directory instances,
+/// used for dependency injection in tests.
+typedef DirectoryFactory = Directory Function(String path);
+
 /// Deletes the project folder if the repository is only contained
 /// in the master workspace of the current Directory
 /// (kidney_ws_master) and no other workspaces (kidney_ws_*).
@@ -20,19 +24,25 @@ import '../backend/add_repository_helper.dart';
 /// Please remove these branches first.
 /// ```
 class RemoveCommand extends Command<void> {
-  /// Constructor with optional root path override.
+  /// Constructor with optional root path
+  /// override and directory factory for testing.
   RemoveCommand({
     required this.ggLog,
     String? rootPath,
+    DirectoryFactory? directoryFactory,
     // coverage:ignore-start
-  }) : rootPath = rootPath ?? Directory.current.path;
+  })  : rootPath = rootPath ?? Directory.current.path,
+        directoryFactory = directoryFactory ?? Directory.new;
   // coverage:ignore-end
 
-  /// Log function
+  /// The log function
   final GgLog ggLog;
 
   /// Root directory to search for workspaces
   final String rootPath;
+
+  /// Factory function to create Directory instances (useful for testing)
+  final DirectoryFactory directoryFactory;
 
   @override
   String get name => 'remove';
@@ -81,13 +91,11 @@ class RemoveCommand extends Command<void> {
     }
     if (found.length == 1 && found.first == 'kidney_ws_master') {
       // Only in master: delete
-      final toDelete = Directory(
-        path.join(rootPath, 'kidney_ws_master', repoName),
-      );
+      final toDelete =
+          directoryFactory(path.join(rootPath, 'kidney_ws_master', repoName));
       if (toDelete.existsSync()) {
         toDelete.deleteSync(recursive: true);
-        ggLog('Deleted repository $repoName '
-            'from master workspace.');
+        ggLog('Deleted repository $repoName from master workspace.');
       } else {
         ggLog('Repository folder not found: ${toDelete.path}');
       }
