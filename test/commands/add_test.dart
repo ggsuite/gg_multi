@@ -61,7 +61,7 @@ void main() {
       expect(
         logMessages,
         equals([
-          'added repository myrepo from https://github.com/myrepo/myrepo.git',
+          'Added repository myrepo from https://github.com/myrepo/myrepo.git',
         ]),
       );
     });
@@ -79,7 +79,7 @@ void main() {
       expect(
         logMessages,
         equals([
-          'added repository testrepo from '
+          'Added repository testrepo from '
               'https://github.com/testuser/testrepo.git',
         ]),
       );
@@ -94,7 +94,7 @@ void main() {
       expect(
         logMessages,
         equals([
-          'added repository somerepo from $repoUrl',
+          'Added repository somerepo from $repoUrl',
         ]),
       );
     });
@@ -113,7 +113,7 @@ void main() {
       expect(
         logMessages,
         equals([
-          'added repository kidney_core from $repoUrl',
+          'Added repository kidney_core from $repoUrl',
         ]),
       );
     });
@@ -132,7 +132,7 @@ void main() {
       expect(
         logMessages,
         equals([
-          'added repository kidney_core from '
+          'Added repository kidney_core from '
               'https://github.com/ggsuite/kidney_core.git',
         ]),
       );
@@ -152,7 +152,7 @@ void main() {
       expect(
         logMessages,
         equals([
-          'added repository kidney_core from https://github.com/ggsuite/kidney_core.git',
+          'Added repository kidney_core from https://github.com/ggsuite/kidney_core.git',
         ]),
       );
     });
@@ -201,9 +201,9 @@ void main() {
       expect(
         logMessages,
         containsAllInOrder([
-          'added repository repo1 from '
+          'Added repository repo1 from '
               'https://github.com/myorganization/repo1.git',
-          'added repository repo2 from '
+          'Added repository repo2 from '
               'https://github.com/myorganization/repo2.git',
         ]),
       );

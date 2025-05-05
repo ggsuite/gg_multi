@@ -106,11 +106,11 @@ dev_dependencies:
       expect(
         logMessages,
         containsAll([
-          'added repository json_dart from '
+          'Added repository json_dart from '
               'https://github.com/json_dart/json_dart.git',
-          'added repository http from '
+          'Added repository http from '
               'https://github.com/http/http.git',
-          'added repository json_serializer from '
+          'Added repository json_serializer from '
               'https://github.com/json_serializer/json_serializer.git',
         ]),
       );

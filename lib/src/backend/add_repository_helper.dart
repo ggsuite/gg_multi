@@ -42,7 +42,7 @@ Future<void> addRepositoryHelper({
       }
     }
     await gitCloner.cloneRepo(repoUrl, destination);
-    ggLog('added repository $repoName from $repoUrl');
+    ggLog('Added repository $repoName from $repoUrl');
   }
 
   final parsedUri = Uri.tryParse(targetArg);

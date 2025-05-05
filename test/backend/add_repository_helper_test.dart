@@ -83,7 +83,7 @@ void main() {
         ).called(1);
 
         // Verify ggLog contains the correct success message
-        expect(logs, contains('added repository repo from $expectedRepoUrl'));
+        expect(logs, contains('Added repository repo from $expectedRepoUrl'));
       });
 
       test('Processes repository URL that already ends with .git', () async {
@@ -108,7 +108,7 @@ void main() {
         final expectedDestination = path.join(workspacePath, 'repo');
         verify(() => mockGitCloner.cloneRepo(targetArg, expectedDestination))
             .called(1);
-        expect(logs, contains('added repository repo from $targetArg'));
+        expect(logs, contains('Added repository repo from $targetArg'));
       });
 
       test('Processes organization URL and clones multiple repos', () async {
@@ -150,7 +150,7 @@ void main() {
           final destination = path.join(workspacePath, repoName);
           verify(() => mockGitCloner.cloneRepo(cloneUrl, destination))
               .called(1);
-          expect(logs, contains('added repository $repoName from $cloneUrl'));
+          expect(logs, contains('Added repository $repoName from $cloneUrl'));
         }
       });
 
@@ -236,7 +236,7 @@ void main() {
         final expectedDestination = path.join(workspacePath, 'repo');
         verify(() => mockGitCloner.cloneRepo(targetArg, expectedDestination))
             .called(1);
-        expect(logs, contains('added repository repo from $targetArg'));
+        expect(logs, contains('Added repository repo from $targetArg'));
       });
     });
 
@@ -268,7 +268,7 @@ void main() {
             expectedDestination,
           ),
         ).called(1);
-        expect(logs, contains('added repository repo from $expectedRepoUrl'));
+        expect(logs, contains('Added repository repo from $expectedRepoUrl'));
       });
     });
 
@@ -300,7 +300,7 @@ void main() {
             expectedDestination,
           ),
         ).called(1);
-        expect(logs, contains('added repository repo from $expectedRepoUrl'));
+        expect(logs, contains('Added repository repo from $expectedRepoUrl'));
       });
     });
 
