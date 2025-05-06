@@ -15,6 +15,8 @@ import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/add.dart';
 import 'package:kidney_core/src/backend/git_cloner.dart';
 
+import '../rm_console_colors_helper.dart';
+
 // Create a mock for GitCloner
 class MockGitCloner extends Mock implements GitCloner {}
 
@@ -25,6 +27,10 @@ void main() {
     late CommandRunner<void> runner;
     late Directory tempDir;
     late String masterWorkspacePath;
+
+    void ggLog(String message) {
+      logMessages.add(rmConsoleColors(message));
+    }
 
     setUp(() {
       mockGitCloner = MockGitCloner();
@@ -37,7 +43,7 @@ void main() {
       runner = CommandRunner<void>('test', 'Test for AddCommand');
       runner.addCommand(
         AddCommand(
-          ggLog: logMessages.add,
+          ggLog: ggLog,
           gitCloner: mockGitCloner,
           workspacePath: masterWorkspacePath,
         ),
@@ -163,7 +169,7 @@ void main() {
       final orgRunner = CommandRunner<void>('test', 'Test for AddCommand Org');
       orgRunner.addCommand(
         AddCommand(
-          ggLog: logMessages.add,
+          ggLog: ggLog,
           gitCloner: mockGitCloner,
           workspacePath: masterWorkspacePath,
           repoFetcher: (uri) async {
@@ -216,7 +222,7 @@ void main() {
       );
       orgRunner.addCommand(
         AddCommand(
-          ggLog: logMessages.add,
+          ggLog: ggLog,
           gitCloner: mockGitCloner,
           workspacePath: masterWorkspacePath,
           repoFetcher: (uri) async {
@@ -257,7 +263,7 @@ void main() {
       );
       invalidRunner.addCommand(
         AddCommand(
-          ggLog: logMessages.add,
+          ggLog: ggLog,
           gitCloner: mockGitCloner,
           workspacePath: masterWorkspacePath,
           repoFetcher: (uri) async {
