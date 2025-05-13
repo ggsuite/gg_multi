@@ -8,8 +8,9 @@
 - Add readme
 - Add tests
 - Add --force parameter to add
-- Add tests for remove command
+- Add console colors
 
 ### Changed
 
 - Ignore dart dependencies in add-deps
+- Log messages start with upper case

@@ -15,6 +15,8 @@ import 'package:path/path.dart' as path;
 import 'package:kidney_core/src/backend/add_repository_helper.dart';
 import 'package:kidney_core/src/backend/git_cloner.dart';
 
+import '../rm_console_colors_helper.dart';
+
 // Mock for GitCloner using mocktail
 class MockGitCloner extends Mock implements GitCloner {}
 
@@ -29,7 +31,7 @@ void main() {
 
   // Setup a simple ggLog function that appends messages to logs list
   void ggLog(String message) {
-    logs.add(message);
+    logs.add(rmConsoleColors(message));
   }
 
   setUp(() {
@@ -83,7 +85,7 @@ void main() {
         ).called(1);
 
         // Verify ggLog contains the correct success message
-        expect(logs, contains('added repository repo from $expectedRepoUrl'));
+        expect(logs, contains('Added repository repo from $expectedRepoUrl'));
       });
 
       test('Processes repository URL that already ends with .git', () async {
@@ -108,7 +110,7 @@ void main() {
         final expectedDestination = path.join(workspacePath, 'repo');
         verify(() => mockGitCloner.cloneRepo(targetArg, expectedDestination))
             .called(1);
-        expect(logs, contains('added repository repo from $targetArg'));
+        expect(logs, contains('Added repository repo from $targetArg'));
       });
 
       test('Processes organization URL and clones multiple repos', () async {
@@ -150,7 +152,7 @@ void main() {
           final destination = path.join(workspacePath, repoName);
           verify(() => mockGitCloner.cloneRepo(cloneUrl, destination))
               .called(1);
-          expect(logs, contains('added repository $repoName from $cloneUrl'));
+          expect(logs, contains('Added repository $repoName from $cloneUrl'));
         }
       });
 
@@ -236,7 +238,7 @@ void main() {
         final expectedDestination = path.join(workspacePath, 'repo');
         verify(() => mockGitCloner.cloneRepo(targetArg, expectedDestination))
             .called(1);
-        expect(logs, contains('added repository repo from $targetArg'));
+        expect(logs, contains('Added repository repo from $targetArg'));
       });
     });
 
@@ -268,7 +270,7 @@ void main() {
             expectedDestination,
           ),
         ).called(1);
-        expect(logs, contains('added repository repo from $expectedRepoUrl'));
+        expect(logs, contains('Added repository repo from $expectedRepoUrl'));
       });
     });
 
@@ -300,7 +302,7 @@ void main() {
             expectedDestination,
           ),
         ).called(1);
-        expect(logs, contains('added repository repo from $expectedRepoUrl'));
+        expect(logs, contains('Added repository repo from $expectedRepoUrl'));
       });
     });
 

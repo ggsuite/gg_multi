@@ -7,6 +7,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
@@ -35,14 +36,14 @@ Future<void> addRepositoryHelper({
     final destDir = Directory(destination);
     if (destDir.existsSync() && destDir.listSync().isNotEmpty) {
       if (!force) {
-        ggLog('$repoName already added.');
+        ggLog(darkGray('$repoName already added.'));
         return;
       } else {
         await destDir.delete(recursive: true);
       }
     }
     await gitCloner.cloneRepo(repoUrl, destination);
-    ggLog('added repository $repoName from $repoUrl');
+    ggLog(green('Added repository $repoName from $repoUrl'));
   }
 
   final parsedUri = Uri.tryParse(targetArg);
@@ -70,7 +71,7 @@ Future<void> addRepositoryHelper({
       final List<dynamic> reposJson =
           jsonDecode(response.body) as List<dynamic>;
       if (reposJson.isEmpty) {
-        ggLog('No repositories found for organization $orgName');
+        ggLog(yellow('No repositories found for organization $orgName'));
         return;
       }
       for (final repoJson in reposJson) {
@@ -135,15 +136,17 @@ Pubspec? getPubspecFromWorkspace({
   final pubspecPath = path.join(workspacePath, repoName, 'pubspec.yaml');
   final pubspecFile = File(pubspecPath);
   if (!pubspecFile.existsSync()) {
-    ggLog('pubspec.yaml not found in '
-        'project $repoName in workspace $workspacePath.');
+    ggLog(
+      red('pubspec.yaml not found in '
+          'project $repoName in workspace $workspacePath.'),
+    );
     return null;
   }
   try {
     final content = pubspecFile.readAsStringSync();
     return Pubspec.parse(content);
   } catch (e) {
-    ggLog('Error parsing pubspec.yaml: $e');
+    ggLog(red('Error parsing pubspec.yaml: $e'));
     return null;
   }
 }

@@ -7,6 +7,7 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
 import '../../backend/list_backend.dart';
 
@@ -40,7 +41,7 @@ class ListReposCommand extends Command<dynamic> {
     final repoInfos = await getAllRepoInfos(workspacePath);
     repoInfos.sort((a, b) => a.name.compareTo(b.name));
     if (repoInfos.isEmpty) {
-      ggLog('No repositories found in the master workspace.');
+      ggLog(yellow('No repositories found in the master workspace.'));
     } else {
       for (final repo in repoInfos) {
         ggLog('${repo.name} ${repo.version} '

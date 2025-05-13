@@ -15,6 +15,8 @@ import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/add.dart';
 import 'package:kidney_core/src/backend/git_cloner.dart';
 
+import '../rm_console_colors_helper.dart';
+
 // Create a mock for GitCloner
 class MockGitCloner extends Mock implements GitCloner {}
 
@@ -25,6 +27,10 @@ void main() {
     late CommandRunner<void> runner;
     late Directory tempDir;
     late String masterWorkspacePath;
+
+    void ggLog(String message) {
+      logMessages.add(rmConsoleColors(message));
+    }
 
     setUp(() {
       mockGitCloner = MockGitCloner();
@@ -37,7 +43,7 @@ void main() {
       runner = CommandRunner<void>('test', 'Test for AddCommand');
       runner.addCommand(
         AddCommand(
-          ggLog: logMessages.add,
+          ggLog: ggLog,
           gitCloner: mockGitCloner,
           workspacePath: masterWorkspacePath,
         ),
@@ -61,7 +67,7 @@ void main() {
       expect(
         logMessages,
         equals([
-          'added repository myrepo from https://github.com/myrepo/myrepo.git',
+          'Added repository myrepo from https://github.com/myrepo/myrepo.git',
         ]),
       );
     });
@@ -79,7 +85,7 @@ void main() {
       expect(
         logMessages,
         equals([
-          'added repository testrepo from '
+          'Added repository testrepo from '
               'https://github.com/testuser/testrepo.git',
         ]),
       );
@@ -94,7 +100,7 @@ void main() {
       expect(
         logMessages,
         equals([
-          'added repository somerepo from $repoUrl',
+          'Added repository somerepo from $repoUrl',
         ]),
       );
     });
@@ -113,7 +119,7 @@ void main() {
       expect(
         logMessages,
         equals([
-          'added repository kidney_core from $repoUrl',
+          'Added repository kidney_core from $repoUrl',
         ]),
       );
     });
@@ -132,7 +138,7 @@ void main() {
       expect(
         logMessages,
         equals([
-          'added repository kidney_core from '
+          'Added repository kidney_core from '
               'https://github.com/ggsuite/kidney_core.git',
         ]),
       );
@@ -152,7 +158,7 @@ void main() {
       expect(
         logMessages,
         equals([
-          'added repository kidney_core from https://github.com/ggsuite/kidney_core.git',
+          'Added repository kidney_core from https://github.com/ggsuite/kidney_core.git',
         ]),
       );
     });
@@ -163,7 +169,7 @@ void main() {
       final orgRunner = CommandRunner<void>('test', 'Test for AddCommand Org');
       orgRunner.addCommand(
         AddCommand(
-          ggLog: logMessages.add,
+          ggLog: ggLog,
           gitCloner: mockGitCloner,
           workspacePath: masterWorkspacePath,
           repoFetcher: (uri) async {
@@ -201,9 +207,9 @@ void main() {
       expect(
         logMessages,
         containsAllInOrder([
-          'added repository repo1 from '
+          'Added repository repo1 from '
               'https://github.com/myorganization/repo1.git',
-          'added repository repo2 from '
+          'Added repository repo2 from '
               'https://github.com/myorganization/repo2.git',
         ]),
       );
@@ -216,7 +222,7 @@ void main() {
       );
       orgRunner.addCommand(
         AddCommand(
-          ggLog: logMessages.add,
+          ggLog: ggLog,
           gitCloner: mockGitCloner,
           workspacePath: masterWorkspacePath,
           repoFetcher: (uri) async {
@@ -257,7 +263,7 @@ void main() {
       );
       invalidRunner.addCommand(
         AddCommand(
-          ggLog: logMessages.add,
+          ggLog: ggLog,
           gitCloner: mockGitCloner,
           workspacePath: masterWorkspacePath,
           repoFetcher: (uri) async {
