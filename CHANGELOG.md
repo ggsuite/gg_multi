@@ -15,3 +15,7 @@
 
 - Ignore dart dependencies in add-deps
 - Log messages start with upper case
+
+### Removed
+
+- remove trailing # and / in organization urls

@@ -46,15 +46,23 @@ Future<void> addRepositoryHelper({
     ggLog(green('Added repository $repoName from $repoUrl'));
   }
 
-  final parsedUri = Uri.tryParse(targetArg);
+  // -----------------------------------------------------------------------
+  // Normalize URL: remove trailing "#" and "/" so that
+  // "https://github.com/ggsuite/" and "https://github.com/ggsuite" behave the
+  // same. This must happen before any URI parsing logic.
+  var cleanedUrl = targetArg;
+  if (cleanedUrl.endsWith('#')) {
+    cleanedUrl = cleanedUrl.substring(0, cleanedUrl.length - 1);
+  }
+  // Remove trailing slashes ONLY (preserve inner slashes between segments).
+  cleanedUrl = cleanedUrl.replaceFirst(RegExp(r'/+$'), '');
+
+  final parsedUri = Uri.tryParse(cleanedUrl);
+
   if (parsedUri != null &&
       (parsedUri.scheme == 'http' || parsedUri.scheme == 'https') &&
       parsedUri.host.isNotEmpty) {
-    String cleanedUrl = targetArg;
-    if (cleanedUrl.endsWith('#')) {
-      cleanedUrl = cleanedUrl.substring(0, cleanedUrl.length - 1);
-    }
-    final uri = Uri.parse(cleanedUrl);
+    final uri = parsedUri;
     if (uri.pathSegments.isEmpty ||
         uri.pathSegments.every((segment) => segment.trim().isEmpty)) {
       throw Exception('Invalid organization URL provided: $cleanedUrl');
