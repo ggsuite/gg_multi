@@ -11,6 +11,7 @@
 - Add console colors
 - Add console colors in remove command
 - Add init command
+- Add tests for create ticket
 
 ### Changed
 

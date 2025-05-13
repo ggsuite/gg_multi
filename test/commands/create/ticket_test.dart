@@ -13,6 +13,8 @@ import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/create/ticket.dart';
 import 'package:path/path.dart' as path;
 
+import '../../rm_console_colors_helper.dart';
+
 void main() {
   group('TicketCommand', () {
     late Directory tempDir;
@@ -20,7 +22,7 @@ void main() {
     final messages = <String>[];
 
     void ggLog(String msg) {
-      messages.add(msg);
+      messages.add(rmConsoleColors(msg));
     }
 
     setUp(() {
@@ -91,11 +93,33 @@ void main() {
       );
     });
 
-    test('throws UsageException when missing message', () async {
-      await expectLater(
-        runner.run(['ticket', 'ID-1']),
-        throwsA(isA<UsageException>()),
+    test('creates ticket with empty description when message is omitted',
+        () async {
+      const issueId = 'NO-DESC-1';
+
+      await runner.run(['ticket', issueId]);
+
+      final ticketDir = Directory(
+        path.join(
+          tempDir.path,
+          'tickets',
+          issueId,
+        ),
       );
+      expect(ticketDir.existsSync(), isTrue);
+
+      final ticketFile = File(
+        path.join(
+          ticketDir.path,
+          '.ticket',
+        ),
+      );
+      expect(ticketFile.existsSync(), isTrue);
+
+      final content = ticketFile.readAsStringSync();
+      final data = jsonDecode(content) as Map<String, dynamic>;
+      expect(data['issue_id'], equals(issueId));
+      expect(data['description'], equals(''));
     });
 
     test('prints help when --help is passed', () async {

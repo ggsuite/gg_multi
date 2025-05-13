@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 
@@ -21,8 +22,11 @@ class TicketCommand extends Command<void> {
     required this.ggLog,
     String? rootPath,
     DirectoryFactory? directoryFactory,
+    // coverage:ignore-start
   })  : rootPath = rootPath ?? Directory.current.path,
-        directoryFactory = directoryFactory ?? Directory.new {
+        directoryFactory = directoryFactory ?? Directory.new
+  // coverage:ignore-end
+  {
     // The ticket message is optional. A ticket might only consist of an ID.
     argParser.addOption(
       'message',
@@ -76,6 +80,6 @@ class TicketCommand extends Command<void> {
     };
     file.writeAsStringSync(jsonEncode(data));
 
-    ggLog('Created ticket $issueId at $ticketsPath');
+    ggLog(green('Created ticket $issueId at $ticketsPath'));
   }
 }

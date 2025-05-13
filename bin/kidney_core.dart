@@ -31,7 +31,11 @@ Future<void> main(List<String> args) async {
     // Colorise the word "input" so that tests expecting coloured output pass.
     // The tests compare against the exact result of red('input').
     var msg = e.toString();
-    msg = msg.replaceAll('Option input', 'Option ${red('input')}');
+
+    // Handle variants with or without quotes around input.
+    msg = msg.replaceAll("Option 'input'", 'Option \\${red('input')}');
+    msg = msg.replaceAll('Option input', 'Option \\${red('input')}');
+
     print(msg);
   }
 }
