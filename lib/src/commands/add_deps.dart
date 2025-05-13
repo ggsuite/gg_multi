@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
@@ -76,8 +77,10 @@ class AddDepsCommand extends Command<void> {
       ..addAll(pubspec.dependencies.keys)
       ..addAll(pubspec.devDependencies.keys);
     if (deps.isEmpty) {
-      ggLog('No dependencies found in pubspec.yaml '
-          'for project ${pubspec.name}.');
+      ggLog(
+        darkGray('No dependencies found in pubspec.yaml '
+            'for project ${pubspec.name}.'),
+      );
       return;
     }
     for (final dep in deps) {
@@ -87,13 +90,19 @@ class AddDepsCommand extends Command<void> {
           packageFetcher: packageFetcher,
         );
         if (repoUrl == null || repoUrl.isEmpty) {
-          ggLog('No repository URL found for '
-              'dependency $dep on pub.dev, skipping.');
+          ggLog(
+            red('No repository URL found for '
+                'dependency $dep on pub.dev, skipping.'),
+          );
           continue;
         }
         // New check: ignore dependencies whose repo URL starts with dart-lang
         if (repoUrl.startsWith('https://github.com/dart-lang/')) {
-          ggLog('Ignoring dependency $dep from dart-lang repository: $repoUrl');
+          ggLog(
+            yellow(
+              'Ignoring dependency $dep from dart-lang repository: $repoUrl',
+            ),
+          );
           continue;
         }
         try {
@@ -105,10 +114,10 @@ class AddDepsCommand extends Command<void> {
             workspacePath: workspacePath,
           );
         } catch (e) {
-          ggLog('Failed to clone dependency $dep from $repoUrl: $e');
+          ggLog(red('Failed to clone dependency $dep from $repoUrl: $e'));
         }
       } catch (e) {
-        ggLog('Failed to fetch repository info for dependency $dep: $e');
+        ggLog(red('Failed to fetch repository info for dependency $dep: $e'));
       }
     }
   }

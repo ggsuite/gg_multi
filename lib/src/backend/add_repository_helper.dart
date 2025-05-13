@@ -136,15 +136,17 @@ Pubspec? getPubspecFromWorkspace({
   final pubspecPath = path.join(workspacePath, repoName, 'pubspec.yaml');
   final pubspecFile = File(pubspecPath);
   if (!pubspecFile.existsSync()) {
-    ggLog('pubspec.yaml not found in '
-        'project $repoName in workspace $workspacePath.');
+    ggLog(
+      red('pubspec.yaml not found in '
+          'project $repoName in workspace $workspacePath.'),
+    );
     return null;
   }
   try {
     final content = pubspecFile.readAsStringSync();
     return Pubspec.parse(content);
   } catch (e) {
-    ggLog('Error parsing pubspec.yaml: $e');
+    ggLog(red('Error parsing pubspec.yaml: $e'));
     return null;
   }
 }

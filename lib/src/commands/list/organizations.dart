@@ -7,6 +7,7 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
 import '../../backend/list_backend.dart';
 import 'package:path/path.dart' as path;
@@ -44,7 +45,7 @@ class ListOrganizationsCommand extends Command<dynamic> {
     }
     final orgs = orgSet.toList()..sort();
     if (orgs.isEmpty) {
-      ggLog('No organizations found.');
+      ggLog(yellow('No organizations found.'));
     } else {
       for (final org in orgs) {
         if (org != 'unknown') {
