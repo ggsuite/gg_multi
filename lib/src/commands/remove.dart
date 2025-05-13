@@ -6,6 +6,7 @@
 
 import 'dart:io';
 import 'package:args/command_runner.dart';
+import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 import '../backend/add_repository_helper.dart';
@@ -66,7 +67,7 @@ class RemoveCommand extends Command<void> {
     // Find all workspaces under rootPath starting with "kidney_ws_"
     final rootDir = Directory(rootPath);
     if (!rootDir.existsSync()) {
-      ggLog('Root path not found: $rootPath');
+      ggLog(red('Root path not found: $rootPath'));
       return;
     }
     final workspaces = rootDir
@@ -86,7 +87,7 @@ class RemoveCommand extends Command<void> {
 
     // Handle cases
     if (found.isEmpty) {
-      ggLog('Repository $repoName not found in any workspace.');
+      ggLog(red('Repository $repoName not found in any workspace.'));
       return;
     }
     if (found.length == 1 && found.first == 'kidney_ws_master') {
@@ -95,9 +96,9 @@ class RemoveCommand extends Command<void> {
           directoryFactory(path.join(rootPath, 'kidney_ws_master', repoName));
       if (toDelete.existsSync()) {
         toDelete.deleteSync(recursive: true);
-        ggLog('Deleted repository $repoName from master workspace.');
+        ggLog(green('Deleted repository $repoName from master workspace.'));
       } else {
-        ggLog('Repository folder not found: ${toDelete.path}');
+        ggLog(red('Repository folder not found: ${toDelete.path}'));
       }
       return;
     }
@@ -110,6 +111,6 @@ class RemoveCommand extends Command<void> {
     )) {
       ggLog(' - $ws');
     }
-    ggLog('Please remove these branches first.');
+    ggLog(red('Please remove these branches first.'));
   }
 }

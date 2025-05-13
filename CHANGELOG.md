@@ -9,6 +9,7 @@
 - Add tests
 - Add --force parameter to add
 - Add console colors
+- Add console colors in remove command
 
 ### Changed
 

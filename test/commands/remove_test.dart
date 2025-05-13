@@ -11,6 +11,8 @@ import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/remove.dart';
 
+import '../rm_console_colors_helper.dart';
+
 // A fake Directory class for testing
 // purposes that always reports non-existence.
 class _FakeDirectory extends Fake implements Directory {
@@ -29,6 +31,10 @@ void main() {
     late CommandRunner<void> runner;
     final messages = <String>[];
 
+    void ggLog(String message) {
+      messages.add(rmConsoleColors(message));
+    }
+
     setUp(() {
       messages.clear();
       tempDir = Directory.systemTemp.createTempSync('remove_test_');
@@ -41,7 +47,7 @@ void main() {
       runner = CommandRunner<void>('test', 'RemoveCommand Test')
         ..addCommand(
           RemoveCommand(
-            ggLog: messages.add,
+            ggLog: ggLog,
             rootPath: tempDir.path,
           ),
         );
@@ -126,7 +132,7 @@ void main() {
       final nonExistingPath = path.join(tempDir.path, 'nonexistent_workspace');
       final localRunner = CommandRunner<void>('test', 'RemoveCommand Test')
         ..addCommand(
-          RemoveCommand(ggLog: messages.add, rootPath: nonExistingPath),
+          RemoveCommand(ggLog: ggLog, rootPath: nonExistingPath),
         );
 
       // Act
@@ -154,7 +160,7 @@ void main() {
           CommandRunner<void>('test', 'RemoveCommand Fake Test')
             ..addCommand(
               RemoveCommand(
-                ggLog: messages.add,
+                ggLog: ggLog,
                 rootPath: tempDir.path,
                 directoryFactory: (p) => _FakeDirectory(p),
               ),
