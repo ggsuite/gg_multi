@@ -60,9 +60,18 @@ class RemoveCommand extends Command<void> {
         usage,
       );
     }
-    // Determine repo name
+    // Determine target name
     final targetArg = argResults!.rest.first;
     final repoName = extractRepoName(targetArg);
+
+    // If a ticket exists, delete ticket folder
+    final ticketPath = path.join(rootPath, 'tickets', repoName);
+    final ticketDir = Directory(ticketPath);
+    if (ticketDir.existsSync()) {
+      ticketDir.deleteSync(recursive: true);
+      ggLog(green('Deleted ticket $repoName at $ticketPath'));
+      return;
+    }
 
     // Find all workspaces under rootPath starting with "kidney_ws_"
     final rootDir = Directory(rootPath);
@@ -96,7 +105,9 @@ class RemoveCommand extends Command<void> {
           directoryFactory(path.join(rootPath, 'kidney_ws_master', repoName));
       if (toDelete.existsSync()) {
         toDelete.deleteSync(recursive: true);
-        ggLog(green('Deleted repository $repoName from master workspace.'));
+        ggLog(
+          green('Deleted repository $repoName from master workspace.'),
+        );
       } else {
         ggLog(red('Repository folder not found: ${toDelete.path}'));
       }

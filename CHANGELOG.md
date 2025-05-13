@@ -21,3 +21,4 @@
 ### Removed
 
 - remove trailing # and / in organization urls
+- remove command works also for tickets

@@ -175,5 +175,23 @@ void main() {
         contains('Repository folder not found: $repoFolderPath'),
       );
     });
+
+    test('deletes ticket folder when name matches ticket', () async {
+      // Arrange: setup a ticket folder under tickets
+      final ticketDir = Directory(
+        path.join(tempDir.path, 'tickets', 'ticket1'),
+      )..createSync(recursive: true);
+      File(path.join(ticketDir.path, 'dummy.txt')).writeAsStringSync('data');
+
+      // Act
+      await runner.run(['remove', 'ticket1']);
+
+      // Assert: folder is removed and log is correct
+      expect(ticketDir.existsSync(), isFalse);
+      expect(
+        messages,
+        contains('Deleted ticket ticket1 at ${ticketDir.path}'),
+      );
+    });
   });
 }
