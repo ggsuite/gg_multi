@@ -15,6 +15,8 @@ import 'package:path/path.dart' as path;
 import 'package:kidney_core/src/backend/add_repository_helper.dart';
 import 'package:kidney_core/src/backend/git_cloner.dart';
 
+import '../rm_console_colors_helper.dart';
+
 // Mock for GitCloner using mocktail
 class MockGitCloner extends Mock implements GitCloner {}
 
@@ -29,7 +31,7 @@ void main() {
 
   // Setup a simple ggLog function that appends messages to logs list
   void ggLog(String message) {
-    logs.add(message);
+    logs.add(rmConsoleColors(message));
   }
 
   setUp(() {

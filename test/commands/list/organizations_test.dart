@@ -12,11 +12,17 @@ import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/list/organizations.dart';
 import 'package:path/path.dart' as path;
 
+import '../../rm_console_colors_helper.dart';
+
 void main() {
   group('ListOrganizationsCommand', () {
     late Directory tempDir;
     late Directory masterDir;
     final messages = <String>[];
+
+    void ggLog(String message) {
+      messages.add(rmConsoleColors(message));
+    }
 
     setUp(() {
       messages.clear();
@@ -60,7 +66,7 @@ void main() {
       );
       runner.addCommand(
         ListOrganizationsCommand(
-          ggLog: messages.add,
+          ggLog: ggLog,
           workspacePath: masterDir.path,
         ),
       );
@@ -92,7 +98,7 @@ void main() {
       );
       runner.addCommand(
         ListOrganizationsCommand(
-          ggLog: messages.add,
+          ggLog: ggLog,
           workspacePath: masterDir.path,
         ),
       );
@@ -111,7 +117,7 @@ void main() {
       );
       runner.addCommand(
         ListOrganizationsCommand(
-          ggLog: messages.add,
+          ggLog: ggLog,
           workspacePath: masterDir.path,
         ),
       );

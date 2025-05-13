@@ -8,6 +8,7 @@
 - Add readme
 - Add tests
 - Add --force parameter to add
+- Add console colors
 
 ### Changed
 

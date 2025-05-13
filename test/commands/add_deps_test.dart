@@ -16,6 +16,8 @@ import 'package:path/path.dart' as path;
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 
+import '../rm_console_colors_helper.dart';
+
 class MockGitCloner extends Mock implements GitCloner {}
 
 void main() {
@@ -27,6 +29,10 @@ void main() {
     late MockGitCloner mockGitCloner;
     late CommandRunner<void> runner;
     late String workspacePath;
+
+    void ggLog(String message) {
+      logMessages.add(rmConsoleColors(message));
+    }
 
     setUp(() {
       logMessages = [];
@@ -43,7 +49,7 @@ void main() {
       runner = CommandRunner<void>('test', 'Test AddDepsCommand');
       runner.addCommand(
         AddDepsCommand(
-          ggLog: logMessages.add,
+          ggLog: ggLog,
           gitCloner: mockGitCloner,
           workspacePath: workspacePath,
           packageFetcher: (uri) async {
@@ -162,7 +168,7 @@ dev_dependencies:
       final newRunner = CommandRunner<void>('test', 'Test Missing Target');
       newRunner.addCommand(
         AddDepsCommand(
-          ggLog: logMessages.add,
+          ggLog: ggLog,
           gitCloner: mockGitCloner,
           workspacePath: workspacePath,
         ),
@@ -213,7 +219,7 @@ dependencies:
       runner = CommandRunner<void>('test', 'Test AddDepsCommand');
       runner.addCommand(
         AddDepsCommand(
-          ggLog: logMessages.add,
+          ggLog: ggLog,
           gitCloner: mockGitCloner,
           workspacePath: workspacePath,
           packageFetcher: (uri) async {
@@ -249,7 +255,7 @@ dependencies:
       runner = CommandRunner<void>('test', 'Test AddDepsCommand');
       runner.addCommand(
         AddDepsCommand(
-          ggLog: logMessages.add,
+          ggLog: ggLog,
           gitCloner: mockGitCloner,
           workspacePath: workspacePath,
           packageFetcher: (uri) async {
@@ -285,7 +291,7 @@ dependencies:
       final runner2 = CommandRunner<void>('test', 'Test AddDepsCommand');
       runner2.addCommand(
         AddDepsCommand(
-          ggLog: logMessages.add,
+          ggLog: ggLog,
           gitCloner: mockGitCloner,
           workspacePath: workspacePath,
           packageFetcher: (uri) async {
