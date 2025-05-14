@@ -484,4 +484,85 @@ void main() {
       tempDir.deleteSync(recursive: true);
     });
   });
+
+  // ---------------------------------------------------------------------
+  // New test to ensure onRepoAdded is called when repository already exists
+  // ---------------------------------------------------------------------
+  test('calls onRepoAdded callback when repo already exists and is non-empty',
+      () async {
+    // Arrange
+    const repoName = 'existing_repo';
+    final destination = path.join(workspacePath, repoName);
+    final repoDir = Directory(destination)..createSync(recursive: true);
+    File(path.join(repoDir.path, 'dummy.txt')).writeAsStringSync('data');
+
+    final mockGitCloner = MockGitCloner();
+    // cloneRepo should NOT be called because repo already present
+    when(() => mockGitCloner.cloneRepo(any(), any())).thenAnswer((_) async {});
+
+    var callbackExecuted = false;
+    Future<void> onRepoAdded(String name) async {
+      expect(name, equals(repoName));
+      callbackExecuted = true;
+    }
+
+    // Act
+    await addRepositoryHelper(
+      targetArg: repoName,
+      ggLog: ggLog,
+      gitCloner: mockGitCloner,
+      repoFetcher: (uri) async => http.Response('{}', 200),
+      workspacePath: workspacePath,
+      onRepoAdded: onRepoAdded,
+    );
+
+    // Assert
+    expect(
+      callbackExecuted,
+      isTrue,
+      reason: 'onRepoAdded should be executed when repo already exists.',
+    );
+    expect(logs, contains('$repoName already added.'));
+    verifyNever(() => mockGitCloner.cloneRepo(any(), any()));
+  });
+
+  test('calls onRepoAdded even when repo is freshly cloned', () async {
+    // Arrange
+    const repoName = 'fresh_repo';
+    final mockGitCloner = MockGitCloner();
+    when(() => mockGitCloner.cloneRepo(any(), any())).thenAnswer((_) async {});
+    bool callbackExecuted = false;
+    Future<void> callback(String name) async {
+      expect(name, repoName);
+      callbackExecuted = true;
+    }
+
+    Future<http.Response> repoFetcher(Uri uri) async =>
+        http.Response('{}', 200);
+
+    // Act
+    await addRepositoryHelper(
+      targetArg: repoName,
+      ggLog: ggLog,
+      gitCloner: mockGitCloner,
+      repoFetcher: repoFetcher,
+      workspacePath: workspacePath,
+      force: true,
+      onRepoAdded: callback,
+    );
+
+    // Assert
+    expect(callbackExecuted, isTrue);
+    verify(
+      () => mockGitCloner.cloneRepo(
+        'https://github.com/fresh_repo/fresh_repo.git',
+        any(),
+      ),
+    ).called(1);
+    expect(
+      logs,
+      contains('Added repository fresh_repo from '
+          'https://github.com/fresh_repo/fresh_repo.git'),
+    );
+  });
 }
