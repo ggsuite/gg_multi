@@ -20,8 +20,12 @@ import 'package:pubspec_parse/pubspec_parse.dart';
 ///
 /// The [force] parameter determines whether an existing cloned
 /// repository should be overwritten. If false and the destination
-/// already exists and is not empty, the function logs "repo already added."
-/// If true, the existing directory is deleted before cloning.
+/// already exists and is not empty, the function logs "repo already added.".
+///
+/// The [logIfAlreadyAdded] parameter controls whether the "already added"
+/// message is logged when a repository is skipped because it's already
+/// present. This can be disabled when adding to a ticket workspace to
+/// suppress duplicate logs.
 ///
 /// The optional [onRepoAdded] callback is executed for every repository that is
 /// ensured to be present (either cloned or detected as already cloned).  This
@@ -34,6 +38,7 @@ Future<void> addRepositoryHelper({
   required Future<http.Response> Function(Uri) repoFetcher,
   required String workspacePath,
   bool force = false,
+  bool logIfAlreadyAdded = true,
   Future<void> Function(String repoName)? onRepoAdded,
 }) async {
   // ---------------------------------------------------------------------------
@@ -45,7 +50,9 @@ Future<void> addRepositoryHelper({
     // If repository folder already exists and is not empty ....................
     if (destDir.existsSync() && destDir.listSync().isNotEmpty) {
       if (!force) {
-        ggLog(darkGray('$repoName already added.'));
+        if (logIfAlreadyAdded) {
+          ggLog(darkGray('$repoName already added.'));
+        }
         if (onRepoAdded != null) {
           await onRepoAdded(repoName);
         }

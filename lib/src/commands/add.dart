@@ -91,6 +91,7 @@ class AddCommand extends Command<dynamic> {
       repoFetcher: repoFetcher,
       workspacePath: workspacePath,
       force: force,
+      logIfAlreadyAdded: ticketPath == null,
       onRepoAdded: ticketPath == null
           ? null
           : (String repoName) async {
