@@ -20,6 +20,8 @@ import '../rm_console_colors_helper.dart';
 // Create a mock for GitCloner
 class MockGitCloner extends Mock implements GitCloner {}
 
+typedef RepoFetcher = Future<http.Response> Function(Uri uri);
+
 void main() {
   group('AddCommand', () {
     late MockGitCloner mockGitCloner;
@@ -306,6 +308,100 @@ void main() {
           .run(['add', 'git@github.com:ggsuite/kidney_core.git', '--force']);
 
       verify(() => mockGitCloner.cloneRepo(any(), any())).called(1);
+    });
+
+    test(
+      'copies repo into ticket workspace',
+      () async {
+        // Arrange: create a repo with a file and a symbolic link
+        const repoName = 'testRepo';
+        final repoDir = Directory(
+          path.join(masterWorkspacePath, repoName),
+        )..createSync(recursive: true);
+        // Create a file inside the repo
+        final fileInRepo = File(path.join(repoDir.path, 'target.txt'));
+        fileInRepo.writeAsStringSync('content');
+
+        // Setup ticket workspace and change cwd
+        final ticketDir = Directory(
+          path.join(tempDir.path, 'tickets', 'TICKET'),
+        )..createSync(recursive: true);
+        final originalCwd = Directory.current;
+        Directory.current = ticketDir;
+        try {
+          // Act
+          await runner.run(['add', repoName]);
+        } finally {
+          // Restore cwd
+          Directory.current = originalCwd;
+        }
+
+        // Assert: ensure the target file has been copied
+        final copiedFileInTicket = File(
+          path.join(ticketDir.path, repoName, 'target.txt'),
+        );
+        expect(copiedFileInTicket.existsSync(), isTrue);
+        expect(
+          logMessages,
+          equals([
+            'Added repository $repoName to ticket workspace.',
+          ]),
+        );
+      },
+    );
+
+    // New test to cover error when master workspace missing repository
+    test('logs error when repo not found in master workspace', () async {
+      // Arrange: use clone stub that does nothing (no directory creation)
+      // Setup ticket workspace and change cwd
+      final ticketDir = Directory(
+        path.join(tempDir.path, 'tickets', 'TICKET-MISSING'),
+      )..createSync(recursive: true);
+      final originalCwd = Directory.current;
+      Directory.current = ticketDir;
+      try {
+        // Act: attempt to add a repo that hasn't been cloned
+        await runner.run(['add', 'nonexistent']);
+        // Assert: error message logged about missing repo in master
+        expect(
+          logMessages,
+          contains('Repository nonexistent not found in master workspace.'),
+        );
+      } finally {
+        // Restore cwd
+        Directory.current = originalCwd;
+      }
+    });
+
+    // Added test to cover: logs gray message
+    // if repository already exists in ticket workspace
+    test('logs already exists in ticket workspace if copied before', () async {
+      // Arrange: create the repo in master
+      const repoName = 'someGreyRepo';
+      final repoDir = Directory(path.join(masterWorkspacePath, repoName))
+        ..createSync(recursive: true);
+      File(path.join(repoDir.path, 'foo.txt')).writeAsStringSync('hi');
+
+      // Prepare ticket workspace and change cwd
+      final ticketDir = Directory(path.join(tempDir.path, 'tickets', 'ALREADY'))
+        ..createSync(recursive: true);
+      final destination = Directory(path.join(ticketDir.path, repoName));
+      destination.createSync(
+        recursive: true,
+      ); // repo already exists in the ticket workspace
+      File(path.join(destination.path, 'foo.txt')).writeAsStringSync('hi');
+      final originalCwd = Directory.current;
+      Directory.current = ticketDir;
+      try {
+        await runner.run(['add', repoName]);
+
+        expect(
+          logMessages,
+          contains('$repoName already exists in ticket workspace.'),
+        );
+      } finally {
+        Directory.current = originalCwd;
+      }
     });
   });
 }
