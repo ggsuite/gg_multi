@@ -424,5 +424,36 @@ void main() {
         Directory.current = originalCwd;
       }
     });
+
+    // Added test to cover: logs gray message
+    // if repository already exists in ticket workspace
+    test('logs already exists in ticket workspace if copied before', () async {
+      // Arrange: create the repo in master
+      const repoName = 'someGreyRepo';
+      final repoDir = Directory(path.join(masterWorkspacePath, repoName))
+        ..createSync(recursive: true);
+      File(path.join(repoDir.path, 'foo.txt')).writeAsStringSync('hi');
+
+      // Prepare ticket workspace and change cwd
+      final ticketDir = Directory(path.join(tempDir.path, 'tickets', 'ALREADY'))
+        ..createSync(recursive: true);
+      final destination = Directory(path.join(ticketDir.path, repoName));
+      destination.createSync(
+        recursive: true,
+      ); // repo already exists in the ticket workspace
+      File(path.join(destination.path, 'foo.txt')).writeAsStringSync('hi');
+      final originalCwd = Directory.current;
+      Directory.current = ticketDir;
+      try {
+        await runner.run(['add', repoName]);
+
+        expect(
+          logMessages,
+          contains('$repoName already exists in ticket workspace.'),
+        );
+      } finally {
+        Directory.current = originalCwd;
+      }
+    });
   });
 }
