@@ -71,6 +71,53 @@ void main() {
     });
   });
 
+  group('WorkspaceUtils.defaultKidneyWorkspacePath', () {
+    late Directory tempRoot;
+    late String originalCwd;
+
+    setUp(() async {
+      tempRoot =
+          await Directory.systemTemp.createTemp('workspace_utils_testK_');
+      originalCwd = Directory.current.path;
+    });
+
+    tearDown(() async {
+      Directory.current = Directory(originalCwd);
+      await tempRoot.delete(recursive: true);
+    });
+
+    test('returns parent of kidney_ws_master if existing', () async {
+      final wsParent = Directory(path.join(tempRoot.path, 'the_workspace'));
+      final masterDir = Directory(path.join(wsParent.path, 'kidney_ws_master'));
+      await masterDir.create(recursive: true);
+      Directory.current = wsParent;
+
+      final result = WorkspaceUtils.defaultKidneyWorkspacePath();
+      expect(result, equals(wsParent.path));
+    });
+
+    test('returns parent of resolved master workspace path', () async {
+      final ticketDir = Directory(
+        path.join(tempRoot.path, 'parent', 'tickets', 'TICKET-42'),
+      )..createSync(recursive: true);
+      final wsParent = Directory(path.join(tempRoot.path, 'parent'));
+      Directory.current = ticketDir;
+
+      final result = WorkspaceUtils.defaultKidneyWorkspacePath();
+      expect(result, equals(wsParent.path));
+    });
+
+    test(
+        'uses the parent of fallback cwd/kidney_ws_master '
+        'when nothing is found', () async {
+      final customCwd = Directory(path.join(tempRoot.path, 'zombie'));
+      await customCwd.create(recursive: true);
+      Directory.current = customCwd;
+      final result = WorkspaceUtils.defaultKidneyWorkspacePath();
+      expect(result, equals(customCwd.path));
+    });
+  });
+
   group('WorkspaceUtils.isInsideExistingWorkspace', () {
     late Directory tempRoot;
     late String originalCwd;

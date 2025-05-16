@@ -67,6 +67,12 @@ class WorkspaceUtils {
     }
   }
 
+  /// Returns the path of the Kidney workspace, which is the parent directory
+  /// of the master workspace (`kidney_ws_master`).
+  static String defaultKidneyWorkspacePath() {
+    return path.dirname(defaultMasterWorkspacePath());
+  }
+
   /// Returns `true` if [directoryPath] is located *inside* an existing Kidney
   /// workspace (i.e. one of its ancestor directories already contains a
   /// `kidney_ws_master` folder).  This is used by `init` to prevent nested
