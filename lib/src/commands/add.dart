@@ -14,6 +14,7 @@ import 'package:path/path.dart' as path;
 
 import '../backend/git_cloner.dart';
 import '../backend/add_repository_helper.dart';
+import '../backend/filesystem_utils.dart';
 
 /// Command to add a repository or all repositories from an organization.
 ///
@@ -38,6 +39,7 @@ class AddCommand extends Command<dynamic> {
   })  : gitCloner = gitCloner ?? GitCloner(),
         repoFetcher = repoFetcher ?? http.get,
         workspacePath = workspacePath ?? _defaultMasterWorkspacePath() {
+    // coverage:ignore-end
     // -----------------------------------------------------------------------
     // Command line flags -----------------------------------------------------
     argParser.addFlag(
@@ -49,7 +51,6 @@ class AddCommand extends Command<dynamic> {
       defaultsTo: false,
     );
   }
-  // coverage:ignore-end
 
   /// The log function.
   final GgLog ggLog;
@@ -125,36 +126,8 @@ class AddCommand extends Command<dynamic> {
       return;
     }
 
-    await _copyDirectory(srcDir, destDir);
+    await copyDirectory(srcDir, destDir);
     ggLog(green('Added repository $repoName to ticket workspace.'));
-  }
-
-  /// Recursively copies [source] to [destination].
-  Future<void> _copyDirectory(Directory source, Directory destination) async {
-    if (!destination.existsSync()) {
-      await destination.create(recursive: true);
-    }
-
-    await for (final entity in source.list(recursive: false)) {
-      final newPath = path.join(destination.path, path.basename(entity.path));
-      if (entity is File) {
-        await entity.copy(newPath);
-      } else if (entity is Directory) {
-        // Coverage workaround: move block to a method for easier testing
-        await _copySubDirectory(entity, Directory(newPath));
-      } else if (entity is Link) {
-        final target = await entity.target();
-        await Link(newPath).create(target);
-      }
-    }
-  }
-
-  /// Helper to copy a subdirectory (extracted for testability and coverage)
-  Future<void> _copySubDirectory(
-    Directory source,
-    Directory destination,
-  ) async {
-    await _copyDirectory(source, destination);
   }
 
   /// Walks up the directory tree to find a ticket directory and returns its

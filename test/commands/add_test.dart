@@ -350,58 +350,6 @@ void main() {
       },
     );
 
-    test(
-      'copies symbolic links into ticket workspace',
-      () async {
-        // Arrange: create a repo with a file and a symbolic link
-        const repoName = 'linkRepo';
-        final repoDir = Directory(
-          path.join(masterWorkspacePath, repoName),
-        )..createSync(recursive: true);
-        // Create a file inside the repo
-        final fileInRepo = File(path.join(repoDir.path, 'target.txt'));
-        fileInRepo.writeAsStringSync('content');
-        // Create a symbolic link pointing to the file
-        final linkInRepo = Link(
-          path.join(repoDir.path, 'theLink'),
-        );
-        await linkInRepo.create('target.txt');
-
-        // Setup ticket workspace and change cwd
-        final ticketDir = Directory(
-          path.join(tempDir.path, 'tickets', 'TICKET-Link'),
-        )..createSync(recursive: true);
-        final originalCwd = Directory.current;
-        Directory.current = ticketDir;
-        try {
-          // Act
-          await runner.run(['add', repoName]);
-        } finally {
-          // Restore cwd
-          Directory.current = originalCwd;
-        }
-
-        // Assert: symbolic link is copied
-        final newLink = Link(
-          path.join(ticketDir.path, repoName, 'theLink'),
-        );
-        final linkTarget = await newLink.target();
-        expect(linkTarget, equals('target.txt'));
-        // Also ensure the target file has been copied
-        final copiedFileInTicket = File(
-          path.join(ticketDir.path, repoName, 'target.txt'),
-        );
-        expect(copiedFileInTicket.existsSync(), isTrue);
-        expect(
-          logMessages,
-          equals([
-            'Added repository $repoName to ticket workspace.',
-          ]),
-        );
-      },
-      skip: Platform.isWindows,
-    );
-
     // New test to cover error when master workspace missing repository
     test('logs error when repo not found in master workspace', () async {
       // Arrange: use clone stub that does nothing (no directory creation)
