@@ -15,6 +15,7 @@ import 'package:path/path.dart' as path;
 import '../backend/git_cloner.dart';
 import '../backend/add_repository_helper.dart';
 import '../backend/filesystem_utils.dart';
+import '../backend/workspace_utils.dart';
 
 /// Command to add a repository or all repositories from an organization.
 ///
@@ -38,7 +39,8 @@ class AddCommand extends Command<dynamic> {
     // coverage:ignore-start
   })  : gitCloner = gitCloner ?? GitCloner(),
         repoFetcher = repoFetcher ?? http.get,
-        workspacePath = workspacePath ?? _defaultMasterWorkspacePath() {
+        workspacePath =
+            workspacePath ?? WorkspaceUtils.defaultMasterWorkspacePath() {
     // coverage:ignore-end
     // -----------------------------------------------------------------------
     // Command line flags -----------------------------------------------------
@@ -144,32 +146,6 @@ class AddCommand extends Command<dynamic> {
         return null;
       }
       current = parent;
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Static helpers ------------------------------------------------------------
-
-  /// Determines the project root (directory that contains either a
-  /// `kidney_ws_master` folder or a `tickets` folder) and returns the full path
-  /// to the master workspace inside that root.
-  static String _defaultMasterWorkspacePath() {
-    var dir = Directory.current;
-    while (true) {
-      // Found an existing master workspace in this folder → use it.
-      if (Directory(path.join(dir.path, 'kidney_ws_master')).existsSync()) {
-        return path.join(dir.path, 'kidney_ws_master');
-      }
-      // Found the tickets folder → the root is the parent of tickets.
-      if (Directory(path.join(dir.path, 'tickets')).existsSync()) {
-        return path.join(dir.path, 'kidney_ws_master');
-      }
-      final parent = dir.parent;
-      if (parent.path == dir.path) {
-        // Reached filesystem root → fall back to current directory.
-        return path.join(Directory.current.path, 'kidney_ws_master');
-      }
-      dir = parent;
     }
   }
 }
