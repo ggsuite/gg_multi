@@ -20,8 +20,17 @@ import 'package:pubspec_parse/pubspec_parse.dart';
 ///
 /// The [force] parameter determines whether an existing cloned
 /// repository should be overwritten. If false and the destination
-/// already exists and is not empty, the function logs "repo already added."
-/// If true, the existing directory is deleted before cloning.
+/// already exists and is not empty, the function logs "repo already added.".
+///
+/// The [logIfAlreadyAdded] parameter controls whether the "already added"
+/// message is logged when a repository is skipped because it's already
+/// present. This can be disabled when adding to a ticket workspace to
+/// suppress duplicate logs.
+///
+/// The optional [onRepoAdded] callback is executed for every repository that is
+/// ensured to be present (either cloned or detected as already cloned).  This
+/// makes it easy to plug-in additional behaviour (e.g. copy the repo to a
+/// ticket workspace) without touching the core cloning logic.
 Future<void> addRepositoryHelper({
   required String targetArg,
   required GgLog ggLog,
@@ -29,24 +38,40 @@ Future<void> addRepositoryHelper({
   required Future<http.Response> Function(Uri) repoFetcher,
   required String workspacePath,
   bool force = false,
+  bool logIfAlreadyAdded = true,
+  Future<void> Function(String repoName)? onRepoAdded,
 }) async {
+  // ---------------------------------------------------------------------------
   // Local helper function to attempt cloning or skip if already exists.
   Future<void> attemptClone(String repoUrl, String repoName) async {
     final destination = path.join(workspacePath, repoName);
     final destDir = Directory(destination);
+
+    // If repository folder already exists and is not empty ....................
     if (destDir.existsSync() && destDir.listSync().isNotEmpty) {
       if (!force) {
-        ggLog(darkGray('$repoName already added.'));
+        if (logIfAlreadyAdded) {
+          ggLog(darkGray('$repoName already added.'));
+        }
+        if (onRepoAdded != null) {
+          await onRepoAdded(repoName);
+        }
         return;
       } else {
         await destDir.delete(recursive: true);
       }
     }
+
+    // Clone the repository ....................................................
     await gitCloner.cloneRepo(repoUrl, destination);
     ggLog(green('Added repository $repoName from $repoUrl'));
+
+    if (onRepoAdded != null) {
+      await onRepoAdded(repoName);
+    }
   }
 
-  // -----------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // Normalize URL: remove trailing "#" and "/" so that
   // "https://github.com/ggsuite/" and "https://github.com/ggsuite" behave the
   // same. This must happen before any URI parsing logic.
@@ -68,7 +93,7 @@ Future<void> addRepositoryHelper({
       throw Exception('Invalid organization URL provided: $cleanedUrl');
     }
     if (uri.pathSegments.length < 2) {
-      // Treat as organization URL
+      // Treat as organization URL ---------------------------------------------
       final String orgName = uri.pathSegments.last.trim();
       final String apiUrl = 'https://api.github.com/orgs/$orgName/repos';
       final response = await repoFetcher(Uri.parse(apiUrl));
@@ -89,7 +114,7 @@ Future<void> addRepositoryHelper({
         await attemptClone(cloneUrl, repoName);
       }
     } else {
-      // Treat as a repository URL
+      // Treat as a repository URL ---------------------------------------------
       String repoUrl = cleanedUrl;
       if (!repoUrl.endsWith('.git')) {
         repoUrl = '$repoUrl.git';
@@ -98,14 +123,17 @@ Future<void> addRepositoryHelper({
       await attemptClone(repoUrl, repoName);
     }
   } else if (targetArg.startsWith('git@')) {
+    // SSH URL -----------------------------------------------------------------
     final String repoUrl = targetArg;
     final String repoName = extractRepoName(repoUrl);
     await attemptClone(repoUrl, repoName);
   } else if (targetArg.contains('/')) {
+    // username/repo -----------------------------------------------------------
     final String repoUrl = 'https://github.com/$targetArg.git';
     final String repoName = extractRepoName(repoUrl);
     await attemptClone(repoUrl, repoName);
   } else {
+    // plain repo name ---------------------------------------------------------
     final String repoUrl = 'https://github.com/$targetArg/$targetArg.git';
     final String repoName = extractRepoName(repoUrl);
     await attemptClone(repoUrl, repoName);
