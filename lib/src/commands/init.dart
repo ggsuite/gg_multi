@@ -10,6 +10,8 @@ import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:path/path.dart' as path;
 import 'package:gg_log/gg_log.dart';
 
+import '../backend/workspace_utils.dart';
+
 /// Command to initialize the master workspace (kidney_ws_master)
 class InitCommand extends Command<void> {
   /// Constructor
@@ -34,16 +36,31 @@ class InitCommand extends Command<void> {
 
   @override
   Future<void> run() async {
-    final wsPath = path.join(rootPath, 'kidney_ws_master');
+    final rootDir = Directory(rootPath);
+
+    final wsPath = path.join(rootDir.path, 'kidney_ws_master');
     final wsDir = Directory(wsPath);
+
     if (wsDir.existsSync()) {
+      ggLog(yellow('Master workspace already exists at: $wsPath'));
+      return;
+    }
+
+    if (rootDir.listSync().isNotEmpty) {
+      ggLog(red('The directory must be empty to initialize a workspace.'));
+      return;
+    }
+
+    if (WorkspaceUtils.isInsideExistingWorkspace(rootDir.path)) {
       ggLog(
-        yellow(
-          'Master workspace already exists at: $wsPath',
-        ),
+        red('Cannot initialize a new workspace inside an existing Kidney '
+            'workspace.'),
       );
       return;
     }
+
+    // -----------------------------------------------------------------------
+    // Create the workspace ---------------------------------------------------
     wsDir.createSync(recursive: true);
     ggLog(green('Master workspace initialized at: $wsPath'));
   }

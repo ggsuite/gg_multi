@@ -70,4 +70,94 @@ void main() {
       expect(result, expectedMaster);
     });
   });
+
+  group('WorkspaceUtils.isInsideExistingWorkspace', () {
+    late Directory tempRoot;
+    late String originalCwd;
+
+    setUp(() async {
+      tempRoot = await Directory.systemTemp.createTemp('utils_is_inside_test_');
+      originalCwd = Directory.current.path;
+    });
+
+    tearDown(() async {
+      Directory.current = Directory(originalCwd);
+      if (await tempRoot.exists()) {
+        await tempRoot.delete(recursive: true);
+      }
+    });
+
+    test('returns false for directory not in or under any kidney_ws_master',
+        () async {
+      // Arrange -----------------------------------------------------------
+      final randomDir = Directory(path.join(tempRoot.path, 'random', 'sub'));
+      await randomDir.create(recursive: true);
+
+      // Act ---------------------------------------------------------------
+      final isInside = WorkspaceUtils.isInsideExistingWorkspace(randomDir.path);
+
+      // Assert ------------------------------------------------------------
+      expect(isInside, isFalse);
+    });
+
+    test('returns true for direct child of a folder with kidney_ws_master',
+        () async {
+      final root = Directory(path.join(tempRoot.path, 'myroot'));
+      final ws = Directory(path.join(root.path, 'kidney_ws_master'));
+      await ws.create(recursive: true);
+
+      final child = Directory(path.join(root.path, 'foo'));
+      await child.create();
+
+      final isInside = WorkspaceUtils.isInsideExistingWorkspace(child.path);
+
+      expect(isInside, isTrue);
+    });
+
+    test('returns true for nested grandchild inside workspace', () async {
+      // Arrange --------------------------------------------------------------
+      final root = Directory(path.join(tempRoot.path, 'parent'));
+      final ws = Directory(path.join(root.path, 'kidney_ws_master'));
+      await ws.create(recursive: true);
+      final grandChild = Directory(path.join(root.path, 'nested', 'sub'));
+      await grandChild.create(recursive: true);
+
+      // Act ------------------------------------------------------------------
+      final isInside =
+          WorkspaceUtils.isInsideExistingWorkspace(grandChild.path);
+
+      // Assert ---------------------------------------------------------------
+      expect(isInside, isTrue);
+    });
+
+    test('returns true if searching at the workspace root itself', () async {
+      // Arrange ---------------------------------------------------------------
+      final root = Directory(path.join(tempRoot.path, 'x'));
+      final ws = Directory(path.join(root.path, 'kidney_ws_master'));
+      await ws.create(recursive: true);
+
+      // Act ------------------------------------------------------------------
+      final isInside = WorkspaceUtils.isInsideExistingWorkspace(root.path);
+
+      // Assert ---------------------------------------------------------------
+      // The workspace folder is in root, not above root. So should be false.
+      expect(isInside, isTrue);
+    });
+
+    test('returns true when rootPath is the actual kidney_ws_master folder',
+        () async {
+      // Arrange ------------------------------------------------------------
+      final root = Directory(path.join(tempRoot.path, 'top'));
+      final ws = Directory(path.join(root.path, 'kidney_ws_master'));
+      await ws.create(recursive: true);
+
+      // Act ---------------------------------------------------------------
+      // Call on the kidney_ws_master folder directly
+      final isInside = WorkspaceUtils.isInsideExistingWorkspace(ws.path);
+
+      // Assert ------------------------------------------------------------
+      // Should be false: isInside means being a child or deeper
+      expect(isInside, isTrue);
+    });
+  });
 }

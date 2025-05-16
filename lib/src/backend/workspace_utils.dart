@@ -56,13 +56,35 @@ class WorkspaceUtils {
       // 3. Go one level up or break when we are at the filesystem root. -------
       final parent = dir.parent;
       if (parent.path == dir.path) {
-        // Reached filesystem root – build the fallback path **without**
+        // Reached filesystem root - build the fallback path **without**
         // modifying the original string so that any forward slashes that were
         // present in the test setup remain untouched.  We only append the
         // platform specific separator *between* the original path and the
         // `kidney_ws_master` segment.
         return path.join(originalWorkingDir, 'kidney_ws_master');
       }
+      dir = parent;
+    }
+  }
+
+  /// Returns `true` if [directoryPath] is located *inside* an existing Kidney
+  /// workspace (i.e. one of its ancestor directories already contains a
+  /// `kidney_ws_master` folder).  This is used by `init` to prevent nested
+  /// workspaces.
+  static bool isInsideExistingWorkspace(String directoryPath) {
+    var dir = Directory(directoryPath).absolute;
+
+    while (true) {
+      if (Directory(path.join(dir.path, 'kidney_ws_master')).existsSync()) {
+        return true;
+      }
+
+      final parent = dir.parent;
+      if (parent.path == dir.path) {
+        // We reached the filesystem root without finding a workspace.
+        return false;
+      }
+
       dir = parent;
     }
   }
