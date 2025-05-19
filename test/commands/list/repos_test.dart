@@ -17,7 +17,6 @@ import '../../rm_console_colors_helper.dart';
 void main() {
   group('ListReposCommand', () {
     late Directory tempDir;
-    late Directory masterDir;
     final messages = <String>[];
 
     void ggLog(String message) {
@@ -27,8 +26,6 @@ void main() {
     setUp(() {
       messages.clear();
       tempDir = Directory.systemTemp.createTempSync('list_repos_test');
-      masterDir = Directory(path.join(tempDir.path, 'kidney_ws_master'))
-        ..createSync(recursive: true);
     });
 
     tearDown(() {
@@ -38,8 +35,12 @@ void main() {
     });
 
     test('lists repositories correctly', () async {
-      final masterPath = masterDir.path;
-      final repo1 = Directory(path.join(masterPath, 'json_dart'))..createSync();
+      final workspacePath = path.join(tempDir.path, 'workspace_link');
+      final masterPath = path.join(workspacePath, 'kidney_ws_master');
+      final repo1 = Directory(path.join(masterPath, 'json_dart'))
+        ..createSync(
+          recursive: true,
+        );
       File(path.join(repo1.path, 'pubspec.yaml'))
           .writeAsStringSync('name: json_dart\nversion: 3.5.2');
       Directory(path.join(repo1.path, '.git')).createSync();
@@ -57,7 +58,7 @@ void main() {
       runner.addCommand(
         ListReposCommand(
           ggLog: ggLog,
-          workspacePath: masterDir.path,
+          workspacePath: masterPath,
         ),
       );
       await runner.run(['repos']);
@@ -67,13 +68,16 @@ void main() {
     });
 
     test('handles empty master workspace directory', () async {
-      final emptyDir = Directory(path.join(tempDir.path, 'empty_master'))
-        ..createSync();
+      final workspacePath = path.join(tempDir.path, 'workspace_empty');
+      final masterPath = Directory(path.join(workspacePath, 'kidney_ws_master'))
+        ..createSync(
+          recursive: true,
+        );
       final runner = CommandRunner<void>('test', 'Test ListReposCommand');
       runner.addCommand(
         ListReposCommand(
           ggLog: ggLog,
-          workspacePath: emptyDir.path,
+          workspacePath: masterPath.path,
         ),
       );
       await runner.run(['repos']);
@@ -84,6 +88,7 @@ void main() {
     });
 
     test('prints help message when --help is passed', () async {
+      final workspacePath = path.join(tempDir.path, 'workspace_help');
       final runner = CommandRunner<void>(
         'test',
         'ListReposCommand Help',
@@ -91,7 +96,7 @@ void main() {
       runner.addCommand(
         ListReposCommand(
           ggLog: (_) {},
-          workspacePath: masterDir.path,
+          workspacePath: workspacePath,
         ),
       );
       final output = await capturePrint(

@@ -4,12 +4,11 @@
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
 
-import 'dart:io';
-
 import 'package:args/command_runner.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
 import '../../backend/list_backend.dart';
+import '../../backend/workspace_utils.dart';
 
 /// Command to list all repositories in the master workspace.
 class ListReposCommand extends Command<dynamic> {
@@ -18,9 +17,8 @@ class ListReposCommand extends Command<dynamic> {
     required this.ggLog,
     String? workspacePath,
     // coverage:ignore-start
-  }) : workspacePath = workspacePath ??
-            '${Directory.current.path}${Platform.pathSeparator}'
-                'kidney_ws_master';
+  }) : workspacePath =
+            workspacePath ?? WorkspaceUtils.defaultMasterWorkspacePath();
   // coverage:ignore-end
 
   /// The log function.

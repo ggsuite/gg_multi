@@ -11,6 +11,7 @@ import 'package:args/command_runner.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
+import '../../backend/workspace_utils.dart';
 
 /// Typedef for creating Directory instances (for testing).
 typedef DirectoryFactory = Directory Function(String path);
@@ -23,7 +24,7 @@ class TicketCommand extends Command<void> {
     String? rootPath,
     DirectoryFactory? directoryFactory,
     // coverage:ignore-start
-  })  : rootPath = rootPath ?? Directory.current.path,
+  })  : rootPath = rootPath ?? WorkspaceUtils.defaultKidneyWorkspacePath(),
         directoryFactory = directoryFactory ?? Directory.new
   // coverage:ignore-end
   {

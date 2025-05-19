@@ -67,7 +67,7 @@ void main() {
       runner.addCommand(
         ListOrganizationsCommand(
           ggLog: ggLog,
-          workspacePath: masterDir.path,
+          workspacePath: masterPath,
         ),
       );
       await runner.run(['organizations']);
@@ -99,7 +99,7 @@ void main() {
       runner.addCommand(
         ListOrganizationsCommand(
           ggLog: ggLog,
-          workspacePath: masterDir.path,
+          workspacePath: masterPath,
         ),
       );
       await runner.run(['organizations']);
