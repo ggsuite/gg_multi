@@ -1,5 +1,5 @@
 // @license
-// Copyright (c) 2025 Göran Hegenberg. All Rights Reserved.
+// Copyright (c) 2019 - 2025 Dr. Gabriel Gatzsche. All Rights Reserved.
 //
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
@@ -9,18 +9,22 @@ import 'package:args/command_runner.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/code.dart';
+import 'package:kidney_core/src/backend/vscode_launcher.dart';
 import '../rm_console_colors_helper.dart';
 
 void main() {
   group('CodeCommand', () {
     late Directory tempRoot;
     late List<String> messages;
-    late List<List<String>> launched;
+    late List<List<Object?>> launched;
     late CommandRunner<void> runner;
 
-    Future<ProcessResult> fakeRun(String exe, List<String> args) async {
-      launched.add([exe, ...args]);
-      return ProcessResult(0, 0, '', '');
+    Future<void> fakeStarter(
+      String exe,
+      List<String> args, {
+      bool runInShell = false,
+    }) async {
+      launched.add([exe, ...args, runInShell]);
     }
 
     void ggLog(String m) => messages.add(rmConsoleColors(m));
@@ -34,7 +38,8 @@ void main() {
           CodeCommand(
             ggLog: ggLog,
             rootPath: tempRoot.path,
-            processRunner: fakeRun,
+            directoryFactory: Directory.new,
+            launcher: VSCodeLauncher(processStarter: fakeStarter),
           ),
         );
     });
@@ -74,7 +79,6 @@ void main() {
 
       // must have launched twice, once for each subdir
       expect(launched.length, 2);
-      // both must launch 'code', ...
       expect(launched[0][0], 'code');
       expect(launched[1][0], 'code');
       expect(
@@ -95,12 +99,46 @@ void main() {
 
       expect(launched.length, 1);
       expect(
-        launched[0],
-        ['code', path.join(tdir.path, 'MyRepo')],
+        launched[0][0],
+        'code',
+      );
+      expect(
+        launched[0][1],
+        path.join(tdir.path, 'MyRepo'),
+      );
+      expect(
+        launched[0][2],
+        isTrue,
       );
       expect(
         messages,
         contains('Opened MyRepo at ${path.join(tdir.path, 'MyRepo')}'),
+      );
+    });
+
+    test('opens single repo when specified with backslash separator', () async {
+      final tdir = Directory(path.join(tempRoot.path, 'tickets', 'T5'))
+        ..createSync(recursive: true);
+      Directory(path.join(tdir.path, 'SlashRepo')).createSync();
+      await runner
+          .run(['code', 'T5\\SlashRepo']); // double backslash for literal '\'
+
+      expect(launched.length, 1);
+      expect(
+        launched[0][0],
+        'code',
+      );
+      expect(
+        launched[0][1],
+        path.join(tdir.path, 'SlashRepo'),
+      );
+      expect(
+        launched[0][2],
+        isTrue,
+      );
+      expect(
+        messages,
+        contains('Opened SlashRepo at ${path.join(tdir.path, 'SlashRepo')}'),
       );
     });
 

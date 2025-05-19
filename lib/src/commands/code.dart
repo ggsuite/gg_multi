@@ -1,5 +1,5 @@
 // @license
-// Copyright (c) 2025 Göran Hegenberg. All Rights Reserved.
+// Copyright (c) 2019 - 2025 Dr. Gabriel Gatzsche. All Rights Reserved.
 //
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
@@ -11,12 +11,10 @@ import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 import '../backend/workspace_utils.dart';
+import '../backend/vscode_launcher.dart';
 
 /// Typedef for creating Directory instances (for testing).
 typedef DirectoryFactory = Directory Function(String path);
-
-/// Typedef for spawning processes (for testing).
-typedef ProcessRunner = Future<ProcessResult> Function(String, List<String>);
 
 /// Command to open all repos (or a single repo) under a ticket in VS Code.
 class CodeCommand extends Command<void> {
@@ -25,11 +23,11 @@ class CodeCommand extends Command<void> {
     required this.ggLog,
     String? rootPath,
     DirectoryFactory? directoryFactory,
-    ProcessRunner? processRunner,
+    VSCodeLauncher? launcher,
     // coverage:ignore-start
   })  : workspacePath = rootPath ?? WorkspaceUtils.defaultKidneyWorkspacePath(),
         _dirFactory = directoryFactory ?? Directory.new,
-        _run = processRunner ?? Process.run;
+        _launcher = launcher ?? VSCodeLauncher();
   // coverage:ignore-end
 
   /// The log function.
@@ -41,8 +39,8 @@ class CodeCommand extends Command<void> {
   /// Used for test injection.
   final DirectoryFactory _dirFactory;
 
-  /// Used for test injection.
-  final ProcessRunner _run;
+  /// Responsible for launching VS Code.
+  final VSCodeLauncher _launcher;
 
   @override
   String get name => 'code';
@@ -58,7 +56,7 @@ class CodeCommand extends Command<void> {
       throw UsageException('Missing ticket parameter.', usage);
     }
     final target = args.first;
-    final parts = target.split('/');
+    final parts = target.split(RegExp(r'[\\/]'));
     if (parts.isEmpty || parts.length > 2) {
       throw UsageException(
         'Invalid target format. Use <ticket> or <ticket>/<repo>.',
@@ -99,7 +97,7 @@ class CodeCommand extends Command<void> {
   }
 
   Future<void> _openInVSCode(Directory dir) async {
-    await _run('code', [dir.path]);
+    await _launcher.open(dir);
     ggLog(green('Opened ${path.basename(dir.path)} at ${dir.path}'));
   }
 }
