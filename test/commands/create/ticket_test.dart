@@ -86,6 +86,52 @@ void main() {
       );
     });
 
+    test('does not create ticket if it already exists', () async {
+      const issueId = 'DUP-1';
+      const description = 'duplicate ticket';
+
+      // First creation
+      await runner.run([
+        'ticket',
+        issueId,
+        '-m',
+        description,
+      ]);
+      final ticketDir = Directory(
+        path.join(
+          tempDir.path,
+          'tickets',
+          issueId,
+        ),
+      );
+      final ticketFile = File(
+        path.join(
+          ticketDir.path,
+          '.ticket',
+        ),
+      );
+      expect(ticketFile.existsSync(), isTrue);
+
+      // Try to create same ticket again
+      messages.clear();
+      await runner.run([
+        'ticket',
+        issueId,
+        '-m',
+        description,
+      ]);
+      // Existing file still exists and was not modified again
+      expect(ticketFile.existsSync(), isTrue);
+
+      expect(
+        messages,
+        contains(
+          'Error: Ticket $issueId already exists at '
+          '${ticketDir.path}',
+        ),
+      );
+    });
+
     test('throws UsageException when missing issue id', () async {
       await expectLater(
         runner.run(['ticket', '-m', 'desc']),

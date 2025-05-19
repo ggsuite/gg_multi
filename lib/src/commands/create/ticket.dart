@@ -69,17 +69,23 @@ class TicketCommand extends Command<void> {
     // Build the directory path for the ticket.
     final ticketsPath = path.join(rootPath, 'tickets', issueId);
     final dir = directoryFactory(ticketsPath);
+    final ticketFile = File(path.join(ticketsPath, '.ticket'));
+
+    if (dir.existsSync() && ticketFile.existsSync()) {
+      ggLog(red('Error: Ticket $issueId already exists at $ticketsPath'));
+      return;
+    }
+
     if (!dir.existsSync()) {
       dir.createSync(recursive: true);
     }
 
     // Write the .ticket file as JSON.
-    final file = File(path.join(ticketsPath, '.ticket'));
     final data = <String, String>{
       'issue_id': issueId,
       'description': description,
     };
-    file.writeAsStringSync(jsonEncode(data));
+    ticketFile.writeAsStringSync(jsonEncode(data));
 
     ggLog(green('Created ticket $issueId at $ticketsPath'));
   }
