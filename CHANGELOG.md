@@ -21,6 +21,7 @@
 - Update Readme
 - execute list repos, list organizations and create ticket always in kidney workspace
 - Error if ticket already exists
+- Successfully open VSCode on Windows
 
 ### Removed
 
