@@ -87,31 +87,28 @@ class AddCommand extends Command<dynamic> {
     if (argResults!.rest.isEmpty) {
       throw UsageException('Missing target parameter.', usage);
     }
-
-    final String targetArg = argResults!.rest[0];
-    // Read the --force flag (defaults to false if not provided)
+    final targets = argResults!.rest;
     final bool force = argResults!['force'] as bool;
-
-    // Detect whether we are inside a ticket directory -------------------------
     final String? ticketPath = _detectTicketPath();
-
-    await addRepositoryHelper(
-      targetArg: targetArg,
-      ggLog: ggLog,
-      gitCloner: gitCloner,
-      repoFetcher: repoFetcher,
-      workspacePath: masterWorkspacePath,
-      force: force,
-      logIfAlreadyAdded: ticketPath == null,
-      onRepoAdded: ticketPath == null
-          ? null
-          : (String repoName) async {
-              await _addRepoToTicket(
-                repoName: repoName,
-                ticketPath: ticketPath,
-              );
-            },
-    );
+    for (final targetArg in targets) {
+      await addRepositoryHelper(
+        targetArg: targetArg,
+        ggLog: ggLog,
+        gitCloner: gitCloner,
+        repoFetcher: repoFetcher,
+        workspacePath: masterWorkspacePath,
+        force: force,
+        logIfAlreadyAdded: ticketPath == null,
+        onRepoAdded: ticketPath == null
+            ? null
+            : (String repoName) async {
+                await _addRepoToTicket(
+                  repoName: repoName,
+                  ticketPath: ticketPath,
+                );
+              },
+      );
+    }
   }
 
   // ---------------------------------------------------------------------------

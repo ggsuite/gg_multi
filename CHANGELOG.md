@@ -15,6 +15,7 @@
 - Add function defaultKidneyWorkspacePath
 - Add force flag correctly to AddCommand
 - Add command kidney\_core list tickets
+- add support in add command for multiple repos
 
 ### Changed
 

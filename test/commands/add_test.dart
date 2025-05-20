@@ -425,5 +425,38 @@ void main() {
         ),
       );
     });
+
+    test('clones multiple repositories when multiple targets provided',
+        () async {
+      // Arrange
+      when(() => mockGitCloner.cloneRepo(any(), any()))
+          .thenAnswer((_) async {});
+      // Act
+      await runner.run(['add', 'repoA', 'repoB']);
+      // Assert: two distinct cloneRepo calls
+      verify(
+        () => mockGitCloner.cloneRepo(
+          'https://github.com/repoA/repoA.git',
+          any(),
+        ),
+      ).called(1);
+      verify(
+        () => mockGitCloner.cloneRepo(
+          'https://github.com/repoB/repoB.git',
+          any(),
+        ),
+      ).called(1);
+      // And logs for both
+      expect(
+        logMessages,
+        contains('Added repository repoA from '
+            'https://github.com/repoA/repoA.git'),
+      );
+      expect(
+        logMessages,
+        contains('Added repository repoB from '
+            'https://github.com/repoB/repoB.git'),
+      );
+    });
   });
 }
