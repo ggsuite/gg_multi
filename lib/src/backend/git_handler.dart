@@ -9,14 +9,14 @@ import 'dart:io';
 /// Typedef for a process runner function.
 typedef ProcessRunner = Future<ProcessResult> Function(String, List<String>);
 
-/// A class responsible for cloning git repositories.
-class GitCloner {
+/// A class responsible for cloning git repositories and performing Git/utility operations.
+class GitHandler {
   /// The function used to run system processes.
   final ProcessRunner processRunner;
 
   /// Constructor accepts an optional [processRunner]
   /// to enable testing by injection.
-  GitCloner({ProcessRunner? processRunner})
+  GitHandler({ProcessRunner? processRunner})
       : processRunner = processRunner ?? Process.run;
 
   /// Clones the repository from [repoUrl] into [targetDirectory].
@@ -42,6 +42,20 @@ class GitCloner {
     if (result.exitCode != 0) {
       throw Exception(
         'Failed to clone repo from $repoUrl: ${result.stderr}',
+      );
+    }
+  }
+
+  /// Checks out a new branch [branchName] in the repository at [repoPath].
+  /// Throws an exception if the checkout fails.
+  Future<void> checkoutBranch(String branchName, String repoPath) async {
+    final result = await processRunner(
+      'git',
+      <String>['-C', repoPath, 'checkout', '-b', branchName],
+    );
+    if (result.exitCode != 0) {
+      throw Exception(
+        'Failed to checkout branch $branchName in $repoPath: ${result.stderr}',
       );
     }
   }

@@ -9,7 +9,7 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
-import 'package:kidney_core/src/backend/git_cloner.dart';
+import 'package:kidney_core/src/backend/git_handler.dart';
 import 'package:kidney_core/src/commands/add_deps.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
@@ -18,7 +18,7 @@ import 'package:test/test.dart';
 
 import '../rm_console_colors_helper.dart';
 
-class MockGitCloner extends Mock implements GitCloner {}
+class MockGitCloner extends Mock implements GitHandler {}
 
 void main() {
   group('AddDepsCommand', () {

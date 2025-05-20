@@ -13,16 +13,12 @@ import 'package:kidney_core/src/backend/workspace_utils.dart';
 void main() {
   group('WorkspaceUtils.defaultMasterWorkspacePath', () {
     late Directory tempRoot;
-    late String originalCwd;
 
     setUp(() async {
       tempRoot = await Directory.systemTemp.createTemp('workspace_utils_test_');
-      originalCwd = Directory.current.path;
     });
 
     tearDown(() async {
-      // Reset working directory and clean up.
-      Directory.current = Directory(originalCwd);
       await tempRoot.delete(recursive: true);
     });
 
@@ -30,10 +26,11 @@ void main() {
       // Arrange ---------------------------------------------------------------
       final masterDir = Directory(path.join(tempRoot.path, 'kidney_ws_master'));
       await masterDir.create();
-      Directory.current = tempRoot;
 
       // Act -------------------------------------------------------------------
-      final result = WorkspaceUtils.defaultMasterWorkspacePath();
+      final result = WorkspaceUtils.defaultMasterWorkspacePath(
+        workingDir: tempRoot.path,
+      );
 
       // Assert ----------------------------------------------------------------
       expect(result, masterDir.path);
@@ -45,11 +42,12 @@ void main() {
       final ticketDir = Directory(path.join(ticketsDir.path, 'ticket_123'));
       await ticketDir.create(recursive: true);
 
-      Directory.current = ticketDir;
       final expectedMaster = path.join(tempRoot.path, 'kidney_ws_master');
 
       // Act -------------------------------------------------------------------
-      final result = WorkspaceUtils.defaultMasterWorkspacePath();
+      final result = WorkspaceUtils.defaultMasterWorkspacePath(
+        workingDir: ticketDir.path,
+      );
 
       // Assert ----------------------------------------------------------------
       expect(result, expectedMaster);
@@ -60,11 +58,12 @@ void main() {
       final randomDir =
           Directory(path.join(tempRoot.path, 'random', 'sub', 'folder'));
       await randomDir.create(recursive: true);
-      Directory.current = randomDir;
       final expectedMaster = path.join(randomDir.path, 'kidney_ws_master');
 
       // Act -------------------------------------------------------------------
-      final result = WorkspaceUtils.defaultMasterWorkspacePath();
+      final result = WorkspaceUtils.defaultMasterWorkspacePath(
+        workingDir: randomDir.path,
+      );
 
       // Assert ----------------------------------------------------------------
       expect(result, expectedMaster);
@@ -73,16 +72,13 @@ void main() {
 
   group('WorkspaceUtils.defaultKidneyWorkspacePath', () {
     late Directory tempRoot;
-    late String originalCwd;
 
     setUp(() async {
       tempRoot =
           await Directory.systemTemp.createTemp('workspace_utils_testK_');
-      originalCwd = Directory.current.path;
     });
 
     tearDown(() async {
-      Directory.current = Directory(originalCwd);
       await tempRoot.delete(recursive: true);
     });
 
@@ -90,9 +86,10 @@ void main() {
       final wsParent = Directory(path.join(tempRoot.path, 'the_workspace'));
       final masterDir = Directory(path.join(wsParent.path, 'kidney_ws_master'));
       await masterDir.create(recursive: true);
-      Directory.current = wsParent;
 
-      final result = WorkspaceUtils.defaultKidneyWorkspacePath();
+      final result = WorkspaceUtils.defaultKidneyWorkspacePath(
+        workingDir: wsParent.path,
+      );
       expect(result, equals(wsParent.path));
     });
 
@@ -101,9 +98,10 @@ void main() {
         path.join(tempRoot.path, 'parent', 'tickets', 'TICKET-42'),
       )..createSync(recursive: true);
       final wsParent = Directory(path.join(tempRoot.path, 'parent'));
-      Directory.current = ticketDir;
 
-      final result = WorkspaceUtils.defaultKidneyWorkspacePath();
+      final result = WorkspaceUtils.defaultKidneyWorkspacePath(
+        workingDir: ticketDir.path,
+      );
       expect(result, equals(wsParent.path));
     });
 
@@ -112,23 +110,21 @@ void main() {
         'when nothing is found', () async {
       final customCwd = Directory(path.join(tempRoot.path, 'zombie'));
       await customCwd.create(recursive: true);
-      Directory.current = customCwd;
-      final result = WorkspaceUtils.defaultKidneyWorkspacePath();
+      final result = WorkspaceUtils.defaultKidneyWorkspacePath(
+        workingDir: customCwd.path,
+      );
       expect(result, equals(customCwd.path));
     });
   });
 
   group('WorkspaceUtils.isInsideExistingWorkspace', () {
     late Directory tempRoot;
-    late String originalCwd;
 
     setUp(() async {
       tempRoot = await Directory.systemTemp.createTemp('utils_is_inside_test_');
-      originalCwd = Directory.current.path;
     });
 
     tearDown(() async {
-      Directory.current = Directory(originalCwd);
       if (await tempRoot.exists()) {
         await tempRoot.delete(recursive: true);
       }

@@ -13,12 +13,12 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 
 import 'package:kidney_core/src/backend/add_repository_helper.dart';
-import 'package:kidney_core/src/backend/git_cloner.dart';
+import 'package:kidney_core/src/backend/git_handler.dart';
 
 import '../rm_console_colors_helper.dart';
 
 // Mock for GitCloner using mocktail
-class MockGitCloner extends Mock implements GitCloner {}
+class MockGitCloner extends Mock implements GitHandler {}
 
 // Dummy implementation for repoFetcher in tests
 typedef RepoFetcher = Future<http.Response> Function(Uri uri);

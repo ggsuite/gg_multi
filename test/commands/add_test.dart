@@ -13,12 +13,12 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/add.dart';
-import 'package:kidney_core/src/backend/git_cloner.dart';
+import 'package:kidney_core/src/backend/git_handler.dart';
 
 import '../rm_console_colors_helper.dart';
 
 // Create a mock for GitCloner
-class MockGitCloner extends Mock implements GitCloner {}
+class MockGitCloner extends Mock implements GitHandler {}
 
 typedef RepoFetcher = Future<http.Response> Function(Uri uri);
 
@@ -34,6 +34,22 @@ void main() {
       logMessages.add(rmConsoleColors(message));
     }
 
+    void createRunner({
+      String? executionPath,
+      Future<void> Function(String repoPath)? localizeRefsFn,
+    }) {
+      runner = CommandRunner<void>('test', 'Test for AddCommand');
+      runner.addCommand(
+        AddCommand(
+          ggLog: ggLog,
+          gitCloner: mockGitCloner,
+          masterWorkspacePath: masterWorkspacePath,
+          executionPath: executionPath ?? Directory.current.path,
+          localizeRefsFn: localizeRefsFn,
+        ),
+      );
+    }
+
     setUp(() {
       mockGitCloner = MockGitCloner();
       logMessages = [];
@@ -42,14 +58,7 @@ void main() {
       tempDir = Directory.systemTemp.createTempSync('add_test');
       masterWorkspacePath = path.join(tempDir.path, 'kidney_ws_master');
       Directory(masterWorkspacePath).createSync(recursive: true);
-      runner = CommandRunner<void>('test', 'Test for AddCommand');
-      runner.addCommand(
-        AddCommand(
-          ggLog: ggLog,
-          gitCloner: mockGitCloner,
-          workspacePath: masterWorkspacePath,
-        ),
-      );
+      createRunner();
     });
 
     tearDown(() {
@@ -173,7 +182,7 @@ void main() {
         AddCommand(
           ggLog: ggLog,
           gitCloner: mockGitCloner,
-          workspacePath: masterWorkspacePath,
+          masterWorkspacePath: masterWorkspacePath,
           repoFetcher: (uri) async {
             final expectedApi =
                 Uri.parse('https://api.github.com/orgs/myorganization/repos');
@@ -226,7 +235,7 @@ void main() {
         AddCommand(
           ggLog: ggLog,
           gitCloner: mockGitCloner,
-          workspacePath: masterWorkspacePath,
+          masterWorkspacePath: masterWorkspacePath,
           repoFetcher: (uri) async {
             final expectedApi =
                 Uri.parse('https://api.github.com/orgs/errororg/repos');
@@ -267,7 +276,7 @@ void main() {
         AddCommand(
           ggLog: ggLog,
           gitCloner: mockGitCloner,
-          workspacePath: masterWorkspacePath,
+          masterWorkspacePath: masterWorkspacePath,
           repoFetcher: (uri) async {
             return http.Response('[]', 200);
           },
@@ -326,15 +335,10 @@ void main() {
         final ticketDir = Directory(
           path.join(tempDir.path, 'tickets', 'TICKET'),
         )..createSync(recursive: true);
-        final originalCwd = Directory.current;
-        Directory.current = ticketDir;
-        try {
-          // Act
-          await runner.run(['add', repoName]);
-        } finally {
-          // Restore cwd
-          Directory.current = originalCwd;
-        }
+        createRunner(executionPath: ticketDir.path);
+
+        // Act
+        await runner.run(['add', repoName]);
 
         // Assert: ensure the target file has been copied
         final copiedFileInTicket = File(
@@ -343,9 +347,9 @@ void main() {
         expect(copiedFileInTicket.existsSync(), isTrue);
         expect(
           logMessages,
-          equals([
+          contains(
             'Added repository $repoName to ticket workspace.',
-          ]),
+          ),
         );
       },
     );
@@ -357,20 +361,15 @@ void main() {
       final ticketDir = Directory(
         path.join(tempDir.path, 'tickets', 'TICKET-MISSING'),
       )..createSync(recursive: true);
-      final originalCwd = Directory.current;
-      Directory.current = ticketDir;
-      try {
-        // Act: attempt to add a repo that hasn't been cloned
-        await runner.run(['add', 'nonexistent']);
-        // Assert: error message logged about missing repo in master
-        expect(
-          logMessages,
-          contains('Repository nonexistent not found in master workspace.'),
-        );
-      } finally {
-        // Restore cwd
-        Directory.current = originalCwd;
-      }
+      createRunner(executionPath: ticketDir.path);
+
+      // Act: attempt to add a repo that hasn't been cloned
+      await runner.run(['add', 'nonexistent']);
+      // Assert: error message logged about missing repo in master
+      expect(
+        logMessages,
+        contains('Repository nonexistent not found in master workspace.'),
+      );
     });
 
     // Added test to cover: logs gray message
@@ -385,23 +384,46 @@ void main() {
       // Prepare ticket workspace and change cwd
       final ticketDir = Directory(path.join(tempDir.path, 'tickets', 'ALREADY'))
         ..createSync(recursive: true);
+      createRunner(executionPath: ticketDir.path);
       final destination = Directory(path.join(ticketDir.path, repoName));
       destination.createSync(
         recursive: true,
       ); // repo already exists in the ticket workspace
       File(path.join(destination.path, 'foo.txt')).writeAsStringSync('hi');
-      final originalCwd = Directory.current;
-      Directory.current = ticketDir;
-      try {
-        await runner.run(['add', repoName]);
 
-        expect(
-          logMessages,
-          contains('$repoName already exists in ticket workspace.'),
-        );
-      } finally {
-        Directory.current = originalCwd;
+      await runner.run(['add', repoName]);
+
+      expect(
+        logMessages,
+        contains('$repoName already exists in ticket workspace.'),
+      );
+    });
+
+    // Test: when localizeRefs fails in ticket copy, error branch is logged
+    test('logs error when localizeRefs fails in ticket workspace', () async {
+      // Arrange: create the repo in master
+      const repoName = 'buggyRepo';
+      final repoDir = Directory(path.join(masterWorkspacePath, repoName))
+        ..createSync(recursive: true);
+      File(path.join(repoDir.path, 'file.txt')).writeAsStringSync('hello');
+      final ticketDir = Directory(path.join(tempDir.path, 'tickets', 'REFFAIL'))
+        ..createSync(recursive: true);
+      // Use a localizeRefs function that throws
+      Future<void> failingLocalizeRefs(String repoPath) async {
+        throw Exception('mock localize error');
       }
+
+      createRunner(
+        executionPath: ticketDir.path,
+        localizeRefsFn: failingLocalizeRefs,
+      );
+      await runner.run(['add', repoName]);
+      expect(
+        logMessages,
+        contains(
+          'Failed to localize refs for REFFAIL: Exception: mock localize error',
+        ),
+      );
     });
   });
 }

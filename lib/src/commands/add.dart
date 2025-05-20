@@ -12,9 +12,10 @@ import 'package:gg_log/gg_log.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 
-import '../backend/git_cloner.dart';
+import '../backend/git_handler.dart';
 import '../backend/add_repository_helper.dart';
 import '../backend/filesystem_utils.dart';
+import '../backend/localize_refs_handler.dart';
 import '../backend/workspace_utils.dart';
 
 /// Command to add a repository or all repositories from an organization.
@@ -22,7 +23,7 @@ import '../backend/workspace_utils.dart';
 /// This command adds the specified git repo (also Gitlab and other servers
 /// compatible) or all git repos of the specified organization.
 /// It clones the project into the master workspace of the project root and-
-/// if executed from inside a ticket directory (./tickets/ticket)—it also
+/// if executed from inside a ticket directory (./tickets/ticket)-it also
 /// copies the repository into this ticket directory.  When the repository is
 /// already present in the master workspace it is **not** cloned again but just
 /// copied into the ticket.
@@ -33,23 +34,24 @@ class AddCommand extends Command<dynamic> {
   /// Constructor for AddCommand.
   AddCommand({
     required this.ggLog,
-    GitCloner? gitCloner,
+    GitHandler? gitCloner,
     Future<http.Response> Function(Uri)? repoFetcher,
-    String? workspacePath,
+    String? masterWorkspacePath,
+    String? executionPath,
+    Future<void> Function(String repoPath)? localizeRefsFn,
     // coverage:ignore-start
-  })  : gitCloner = gitCloner ?? GitCloner(),
+  })  : gitCloner = gitCloner ?? GitHandler(),
         repoFetcher = repoFetcher ?? http.get,
-        workspacePath =
-            workspacePath ?? WorkspaceUtils.defaultMasterWorkspacePath() {
-    // coverage:ignore-end
-    // -----------------------------------------------------------------------
-    // Command line flags -----------------------------------------------------
+        executionPath = executionPath ?? Directory.current.path,
+        masterWorkspacePath =
+            masterWorkspacePath ?? WorkspaceUtils.defaultMasterWorkspacePath(),
+        _localizeRefsFn = localizeRefsFn ?? localizeRefs
+  // coverage:ignore-end
+  {
     argParser.addFlag(
       'force',
       abbr: 'f',
-      help: 'If set, an existing repository in the master workspace will be '
-          'deleted before cloning it again.',
-      negatable: false,
+      help: 'Overwrite existing repository in master workspace.',
       defaultsTo: false,
     );
   }
@@ -58,20 +60,26 @@ class AddCommand extends Command<dynamic> {
   final GgLog ggLog;
 
   /// Instance to handle cloning.
-  final GitCloner gitCloner;
+  final GitHandler gitCloner;
 
   /// Function to fetch repositories from the organization API.
   final Future<http.Response> Function(Uri) repoFetcher;
 
   /// Resolved master workspace path.
-  final String workspacePath;
+  final String masterWorkspacePath;
+
+  /// The path from which the command was executed.
+  final String executionPath;
+
+  /// Optional injected localizeRefs function for testing
+  final Future<void> Function(String repoPath) _localizeRefsFn;
 
   @override
   String get name => 'add';
 
   @override
   String get description => 'Adds the specified git repo or all git repos '
-      'from the specified organization into the master workspace—and if run '
+      'from the specified organization into the master workspace-and if run '
       'from inside a ticket, also into that ticket workspace.';
 
   @override
@@ -82,7 +90,7 @@ class AddCommand extends Command<dynamic> {
 
     final String targetArg = argResults!.rest[0];
     // Read the --force flag (defaults to false if not provided)
-    final bool force = (argResults!['force'] as bool?) ?? false;
+    final bool force = argResults!['force'] as bool;
 
     // Detect whether we are inside a ticket directory -------------------------
     final String? ticketPath = _detectTicketPath();
@@ -92,7 +100,7 @@ class AddCommand extends Command<dynamic> {
       ggLog: ggLog,
       gitCloner: gitCloner,
       repoFetcher: repoFetcher,
-      workspacePath: workspacePath,
+      workspacePath: masterWorkspacePath,
       force: force,
       logIfAlreadyAdded: ticketPath == null,
       onRepoAdded: ticketPath == null
@@ -115,9 +123,9 @@ class AddCommand extends Command<dynamic> {
     required String repoName,
     required String ticketPath,
   }) async {
-    final srcDir = Directory(path.join(workspacePath, repoName));
+    final srcDir = Directory(path.join(masterWorkspacePath, repoName));
     if (!srcDir.existsSync()) {
-      // Should never happen – repo must be present in master at this point.
+      // Should never happen - repo must be present in master at this point.
       ggLog(red('Repository $repoName not found in master workspace.'));
       return;
     }
@@ -129,13 +137,27 @@ class AddCommand extends Command<dynamic> {
     }
 
     await copyDirectory(srcDir, destDir);
+
+    final String ticketName = path.basename(ticketPath);
+    // Checkout a branch named as the ticket
+    try {
+      await gitCloner.checkoutBranch(ticketName, destDir.path);
+    } catch (e) {
+      ggLog(red('Failed to checkout branch $ticketName: $e'));
+    }
+    // Run gg_localize_refs localize-refs in the repo
+    try {
+      await _localizeRefsFn(destDir.path);
+    } catch (e) {
+      ggLog(red('Failed to localize refs for $ticketName: $e'));
+    }
     ggLog(green('Added repository $repoName to ticket workspace.'));
   }
 
   /// Walks up the directory tree to find a ticket directory and returns its
   /// path when found, otherwise `null`.
   String? _detectTicketPath() {
-    var current = Directory.current;
+    var current = Directory(executionPath);
     while (true) {
       final parent = current.parent;
       if (path.basename(parent.path) == 'tickets') {

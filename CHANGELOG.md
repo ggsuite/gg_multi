@@ -13,6 +13,7 @@
 - Add init command
 - Add tests for create ticket
 - Add function defaultKidneyWorkspacePath
+- Add force flag correctly to AddCommand
 
 ### Changed
 
@@ -22,6 +23,7 @@
 - execute list repos, list organizations and create ticket always in kidney workspace
 - Error if ticket already exists
 - Successfully open VSCode on Windows
+- Rename GitCloner to GitHandler
 
 ### Removed
 

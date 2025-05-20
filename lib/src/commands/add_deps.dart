@@ -13,7 +13,7 @@ import 'package:gg_log/gg_log.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 
-import '../backend/git_cloner.dart';
+import '../backend/git_handler.dart';
 import '../backend/add_repository_helper.dart';
 
 /// Command to add dependencies of a project from the master workspace.
@@ -23,12 +23,12 @@ class AddDepsCommand extends Command<void> {
   /// Constructor
   AddDepsCommand({
     required this.ggLog,
-    GitCloner? gitCloner,
+    GitHandler? gitCloner,
     Future<http.Response> Function(Uri)? repoFetcher,
     Future<http.Response> Function(Uri)? packageFetcher,
     String? workspacePath,
     // coverage:ignore-start
-  })  : gitCloner = gitCloner ?? GitCloner(),
+  })  : gitCloner = gitCloner ?? GitHandler(),
         repoFetcher = repoFetcher ?? http.get,
         packageFetcher = packageFetcher ?? http.get,
         workspacePath = workspacePath ??
@@ -39,7 +39,7 @@ class AddDepsCommand extends Command<void> {
   final GgLog ggLog;
 
   /// Instance to handle cloning.
-  final GitCloner gitCloner;
+  final GitHandler gitCloner;
 
   /// Function to fetch repositories.
   final Future<http.Response> Function(Uri) repoFetcher;
