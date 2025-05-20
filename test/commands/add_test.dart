@@ -9,6 +9,7 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:http/http.dart' as http;
+import 'package:kidney_core/src/backend/constants.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
@@ -56,7 +57,7 @@ void main() {
       when(() => mockGitCloner.cloneRepo(any(), any()))
           .thenAnswer((_) async {});
       tempDir = Directory.systemTemp.createTempSync('add_test');
-      masterWorkspacePath = path.join(tempDir.path, 'kidney_ws_master');
+      masterWorkspacePath = path.join(tempDir.path, kidneyMasterFolder);
       Directory(masterWorkspacePath).createSync(recursive: true);
       createRunner();
     });
@@ -333,7 +334,7 @@ void main() {
 
         // Setup ticket workspace and change cwd
         final ticketDir = Directory(
-          path.join(tempDir.path, 'tickets', 'TICKET'),
+          path.join(tempDir.path, kidneyTicketFolder, 'TICKET'),
         )..createSync(recursive: true);
         createRunner(executionPath: ticketDir.path);
 
@@ -359,7 +360,7 @@ void main() {
       // Arrange: use clone stub that does nothing (no directory creation)
       // Setup ticket workspace and change cwd
       final ticketDir = Directory(
-        path.join(tempDir.path, 'tickets', 'TICKET-MISSING'),
+        path.join(tempDir.path, kidneyTicketFolder, 'TICKET-MISSING'),
       )..createSync(recursive: true);
       createRunner(executionPath: ticketDir.path);
 
@@ -382,8 +383,9 @@ void main() {
       File(path.join(repoDir.path, 'foo.txt')).writeAsStringSync('hi');
 
       // Prepare ticket workspace and change cwd
-      final ticketDir = Directory(path.join(tempDir.path, 'tickets', 'ALREADY'))
-        ..createSync(recursive: true);
+      final ticketDir = Directory(
+        path.join(tempDir.path, kidneyTicketFolder, 'ALREADY'),
+      )..createSync(recursive: true);
       createRunner(executionPath: ticketDir.path);
       final destination = Directory(path.join(ticketDir.path, repoName));
       destination.createSync(
@@ -406,8 +408,9 @@ void main() {
       final repoDir = Directory(path.join(masterWorkspacePath, repoName))
         ..createSync(recursive: true);
       File(path.join(repoDir.path, 'file.txt')).writeAsStringSync('hello');
-      final ticketDir = Directory(path.join(tempDir.path, 'tickets', 'REFFAIL'))
-        ..createSync(recursive: true);
+      final ticketDir = Directory(
+        path.join(tempDir.path, kidneyTicketFolder, 'REFFAIL'),
+      )..createSync(recursive: true);
       // Use a localizeRefs function that throws
       Future<void> failingLocalizeRefs(String repoPath) async {
         throw Exception('mock localize error');

@@ -6,6 +6,7 @@
 
 import 'dart:io';
 import 'package:args/command_runner.dart';
+import 'package:kidney_core/src/backend/constants.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
@@ -41,7 +42,7 @@ void main() {
       masterWs = Directory(
         path.join(
           tempDir.path,
-          'kidney_ws_master',
+          kidneyMasterFolder,
         ),
       )..createSync(recursive: true);
       runner = CommandRunner<void>('test', 'RemoveCommand Test')
@@ -145,8 +146,8 @@ void main() {
     test('logs repository folder not found when deletion target does not exist',
         () async {
       // Arrange
-      // Create the kidney_ws_master workspace if not exists
-      final masterWsPath = path.join(tempDir.path, 'kidney_ws_master');
+      // Create the master workspace if not exists
+      final masterWsPath = path.join(tempDir.path, kidneyMasterFolder);
       final masterDir = Directory(masterWsPath);
       if (!masterDir.existsSync()) {
         masterDir.createSync(recursive: true);
@@ -179,7 +180,7 @@ void main() {
     test('deletes ticket folder when name matches ticket', () async {
       // Arrange: setup a ticket folder under tickets
       final ticketDir = Directory(
-        path.join(tempDir.path, 'tickets', 'ticket1'),
+        path.join(tempDir.path, kidneyTicketFolder, 'ticket1'),
       )..createSync(recursive: true);
       File(path.join(ticketDir.path, 'dummy.txt')).writeAsStringSync('data');
 

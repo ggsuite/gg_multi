@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
+import 'package:kidney_core/src/backend/constants.dart';
 import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/list/tickets.dart';
 import 'package:path/path.dart' as path;
@@ -29,8 +30,9 @@ void main() {
       tempDir = Directory.systemTemp.createTempSync('ticket_list_test');
       kidneyWorkspaceDir = Directory(path.join(tempDir.path, 'kidneyWorkspace'))
         ..createSync(recursive: true);
-      ticketsDir = Directory(path.join(kidneyWorkspaceDir.path, 'tickets'))
-        ..createSync(recursive: true);
+      ticketsDir = Directory(
+        path.join(kidneyWorkspaceDir.path, kidneyTicketFolder),
+      )..createSync(recursive: true);
       runner = CommandRunner<void>('test', 'Test ListTicketsCommand')
         ..addCommand(
           ListTicketsCommand(

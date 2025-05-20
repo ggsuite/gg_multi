@@ -13,6 +13,7 @@ import 'package:gg_log/gg_log.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 
+import '../backend/constants.dart';
 import '../backend/git_handler.dart';
 import '../backend/add_repository_helper.dart';
 
@@ -32,7 +33,7 @@ class AddDepsCommand extends Command<void> {
         repoFetcher = repoFetcher ?? http.get,
         packageFetcher = packageFetcher ?? http.get,
         workspacePath = workspacePath ??
-            path.join(Directory.current.path, 'kidney_ws_master');
+            path.join(Directory.current.path, kidneyMasterFolder);
   // coverage:ignore-end
 
   /// The log function.

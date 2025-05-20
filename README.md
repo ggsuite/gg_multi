@@ -7,7 +7,7 @@ workspaces, repositories, organizations, tickets, and dependencies of your proje
 ## Overview
 
 Kidney Core allows you to:
-- Initialize and manage a master workspace (`kidney_ws_master`).
+- Initialize and manage a master workspace.
 - Add and remove repositories or entire organizations into or from the master workspace.
 - Create and manage ticket workspaces under `./tickets/<ticket_id>`.
 - List repositories, organizations, and dependencies of projects in the master workspace.
@@ -18,7 +18,7 @@ Kidney Core allows you to:
 After installation, you can use the following commands:
 
 - `kidney_core init`
-  - Initializes the master workspace (`kidney_ws_master`) in the project root.
+  - Initializes the master workspace in the project root.
 
 - `kidney_core add <target> [-f|--force]`
   - Adds a repository or all repositories from the specified organization into the master workspace.
@@ -28,7 +28,7 @@ After installation, you can use the following commands:
 - `kidney_core remove <target>`
   - Deletes a repository or ticket folder.
     - If `<target>` corresponds to a ticket ID, deletes the entire ticket workspace under `./tickets/<id>`.
-    - If `<target>` is a repository name that exists only in the master workspace, removes it from `kidney_ws_master`.
+    - If `<target>` is a repository name that exists only in the master workspace, removes it from the master workspace.
     - If the repository is used in feature branches (`kidney_ws_*`), lists those branches and asks you to remove them first.
 
 - `kidney_core list [repos|organizations|deps <target>]`

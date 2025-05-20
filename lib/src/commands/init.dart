@@ -10,9 +10,10 @@ import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:path/path.dart' as path;
 import 'package:gg_log/gg_log.dart';
 
+import '../backend/constants.dart';
 import '../backend/workspace_utils.dart';
 
-/// Command to initialize the master workspace (kidney_ws_master)
+/// Command to initialize the master workspace
 class InitCommand extends Command<void> {
   /// Constructor
   InitCommand({
@@ -38,7 +39,7 @@ class InitCommand extends Command<void> {
   Future<void> run() async {
     final rootDir = Directory(rootPath);
 
-    final wsPath = path.join(rootDir.path, 'kidney_ws_master');
+    final wsPath = path.join(rootDir.path, kidneyMasterFolder);
     final wsDir = Directory(wsPath);
 
     if (wsDir.existsSync()) {

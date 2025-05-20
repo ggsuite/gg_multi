@@ -10,6 +10,7 @@ import 'package:args/command_runner.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
+import '../backend/constants.dart';
 import '../backend/workspace_utils.dart';
 import '../backend/vscode_launcher.dart';
 
@@ -33,7 +34,7 @@ class CodeCommand extends Command<void> {
   /// The log function.
   final GgLog ggLog;
 
-  /// Kidney workspace path (parent of kidney_ws_master).
+  /// Kidney workspace path.
   final String workspacePath;
 
   /// Used for test injection.
@@ -65,7 +66,9 @@ class CodeCommand extends Command<void> {
     }
     final ticketName = parts[0];
     final repoName = parts.length == 2 ? parts[1] : null;
-    final ticketsDir = _dirFactory(path.join(workspacePath, 'tickets'));
+    final ticketsDir = _dirFactory(
+      path.join(workspacePath, kidneyTicketFolder),
+    );
     final ticketDir = Directory(path.join(ticketsDir.path, ticketName));
     if (!ticketDir.existsSync()) {
       ggLog(red('Ticket $ticketName not found at ${ticketDir.path}'));

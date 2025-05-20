@@ -6,6 +6,7 @@
 
 import 'dart:io';
 import 'package:args/command_runner.dart';
+import 'package:kidney_core/src/backend/constants.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/code.dart';
@@ -59,19 +60,19 @@ void main() {
       expect(
         messages,
         contains('Ticket TCKT not found at '
-            '${path.join(tempRoot.path, 'tickets', 'TCKT')}'),
+            '${path.join(tempRoot.path, kidneyTicketFolder, 'TCKT')}'),
       );
     });
 
     test('logs no repos if ticket exists but empty', () async {
-      Directory(path.join(tempRoot.path, 'tickets', 'T1'))
+      Directory(path.join(tempRoot.path, kidneyTicketFolder, 'T1'))
           .createSync(recursive: true);
       await runner.run(['code', 'T1']);
       expect(messages, contains('No repositories found under ticket T1.'));
     });
 
     test('opens all repos under a ticket', () async {
-      final tdir = Directory(path.join(tempRoot.path, 'tickets', 'T2'))
+      final tdir = Directory(path.join(tempRoot.path, kidneyTicketFolder, 'T2'))
         ..createSync(recursive: true);
       Directory(path.join(tdir.path, 'A')).createSync();
       Directory(path.join(tdir.path, 'B')).createSync();
@@ -92,7 +93,7 @@ void main() {
     });
 
     test('opens single repo when specified', () async {
-      final tdir = Directory(path.join(tempRoot.path, 'tickets', 'T3'))
+      final tdir = Directory(path.join(tempRoot.path, kidneyTicketFolder, 'T3'))
         ..createSync(recursive: true);
       Directory(path.join(tdir.path, 'MyRepo')).createSync();
       await runner.run(['code', 'T3/MyRepo']);
@@ -117,7 +118,7 @@ void main() {
     });
 
     test('opens single repo when specified with backslash separator', () async {
-      final tdir = Directory(path.join(tempRoot.path, 'tickets', 'T5'))
+      final tdir = Directory(path.join(tempRoot.path, kidneyTicketFolder, 'T5'))
         ..createSync(recursive: true);
       Directory(path.join(tdir.path, 'SlashRepo')).createSync();
       await runner
@@ -143,7 +144,7 @@ void main() {
     });
 
     test('logs error when specified repo missing', () async {
-      final tdir = Directory(path.join(tempRoot.path, 'tickets', 'T4'))
+      final tdir = Directory(path.join(tempRoot.path, kidneyTicketFolder, 'T4'))
         ..createSync(recursive: true);
       await runner.run(['code', 'T4/NoRepo']);
       expect(

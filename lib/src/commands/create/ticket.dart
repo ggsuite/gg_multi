@@ -11,6 +11,7 @@ import 'package:args/command_runner.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
+import '../../backend/constants.dart';
 import '../../backend/workspace_utils.dart';
 
 /// Typedef for creating Directory instances (for testing).
@@ -67,7 +68,7 @@ class TicketCommand extends Command<void> {
     final String description = (argResults!['message'] as String?) ?? '';
 
     // Build the directory path for the ticket.
-    final ticketsPath = path.join(rootPath, 'tickets', issueId);
+    final ticketsPath = path.join(rootPath, kidneyTicketFolder, issueId);
     final dir = directoryFactory(ticketsPath);
     final ticketFile = File(path.join(ticketsPath, '.ticket'));
 

@@ -6,6 +6,7 @@
 
 import 'dart:io';
 import 'package:args/command_runner.dart';
+import 'package:kidney_core/src/backend/constants.dart';
 import 'package:kidney_core/src/commands/init.dart';
 import 'package:test/test.dart';
 import 'package:path/path.dart' as path;
@@ -40,7 +41,7 @@ void main() {
             rootPath: tempDir.path,
           ),
         );
-      final wsPath = path.join(tempDir.path, 'kidney_ws_master');
+      final wsPath = path.join(tempDir.path, kidneyMasterFolder);
       expect(Directory(wsPath).existsSync(), isFalse);
 
       await runner.run(['init']);
@@ -50,7 +51,7 @@ void main() {
 
     test('should not recreate if already exists, and log accordingly',
         () async {
-      final wsPath = path.join(tempDir.path, 'kidney_ws_master');
+      final wsPath = path.join(tempDir.path, kidneyMasterFolder);
       Directory(wsPath).createSync(recursive: true);
       final runner = CommandRunner<void>('test', 'InitCommand Test')
         ..addCommand(
@@ -90,7 +91,7 @@ void main() {
         ),
       );
       expect(
-        Directory(path.join(nonEmptyDir.path, 'kidney_ws_master')).existsSync(),
+        Directory(path.join(nonEmptyDir.path, kidneyMasterFolder)).existsSync(),
         isFalse,
       );
     });
@@ -101,7 +102,7 @@ void main() {
       // Create parent workspace
       final parentWs = Directory(path.join(tempDir.path, 'parent'))
         ..createSync();
-      final masterWs = Directory(path.join(parentWs.path, 'kidney_ws_master'))
+      final masterWs = Directory(path.join(parentWs.path, kidneyMasterFolder))
         ..createSync();
       // Create child directory inside parent
       final childDir = Directory(path.join(masterWs.path, 'child'))
@@ -122,9 +123,9 @@ void main() {
           'inside an existing Kidney workspace.',
         ),
       );
-      // No child/kidney_ws_master created
+      // No child/master folder created
       expect(
-        Directory(path.join(childDir.path, 'kidney_ws_master')).existsSync(),
+        Directory(path.join(childDir.path, kidneyMasterFolder)).existsSync(),
         isFalse,
       );
     });

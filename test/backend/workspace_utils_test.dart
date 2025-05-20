@@ -6,6 +6,7 @@
 
 import 'dart:io';
 
+import 'package:kidney_core/src/backend/constants.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 import 'package:kidney_core/src/backend/workspace_utils.dart';
@@ -24,7 +25,7 @@ void main() {
 
     test('returns existing master workspace in current folder', () async {
       // Arrange ---------------------------------------------------------------
-      final masterDir = Directory(path.join(tempRoot.path, 'kidney_ws_master'));
+      final masterDir = Directory(path.join(tempRoot.path, kidneyMasterFolder));
       await masterDir.create();
 
       // Act -------------------------------------------------------------------
@@ -38,11 +39,13 @@ void main() {
 
     test('resolves master workspace from a ticket workspace', () async {
       // Arrange ---------------------------------------------------------------
-      final ticketsDir = Directory(path.join(tempRoot.path, 'tickets'));
+      final ticketsDir = Directory(
+        path.join(tempRoot.path, kidneyTicketFolder),
+      );
       final ticketDir = Directory(path.join(ticketsDir.path, 'ticket_123'));
       await ticketDir.create(recursive: true);
 
-      final expectedMaster = path.join(tempRoot.path, 'kidney_ws_master');
+      final expectedMaster = path.join(tempRoot.path, kidneyMasterFolder);
 
       // Act -------------------------------------------------------------------
       final result = WorkspaceUtils.defaultMasterWorkspacePath(
@@ -58,7 +61,7 @@ void main() {
       final randomDir =
           Directory(path.join(tempRoot.path, 'random', 'sub', 'folder'));
       await randomDir.create(recursive: true);
-      final expectedMaster = path.join(randomDir.path, 'kidney_ws_master');
+      final expectedMaster = path.join(randomDir.path, kidneyMasterFolder);
 
       // Act -------------------------------------------------------------------
       final result = WorkspaceUtils.defaultMasterWorkspacePath(
@@ -82,9 +85,9 @@ void main() {
       await tempRoot.delete(recursive: true);
     });
 
-    test('returns parent of kidney_ws_master if existing', () async {
+    test('returns parent of master workspace if existing', () async {
       final wsParent = Directory(path.join(tempRoot.path, 'the_workspace'));
-      final masterDir = Directory(path.join(wsParent.path, 'kidney_ws_master'));
+      final masterDir = Directory(path.join(wsParent.path, kidneyMasterFolder));
       await masterDir.create(recursive: true);
 
       final result = WorkspaceUtils.defaultKidneyWorkspacePath(
@@ -95,7 +98,7 @@ void main() {
 
     test('returns parent of resolved master workspace path', () async {
       final ticketDir = Directory(
-        path.join(tempRoot.path, 'parent', 'tickets', 'TICKET-42'),
+        path.join(tempRoot.path, 'parent', kidneyTicketFolder, 'TICKET-42'),
       )..createSync(recursive: true);
       final wsParent = Directory(path.join(tempRoot.path, 'parent'));
 
@@ -106,7 +109,7 @@ void main() {
     });
 
     test(
-        'uses the parent of fallback cwd/kidney_ws_master '
+        'uses the parent of fallback cwd/.master '
         'when nothing is found', () async {
       final customCwd = Directory(path.join(tempRoot.path, 'zombie'));
       await customCwd.create(recursive: true);
@@ -130,7 +133,7 @@ void main() {
       }
     });
 
-    test('returns false for directory not in or under any kidney_ws_master',
+    test('returns false for directory not in or under any master workspace',
         () async {
       // Arrange -----------------------------------------------------------
       final randomDir = Directory(path.join(tempRoot.path, 'random', 'sub'));
@@ -143,10 +146,10 @@ void main() {
       expect(isInside, isFalse);
     });
 
-    test('returns true for direct child of a folder with kidney_ws_master',
+    test('returns true for direct child of a folder with master workspace',
         () async {
       final root = Directory(path.join(tempRoot.path, 'myroot'));
-      final ws = Directory(path.join(root.path, 'kidney_ws_master'));
+      final ws = Directory(path.join(root.path, kidneyMasterFolder));
       await ws.create(recursive: true);
 
       final child = Directory(path.join(root.path, 'foo'));
@@ -160,7 +163,7 @@ void main() {
     test('returns true for nested grandchild inside workspace', () async {
       // Arrange --------------------------------------------------------------
       final root = Directory(path.join(tempRoot.path, 'parent'));
-      final ws = Directory(path.join(root.path, 'kidney_ws_master'));
+      final ws = Directory(path.join(root.path, kidneyMasterFolder));
       await ws.create(recursive: true);
       final grandChild = Directory(path.join(root.path, 'nested', 'sub'));
       await grandChild.create(recursive: true);
@@ -176,7 +179,7 @@ void main() {
     test('returns true if searching at the workspace root itself', () async {
       // Arrange ---------------------------------------------------------------
       final root = Directory(path.join(tempRoot.path, 'x'));
-      final ws = Directory(path.join(root.path, 'kidney_ws_master'));
+      final ws = Directory(path.join(root.path, kidneyMasterFolder));
       await ws.create(recursive: true);
 
       // Act ------------------------------------------------------------------
@@ -187,15 +190,15 @@ void main() {
       expect(isInside, isTrue);
     });
 
-    test('returns true when rootPath is the actual kidney_ws_master folder',
+    test('returns true when rootPath is the actual master workspace folder',
         () async {
       // Arrange ------------------------------------------------------------
       final root = Directory(path.join(tempRoot.path, 'top'));
-      final ws = Directory(path.join(root.path, 'kidney_ws_master'));
+      final ws = Directory(path.join(root.path, kidneyMasterFolder));
       await ws.create(recursive: true);
 
       // Act ---------------------------------------------------------------
-      // Call on the kidney_ws_master folder directly
+      // Call on the master workspace folder directly
       final isInside = WorkspaceUtils.isInsideExistingWorkspace(ws.path);
 
       // Assert ------------------------------------------------------------

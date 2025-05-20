@@ -10,6 +10,7 @@ import 'package:args/command_runner.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
+import '../../backend/constants.dart';
 import '../../backend/workspace_utils.dart';
 
 /// Command to list all tickets and their descriptions.
@@ -37,7 +38,7 @@ class ListTicketsCommand extends Command<void> {
 
   @override
   Future<void> run() async {
-    final ticketsDir = Directory(path.join(workspacePath, 'tickets'));
+    final ticketsDir = Directory(path.join(workspacePath, kidneyTicketFolder));
     if (!ticketsDir.existsSync()) {
       ggLog(yellow('No tickets found.'));
       return;

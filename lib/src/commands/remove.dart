@@ -10,6 +10,7 @@ import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 import '../backend/add_repository_helper.dart';
+import '../backend/constants.dart';
 
 /// Typedef for creating Directory instances,
 /// used for dependency injection in tests.
@@ -17,7 +18,7 @@ typedef DirectoryFactory = Directory Function(String path);
 
 /// Deletes the project folder if the repository is only contained
 /// in the master workspace of the current Directory
-/// (kidney_ws_master) and no other workspaces (kidney_ws_*).
+/// and no other workspaces.
 /// If not, it prints:
 /// ```
 /// This repo is used by the following feature branches:
@@ -65,7 +66,7 @@ class RemoveCommand extends Command<void> {
     final repoName = extractRepoName(targetArg);
 
     // If a ticket exists, delete ticket folder
-    final ticketPath = path.join(rootPath, 'tickets', repoName);
+    final ticketPath = path.join(rootPath, kidneyTicketFolder, repoName);
     final ticketDir = Directory(ticketPath);
     if (ticketDir.existsSync()) {
       ticketDir.deleteSync(recursive: true);
@@ -79,11 +80,7 @@ class RemoveCommand extends Command<void> {
       ggLog(red('Root path not found: $rootPath'));
       return;
     }
-    final workspaces = rootDir
-        .listSync()
-        .whereType<Directory>()
-        .where((d) => path.basename(d.path).startsWith('kidney_ws_'))
-        .toList();
+    final workspaces = rootDir.listSync().whereType<Directory>().toList();
 
     // Find in which workspaces the repo exists
     final found = <String>[];
@@ -99,10 +96,10 @@ class RemoveCommand extends Command<void> {
       ggLog(red('Repository $repoName not found in any workspace.'));
       return;
     }
-    if (found.length == 1 && found.first == 'kidney_ws_master') {
+    if (found.length == 1 && found.first == kidneyMasterFolder) {
       // Only in master: delete
       final toDelete =
-          directoryFactory(path.join(rootPath, 'kidney_ws_master', repoName));
+          directoryFactory(path.join(rootPath, kidneyMasterFolder, repoName));
       if (toDelete.existsSync()) {
         toDelete.deleteSync(recursive: true);
         ggLog(
@@ -118,7 +115,7 @@ class RemoveCommand extends Command<void> {
     // or only feature branches
     ggLog('This repo is used by the following feature branches:');
     for (final ws in found.where(
-      (n) => n != 'kidney_ws_master',
+      (n) => n != kidneyMasterFolder,
     )) {
       ggLog(' - $ws');
     }

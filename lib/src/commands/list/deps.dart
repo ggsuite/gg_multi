@@ -10,6 +10,7 @@ import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 import '../../backend/add_repository_helper.dart';
+import '../../backend/constants.dart';
 
 /// Command to list dependencies of a project from the master workspace.
 class ListDepsCommand extends Command<dynamic> {
@@ -19,7 +20,7 @@ class ListDepsCommand extends Command<dynamic> {
     String? workspacePath,
     // coverage:ignore-start
   }) : workspacePath = workspacePath ??
-            path.join(Directory.current.path, 'kidney_ws_master') {
+            path.join(Directory.current.path, kidneyMasterFolder) {
     _addArgs();
   }
   // coverage:ignore-end

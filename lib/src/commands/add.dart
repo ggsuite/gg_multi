@@ -12,6 +12,7 @@ import 'package:gg_log/gg_log.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 
+import '../backend/constants.dart';
 import '../backend/git_handler.dart';
 import '../backend/add_repository_helper.dart';
 import '../backend/filesystem_utils.dart';
@@ -157,7 +158,7 @@ class AddCommand extends Command<dynamic> {
     var current = Directory(executionPath);
     while (true) {
       final parent = current.parent;
-      if (path.basename(parent.path) == 'tickets') {
+      if (path.basename(parent.path) == kidneyTicketFolder) {
         return current.path;
       }
       if (current.path == parent.path) {

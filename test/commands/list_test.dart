@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
+import 'package:kidney_core/src/backend/constants.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/list.dart';
@@ -23,7 +24,7 @@ void main() {
       messages.clear();
       tempDir = Directory.systemTemp.createTempSync('list_test');
       masterDir = Directory(
-        path.join(tempDir.path, 'kidney_ws_master'),
+        path.join(tempDir.path, kidneyMasterFolder),
       )..createSync(recursive: true);
     });
 
