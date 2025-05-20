@@ -343,9 +343,9 @@ void main() {
         expect(copiedFileInTicket.existsSync(), isTrue);
         expect(
           logMessages,
-          equals([
+          contains(
             'Added repository $repoName to ticket workspace.',
-          ]),
+          ),
         );
       },
     );

@@ -13,7 +13,11 @@ import 'package:path/path.dart' as path;
 
 // A mock class for the ProcessRunner function.
 class MockProcessRunner extends Mock {
-  Future<ProcessResult> call(String executable, List<String> arguments);
+  Future<ProcessResult> call(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+  });
 }
 
 void main() {
@@ -165,6 +169,56 @@ void main() {
           ),
         ).called(1);
       });
+    });
+  });
+
+  group('GitHandler.checkoutBranch', () {
+    late MockProcessRunner mockProcessRunner;
+    late GitHandler gitHandler;
+
+    setUp(() {
+      mockProcessRunner = MockProcessRunner();
+      gitHandler = GitHandler(processRunner: mockProcessRunner.call);
+    });
+
+    test('successful branch checkout', () async {
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['-C', 'repoDir', 'checkout', '-b', 'feature'],
+        ),
+      ).thenAnswer((_) async => ProcessResult(1, 0, '', ''));
+
+      await gitHandler.checkoutBranch('feature', 'repoDir');
+
+      verify(
+        () => mockProcessRunner(
+          'git',
+          ['-C', 'repoDir', 'checkout', '-b', 'feature'],
+        ),
+      ).called(1);
+    });
+
+    test('throws when checkout branch fails', () async {
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['-C', 'repoDir', 'checkout', '-b', 'bug'],
+        ),
+      ).thenAnswer((_) async => ProcessResult(2, 1, '', 'err message'));
+
+      expect(
+        () => gitHandler.checkoutBranch('bug', 'repoDir'),
+        throwsA(
+          predicate(
+            (e) =>
+                e is Exception &&
+                e.toString() ==
+                    'Exception: Failed to checkout branch bug in repoDir: '
+                        'err message',
+          ),
+        ),
+      );
     });
   });
 }

@@ -35,12 +35,14 @@ class WorkspaceUtils {
   /// * inside a ticket workspace, or
   /// * from any random sub-folder in the project tree,
   /// while still resolving the correct location for the master workspace.
-  static String defaultMasterWorkspacePath() {
-    // Keep the exact string of the initial working directory so that we can
-    // preserve its path-separator style in the final fallback (rule 3).
-    final originalWorkingDir = Directory.current.path;
+  static String defaultMasterWorkspacePath({
+    String? workingDir,
+  }) {
+    // coverage:ignore-start
+    workingDir ??= Directory.current.path;
+    // coverage:ignore-end
 
-    var dir = Directory.current;
+    var dir = Directory(workingDir);
 
     while (true) {
       // 1. Is there an existing master workspace in the current folder? -------
@@ -61,7 +63,7 @@ class WorkspaceUtils {
         // present in the test setup remain untouched.  We only append the
         // platform specific separator *between* the original path and the
         // `kidney_ws_master` segment.
-        return path.join(originalWorkingDir, 'kidney_ws_master');
+        return path.join(workingDir, 'kidney_ws_master');
       }
       dir = parent;
     }
