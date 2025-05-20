@@ -36,12 +36,14 @@ class AddCommand extends Command<dynamic> {
     required this.ggLog,
     GitHandler? gitCloner,
     Future<http.Response> Function(Uri)? repoFetcher,
-    String? workspacePath,
+    String? masterWorkspacePath,
+    String? executionPath,
     // coverage:ignore-start
   })  : gitCloner = gitCloner ?? GitHandler(),
         repoFetcher = repoFetcher ?? http.get,
-        workspacePath =
-            workspacePath ?? WorkspaceUtils.defaultMasterWorkspacePath() {
+        executionPath = executionPath ?? Directory.current.path,
+        masterWorkspacePath =
+            masterWorkspacePath ?? WorkspaceUtils.defaultMasterWorkspacePath() {
     // coverage:ignore-end
     // -----------------------------------------------------------------------
     // Command line flags -----------------------------------------------------
@@ -65,7 +67,10 @@ class AddCommand extends Command<dynamic> {
   final Future<http.Response> Function(Uri) repoFetcher;
 
   /// Resolved master workspace path.
-  final String workspacePath;
+  final String masterWorkspacePath;
+
+  /// The path from which the command was executed.
+  final String executionPath;
 
   @override
   String get name => 'add';
@@ -93,7 +98,7 @@ class AddCommand extends Command<dynamic> {
       ggLog: ggLog,
       gitCloner: gitCloner,
       repoFetcher: repoFetcher,
-      workspacePath: workspacePath,
+      workspacePath: masterWorkspacePath,
       force: force,
       logIfAlreadyAdded: ticketPath == null,
       onRepoAdded: ticketPath == null
@@ -116,7 +121,7 @@ class AddCommand extends Command<dynamic> {
     required String repoName,
     required String ticketPath,
   }) async {
-    final srcDir = Directory(path.join(workspacePath, repoName));
+    final srcDir = Directory(path.join(masterWorkspacePath, repoName));
     if (!srcDir.existsSync()) {
       // Should never happen - repo must be present in master at this point.
       ggLog(red('Repository $repoName not found in master workspace.'));
@@ -150,7 +155,7 @@ class AddCommand extends Command<dynamic> {
   /// Walks up the directory tree to find a ticket directory and returns its
   /// path when found, otherwise `null`.
   String? _detectTicketPath() {
-    var current = Directory.current;
+    var current = Directory(executionPath);
     while (true) {
       final parent = current.parent;
       if (path.basename(parent.path) == 'tickets') {

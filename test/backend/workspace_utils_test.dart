@@ -29,7 +29,7 @@ void main() {
 
       // Act -------------------------------------------------------------------
       final result = WorkspaceUtils.defaultMasterWorkspacePath(
-          workingDir: tempRoot.path,
+        workingDir: tempRoot.path,
       );
 
       // Assert ----------------------------------------------------------------

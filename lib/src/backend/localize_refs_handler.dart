@@ -19,6 +19,7 @@ Future<void> localizeRefs(
   String repoPath, {
   ProcessRunner? processRunner,
 }) async {
+  // coverage:ignore_start
   final ProcessRunner run = processRunner ??
       (
         String exe,
@@ -31,6 +32,8 @@ Future<void> localizeRefs(
             workingDirectory: workingDirectory,
             runInShell: true,
           );
+  // coverage:ignore_end
+
   final result = await run(
     'gg_localize_refs',
     <String>['localize-refs'],
