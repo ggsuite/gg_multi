@@ -13,6 +13,7 @@
 - Add init command
 - Add tests for create ticket
 - Add function defaultKidneyWorkspacePath
+- Add force flag correctly to AddCommand
 
 ### Changed
 

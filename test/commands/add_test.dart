@@ -34,7 +34,10 @@ void main() {
       logMessages.add(rmConsoleColors(message));
     }
 
-    void createRunner({String? executionPath}) {
+    void createRunner({
+      String? executionPath,
+      Future<void> Function(String repoPath)? localizeRefsFn,
+    }) {
       runner = CommandRunner<void>('test', 'Test for AddCommand');
       runner.addCommand(
         AddCommand(
@@ -42,6 +45,7 @@ void main() {
           gitCloner: mockGitCloner,
           masterWorkspacePath: masterWorkspacePath,
           executionPath: executionPath ?? Directory.current.path,
+          localizeRefsFn: localizeRefsFn,
         ),
       );
     }
@@ -392,6 +396,33 @@ void main() {
       expect(
         logMessages,
         contains('$repoName already exists in ticket workspace.'),
+      );
+    });
+
+    // Test: when localizeRefs fails in ticket copy, error branch is logged
+    test('logs error when localizeRefs fails in ticket workspace', () async {
+      // Arrange: create the repo in master
+      const repoName = 'buggyRepo';
+      final repoDir = Directory(path.join(masterWorkspacePath, repoName))
+        ..createSync(recursive: true);
+      File(path.join(repoDir.path, 'file.txt')).writeAsStringSync('hello');
+      final ticketDir = Directory(path.join(tempDir.path, 'tickets', 'REFFAIL'))
+        ..createSync(recursive: true);
+      // Use a localizeRefs function that throws
+      Future<void> failingLocalizeRefs(String repoPath) async {
+        throw Exception('mock localize error');
+      }
+
+      createRunner(
+        executionPath: ticketDir.path,
+        localizeRefsFn: failingLocalizeRefs,
+      );
+      await runner.run(['add', repoName]);
+      expect(
+        logMessages,
+        contains(
+          'Failed to localize refs for REFFAIL: Exception: mock localize error',
+        ),
       );
     });
   });

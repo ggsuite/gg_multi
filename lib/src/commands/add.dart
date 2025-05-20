@@ -38,21 +38,20 @@ class AddCommand extends Command<dynamic> {
     Future<http.Response> Function(Uri)? repoFetcher,
     String? masterWorkspacePath,
     String? executionPath,
+    Future<void> Function(String repoPath)? localizeRefsFn,
     // coverage:ignore-start
   })  : gitCloner = gitCloner ?? GitHandler(),
         repoFetcher = repoFetcher ?? http.get,
         executionPath = executionPath ?? Directory.current.path,
         masterWorkspacePath =
-            masterWorkspacePath ?? WorkspaceUtils.defaultMasterWorkspacePath() {
-    // coverage:ignore-end
-    // -----------------------------------------------------------------------
-    // Command line flags -----------------------------------------------------
+            masterWorkspacePath ?? WorkspaceUtils.defaultMasterWorkspacePath(),
+        _localizeRefsFn = localizeRefsFn ?? localizeRefs
+  // coverage:ignore-end
+  {
     argParser.addFlag(
       'force',
       abbr: 'f',
-      help: 'If set, an existing repository in the master workspace will be '
-          'deleted before cloning it again.',
-      negatable: false,
+      help: 'Overwrite existing repository in master workspace.',
       defaultsTo: false,
     );
   }
@@ -72,6 +71,9 @@ class AddCommand extends Command<dynamic> {
   /// The path from which the command was executed.
   final String executionPath;
 
+  /// Optional injected localizeRefs function for testing
+  final Future<void> Function(String repoPath) _localizeRefsFn;
+
   @override
   String get name => 'add';
 
@@ -88,7 +90,7 @@ class AddCommand extends Command<dynamic> {
 
     final String targetArg = argResults!.rest[0];
     // Read the --force flag (defaults to false if not provided)
-    final bool force = (argResults!['force'] as bool?) ?? false;
+    final bool force = argResults!['force'] as bool;
 
     // Detect whether we are inside a ticket directory -------------------------
     final String? ticketPath = _detectTicketPath();
@@ -145,7 +147,7 @@ class AddCommand extends Command<dynamic> {
     }
     // Run gg_localize_refs localize-refs in the repo
     try {
-      await localizeRefs(destDir.path);
+      await _localizeRefsFn(destDir.path);
     } catch (e) {
       ggLog(red('Failed to localize refs for $ticketName: $e'));
     }
