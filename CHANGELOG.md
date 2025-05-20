@@ -14,6 +14,7 @@
 - Add tests for create ticket
 - Add function defaultKidneyWorkspacePath
 - Add force flag correctly to AddCommand
+- Add command kidney\_core list tickets
 
 ### Changed
 

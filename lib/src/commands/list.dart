@@ -8,6 +8,7 @@ import 'package:args/command_runner.dart';
 import 'list/repos.dart';
 import 'list/organizations.dart';
 import 'list/deps.dart';
+import 'list/tickets.dart';
 import 'package:gg_log/gg_log.dart';
 
 /// Command to list items from the master workspace.
@@ -19,12 +20,18 @@ class ListCommand extends Command<dynamic> {
     required this.ggLog,
     String? workspacePath,
   }) {
-    // Add subcommands for listing repos, organizations, and deps.
+    // Add subcommands for listing repos, organizations, deps, and tickets.
     addSubcommand(ListReposCommand(ggLog: ggLog, workspacePath: workspacePath));
     addSubcommand(
       ListOrganizationsCommand(ggLog: ggLog, workspacePath: workspacePath),
     );
     addSubcommand(ListDepsCommand(ggLog: ggLog));
+    addSubcommand(
+      ListTicketsCommand(
+        ggLog: ggLog,
+        workspacePath: workspacePath,
+      ),
+    );
   }
 
   /// The log function.
