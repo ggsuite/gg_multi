@@ -11,7 +11,7 @@ import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
-import 'git_cloner.dart';
+import 'git_handler.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 
 /// Helper function to add a repository given a target argument.
@@ -34,7 +34,7 @@ import 'package:pubspec_parse/pubspec_parse.dart';
 Future<void> addRepositoryHelper({
   required String targetArg,
   required GgLog ggLog,
-  required GitCloner gitCloner,
+  required GitHandler gitCloner,
   required Future<http.Response> Function(Uri) repoFetcher,
   required String workspacePath,
   bool force = false,

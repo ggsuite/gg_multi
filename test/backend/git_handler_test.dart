@@ -8,7 +8,7 @@ import 'dart:io';
 
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
-import 'package:kidney_core/src/backend/git_cloner.dart';
+import 'package:kidney_core/src/backend/git_handler.dart';
 import 'package:path/path.dart' as path;
 
 // A mock class for the ProcessRunner function.
@@ -18,9 +18,9 @@ class MockProcessRunner extends Mock {
 
 void main() {
   // Group all tests for GitCloner
-  group('GitCloner', () {
+  group('GitHandler', () {
     late Directory tempDir;
-    late GitCloner gitCloner;
+    late GitHandler gitHandler;
     late MockProcessRunner mockProcessRunner;
 
     // Setup before each test
@@ -30,7 +30,7 @@ void main() {
       // Initialize the mock process runner
       mockProcessRunner = MockProcessRunner();
       // Create a GitCloner instance with the injected mock process runner
-      gitCloner = GitCloner(processRunner: mockProcessRunner.call);
+      gitHandler = GitHandler(processRunner: mockProcessRunner.call);
     });
 
     // Cleanup the temporary directory after each test
@@ -61,7 +61,7 @@ void main() {
         );
 
         // Act
-        await gitCloner.cloneRepo(repoUrl, targetDirectory);
+        await gitHandler.cloneRepo(repoUrl, targetDirectory);
 
         // Assert
         // Verify that the process runner was called with the correct arguments
@@ -94,7 +94,7 @@ void main() {
 
         // Act & Assert
         expect(
-          () async => await gitCloner.cloneRepo(repoUrl, targetDirectory),
+          () async => await gitHandler.cloneRepo(repoUrl, targetDirectory),
           throwsA(
             predicate(
               (e) =>
@@ -145,7 +145,7 @@ void main() {
         );
 
         // Act
-        await gitCloner.cloneRepo(repoUrl, targetDirectory);
+        await gitHandler.cloneRepo(repoUrl, targetDirectory);
 
         // Assert
         // The parent directory should have been created

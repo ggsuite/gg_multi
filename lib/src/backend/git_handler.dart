@@ -10,13 +10,13 @@ import 'dart:io';
 typedef ProcessRunner = Future<ProcessResult> Function(String, List<String>);
 
 /// A class responsible for cloning git repositories.
-class GitCloner {
+class GitHandler {
   /// The function used to run system processes.
   final ProcessRunner processRunner;
 
   /// Constructor accepts an optional [processRunner]
   /// to enable testing by injection.
-  GitCloner({ProcessRunner? processRunner})
+  GitHandler({ProcessRunner? processRunner})
       : processRunner = processRunner ?? Process.run;
 
   /// Clones the repository from [repoUrl] into [targetDirectory].

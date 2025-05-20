@@ -12,7 +12,7 @@ import 'package:gg_log/gg_log.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 
-import '../backend/git_cloner.dart';
+import '../backend/git_handler.dart';
 import '../backend/add_repository_helper.dart';
 import '../backend/filesystem_utils.dart';
 import '../backend/workspace_utils.dart';
@@ -33,11 +33,11 @@ class AddCommand extends Command<dynamic> {
   /// Constructor for AddCommand.
   AddCommand({
     required this.ggLog,
-    GitCloner? gitCloner,
+    GitHandler? gitCloner,
     Future<http.Response> Function(Uri)? repoFetcher,
     String? workspacePath,
     // coverage:ignore-start
-  })  : gitCloner = gitCloner ?? GitCloner(),
+  })  : gitCloner = gitCloner ?? GitHandler(),
         repoFetcher = repoFetcher ?? http.get,
         workspacePath =
             workspacePath ?? WorkspaceUtils.defaultMasterWorkspacePath() {
@@ -58,7 +58,7 @@ class AddCommand extends Command<dynamic> {
   final GgLog ggLog;
 
   /// Instance to handle cloning.
-  final GitCloner gitCloner;
+  final GitHandler gitCloner;
 
   /// Function to fetch repositories from the organization API.
   final Future<http.Response> Function(Uri) repoFetcher;
