@@ -472,6 +472,41 @@ void main() {
         reason: 'onRepoAdded should be executed when fallback url is used.',
       );
     });
+
+    test('logs error when primary and all fallback organization clones fail',
+        () async {
+      // Arrange: add at least one org for fallback, all fail
+      final orgFile = File(path.join(workspacePath, '.organizations'));
+      const fallbackOrgName = 'fallbackOrg';
+      const fallbackOrgUrl = 'https://github.com/fallbackOrg';
+      orgFile.writeAsStringSync(jsonEncode({fallbackOrgName: fallbackOrgUrl}));
+
+      const repoName = 'fallbackRepo';
+      const primaryUrl = 'https://github.com/$repoName/$repoName.git';
+      const fallbackUrl = '$fallbackOrgUrl/$repoName.git';
+
+      final mockGitCloner = MockGitCloner();
+      // Both primary and fallback throw an error
+      when(() => mockGitCloner.cloneRepo(primaryUrl, any()))
+          .thenThrow(Exception('Primary clone fail'));
+      when(() => mockGitCloner.cloneRepo(fallbackUrl, any()))
+          .thenThrow(Exception('Fallback fail'));
+
+      await addRepositoryHelper(
+        targetArg: repoName,
+        ggLog: ggLog,
+        gitCloner: mockGitCloner,
+        repoFetcher: (uri) async => http.Response('{}', 200),
+        workspacePath: workspacePath,
+        force: false,
+      );
+
+      expect(
+        logs,
+        contains('Failed to clone repository $repoName '
+            'from any known organizations.'),
+      );
+    });
   });
 
   group('extractRepoName', () {
