@@ -82,6 +82,12 @@ void main() {
           'Added repository myrepo from https://github.com/myrepo/myrepo.git',
         ]),
       );
+
+      // Integration check: .organizations file correctly updated
+      final orgFile = File(path.join(masterWorkspacePath, '.organizations'));
+      expect(orgFile.existsSync(), isTrue);
+      final orgMap = jsonDecode(orgFile.readAsStringSync()) as Map;
+      expect(orgMap['myrepo'], 'https://github.com/myrepo/');
     });
 
     test(

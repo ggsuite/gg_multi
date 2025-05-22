@@ -13,6 +13,7 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 import 'git_handler.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
+import 'organization_utils.dart';
 
 /// Helper function to add a repository given a target argument.
 /// It supports various formats like URLs, SSH links, and plain names.
@@ -66,6 +67,13 @@ Future<void> addRepositoryHelper({
     await gitCloner.cloneRepo(repoUrl, destination);
     ggLog(green('Added repository $repoName from $repoUrl'));
 
+    // Store organization info after successful clone, ignore errors
+    try {
+      OrganizationUtils.appendOrganization(workspacePath, repoUrl);
+    } catch (_) {
+      // Swallow errors: organization info shouldn't block the core flow
+    }
+
     if (onRepoAdded != null) {
       await onRepoAdded(repoName);
     }
@@ -80,6 +88,9 @@ Future<void> addRepositoryHelper({
     cleanedUrl = cleanedUrl.substring(0, cleanedUrl.length - 1);
   }
   // Remove trailing slashes ONLY (preserve inner slashes between segments).
+  cleanedUrl = cleanedUrl.replaceFirst(RegExp(r'/+'), '');
+  cleanedUrl = cleanedUrl.replaceFirst(RegExp(r'/+'), '');
+  cleanedUrl = cleanedUrl.replaceFirst(RegExp(r'/+'), ''); // safety
   cleanedUrl = cleanedUrl.replaceFirst(RegExp(r'/+$'), '');
 
   final parsedUri = Uri.tryParse(cleanedUrl);

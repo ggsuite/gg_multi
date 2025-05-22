@@ -1,0 +1,92 @@
+// @license
+// Copyright (c) 2025 Göran Hegenberg. All Rights Reserved.
+//
+// Use of this source code is governed by terms that can be
+// found in the LICENSE file in the root of this package.
+
+import 'dart:convert';
+import 'dart:io';
+import 'package:path/path.dart' as path;
+
+/// A utility class to manage organizations
+/// associated with the master workspace.
+/// Stores organizations in a JSON file (.organizations) with name and base URL.
+class OrganizationUtils {
+  /// Reads the organizations from the master workspace .organizations file.
+  /// Returns a map of organization name to URL.
+  static Map<String, String> readOrganizations(String workspacePath) {
+    final organizationsFile = File(path.join(workspacePath, '.organizations'));
+    if (!organizationsFile.existsSync()) {
+      return <String, String>{};
+    }
+    try {
+      final content = organizationsFile.readAsStringSync();
+      final data = jsonDecode(content);
+      if (data is Map<String, dynamic>) {
+        return data.map((key, value) => MapEntry(key, value.toString()));
+      }
+    } catch (_) {
+      // If parsing fails, treat as empty (could consider throwing in future)
+    }
+    return <String, String>{};
+  }
+
+  /// Writes the organizations to the .organizations file.
+  static void writeOrganizations(
+    String workspacePath,
+    Map<String, String> data,
+  ) {
+    final organizationsFile = File(path.join(workspacePath, '.organizations'));
+    organizationsFile.writeAsStringSync(jsonEncode(data), flush: true);
+  }
+
+  /// Appends a new organization (if not already present) for a given repo URL.
+  /// Does nothing if the organization already exists.
+  static void appendOrganization(String workspacePath, String repoUrl) {
+    final orgName = extractOrganizationFromUrl(repoUrl);
+    if (orgName == null || orgName.isEmpty) {
+      return;
+    }
+    final orgUrl = buildBaseUrl(repoUrl, orgName);
+    final orgs = readOrganizations(workspacePath);
+    if (!orgs.containsKey(orgName)) {
+      orgs[orgName] = orgUrl;
+      writeOrganizations(workspacePath, orgs);
+    }
+  }
+
+  /// Extracts the organization name from a git repo URL (SSH or HTTP).
+  static String? extractOrganizationFromUrl(String url) {
+    // SSH: git@github.com:<org>/<repo>.git
+    final sshMatch =
+        RegExp(r'^git@[^:]+:([^/]+)/[^/]+(?:\.git)?').firstMatch(url);
+    if (sshMatch != null) {
+      return sshMatch.group(1);
+    }
+    // HTTP(S): https://github.com/<org>/<repo>
+    try {
+      final uri = Uri.parse(url);
+      if (uri.pathSegments.length >= 2) {
+        return uri.pathSegments[0];
+      }
+    } catch (_) {
+      // Ignore parse errors
+    }
+    return null; // Not a recognized format
+  }
+
+  /// Builds the base URL for the organization given a repo URL and org name.
+  static String buildBaseUrl(String repoUrl, String org) {
+    if (repoUrl.startsWith('git@')) {
+      // Assume github for SSH
+      return 'https://github.com/$org/';
+    }
+    try {
+      final uri = Uri.parse(repoUrl);
+      return '${uri.scheme}://${uri.host}/$org/';
+    } catch (_) {
+      // If parsing fails, fallback to github
+      return 'https://github.com/$org/';
+    }
+  }
+}
