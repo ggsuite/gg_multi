@@ -21,7 +21,7 @@ import 'organization_utils.dart';
 ///
 /// The [force] parameter determines whether an existing cloned
 /// repository should be overwritten. If false and the destination
-/// already exists and is not empty, the function logs "repo already added.".
+/// already exists and is not empty, the function logs "repo already added."
 ///
 /// The [logIfAlreadyAdded] parameter controls whether the "already added"
 /// message is logged when a repository is skipped because it's already
@@ -88,10 +88,7 @@ Future<void> addRepositoryHelper({
     cleanedUrl = cleanedUrl.substring(0, cleanedUrl.length - 1);
   }
   // Remove trailing slashes ONLY (preserve inner slashes between segments).
-  cleanedUrl = cleanedUrl.replaceFirst(RegExp(r'/+'), '');
-  cleanedUrl = cleanedUrl.replaceFirst(RegExp(r'/+'), '');
-  cleanedUrl = cleanedUrl.replaceFirst(RegExp(r'/+'), ''); // safety
-  cleanedUrl = cleanedUrl.replaceFirst(RegExp(r'/+$'), '');
+  cleanedUrl = cleanedUrl.replaceAll(RegExp(r'/+$'), '');
 
   final parsedUri = Uri.tryParse(cleanedUrl);
 
@@ -154,7 +151,7 @@ Future<void> addRepositoryHelper({
 /// Extracts the repository name from a git URL supporting SSH and HTTPS.
 String extractRepoName(String repoUrl) {
   if (repoUrl.startsWith('git@')) {
-    final sshRegex = RegExp(r'^(?:git@[^:]+:)([^/]+)/(.+?)(?:\.git)?$');
+    final sshRegex = RegExp(r'^git@[^:]+:([^/]+)/(.+?)(?:\.git)?$');
     final match = sshRegex.firstMatch(repoUrl);
     if (match != null) {
       return match.group(2)!;

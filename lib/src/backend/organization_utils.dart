@@ -81,12 +81,13 @@ class OrganizationUtils {
       // Assume github for SSH
       return 'https://github.com/$org/';
     }
-    try {
-      final uri = Uri.parse(repoUrl);
-      return '${uri.scheme}://${uri.host}/$org/';
-    } catch (_) {
-      // If parsing fails, fallback to github
+    final uri = Uri.parse(repoUrl);
+    // Only accept hostnames that are valid domain names
+    // (letters, digits, hyphens, periods)
+    if (uri.host.isEmpty || !RegExp(r'^[A-Za-z0-9.-]+$').hasMatch(uri.host)) {
+      // Host is not a valid domain, fallback to github
       return 'https://github.com/$org/';
     }
+    return '${uri.scheme}://${uri.host}/$org/';
   }
 }

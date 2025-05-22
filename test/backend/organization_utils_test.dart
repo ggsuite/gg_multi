@@ -76,5 +76,81 @@ void main() {
       final org = OrganizationUtils.extractOrganizationFromUrl('foobar-git');
       expect(org, isNull);
     });
+
+    test(
+      'readOrganizations returns empty map if JSON parsing fails',
+      () {
+        final orgsFile = File(path.join(tempDir.path, '.organizations'));
+        orgsFile.writeAsStringSync('invalid json!'); // not valid JSON
+        final orgs = OrganizationUtils.readOrganizations(tempDir.path);
+        expect(
+          orgs,
+          isEmpty,
+          reason: 'Should return empty map if '
+              '.organizations file contains invalid JSON',
+        );
+      },
+    );
+
+    test(
+      'readOrganizations returns empty map if JSON is not a Map',
+      () {
+        final orgsFile = File(path.join(tempDir.path, '.organizations'));
+        orgsFile.writeAsStringSync(jsonEncode(['not', 'a', 'map']));
+        final orgs = OrganizationUtils.readOrganizations(tempDir.path);
+        expect(
+          orgs,
+          isEmpty,
+          reason: 'Should return empty map if .organizations '
+              'file contains valid JSON but is not a Map',
+        );
+      },
+    );
+
+    group('buildBaseUrl', () {
+      test('returns GitHub HTTPS URL for SSH repoUrl', () {
+        // This branch covers the line return 'https://github.com/\u001forg/';
+        final result = OrganizationUtils.buildBaseUrl(
+          'git@github.com:myorg/myrepo.git',
+          'myorg',
+        );
+        expect(result, equals('https://github.com/myorg/'));
+      });
+
+      test('returns correct HTTPS URL for HTTP(S) repoUrl', () {
+        final result = OrganizationUtils.buildBaseUrl(
+          'https://gitlab.com/fooorg/myrepo.git',
+          'fooorg',
+        );
+        expect(result, equals('https://gitlab.com/fooorg/'));
+      });
+
+      test('falls back to GitHub HTTPS URL on parse error', () {
+        // Simulate an invalid URL which throws in Uri.parse()
+        final result = OrganizationUtils.buildBaseUrl(
+          'https://in valid',
+          'someOrg',
+        );
+        expect(result, equals('https://github.com/someOrg/'));
+      });
+
+      test('returns fallback URL when host is empty', () {
+        // This triggers the branch where uri.host.isEmpty
+        final result = OrganizationUtils.buildBaseUrl(
+          'https:///anything',
+          'fallback',
+        );
+        expect(result, equals('https://github.com/fallback/'));
+      });
+
+      test('returns fallback URL when host contains invalid characters', () {
+        // This triggers the branch where uri.host has invalid chars
+        final result = OrganizationUtils.buildBaseUrl(
+          'https://examp!e.com/repo.git',
+          'fallback',
+        );
+        expect(result, equals('https://github.com/fallback/'));
+      });
+    });
   });
 }
