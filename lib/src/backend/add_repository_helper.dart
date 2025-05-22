@@ -43,8 +43,14 @@ Future<void> addRepositoryHelper({
   Future<void> Function(String repoName)? onRepoAdded,
 }) async {
   // ---------------------------------------------------------------------------
-  // Local helper function to attempt cloning or skip if already exists.
-  Future<void> attemptClone(String repoUrl, String repoName) async {
+  /// Attempts to clone [repoUrl] as [repoName] into [workspacePath].
+  /// If [allowFallback] is true and cloning fails, tries each known
+  /// organization from .organizations file as a fallback.
+  Future<void> attemptClone(
+    String repoUrl,
+    String repoName, {
+    bool allowFallback = false,
+  }) async {
     final destination = path.join(workspacePath, repoName);
     final destDir = Directory(destination);
 
@@ -63,19 +69,51 @@ Future<void> addRepositoryHelper({
       }
     }
 
-    // Clone the repository ....................................................
-    await gitCloner.cloneRepo(repoUrl, destination);
-    ggLog(green('Added repository $repoName from $repoUrl'));
-
-    // Store organization info after successful clone, ignore errors
+    // Try to clone the repository ............................................
     try {
-      OrganizationUtils.appendOrganization(workspacePath, repoUrl);
-    } catch (_) {
-      // Swallow errors: organization info shouldn't block the core flow
-    }
-
-    if (onRepoAdded != null) {
-      await onRepoAdded(repoName);
+      await gitCloner.cloneRepo(repoUrl, destination);
+      ggLog(green('Added repository $repoName from $repoUrl'));
+      try {
+        OrganizationUtils.appendOrganization(workspacePath, repoUrl);
+      } catch (_) {
+        // Swallow errors: organization info shouldn't block the core flow
+      }
+      if (onRepoAdded != null) {
+        await onRepoAdded(repoName);
+      }
+      return;
+    } catch (e) {
+      if (!allowFallback) {
+        rethrow;
+      }
+      // Attempt fallback: try each known organization from .organizations
+      final orgs = OrganizationUtils.readOrganizations(workspacePath);
+      bool anySuccess = false;
+      for (final orgUrl in orgs.values) {
+        final baseUrl = orgUrl.endsWith('/') ? orgUrl : '$orgUrl/';
+        final fallbackUrl = '$baseUrl$repoName.git';
+        try {
+          await gitCloner.cloneRepo(fallbackUrl, destination);
+          ggLog(green('Added repository $repoName from $fallbackUrl'));
+          try {
+            OrganizationUtils.appendOrganization(workspacePath, fallbackUrl);
+          } catch (_) {}
+          if (onRepoAdded != null) {
+            await onRepoAdded(repoName);
+          }
+          anySuccess = true;
+          break;
+        } catch (_) {
+          // Continue trying next
+        }
+      }
+      if (!anySuccess) {
+        ggLog(
+          red('Failed to clone repository '
+              '$repoName from any known organizations.'),
+        );
+      }
+      return;
     }
   }
 
@@ -144,7 +182,7 @@ Future<void> addRepositoryHelper({
     // plain repo name ---------------------------------------------------------
     final String repoUrl = 'https://github.com/$targetArg/$targetArg.git';
     final String repoName = extractRepoName(repoUrl);
-    await attemptClone(repoUrl, repoName);
+    await attemptClone(repoUrl, repoName, allowFallback: true);
   }
 }
 
