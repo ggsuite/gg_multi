@@ -417,6 +417,96 @@ void main() {
         expect(logs, contains('repo already added.'));
       });
     });
+
+    test('uses fallback organization when primary clone fails', () async {
+      // Arrange: write .organizations file in workspace
+      final orgFile = File(path.join(workspacePath, '.organizations'));
+      const fallbackOrgName = 'fallbackOrg';
+      const fallbackOrgUrl = 'https://github.com/fallbackOrg';
+      orgFile.writeAsStringSync(jsonEncode({fallbackOrgName: fallbackOrgUrl}));
+
+      // Given a plain repo name (targetArg), the initial github URL...
+      const repoName = 'test';
+      const primaryUrl = 'https://github.com/$repoName/$repoName.git';
+      const fallbackUrl = '$fallbackOrgUrl/$repoName.git';
+      final destination = path.join(workspacePath, repoName);
+
+      final mockGitCloner = MockGitCloner();
+      // First attempt fails (default github)
+      when(() => mockGitCloner.cloneRepo(primaryUrl, any()))
+          .thenThrow(Exception('Primary clone failure'));
+      // Second attempt (fallback) succeeds
+      when(() => mockGitCloner.cloneRepo(fallbackUrl, any()))
+          .thenAnswer((_) async {});
+
+      var callbackExecuted = false;
+      Future<void> onRepoAdded(String name) async {
+        expect(name, equals(repoName));
+        callbackExecuted = true;
+      }
+
+      // Act
+      await addRepositoryHelper(
+        targetArg: repoName,
+        ggLog: ggLog,
+        gitCloner: mockGitCloner,
+        repoFetcher: (uri) async => http.Response('{}', 200),
+        workspacePath: workspacePath,
+        force: false,
+        onRepoAdded: onRepoAdded,
+      );
+
+      // Assert: fallbackUrl was used
+      verify(() => mockGitCloner.cloneRepo(primaryUrl, destination)).called(1);
+      verify(() => mockGitCloner.cloneRepo(fallbackUrl, destination)).called(1);
+      // The repo was reported as added from the fallback URL
+      expect(
+        logs,
+        contains(
+          'Added repository $repoName from $fallbackUrl',
+        ),
+      );
+      expect(
+        callbackExecuted,
+        isTrue,
+        reason: 'onRepoAdded should be executed when fallback url is used.',
+      );
+    });
+
+    test('logs error when primary and all fallback organization clones fail',
+        () async {
+      // Arrange: add at least one org for fallback, all fail
+      final orgFile = File(path.join(workspacePath, '.organizations'));
+      const fallbackOrgName = 'fallbackOrg';
+      const fallbackOrgUrl = 'https://github.com/fallbackOrg';
+      orgFile.writeAsStringSync(jsonEncode({fallbackOrgName: fallbackOrgUrl}));
+
+      const repoName = 'fallbackRepo';
+      const primaryUrl = 'https://github.com/$repoName/$repoName.git';
+      const fallbackUrl = '$fallbackOrgUrl/$repoName.git';
+
+      final mockGitCloner = MockGitCloner();
+      // Both primary and fallback throw an error
+      when(() => mockGitCloner.cloneRepo(primaryUrl, any()))
+          .thenThrow(Exception('Primary clone fail'));
+      when(() => mockGitCloner.cloneRepo(fallbackUrl, any()))
+          .thenThrow(Exception('Fallback fail'));
+
+      await addRepositoryHelper(
+        targetArg: repoName,
+        ggLog: ggLog,
+        gitCloner: mockGitCloner,
+        repoFetcher: (uri) async => http.Response('{}', 200),
+        workspacePath: workspacePath,
+        force: false,
+      );
+
+      expect(
+        logs,
+        contains('Failed to clone repository $repoName '
+            'from any known organizations.'),
+      );
+    });
   });
 
   group('extractRepoName', () {
@@ -485,9 +575,6 @@ void main() {
     });
   });
 
-  // ---------------------------------------------------------------------
-  // New test to ensure onRepoAdded is called when repository already exists
-  // ---------------------------------------------------------------------
   test('calls onRepoAdded callback when repo already exists and is non-empty',
       () async {
     // Arrange
@@ -513,6 +600,7 @@ void main() {
       gitCloner: mockGitCloner,
       repoFetcher: (uri) async => http.Response('{}', 200),
       workspacePath: workspacePath,
+      force: false,
       onRepoAdded: onRepoAdded,
     );
 
