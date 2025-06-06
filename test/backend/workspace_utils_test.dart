@@ -206,4 +206,36 @@ void main() {
       expect(isInside, isTrue);
     });
   });
+
+  group('WorkspaceUtils.detectTicketPath', () {
+    late Directory tempRoot;
+
+    setUp(() async {
+      tempRoot = await Directory.systemTemp.createTemp('detectTicketPath_');
+    });
+
+    tearDown(() async {
+      if (await tempRoot.exists()) {
+        await tempRoot.delete(recursive: true);
+      }
+    });
+
+    test('returns ticket directory when found', () async {
+      // Create /tmp/XYZ/tickets/T1
+      final ticketsDir = Directory(path.join(tempRoot.path, 'tickets'));
+      final ticketDir = Directory(path.join(ticketsDir.path, 'T1'));
+      await ticketDir.create(recursive: true);
+      // The input should be a subdir inside ticketsDir
+      final result = WorkspaceUtils.detectTicketPath(ticketDir.path);
+      expect(result, ticketDir.path);
+    });
+
+    test('returns null when no ticket folder exists', () async {
+      // Just a random non-ticket path
+      final randomDir = Directory(path.join(tempRoot.path, 'foo', 'bar'));
+      await randomDir.create(recursive: true);
+      final result = WorkspaceUtils.detectTicketPath(randomDir.path);
+      expect(result, isNull);
+    });
+  });
 }

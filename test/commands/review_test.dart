@@ -261,5 +261,27 @@ void main() {
       // There should not be any green message about "Created PR for D".
       expect(logMessages.any((m) => m.contains('Created PR for D')), isFalse);
     });
+
+    test('logs no repositories found when ticket folder is empty', () async {
+      // Create the empty ticket directory under tickets
+      final ticket = Directory(path.join(tempDir.path, 'tickets', 'T_empty'))
+        ..createSync(recursive: true);
+      // No repo directories inside ticket directory
+      final runner = CommandRunner<void>('test', 'test review')
+        ..addCommand(
+          ReviewCommand(
+            ggLog: ggLog,
+            executionPath: ticket.path,
+            processRunner: fakeProcSuccess,
+          ),
+        );
+      await runner.run(['review']);
+      expect(
+        logMessages,
+        contains(
+          'No repositories found in ticket T_empty.',
+        ),
+      );
+    });
   });
 }

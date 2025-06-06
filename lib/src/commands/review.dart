@@ -21,6 +21,21 @@ typedef ProcessRunner = Future<ProcessResult> Function(
   String? workingDirectory,
 });
 
+/// Default process runner that uses the system's `Process.run`
+// coverage:ignore-start
+Future<ProcessResult> _defaultProcessRunner(
+  String executable,
+  List<String> arguments, {
+  String? workingDirectory,
+}) =>
+    Process.run(
+      executable,
+      arguments,
+      workingDirectory: workingDirectory,
+      runInShell: true,
+    );
+// coverage:ignore-end
+
 /// Command to review a ticket: check uncommitted changes,
 /// unlocalize refs, and create pull requests.
 class ReviewCommand extends Command<void> {
@@ -136,17 +151,4 @@ class ReviewCommand extends Command<void> {
       }
     }
   }
-
-  // Real process runner
-  static Future<ProcessResult> _defaultProcessRunner(
-    String executable,
-    List<String> arguments, {
-    String? workingDirectory,
-  }) =>
-      Process.run(
-        executable,
-        arguments,
-        workingDirectory: workingDirectory,
-        runInShell: true,
-      );
 }
