@@ -98,4 +98,21 @@ class WorkspaceUtils {
       dir = parent;
     }
   }
+
+  /// Walks up the directory tree to find a ticket directory and returns its
+  /// path when found, otherwise `null`.
+  static String? detectTicketPath(String executionPath) {
+    var current = Directory(executionPath);
+    while (true) {
+      final parent = current.parent;
+      if (path.basename(parent.path) == kidneyTicketFolder) {
+        return current.path;
+      }
+      if (current.path == parent.path) {
+        // Reached filesystem root without finding a ticket.
+        return null;
+      }
+      current = parent;
+    }
+  }
 }

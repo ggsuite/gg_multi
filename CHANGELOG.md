@@ -29,6 +29,7 @@
 - Error if ticket already exists
 - Successfully open VSCode on Windows
 - Rename GitCloner to GitHandler
+- restructure code in review command
 
 ### Removed
 

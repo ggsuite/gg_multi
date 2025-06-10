@@ -12,7 +12,6 @@ import 'package:gg_log/gg_log.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 
-import '../backend/constants.dart';
 import '../backend/git_handler.dart';
 import '../backend/add_repository_helper.dart';
 import '../backend/filesystem_utils.dart';
@@ -90,7 +89,7 @@ class AddCommand extends Command<dynamic> {
     }
     final targets = argResults!.rest;
     final bool force = argResults!['force'] as bool;
-    final String? ticketPath = _detectTicketPath();
+    final String? ticketPath = WorkspaceUtils.detectTicketPath(executionPath);
     for (final targetArg in targets) {
       await addRepositoryHelper(
         targetArg: targetArg,
@@ -150,22 +149,5 @@ class AddCommand extends Command<dynamic> {
       ggLog(red('Failed to localize refs for $ticketName: $e'));
     }
     ggLog(green('Added repository $repoName to ticket workspace.'));
-  }
-
-  /// Walks up the directory tree to find a ticket directory and returns its
-  /// path when found, otherwise `null`.
-  String? _detectTicketPath() {
-    var current = Directory(executionPath);
-    while (true) {
-      final parent = current.parent;
-      if (path.basename(parent.path) == kidneyTicketFolder) {
-        return current.path;
-      }
-      if (current.path == parent.path) {
-        // Reached filesystem root without finding a ticket.
-        return null;
-      }
-      current = parent;
-    }
   }
 }
