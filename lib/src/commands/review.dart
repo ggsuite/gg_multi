@@ -37,7 +37,7 @@ Future<ProcessResult> _defaultProcessRunner(
 // coverage:ignore-end
 
 /// Command to review a ticket: check uncommitted changes,
-/// unlocalize refs, and create pull requests.
+/// unlocalize refs, localize refs, and create pull requests.
 class ReviewCommand extends Command<void> {
   /// Constructor
   ReviewCommand({
@@ -63,14 +63,13 @@ class ReviewCommand extends Command<void> {
   String get name => 'review';
 
   @override
-  String get description =>
-      'Review a ticket: check uncommitted changes, unlocalize-refs, '
+  String get description => 'Review a ticket: check uncommitted changes, '
+      'unlocalize-refs, localize-refs, '
       'create PRs.';
 
   @override
   Future<void> run() async {
     // Step 1. Locate the ticket directory (must be inside ticket)
-    // var current = _dirFactory(executionPath); // unused
     final String? ticketPath = WorkspaceUtils.detectTicketPath(executionPath);
     if (ticketPath == null) {
       ggLog(red('Review must be executed inside a ticket folder.'));
@@ -108,7 +107,7 @@ class ReviewCommand extends Command<void> {
       ggLog(red('Please commit or stash your changes before reviewing.'));
       return;
     }
-    // Step 4. Run unlocalize-refs and gh pr create
+    // Step 4. Run unlocalize-refs, localize-refs --git, and gh pr create
     for (final repoDir in subs) {
       // Unlocalize refs
       try {
@@ -130,6 +129,26 @@ class ReviewCommand extends Command<void> {
           ),
         );
         continue;
+      }
+      // Localize refs with --git
+      try {
+        final localizeResult = await _runProc(
+          'gg_localize_refs',
+          ['localize-refs', '--git'],
+          workingDirectory: repoDir.path,
+        );
+        if (localizeResult.exitCode != 0) {
+          throw Exception(localizeResult.stderr);
+        }
+        ggLog(
+          green('Localized refs for ${path.basename(repoDir.path)}'),
+        );
+      } catch (e) {
+        ggLog(
+          red('Failed to localize refs with --git for '
+              '${path.basename(repoDir.path)}: $e'),
+        );
+        // Still continue to PR creation
       }
       // PR create
       try {

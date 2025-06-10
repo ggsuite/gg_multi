@@ -104,7 +104,9 @@ void main() {
       expect(logMessages.last, contains('Please commit or stash your changes'));
     });
 
-    test('runs unlocalize-refs then PR create when all clean', () async {
+    test(
+        'runs unlocalize-refs then localize-refs --git '
+        'then PR create when all clean', () async {
       final ticket = Directory(path.join(tempDir.path, 'tickets', 'T1'))
         ..createSync(recursive: true);
       Directory(path.join(ticket.path, 'A')).createSync();
@@ -120,13 +122,21 @@ void main() {
           'args': args,
           'dir': workingDirectory,
         });
+        // Simulate uncommitted check: clean
         if (exe == 'git' && (args as List)[0] == 'status') {
           return ProcessResult(1, 0, '', '');
         }
+        // Simulate unlocalize-refs
         if (exe == 'gg_localize_refs' &&
             (args as List).first == 'unlocalize-refs') {
           return ProcessResult(2, 0, '', '');
         }
+        // Simulate localize-refs --git
+        if (exe == 'gg_localize_refs' &&
+            ((args as List).first == 'localize-refs')) {
+          return ProcessResult(4, 0, '', '');
+        }
+        // Simulate PR create
         if (exe == 'gh' && (args as List).take(2).join(' ') == 'pr create') {
           return ProcessResult(3, 0, '', '');
         }
@@ -142,6 +152,7 @@ void main() {
           ),
         );
       await runnerCmd.run(['review']);
+
       expect(
         calls.where(
           (c) => c['exe'] == 'git' && (c['args'] as List)[0] == 'status',
@@ -149,7 +160,19 @@ void main() {
         hasLength(2),
       );
       expect(
-        calls.where((c) => c['exe'] == 'gg_localize_refs'),
+        calls.where(
+          (c) =>
+              c['exe'] == 'gg_localize_refs' &&
+              (c['args'] as List).first == 'unlocalize-refs',
+        ),
+        hasLength(2),
+      );
+      expect(
+        calls.where(
+          (c) =>
+              c['exe'] == 'gg_localize_refs' &&
+              (c['args'] as List).first == 'localize-refs',
+        ),
         hasLength(2),
       );
       expect(
@@ -163,6 +186,14 @@ void main() {
       expect(
         logMessages,
         contains('Unlocalized refs for B'),
+      );
+      expect(
+        logMessages,
+        contains('Localized refs for A'),
+      );
+      expect(
+        logMessages,
+        contains('Localized refs for B'),
       );
       expect(
         logMessages,
@@ -193,7 +224,8 @@ void main() {
         if (exe == 'git' && (args as List)[0] == 'status') {
           return ProcessResult(1, 0, '', '');
         }
-        if (exe == 'gg_localize_refs') {
+        if (exe == 'gg_localize_refs' &&
+            (args as List).first == 'unlocalize-refs') {
           return ProcessResult(2, 1, '', 'broken!');
         }
         // PR create never called if unlocalize-refs fails
@@ -237,6 +269,7 @@ void main() {
           return ProcessResult(1, 0, '', '');
         }
         if (exe == 'gg_localize_refs') {
+          // Always succeed for either unlocalize-refs or localize-refs
           return ProcessResult(2, 0, '', '');
         }
         if (exe == 'gh') {
