@@ -69,6 +69,34 @@ class ReviewCommand extends Command<void> {
   @override
   String get description => 'Starts the review workflow for a ticket.';
 
+  /// Runs an external command and logs the result.
+  /// - On success (exitCode == 0): Log the [successMessage] in green.
+  /// - On failure: Log the [failureMessage] and error in red.
+  /// - Returns true on success, false otherwise.
+  Future<bool> _runCommand(
+    String executable,
+    List<String> arguments,
+    String successMessage,
+    String failureMessage, {
+    required String workingDirectory,
+  }) async {
+    try {
+      final result = await _runProc(
+        executable,
+        arguments,
+        workingDirectory: workingDirectory,
+      );
+      if (result.exitCode != 0) {
+        throw Exception(result.stderr);
+      }
+      ggLog(green(successMessage));
+      return true;
+    } catch (e) {
+      ggLog(red('$failureMessage: $e'));
+      return false;
+    }
+  }
+
   @override
   Future<void> run() async {
     // Step 1. Locate the ticket directory (must be inside ticket)
@@ -109,67 +137,37 @@ class ReviewCommand extends Command<void> {
       ggLog(red('Please commit or stash your changes before reviewing.'));
       return;
     }
-    // Step 4. Run unlocalize-refs, localize-refs --git, and gh pr create
+    // Step 4. Run commands: unlocalize-refs, localize-refs --git,
+    // and gh pr create
     for (final repoDir in subs) {
-      // Unlocalize refs
-      try {
-        final unlocalizeResult = await _runProc(
-          'gg_localize_refs',
-          ['unlocalize-refs'],
-          workingDirectory: repoDir.path,
-        );
-        if (unlocalizeResult.exitCode != 0) {
-          throw Exception(unlocalizeResult.stderr);
-        }
-        ggLog(
-          green('Unlocalized refs for ${path.basename(repoDir.path)}'),
-        );
-      } catch (e) {
-        ggLog(
-          red(
-            'Failed to unlocalize refs for ${path.basename(repoDir.path)}: $e',
-          ),
-        );
+      final name = path.basename(repoDir.path);
+      // Unlocalize refs. If failed, skip to next repo.
+      final okUnloc = await _runCommand(
+        'gg_localize_refs',
+        ['unlocalize-refs'],
+        'Unlocalized refs for $name',
+        'Failed to unlocalize refs for $name',
+        workingDirectory: repoDir.path,
+      );
+      if (!okUnloc) {
         continue;
       }
-      // Localize refs with --git
-      try {
-        final localizeResult = await _runProc(
-          'gg_localize_refs',
-          ['localize-refs', '--git'],
-          workingDirectory: repoDir.path,
-        );
-        if (localizeResult.exitCode != 0) {
-          throw Exception(localizeResult.stderr);
-        }
-        ggLog(
-          green('Localized refs for ${path.basename(repoDir.path)}'),
-        );
-      } catch (e) {
-        ggLog(
-          red('Failed to localize refs with --git for '
-              '${path.basename(repoDir.path)}: $e'),
-        );
-        // Still continue to PR creation
-      }
-      // PR create
-      try {
-        final prResult = await _runProc(
-          'gh',
-          ['pr', 'create'],
-          workingDirectory: repoDir.path,
-        );
-        if (prResult.exitCode != 0) {
-          throw Exception(prResult.stderr);
-        }
-        ggLog(
-          green('Created PR for ${path.basename(repoDir.path)}'),
-        );
-      } catch (e) {
-        ggLog(
-          red('Failed to create PR for ${path.basename(repoDir.path)}: $e'),
-        );
-      }
+      // Localize refs with --git. Error logs, but continues.
+      await _runCommand(
+        'gg_localize_refs',
+        ['localize-refs', '--git'],
+        'Localized refs for $name',
+        'Failed to localize refs with --git for $name',
+        workingDirectory: repoDir.path,
+      );
+      // PR create. Error logs, but continues.
+      await _runCommand(
+        'gh',
+        ['pr', 'create'],
+        'Created PR for $name',
+        'Failed to create PR for $name',
+        workingDirectory: repoDir.path,
+      );
     }
   }
 }
