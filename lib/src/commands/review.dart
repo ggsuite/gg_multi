@@ -56,16 +56,18 @@ class ReviewCommand extends Command<void> {
 
   /// The path from which the command was executed.
   final String executionPath;
+
+  /// Factory to create Directory instances (for testing).
   final DirectoryFactory _dirFactory;
+
+  /// Function to run processes (for injection & tests).
   final ProcessRunner _runProc;
 
   @override
   String get name => 'review';
 
   @override
-  String get description => 'Review a ticket: check uncommitted changes, '
-      'unlocalize-refs, localize-refs, '
-      'create PRs.';
+  String get description => 'Starts the review workflow for a ticket.';
 
   @override
   Future<void> run() async {

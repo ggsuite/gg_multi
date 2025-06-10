@@ -5,6 +5,7 @@
 // found in the LICENSE file in the root of this package.
 
 import 'dart:io';
+import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:test/test.dart';
 import 'package:path/path.dart' as path;
 import 'package:args/command_runner.dart';
@@ -314,6 +315,25 @@ void main() {
         contains(
           'No repositories found in ticket T_empty.',
         ),
+      );
+    });
+
+    test('prints help message', () async {
+      final runner = CommandRunner<void>(
+        'test',
+        'Help',
+      )..addCommand(ReviewCommand(ggLog: (_) {}));
+
+      final output = await capturePrint(
+        code: () async {
+          await runner.run(['review', '--help']);
+        },
+      );
+
+      expect(
+        output.last,
+        contains('Starts the review workflow for a ticket'),
+        reason: 'Help should mention the review description.',
       );
     });
   });
