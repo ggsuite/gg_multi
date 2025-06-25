@@ -193,11 +193,11 @@ void main() {
       expect(launched[1][0], 'code');
       expect(
         messages,
-        contains('Opened A at ${path.join(ticketDir.path, 'A')}'),
+        contains('Opened A at A'),
       );
       expect(
         messages,
-        contains('Opened B at ${path.join(ticketDir.path, 'B')}'),
+        contains('Opened B at B'),
       );
     });
   });

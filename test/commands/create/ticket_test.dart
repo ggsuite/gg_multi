@@ -47,6 +47,7 @@ void main() {
     test('creates folder and writes .ticket file', () async {
       const issueId = 'CDM-128';
       const description = 'Fix some ugly bug';
+      final ticketRelPath = path.join('tickets', issueId);
 
       await runner.run([
         'ticket',
@@ -80,8 +81,7 @@ void main() {
       expect(
         messages,
         contains(
-          'Created ticket $issueId at '
-          '${ticketDir.path}',
+          'Created ticket $issueId at $ticketRelPath',
         ),
       );
     });
@@ -89,6 +89,7 @@ void main() {
     test('does not create ticket if it already exists', () async {
       const issueId = 'DUP-1';
       const description = 'duplicate ticket';
+      final ticketRelPath = path.join('tickets', issueId);
 
       // First creation
       await runner.run([
@@ -126,8 +127,7 @@ void main() {
       expect(
         messages,
         contains(
-          'Error: Ticket $issueId already exists at '
-          '${ticketDir.path}',
+          'Error: Ticket $issueId already exists at $ticketRelPath',
         ),
       );
     });

@@ -13,6 +13,7 @@ import 'package:path/path.dart' as path;
 import '../backend/constants.dart';
 import '../backend/workspace_utils.dart';
 import '../backend/vscode_launcher.dart';
+import 'package:path/path.dart' as p;
 
 /// Command to open all repos (or a single repo) under a ticket in VS Code.
 class CodeCommand extends Command<void> {
@@ -44,6 +45,8 @@ class CodeCommand extends Command<void> {
 
   /// Responsible for launching VS Code.
   final VSCodeLauncher _launcher;
+
+  String _rel(String absPath) => p.relative(absPath, from: _executionPath);
 
   @override
   String get name => 'code';
@@ -84,7 +87,7 @@ class CodeCommand extends Command<void> {
     );
     final ticketDir = Directory(path.join(ticketsDir.path, ticketName));
     if (!ticketDir.existsSync()) {
-      ggLog(red('Ticket $ticketName not found at ${ticketDir.path}'));
+      ggLog(red('Ticket $ticketName not found at ${_rel(ticketDir.path)}'));
       return;
     }
     if (repoName != null) {
@@ -93,7 +96,7 @@ class CodeCommand extends Command<void> {
         ggLog(
           red(
             'Repository $repoName not found '
-            'in ticket $ticketName at ${repoDir.path}',
+            'in ticket $ticketName at ${_rel(repoDir.path)}',
           ),
         );
         return;
@@ -122,7 +125,7 @@ class CodeCommand extends Command<void> {
 
   Future<void> _openInVSCode(Directory dir) async {
     await _launcher.open(dir);
-    ggLog(green('Opened ${path.basename(dir.path)} at ${dir.path}'));
+    ggLog(green('Opened ${path.basename(dir.path)} at ${_rel(dir.path)}'));
   }
 }
 

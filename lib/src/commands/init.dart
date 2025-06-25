@@ -12,6 +12,7 @@ import 'package:gg_log/gg_log.dart';
 
 import '../backend/constants.dart';
 import '../backend/workspace_utils.dart';
+import 'package:path/path.dart' as p;
 
 /// Command to initialize the master workspace
 class InitCommand extends Command<void> {
@@ -29,6 +30,8 @@ class InitCommand extends Command<void> {
   /// Optional root path for where to create the master workspace
   final String rootPath;
 
+  String _rel(String absPath) => p.relative(absPath, from: rootPath);
+
   @override
   String get name => 'init';
 
@@ -43,7 +46,7 @@ class InitCommand extends Command<void> {
     final wsDir = Directory(wsPath);
 
     if (wsDir.existsSync()) {
-      ggLog(yellow('Master workspace already exists at: $wsPath'));
+      ggLog(yellow('Master workspace already exists at: ${_rel(wsPath)}'));
       return;
     }
 
@@ -63,6 +66,6 @@ class InitCommand extends Command<void> {
     // -----------------------------------------------------------------------
     // Create the workspace ---------------------------------------------------
     wsDir.createSync(recursive: true);
-    ggLog(green('Master workspace initialized at: $wsPath'));
+    ggLog(green('Master workspace initialized at: ${_rel(wsPath)}'));
   }
 }

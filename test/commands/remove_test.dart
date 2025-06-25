@@ -140,7 +140,7 @@ void main() {
       await localRunner.run(['remove', 'anyRepo']);
 
       // Assert
-      expect(messages, contains('Root path not found: $nonExistingPath'));
+      expect(messages, contains('Root path not found: .'));
     });
 
     test('logs repository folder not found when deletion target does not exist',
@@ -173,7 +173,8 @@ void main() {
       // Assert
       expect(
         messages,
-        contains('Repository folder not found: $repoFolderPath'),
+        contains('Repository folder not found: '
+            '${path.join(kidneyMasterFolder, 'missingRepo')}'),
       );
     });
 
@@ -191,7 +192,12 @@ void main() {
       expect(ticketDir.existsSync(), isFalse);
       expect(
         messages,
-        contains('Deleted ticket ticket1 at ${ticketDir.path}'),
+        contains(
+          'Deleted ticket ticket1 at ${path.join(
+            kidneyTicketFolder,
+            'ticket1',
+          )}',
+        ),
       );
     });
   });

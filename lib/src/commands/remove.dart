@@ -11,6 +11,7 @@ import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 import '../backend/add_repository_helper.dart';
 import '../backend/constants.dart';
+import 'package:path/path.dart' as p;
 
 /// Typedef for creating Directory instances,
 /// used for dependency injection in tests.
@@ -46,6 +47,8 @@ class RemoveCommand extends Command<void> {
   /// Factory function to create Directory instances (useful for testing)
   final DirectoryFactory directoryFactory;
 
+  String _rel(String absPath) => p.relative(absPath, from: rootPath);
+
   @override
   String get name => 'remove';
 
@@ -70,14 +73,14 @@ class RemoveCommand extends Command<void> {
     final ticketDir = Directory(ticketPath);
     if (ticketDir.existsSync()) {
       ticketDir.deleteSync(recursive: true);
-      ggLog(green('Deleted ticket $repoName at $ticketPath'));
+      ggLog(green('Deleted ticket $repoName at ${_rel(ticketPath)}'));
       return;
     }
 
     // Find all workspaces under rootPath starting with "kidney_ws_"
     final rootDir = Directory(rootPath);
     if (!rootDir.existsSync()) {
-      ggLog(red('Root path not found: $rootPath'));
+      ggLog(red('Root path not found: ${_rel(rootPath)}'));
       return;
     }
     final workspaces = rootDir.listSync().whereType<Directory>().toList();
@@ -106,7 +109,7 @@ class RemoveCommand extends Command<void> {
           green('Deleted repository $repoName from master workspace.'),
         );
       } else {
-        ggLog(red('Repository folder not found: ${toDelete.path}'));
+        ggLog(red('Repository folder not found: ${_rel(toDelete.path)}'));
       }
       return;
     }

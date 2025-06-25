@@ -13,6 +13,7 @@ import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 import '../../backend/constants.dart';
 import '../../backend/workspace_utils.dart';
+import 'package:path/path.dart' as p;
 
 /// Typedef for creating Directory instances (for testing).
 typedef DirectoryFactory = Directory Function(String path);
@@ -47,6 +48,8 @@ class TicketCommand extends Command<void> {
   /// Factory to create Directory instances
   final DirectoryFactory directoryFactory;
 
+  String _rel(String absPath) => p.relative(absPath, from: rootPath);
+
   @override
   String get name => 'ticket';
 
@@ -73,7 +76,9 @@ class TicketCommand extends Command<void> {
     final ticketFile = File(path.join(ticketsPath, '.ticket'));
 
     if (dir.existsSync() && ticketFile.existsSync()) {
-      ggLog(red('Error: Ticket $issueId already exists at $ticketsPath'));
+      ggLog(
+        red('Error: Ticket $issueId already exists at ${_rel(ticketsPath)}'),
+      );
       return;
     }
 
@@ -88,6 +93,6 @@ class TicketCommand extends Command<void> {
     };
     ticketFile.writeAsStringSync(jsonEncode(data));
 
-    ggLog(green('Created ticket $issueId at $ticketsPath'));
+    ggLog(green('Created ticket $issueId at ${_rel(ticketsPath)}'));
   }
 }
