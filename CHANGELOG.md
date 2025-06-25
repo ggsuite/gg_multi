@@ -30,6 +30,7 @@
 - Successfully open VSCode on Windows
 - Rename GitCloner to GitHandler
 - restructure code in review command
+- code command does not require argument if executed in ticket directory
 
 ### Removed
 

@@ -14,19 +14,18 @@ import '../backend/constants.dart';
 import '../backend/workspace_utils.dart';
 import '../backend/vscode_launcher.dart';
 
-/// Typedef for creating Directory instances (for testing).
-typedef DirectoryFactory = Directory Function(String path);
-
 /// Command to open all repos (or a single repo) under a ticket in VS Code.
 class CodeCommand extends Command<void> {
   /// Constructor.
   CodeCommand({
     required this.ggLog,
     String? rootPath,
+    String? executionPath,
     DirectoryFactory? directoryFactory,
     VSCodeLauncher? launcher,
     // coverage:ignore-start
   })  : workspacePath = rootPath ?? WorkspaceUtils.defaultKidneyWorkspacePath(),
+        _executionPath = executionPath ?? Directory.current.path,
         _dirFactory = directoryFactory ?? Directory.new,
         _launcher = launcher ?? VSCodeLauncher();
   // coverage:ignore-end
@@ -36,6 +35,9 @@ class CodeCommand extends Command<void> {
 
   /// Kidney workspace path.
   final String workspacePath;
+
+  /// The path from which the command is executed
+  final String _executionPath;
 
   /// Used for test injection.
   final DirectoryFactory _dirFactory;
@@ -54,7 +56,18 @@ class CodeCommand extends Command<void> {
   Future<void> run() async {
     final args = argResults!.rest;
     if (args.isEmpty) {
-      throw UsageException('Missing ticket parameter.', usage);
+      // Detect ticket folder if possible
+      final ticketPath = WorkspaceUtils.detectTicketPath(_executionPath);
+      if (ticketPath == null) {
+        throw UsageException(
+          'Missing ticket parameter.',
+          usage,
+        );
+      }
+      // If a ticket folder is detected, open all repos in it
+      final ticketDir = Directory(ticketPath);
+      await _openAllReposInTicket(ticketDir);
+      return;
     }
     final target = args.first;
     final parts = target.split(RegExp(r'[\\/]'));
@@ -87,15 +100,23 @@ class CodeCommand extends Command<void> {
       }
       await _openInVSCode(repoDir);
     } else {
-      final subs = ticketDir.listSync().whereType<Directory>().toList()
-        ..sort((a, b) => a.path.compareTo(b.path));
-      if (subs.isEmpty) {
-        ggLog(red('No repositories found under ticket $ticketName.'));
-        return;
-      }
-      for (final d in subs) {
-        await _openInVSCode(d);
-      }
+      await _openAllReposInTicket(ticketDir);
+    }
+  }
+
+  /// Opens all repo directories inside [ticketDir] in VS Code
+  Future<void> _openAllReposInTicket(Directory ticketDir) async {
+    final subs = ticketDir.listSync().whereType<Directory>().toList()
+      ..sort((a, b) => a.path.compareTo(b.path));
+    if (subs.isEmpty) {
+      ggLog(
+        red('No repositories found under ticket '
+            '${path.basename(ticketDir.path)}.'),
+      );
+      return;
+    }
+    for (final d in subs) {
+      await _openInVSCode(d);
     }
   }
 
@@ -104,3 +125,6 @@ class CodeCommand extends Command<void> {
     ggLog(green('Opened ${path.basename(dir.path)} at ${dir.path}'));
   }
 }
+
+/// Typedef for creating Directory instances (for testing).
+typedef DirectoryFactory = Directory Function(String path);

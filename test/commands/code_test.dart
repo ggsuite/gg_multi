@@ -165,5 +165,40 @@ void main() {
         throwsA(isA<UsageException>()),
       );
     });
+
+    test('opens repos inside ticket dir when no args', () async {
+      // Create a ticket folder under the temp root
+      final ticketDir = Directory(
+        path.join(tempRoot.path, kidneyTicketFolder, 'T_noArgs'),
+      )..createSync(recursive: true);
+      Directory(path.join(ticketDir.path, 'A')).createSync();
+      Directory(path.join(ticketDir.path, 'B')).createSync();
+
+      // Here we must call CodeCommand with executionPath = ticketDir.path
+      final localRunner = CommandRunner<void>('test', 'test')
+        ..addCommand(
+          CodeCommand(
+            ggLog: ggLog,
+            rootPath: tempRoot.path,
+            executionPath: ticketDir.path,
+            directoryFactory: Directory.new,
+            launcher: VSCodeLauncher(processStarter: fakeStarter),
+          ),
+        );
+
+      await localRunner.run(['code']);
+
+      expect(launched.length, 2);
+      expect(launched[0][0], 'code');
+      expect(launched[1][0], 'code');
+      expect(
+        messages,
+        contains('Opened A at ${path.join(ticketDir.path, 'A')}'),
+      );
+      expect(
+        messages,
+        contains('Opened B at ${path.join(ticketDir.path, 'B')}'),
+      );
+    });
   });
 }
