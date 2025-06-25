@@ -32,6 +32,7 @@
 - restructure code in review command
 - code command does not require argument if executed in ticket directory
 - change to relative path outputs in log
+- suggest cd command to user when new ticket created
 
 ### Removed
 

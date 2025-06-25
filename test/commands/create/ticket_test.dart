@@ -84,6 +84,11 @@ void main() {
           'Created ticket $issueId at $ticketRelPath',
         ),
       );
+      expect(
+        messages,
+        contains('Execute "cd $ticketRelPath" '
+            'to enter the ticket workspace.'),
+      );
     });
 
     test('does not create ticket if it already exists', () async {
