@@ -57,11 +57,22 @@ class OrganizationUtils {
 
   /// Extracts the organization name from a git repo URL (SSH or HTTP).
   static String? extractOrganizationFromUrl(String url) {
+    // Azure SSH: git@ssh.dev.azure.com:v3/<org>/<project>/<repo>
+    final azSsh = RegExp(r'^git@ssh\.dev\.azure\.com:v3/([^/]+)/');
+    final azHttp = RegExp(r'^https?://ssh\.dev\.azure\.com[:/]+v3/([^/]+)/');
     // SSH: git@github.com:<org>/<repo>.git
     final sshMatch =
         RegExp(r'^git@[^:]+:([^/]+)/[^/]+(?:\.git)?').firstMatch(url);
     if (sshMatch != null) {
       return sshMatch.group(1);
+    }
+    final azSshMatch = azSsh.firstMatch(url);
+    if (azSshMatch != null) {
+      return azSshMatch.group(1);
+    }
+    final azHttpMatch = azHttp.firstMatch(url);
+    if (azHttpMatch != null) {
+      return azHttpMatch.group(1);
     }
     // HTTP(S): https://github.com/<org>/<repo>
     try {
@@ -77,8 +88,11 @@ class OrganizationUtils {
 
   /// Builds the base URL for the organization given a repo URL and org name.
   static String buildBaseUrl(String repoUrl, String org) {
+    if (repoUrl.contains('ssh.dev.azure.com')) {
+      return 'https://ssh.dev.azure.com:v3/$org/';
+    }
     if (repoUrl.startsWith('git@')) {
-      // Assume github for SSH
+      // Assume github for classic SSH
       return 'https://github.com/$org/';
     }
     final uri = Uri.parse(repoUrl);
