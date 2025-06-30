@@ -41,7 +41,7 @@ class AddOrganizationCommand extends Command<void> {
     if (orgArg.startsWith('http') || orgArg.startsWith('git@')) {
       repoUrl = orgArg;
     } else {
-      repoUrl = 'https://github.com/$orgArg/';
+      repoUrl = 'https://github.com/$orgArg';
     }
     final orgName = OrganizationUtils.extractOrganizationFromUrl(repoUrl);
     if (orgName == null || orgName.isEmpty) {

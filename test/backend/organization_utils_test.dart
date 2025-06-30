@@ -58,9 +58,23 @@ void main() {
       expect(orgs['myorg'], 'https://github.com/myorg/');
     });
 
-    test('extractOrganizationFromUrl extracts org from HTTP-URL', () {
+    test('extractOrganizationFromUrl extracts org from HTTP-URL for repo', () {
       final org = OrganizationUtils.extractOrganizationFromUrl(
         'https://github.com/foobar/repo.git',
+      );
+      expect(org, equals('foobar'));
+    });
+
+    test('extractOrganizationFromUrl extracts org from HTTP-URL for org', () {
+      final org = OrganizationUtils.extractOrganizationFromUrl(
+        'https://github.com/foobar',
+      );
+      expect(org, equals('foobar'));
+    });
+
+    test('extractOrganizationFromUrl extracts org from HTTP-URL with final / for org', () {
+      final org = OrganizationUtils.extractOrganizationFromUrl(
+        'https://github.com/foobar/',
       );
       expect(org, equals('foobar'));
     });
