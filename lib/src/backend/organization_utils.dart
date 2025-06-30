@@ -56,6 +56,7 @@ class OrganizationUtils {
   }
 
   /// Extracts the organization name from a git repo URL (SSH or HTTP).
+  /// Only accepts names with [a-z0-9_-]. Returns null for other patterns.
   static String? extractOrganizationFromUrl(String url) {
     // Azure SSH: git@ssh.dev.azure.com:v3/<org>/<project>/<repo>
     final azSsh = RegExp(r'^git@ssh\.dev\.azure\.com:v3/([^/]+)/');
@@ -64,15 +65,24 @@ class OrganizationUtils {
     final sshMatch =
         RegExp(r'^git@[^:]+:([^/]+)/[^/]+(?:\.git)?').firstMatch(url);
     if (sshMatch != null) {
-      return sshMatch.group(1);
+      String? orgName = sshMatch.group(1);
+      if(_isValidOrgName(orgName)) {
+        return orgName;
+      }
     }
     final azSshMatch = azSsh.firstMatch(url);
     if (azSshMatch != null) {
-      return azSshMatch.group(1);
+      String? orgName = azSshMatch.group(1);
+      if(_isValidOrgName(orgName)) {
+        return orgName;
+      }
     }
     final azHttpMatch = azHttp.firstMatch(url);
     if (azHttpMatch != null) {
-      return azHttpMatch.group(1);
+      String? orgName = azHttpMatch.group(1);
+      if(_isValidOrgName(orgName)) {
+        return orgName;
+      }
     }
     try {
       final trimmed =
@@ -80,13 +90,20 @@ class OrganizationUtils {
       final uri = Uri.parse(trimmed);
       if (uri.pathSegments.isNotEmpty &&
           uri.pathSegments.first.trim().isNotEmpty) {
-        return uri.pathSegments.first.trim();
+        String? orgName = uri.pathSegments.first.trim();
+        if(_isValidOrgName(orgName)) {
+          return orgName;
+        }
       }
     } catch (_) {
       // Ignore parse errors
     }
     return null; // Not a recognized format
   }
+
+  /// Returns true if name is valid organization name: [a-z0-9_-] only.
+  static bool _isValidOrgName(String? name) => name != null &&
+      RegExp(r'^[a-z0-9_-]+').hasMatch(name);
 
   /// Builds the base URL for the organization given a repo URL and org name.
   static String buildBaseUrl(String repoUrl, String org) {
