@@ -74,11 +74,13 @@ class OrganizationUtils {
     if (azHttpMatch != null) {
       return azHttpMatch.group(1);
     }
-    // HTTP(S): https://github.com/<org>/<repo>
     try {
-      final uri = Uri.parse(url);
-      if (uri.pathSegments.length >= 2) {
-        return uri.pathSegments[0];
+      final trimmed =
+          url.endsWith('/') ? url.substring(0, url.length - 1) : url;
+      final uri = Uri.parse(trimmed);
+      if (uri.pathSegments.isNotEmpty &&
+          uri.pathSegments.first.trim().isNotEmpty) {
+        return uri.pathSegments.first.trim();
       }
     } catch (_) {
       // Ignore parse errors

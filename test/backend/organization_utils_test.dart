@@ -72,7 +72,8 @@ void main() {
       expect(org, equals('foobar'));
     });
 
-    test('extractOrganizationFromUrl extracts org from HTTP-URL with final / for org', () {
+    test('extractOrganizationFromUrl extracts org '
+        'from HTTP-URL with final / for org', () {
       final org = OrganizationUtils.extractOrganizationFromUrl(
         'https://github.com/foobar/',
       );
@@ -86,9 +87,9 @@ void main() {
       expect(org, equals('foobar'));
     });
 
-    test('extractOrganizationFromUrl returns null for random string', () {
+    test('extractOrganizationFromUrl returns org name', () {
       final org = OrganizationUtils.extractOrganizationFromUrl('foobar-git');
-      expect(org, isNull);
+      expect(org, equals('foobar-git'));
     });
 
     test(
