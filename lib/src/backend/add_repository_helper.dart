@@ -89,8 +89,8 @@ Future<void> addRepositoryHelper({
       // Attempt fallback: try each known organization from .organizations
       final orgs = OrganizationUtils.readOrganizations(workspacePath);
       bool anySuccess = false;
-      for (final orgUrl in orgs.values) {
-        final baseUrl = orgUrl.endsWith('/') ? orgUrl : '$orgUrl/';
+      for (final org in orgs) {
+        final baseUrl = org.url.endsWith('/') ? org.url : '${org.url}/';
         final fallbackUrl = '$baseUrl$repoName.git';
         try {
           await gitCloner.cloneRepo(fallbackUrl, destination);

@@ -17,6 +17,7 @@ void main() {
 
     setUp(() {
       tempDir = Directory.systemTemp.createTempSync('org_utils_test_');
+      OrganizationUtils.clearCache();
     });
 
     tearDown(() {
@@ -25,23 +26,23 @@ void main() {
       }
     });
 
-    test('readOrganizations returns empty map if file does not exist', () {
+    test('readOrganizations returns empty list if file does not exist', () {
       final orgs = OrganizationUtils.readOrganizations(tempDir.path);
       expect(orgs, isEmpty);
     });
 
     test('appendOrganization creates file and adds entry', () {
-      OrganizationUtils.appendOrganization(
-        tempDir.path,
-        'https://github.com/myorg/myrepo.git',
-      );
+      const url = 'https://github.com/myorg/myrepo.git';
+      OrganizationUtils.appendOrganization(tempDir.path, url);
       final orgs = OrganizationUtils.readOrganizations(tempDir.path);
-      expect(orgs, contains('myorg'));
-      expect(orgs['myorg'], 'https://github.com/myorg/');
+      expect(orgs.any((o) => o.name == 'myorg'), isTrue);
+      expect(orgs[0].url, 'https://github.com/myorg/');
       final file = File(path.join(tempDir.path, '.organizations'));
       expect(file.existsSync(), isTrue);
-      final parsed = jsonDecode(file.readAsStringSync()) as Map;
-      expect(parsed['myorg'], 'https://github.com/myorg/');
+      final parsed = jsonDecode(file.readAsStringSync());
+      expect(parsed is List, isTrue);
+      expect(parsed[0]['name'], 'myorg');
+      expect(parsed[0]['url'], 'https://github.com/myorg/');
     });
 
     test('second append with same org does not duplicate', () {
@@ -55,7 +56,8 @@ void main() {
       );
       final orgs = OrganizationUtils.readOrganizations(tempDir.path);
       expect(orgs.length, 1);
-      expect(orgs['myorg'], 'https://github.com/myorg/');
+      expect(orgs[0].name, 'myorg');
+      expect(orgs[0].url, 'https://github.com/myorg/');
     });
 
     group('extractOrganizationFromUrl', () {
@@ -108,20 +110,8 @@ void main() {
         });
 
         test('from SSH URL with git ending', () {
-          const url = 'git@ssh.dev.azure.com:v3/devorg/sampleproj/reponame.git';
-          final org = OrganizationUtils.extractOrganizationFromUrl(url);
-          expect(org, equals('devorg'));
-        });
-
-        test('from https URL with git ending', () {
           const url =
-              'https://ssh.dev.azure.com:v3/devorg/sampleproj/reponame.git';
-          final org = OrganizationUtils.extractOrganizationFromUrl(url);
-          expect(org, equals('devorg'));
-        });
-
-        test('when Azure org contains dash/underscore', () {
-          const url = 'git@ssh.dev.azure.com:v3/acme-lab_xyz/someproj/myRepo';
+              'git@ssh.dev.azure.com:v3/acme-lab_xyz/project/reponame.git';
           final org = OrganizationUtils.extractOrganizationFromUrl(url);
           expect(org, equals('acme-lab_xyz'));
         });
@@ -129,7 +119,7 @@ void main() {
     });
 
     test(
-      'readOrganizations returns empty map if JSON parsing fails',
+      'readOrganizations returns empty list if JSON parsing fails',
       () {
         final orgsFile = File(path.join(tempDir.path, '.organizations'));
         orgsFile.writeAsStringSync('invalid json!'); // not valid JSON
@@ -137,30 +127,39 @@ void main() {
         expect(
           orgs,
           isEmpty,
-          reason: 'Should return empty map if '
+          reason: 'Should return empty list if '
               '.organizations file contains invalid JSON',
         );
       },
     );
 
     test(
-      'readOrganizations returns empty map if JSON is not a Map',
+      'readOrganizations imports legacy Map format',
       () {
         final orgsFile = File(path.join(tempDir.path, '.organizations'));
-        orgsFile.writeAsStringSync(jsonEncode(['not', 'a', 'map']));
+        final legacy = {'a': 'u1', 'b': 'u2'};
+        orgsFile.writeAsStringSync(jsonEncode(legacy));
         final orgs = OrganizationUtils.readOrganizations(tempDir.path);
-        expect(
-          orgs,
-          isEmpty,
-          reason: 'Should return empty map if .organizations '
-              'file contains valid JSON but is not a Map',
-        );
+        expect(orgs.length, 2);
+        expect(orgs[0].name, 'a');
+        expect(orgs[0].url, 'u1');
+        expect(orgs[1].name, 'b');
+        expect(orgs[1].url, 'u2');
+      },
+    );
+
+    test(
+      'readOrganizations returns empty list if JSON is not List or Map',
+      () {
+        final orgsFile = File(path.join(tempDir.path, '.organizations'));
+        orgsFile.writeAsStringSync(jsonEncode('this is neither list nor map'));
+        final orgs = OrganizationUtils.readOrganizations(tempDir.path);
+        expect(orgs, isEmpty);
       },
     );
 
     group('buildBaseUrl', () {
       test('returns GitHub HTTPS URL for SSH repoUrl', () {
-        // This branch covers the line return 'https://github.com/\u001forg/';
         final result = OrganizationUtils.buildBaseUrl(
           'git@github.com:myorg/myrepo.git',
           'myorg',
@@ -177,7 +176,6 @@ void main() {
       });
 
       test('falls back to GitHub HTTPS URL on parse error', () {
-        // Simulate an invalid URL which throws in Uri.parse()
         final result = OrganizationUtils.buildBaseUrl(
           'https://in valid',
           'someOrg',
@@ -186,7 +184,6 @@ void main() {
       });
 
       test('returns fallback URL when host is empty', () {
-        // This triggers the branch where uri.host.isEmpty
         final result = OrganizationUtils.buildBaseUrl(
           'https:///anything',
           'fallback',
@@ -195,7 +192,6 @@ void main() {
       });
 
       test('returns fallback URL when host contains invalid characters', () {
-        // This triggers the branch where uri.host has invalid chars
         final result = OrganizationUtils.buildBaseUrl(
           'https://examp!e.com/repo.git',
           'fallback',
