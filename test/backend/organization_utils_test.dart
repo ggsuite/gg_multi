@@ -7,6 +7,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:kidney_core/src/backend/organization.dart';
 import 'package:test/test.dart';
 import 'package:path/path.dart' as path;
 import 'package:kidney_core/src/backend/organization_utils.dart';
@@ -223,6 +224,207 @@ void main() {
         const org = 'myorg';
         final base = OrganizationUtils.buildBaseUrl(url, org);
         expect(base, equals('https://ssh.dev.azure.com:v3/myorg/'));
+      });
+    });
+
+    group('getOrganizationByName', () {
+      test('returns organization when name exists', () {
+        OrganizationUtils.writeOrganizations(tempDir.path, [
+          Organization(
+            name: 'acme',
+            url: 'https://github.com/acme/',
+          ),
+        ]);
+        final org = OrganizationUtils.getOrganizationByName(
+          tempDir.path,
+          'acme',
+        );
+        expect(org, isNotNull);
+        expect(org?.name, 'acme');
+        expect(org?.url, 'https://github.com/acme/');
+      });
+
+      test('returns null if organization name does not exist', () {
+        OrganizationUtils.writeOrganizations(tempDir.path, [
+          Organization(
+            name: 'foobar',
+            url: 'url://foobar',
+          ),
+        ]);
+        final org = OrganizationUtils.getOrganizationByName(
+          tempDir.path,
+          'other',
+        );
+        expect(org, isNull);
+      });
+
+      test('is case-sensitive: returns null if case does not match', () {
+        OrganizationUtils.writeOrganizations(tempDir.path, [
+          Organization(
+            name: 'Bar',
+            url: 'x://bar',
+          ),
+          Organization(
+            name: 'foo',
+            url: 'x://foo',
+          ),
+        ]);
+        // Pass lowercase
+        expect(
+          OrganizationUtils.getOrganizationByName(tempDir.path, 'bar'),
+          isNull,
+        );
+        // Pass exact
+        expect(
+          OrganizationUtils.getOrganizationByName(tempDir.path, 'Bar'),
+          isNotNull,
+        );
+        expect(
+          OrganizationUtils.getOrganizationByName(tempDir.path, 'foo')?.url,
+          'x://foo',
+        );
+      });
+
+      test(
+          'caches and returns the same object if called repeatedly, '
+          'even after file deletion', () {
+        final org = Organization(
+          name: 'cached',
+          url: 'https://cached',
+        );
+        OrganizationUtils.writeOrganizations(tempDir.path, [org]);
+        final result1 = OrganizationUtils.getOrganizationByName(
+          tempDir.path,
+          'cached',
+        );
+        expect(result1, isNotNull);
+        // Remove file, so cache is the only source
+        final orgFile = File('${tempDir.path}/.organizations');
+        if (orgFile.existsSync()) {
+          orgFile.deleteSync();
+        }
+        final result2 = OrganizationUtils.getOrganizationByName(
+          tempDir.path,
+          'cached',
+        );
+        expect(
+          identical(result1, result2),
+          isTrue,
+          reason: 'should be same object from cache',
+        );
+        expect(result2?.name, 'cached');
+      });
+    });
+
+    group('OrganizationUtils buffer/cache', () {
+      late Directory tempDir;
+      setUp(() {
+        tempDir = Directory.systemTemp.createTempSync('org_buffer_');
+        OrganizationUtils.clearCache();
+      });
+      tearDown(() {
+        if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+      });
+
+      test('caches organizations from file', () {
+        final orgFile = File(path.join(tempDir.path, '.organizations'));
+        final orgsList = [
+          {
+            'id': 'id1',
+            'name': 'foo',
+            'url': 'u',
+            'projectName': 'pn',
+          },
+          {
+            'id': 'id2',
+            'name': 'bar',
+            'url': 'v',
+          }
+        ];
+        orgFile.writeAsStringSync(jsonEncode(orgsList));
+        final firstRead = OrganizationUtils.readOrganizations(tempDir.path);
+        final secondRead = OrganizationUtils.readOrganizations(tempDir.path);
+        expect(identical(firstRead, secondRead), isTrue);
+        expect(firstRead.length, 2);
+        expect(firstRead[0].name, 'foo');
+      });
+
+      test('ignores file after caching even if file is changed', () {
+        final orgFile = File(path.join(tempDir.path, '.organizations'));
+        orgFile.writeAsStringSync(
+          jsonEncode([
+            {
+              'id': 'id1',
+              'name': 'foo',
+              'url': 'bar',
+            }
+          ]),
+        );
+        OrganizationUtils.readOrganizations(tempDir.path);
+        orgFile.writeAsStringSync(
+          jsonEncode([
+            {
+              'id': 'id2',
+              'name': 'baz',
+              'url': 'qux',
+            }
+          ]),
+        );
+        final again = OrganizationUtils.readOrganizations(tempDir.path);
+        expect(again[0].name, 'foo');
+        expect(again[0].id, 'id1');
+      });
+
+      test('addOrganization adds and updates cache + disk', () {
+        expect(OrganizationUtils.readOrganizations(tempDir.path), isEmpty);
+        final org = Organization(name: 'org1', url: 'u1');
+        OrganizationUtils.addOrganization(tempDir.path, org);
+        final cached = OrganizationUtils.readOrganizations(tempDir.path);
+        expect(cached.length, 1);
+        expect(cached[0].name, 'org1');
+        // File was written as well
+        final diskOrg = File(path.join(tempDir.path, '.organizations'));
+        final json = jsonDecode(diskOrg.readAsStringSync());
+        expect(json[0]['name'], 'org1');
+      });
+
+      test('does not add duplicate organizations by name', () {
+        final org = Organization(name: 'dupe', url: 'u');
+        OrganizationUtils.addOrganization(tempDir.path, org);
+        final again = Organization(name: 'dupe', url: 'otheru');
+        OrganizationUtils.addOrganization(tempDir.path, again);
+        final all = OrganizationUtils.readOrganizations(tempDir.path);
+        expect(all.length, 1, reason: 'No duplicates allowed');
+      });
+
+      test('getOrganizationByName finds by name', () {
+        OrganizationUtils.clearCache();
+        final o1 = Organization(name: 'xx', url: 'yy');
+        OrganizationUtils.addOrganization(tempDir.path, o1);
+        final res = OrganizationUtils.getOrganizationByName(tempDir.path, 'xx');
+        expect(res, isNotNull);
+        expect(res!.name, 'xx');
+      });
+
+      test('getOrganizationByName returns null if not present', () {
+        OrganizationUtils.clearCache();
+        expect(
+          OrganizationUtils.getOrganizationByName(tempDir.path, 'qw'),
+          isNull,
+        );
+      });
+
+      test('getOrganizationByRepoUrl works via org extraction', () {
+        OrganizationUtils.clearCache();
+        final org = Organization(name: 'someorg', url: 'url');
+        OrganizationUtils.addOrganization(tempDir.path, org);
+        const url = 'git@github.com:someorg/some-repo.git';
+        final found = OrganizationUtils.getOrganizationByRepoUrl(
+          tempDir.path,
+          url,
+        );
+        expect(found, isNotNull);
+        expect(found!.name, 'someorg');
       });
     });
   });
