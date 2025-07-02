@@ -16,7 +16,6 @@ import '../backend/add_repository_helper.dart';
 import '../backend/filesystem_utils.dart';
 import '../backend/localize_refs_handler.dart';
 import '../backend/workspace_utils.dart';
-import 'add/organization.dart';
 
 /// Command to add a repository or all repositories from an organization.
 ///
@@ -84,24 +83,6 @@ class AddCommand extends Command<dynamic> {
 
   @override
   Future<void> run() async {
-    // Handle: kidney_core add organization <organization_name_or_url>
-    if (argResults!.rest.isNotEmpty &&
-        argResults!.rest.first == 'organization') {
-      if (argResults!.rest.length < 2) {
-        throw UsageException('Missing organization parameter.', usage);
-      }
-      final orgArg = argResults!.rest[1];
-      final runner = CommandRunner<void>('add', '')
-        ..addCommand(
-          AddOrganizationCommand(
-            ggLog: ggLog,
-            workspacePath: masterWorkspacePath,
-          ),
-        );
-      await runner.run(['organization', orgArg]);
-      return; // stop - handled as add organization
-    }
-
     if (argResults!.rest.isEmpty) {
       throw UsageException('Missing target parameter.', usage);
     }

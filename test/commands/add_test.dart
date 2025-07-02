@@ -17,7 +17,6 @@ import 'package:kidney_core/src/commands/add.dart';
 import 'package:kidney_core/src/backend/git_handler.dart';
 
 import '../rm_console_colors_helper.dart';
-import 'add/organization_test.dart';
 
 // Create a mock for GitCloner
 class MockGitCloner extends Mock implements GitHandler {}
@@ -467,84 +466,6 @@ void main() {
         contains('Added repository repoB from '
             'https://github.com/repoB/repoB.git'),
       );
-    });
-
-    test('throws UsageException for missing organization parameter', () async {
-      // Arrange
-      final tempDir = Directory.systemTemp.createTempSync('addcmd_guard_');
-      final masterWorkspacePath = path.join(tempDir.path, kidneyMasterFolder);
-      Directory(masterWorkspacePath).createSync(recursive: true);
-      final logMessages = <String>[];
-      void ggLog(String message) {
-        logMessages.add(message);
-      }
-
-      final runner = CommandRunner<void>('test', 'add org guard')
-        ..addCommand(
-          AddCommand(
-            ggLog: ggLog,
-            masterWorkspacePath: masterWorkspacePath,
-          ),
-        );
-      // Act & Assert
-      await expectLater(
-        runner.run(['add', 'organization']),
-        throwsA(isA<UsageException>()),
-      );
-
-      expect(
-        logMessages,
-        isEmpty,
-        reason: 'The guard block should not log any messages.',
-      );
-      tempDir.deleteSync(recursive: true);
-    });
-  });
-
-  group('AddCommand organization subcommand integration', () {
-    late Directory tempDir;
-    late Directory masterDir;
-    late String masterWorkspacePath;
-    late List<String> logMessages;
-    late CommandRunner<void> runner;
-    late MockGitCloner mockGitCloner;
-    void ggLog(String message) => logMessages.add(rmConsoleColors(message));
-
-    setUp(() {
-      tempDir = Directory.systemTemp.createTempSync('addorg_flow_');
-      masterDir = Directory(path.join(tempDir.path, kidneyMasterFolder))
-        ..createSync(recursive: true);
-      masterWorkspacePath = masterDir.path;
-      logMessages = [];
-      mockGitCloner = MockGitCloner();
-      runner = CommandRunner<void>('test', 'add organization')
-        ..addCommand(
-          AddCommand(
-            ggLog: ggLog,
-            gitCloner: mockGitCloner,
-            masterWorkspacePath: masterWorkspacePath,
-          ),
-        );
-    });
-
-    tearDown(() {
-      if (tempDir.existsSync()) {
-        tempDir.deleteSync(recursive: true);
-      }
-    });
-
-    test('runs add organization through AddCommand delegation path', () async {
-      // Run AddCommand with organization syntax, expects full delegation
-      await runner.run(['add', 'organization', 'org42']);
-
-      final orgs = readOrganizationsFile(masterWorkspacePath);
-      expect(orgs['org42'], 'https://github.com/org42/');
-      expect(
-        logMessages,
-        contains('Added organization org42.'),
-      );
-      // Ensure no repo was cloned
-      verifyNever(() => mockGitCloner.cloneRepo(any(), any()));
     });
   });
 }

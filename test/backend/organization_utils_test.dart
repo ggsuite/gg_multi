@@ -72,7 +72,8 @@ void main() {
       expect(org, equals('foobar'));
     });
 
-    test('extractOrganizationFromUrl extracts org '
+    test(
+        'extractOrganizationFromUrl extracts org '
         'from HTTP-URL with final / for org', () {
       final org = OrganizationUtils.extractOrganizationFromUrl(
         'https://github.com/foobar/',

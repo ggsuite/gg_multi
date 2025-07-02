@@ -66,21 +66,21 @@ class OrganizationUtils {
         RegExp(r'^git@[^:]+:([^/]+)/[^/]+(?:\.git)?').firstMatch(url);
     if (sshMatch != null) {
       String? orgName = sshMatch.group(1);
-      if(_isValidOrgName(orgName)) {
+      if (_isValidOrgName(orgName)) {
         return orgName;
       }
     }
     final azSshMatch = azSsh.firstMatch(url);
     if (azSshMatch != null) {
       String? orgName = azSshMatch.group(1);
-      if(_isValidOrgName(orgName)) {
+      if (_isValidOrgName(orgName)) {
         return orgName;
       }
     }
     final azHttpMatch = azHttp.firstMatch(url);
     if (azHttpMatch != null) {
       String? orgName = azHttpMatch.group(1);
-      if(_isValidOrgName(orgName)) {
+      if (_isValidOrgName(orgName)) {
         return orgName;
       }
     }
@@ -91,7 +91,7 @@ class OrganizationUtils {
       if (uri.pathSegments.isNotEmpty &&
           uri.pathSegments.first.trim().isNotEmpty) {
         String? orgName = uri.pathSegments.first.trim();
-        if(_isValidOrgName(orgName)) {
+        if (_isValidOrgName(orgName)) {
           return orgName;
         }
       }
@@ -102,8 +102,8 @@ class OrganizationUtils {
   }
 
   /// Returns true if name is valid organization name: [a-z0-9_-] only.
-  static bool _isValidOrgName(String? name) => name != null &&
-      RegExp(r'^[a-z0-9_-]+').hasMatch(name);
+  static bool _isValidOrgName(String? name) =>
+      name != null && RegExp(r'^[a-z0-9_-]+').hasMatch(name);
 
   /// Builds the base URL for the organization given a repo URL and org name.
   static String buildBaseUrl(String repoUrl, String org) {
