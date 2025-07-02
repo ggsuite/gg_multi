@@ -158,6 +158,25 @@ void main() {
       },
     );
 
+    test('readOrganizations reads list format', () {
+      // This test covers the code path where the file
+      // contains a proper JSON list of Organization objects.
+      OrganizationUtils.clearCache();
+      final file = File(path.join(tempDir.path, '.organizations'));
+      final listJson = [
+        {'id': '1', 'name': 'o1', 'url': 'u1'},
+        {'id': '2', 'name': 'o2', 'url': 'u2', 'projectName': 'p2'},
+      ];
+      file.writeAsStringSync(jsonEncode(listJson));
+      final orgs = OrganizationUtils.readOrganizations(tempDir.path);
+      expect(orgs.length, 2);
+      expect(orgs[0].name, 'o1');
+      expect(orgs[1].projectName, 'p2');
+      // Test cache by identical call
+      final orgs2 = OrganizationUtils.readOrganizations(tempDir.path);
+      expect(identical(orgs, orgs2), isTrue);
+    });
+
     group('buildBaseUrl', () {
       test('returns GitHub HTTPS URL for SSH repoUrl', () {
         final result = OrganizationUtils.buildBaseUrl(

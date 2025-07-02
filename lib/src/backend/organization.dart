@@ -9,8 +9,7 @@ import 'dart:math';
 /// Represents an organization with id, name, url, and an optional project name.
 class Organization {
   /// Generates a random id
-  static String _generateId() =>
-      '${Random().nextInt(1 << 64)}';
+  static String _generateId() => '${Random().nextInt(1 << 32)}';
 
   /// Organization constructor
   Organization({
