@@ -59,17 +59,13 @@ class OrganizationUtils {
   /// Only accepts names with [a-z0-9_-]. Returns null for other patterns.
   static String? extractOrganizationFromUrl(String url) {
     // Azure SSH: git@ssh.dev.azure.com:v3/<org>/<project>/<repo>
-    final azSsh = RegExp(r'^git@ssh\.dev\.azure\.com:v3/([^/]+)/');
-    final azHttp = RegExp(r'^https?://ssh\.dev\.azure\.com[:/]+v3/([^/]+)/');
+    final azSsh = RegExp(r'^git@ssh\.dev\.azure\.com:v3/([a-z0-9_-]+)/');
+    final azHttp =
+        RegExp(r'^https?://ssh\.dev\.azure\.com[:/]+v3/([a-z0-9_-]+)/');
     // SSH: git@github.com:<org>/<repo>.git
-    final sshMatch =
-        RegExp(r'^git@[^:]+:([^/]+)/[^/]+(?:\.git)?').firstMatch(url);
-    if (sshMatch != null) {
-      String? orgName = sshMatch.group(1);
-      if (_isValidOrgName(orgName)) {
-        return orgName;
-      }
-    }
+    final sshRegex = RegExp(r'^git@[^:]+:([^/]+)/[^/]+(?:\.git)?');
+
+    // 1. Azure SSH first
     final azSshMatch = azSsh.firstMatch(url);
     if (azSshMatch != null) {
       String? orgName = azSshMatch.group(1);
@@ -77,6 +73,7 @@ class OrganizationUtils {
         return orgName;
       }
     }
+    // 2. Azure HTTP next
     final azHttpMatch = azHttp.firstMatch(url);
     if (azHttpMatch != null) {
       String? orgName = azHttpMatch.group(1);
@@ -84,6 +81,15 @@ class OrganizationUtils {
         return orgName;
       }
     }
+    // 3. SSH (generic) last
+    final sshMatch = sshRegex.firstMatch(url);
+    if (sshMatch != null) {
+      String? orgName = sshMatch.group(1);
+      if (_isValidOrgName(orgName)) {
+        return orgName;
+      }
+    }
+
     try {
       final trimmed =
           url.endsWith('/') ? url.substring(0, url.length - 1) : url;
