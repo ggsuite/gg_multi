@@ -110,14 +110,9 @@ class OrganizationUtils {
     if (org == null) {
       return;
     }
-    final orgUrl = buildBaseUrl(
-      repoUrl,
-      org.name,
-      org.projectName,
-    );
     addOrganization(
       workspacePath,
-      Organization(name: org.name, url: orgUrl, projectName: org.projectName),
+      org,
     );
   }
 
