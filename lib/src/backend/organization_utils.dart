@@ -93,33 +93,33 @@ class OrganizationUtils {
         .firstWhere((o) => o != null, orElse: () => null);
   }
 
-  /// Finds organization by a repo URL (extracts org name, then matches).
+  /// Finds organization by a repo URL
   static Organization? getOrganizationByRepoUrl(
     String workspacePath,
     String repoUrl,
   ) {
-    final orgName = extractOrganizationFromUrl(repoUrl);
-    if (orgName == null) return null;
-    return getOrganizationByName(workspacePath, orgName);
+    final extracted = extractOrganizationFromUrl(repoUrl);
+    if (extracted == null) return null;
+    return getOrganizationByName(workspacePath, extracted.name);
   }
 
   /// Appends a new organization (if not present) for a given repo URL.
   /// Calls addOrganization and thus writeOrganizations.
   static void appendOrganization(String workspacePath, String repoUrl) {
-    final orgName = extractOrganizationFromUrl(repoUrl);
-    if (orgName == null || orgName.isEmpty) {
+    final org = extractOrganizationFromUrl(repoUrl);
+    if (org == null) {
       return;
     }
-    final orgUrl = buildBaseUrl(repoUrl, orgName);
+    final orgUrl = buildBaseUrl(repoUrl, org.name);
     addOrganization(
       workspacePath,
-      Organization(name: orgName, url: orgUrl),
+      Organization(name: org.name, url: orgUrl),
     );
   }
 
-  /// Extracts the organization name from a git repo URL (SSH or HTTP).
+  /// Extracts the organization from a git repo URL (SSH or HTTP).
   /// Only accepts names with [a-z0-9_-]. Returns null for other patterns.
-  static String? extractOrganizationFromUrl(String url) {
+  static Organization? extractOrganizationFromUrl(String url) {
     // Azure SSH: git@ssh.dev.azure.com:v3/<org>/<project>/<repo>
     final azSsh = RegExp(r'^git@ssh\.dev\.azure\.com:v3/([a-z0-9_-]+)/');
     final azHttp =
@@ -130,25 +130,41 @@ class OrganizationUtils {
     // 1. Azure SSH first
     final azSshMatch = azSsh.firstMatch(url);
     if (azSshMatch != null) {
-      String? orgName = azSshMatch.group(1);
+      final orgName = azSshMatch.group(1);
+      final projectName = azSshMatch.group(2);
       if (_isValidOrgName(orgName)) {
-        return orgName;
+        final baseUrl = buildBaseUrl(url, orgName!);
+        return Organization(
+          name: orgName,
+          url: baseUrl,
+          projectName: projectName,
+        );
       }
     }
     // 2. Azure HTTP next
     final azHttpMatch = azHttp.firstMatch(url);
     if (azHttpMatch != null) {
-      String? orgName = azHttpMatch.group(1);
+      final orgName = azHttpMatch.group(1);
+      final projectName = azHttpMatch.group(2);
       if (_isValidOrgName(orgName)) {
-        return orgName;
+        final baseUrl = buildBaseUrl(url, orgName!);
+        return Organization(
+          name: orgName,
+          url: baseUrl,
+          projectName: projectName,
+        );
       }
     }
     // 3. SSH (generic) last
     final sshMatch = sshRegex.firstMatch(url);
     if (sshMatch != null) {
-      String? orgName = sshMatch.group(1);
+      final orgName = sshMatch.group(1);
       if (_isValidOrgName(orgName)) {
-        return orgName;
+        final baseUrl = buildBaseUrl(url, orgName!);
+        return Organization(
+          name: orgName,
+          url: baseUrl,
+        );
       }
     }
     try {
@@ -157,9 +173,13 @@ class OrganizationUtils {
       final uri = Uri.parse(trimmed);
       if (uri.pathSegments.isNotEmpty &&
           uri.pathSegments.first.trim().isNotEmpty) {
-        String? orgName = uri.pathSegments.first.trim();
+        final orgName = uri.pathSegments.first.trim();
         if (_isValidOrgName(orgName)) {
-          return orgName;
+          final baseUrl = buildBaseUrl(url, orgName);
+          return Organization(
+            name: orgName,
+            url: baseUrl,
+          );
         }
       }
     } catch (_) {

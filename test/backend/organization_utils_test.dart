@@ -67,54 +67,66 @@ void main() {
           final org = OrganizationUtils.extractOrganizationFromUrl(
             'https://github.com/foobar/repo.git',
           );
-          expect(org, equals('foobar'));
+          expect(org?.name, equals('foobar'));
+          expect(org?.url, equals('https://github.com/foobar/'));
         });
 
         test('from HTTP-URL for org', () {
           final org = OrganizationUtils.extractOrganizationFromUrl(
             'https://github.com/foobar',
           );
-          expect(org, equals('foobar'));
+          expect(org?.name, equals('foobar'));
+          expect(org?.url, equals('https://github.com/foobar/'));
         });
 
         test('from HTTP-URL with final / for org', () {
           final org = OrganizationUtils.extractOrganizationFromUrl(
             'https://github.com/foobar/',
           );
-          expect(org, equals('foobar'));
+          expect(org?.name, equals('foobar'));
+          expect(org?.url, equals('https://github.com/foobar/'));
         });
 
         test('from SSH-URL', () {
           final org = OrganizationUtils.extractOrganizationFromUrl(
             'git@github.com:foobar/barfoo.git',
           );
-          expect(org, equals('foobar'));
+          expect(org?.name, equals('foobar'));
+          expect(org?.url, equals('https://github.com/foobar/'));
         });
       });
 
-      test('returns org name', () {
+      test('returns org structure from generic string', () {
         final org = OrganizationUtils.extractOrganizationFromUrl('foobar-git');
-        expect(org, equals('foobar-git'));
+        expect(org?.name, 'foobar-git');
+        expect(org?.url, 'https://github.com/foobar-git/');
       });
 
       group('extracts Azure org', () {
         test('from SSH URL', () {
           const url = 'git@ssh.dev.azure.com:v3/devorg/sampleproj/reponame';
           final org = OrganizationUtils.extractOrganizationFromUrl(url);
-          expect(org, equals('devorg'));
+          expect(org?.name, equals('devorg'));
+          expect(org?.url, equals('https://ssh.dev.azure.com:v3/devorg/'));
+          expect(org?.projectName, equals('sampleproj'));
         });
 
         test('from https URL', () {
           const url = 'https://ssh.dev.azure.com:v3/devorg/sampleproj/reponame';
           final org = OrganizationUtils.extractOrganizationFromUrl(url);
-          expect(org, equals('devorg'));
+          expect(org?.name, equals('devorg'));
+          expect(org?.url, equals('https://ssh.dev.azure.com:v3/devorg/'));
+          expect(org?.projectName, equals('sampleproj'));
         });
 
         test('from SSH URL with git ending', () {
           const url =
               'git@ssh.dev.azure.com:v3/acme-lab_xyz/project/reponame.git';
           final org = OrganizationUtils.extractOrganizationFromUrl(url);
-          expect(org, equals('acme-lab_xyz'));
+          expect(org?.name, equals('acme-lab_xyz'));
+          expect(
+              org?.url, equals('https://ssh.dev.azure.com:v3/acme-lab_xyz/'));
+          expect(org?.projectName, equals('project'));
         });
       });
     });
