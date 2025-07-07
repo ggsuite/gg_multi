@@ -103,30 +103,73 @@ void main() {
       });
 
       group('extracts Azure org', () {
-        test('from SSH URL', () {
-          const url = 'git@ssh.dev.azure.com:v3/devorg/sampleproj/reponame';
-          final org = OrganizationUtils.extractOrganizationFromUrl(url);
-          expect(org?.name, equals('devorg'));
-          expect(org?.url, equals('https://ssh.dev.azure.com:v3/devorg/'));
-          expect(org?.projectName, equals('sampleproj'));
-        });
-
-        test('from https URL', () {
-          const url = 'https://ssh.dev.azure.com:v3/devorg/sampleproj/reponame';
-          final org = OrganizationUtils.extractOrganizationFromUrl(url);
-          expect(org?.name, equals('devorg'));
-          expect(org?.url, equals('https://ssh.dev.azure.com:v3/devorg/'));
-          expect(org?.projectName, equals('sampleproj'));
-        });
-
-        test('from SSH URL with git ending', () {
+        test('from SSH URL full', () {
           const url =
-              'git@ssh.dev.azure.com:v3/acme-lab_xyz/project/reponame.git';
+              'git@ssh.dev.azure.com:v3/mhk-carat/ds_cdm/ds_assembly.git';
           final org = OrganizationUtils.extractOrganizationFromUrl(url);
-          expect(org?.name, equals('acme-lab_xyz'));
+          expect(org?.name, equals('mhk-carat'));
+          expect(org?.projectName, equals('ds_cdm'));
           expect(
-              org?.url, equals('https://ssh.dev.azure.com:v3/acme-lab_xyz/'));
-          expect(org?.projectName, equals('project'));
+            org?.url,
+            equals('https://ssh.dev.azure.com:v3/mhk-carat/ds_cdm/'),
+          );
+        });
+
+        test('from HTTPS URL (full, .git)', () {
+          const url =
+              'https://ssh.dev.azure.com:v3/mhk-carat/ds_cdm/ds_assembly.git';
+          final org = OrganizationUtils.extractOrganizationFromUrl(url);
+          expect(org?.name, equals('mhk-carat'));
+          expect(org?.projectName, equals('ds_cdm'));
+          expect(
+            org?.url,
+            equals('https://ssh.dev.azure.com:v3/mhk-carat/ds_cdm/'),
+          );
+        });
+
+        test('from HTTPS URL (full, no .git, trailing "/")', () {
+          const url =
+              'https://ssh.dev.azure.com:v3/mhk-carat/ds_cdm/ds_assembly/';
+          final org = OrganizationUtils.extractOrganizationFromUrl(url);
+          expect(org?.name, equals('mhk-carat'));
+          expect(org?.projectName, equals('ds_cdm'));
+          expect(
+            org?.url,
+            equals('https://ssh.dev.azure.com:v3/mhk-carat/ds_cdm/'),
+          );
+        });
+
+        test('from HTTPS URL for just project (no repo, ends with "/")', () {
+          const url = 'https://ssh.dev.azure.com:v3/mhk-carat/ds_cdm/';
+          final org = OrganizationUtils.extractOrganizationFromUrl(url);
+          expect(org?.name, equals('mhk-carat'));
+          expect(org?.projectName, equals('ds_cdm'));
+          expect(
+            org?.url,
+            equals('https://ssh.dev.azure.com:v3/mhk-carat/ds_cdm/'),
+          );
+        });
+
+        test('from HTTPS project URL, no trailing /', () {
+          const url = 'https://ssh.dev.azure.com:v3/mhk-carat/ds_cdm';
+          final org = OrganizationUtils.extractOrganizationFromUrl(url);
+          expect(org?.name, equals('mhk-carat'));
+          expect(org?.projectName, equals('ds_cdm'));
+          expect(
+            org?.url,
+            equals('https://ssh.dev.azure.com:v3/mhk-carat/ds_cdm/'),
+          );
+        });
+
+        test('from HTTPS project URL, trailing #', () {
+          const url = 'https://ssh.dev.azure.com:v3/mhk-carat/ds_cdm#';
+          final org = OrganizationUtils.extractOrganizationFromUrl(url);
+          expect(org?.name, equals('mhk-carat'));
+          expect(org?.projectName, equals('ds_cdm'));
+          expect(
+            org?.url,
+            equals('https://ssh.dev.azure.com:v3/mhk-carat/ds_cdm/'),
+          );
         });
       });
     });
@@ -231,8 +274,23 @@ void main() {
         expect(result, equals('https://github.com/fallback/'));
       });
 
-      test('returns correct Azure SSH URL for org base', () {
+      test('returns correct Azure SSH URL for org base with project', () {
         const url = 'git@ssh.dev.azure.com:v3/myorg/myproj/myrepo';
+        const org = 'myorg';
+        const project = 'myproj';
+        final base = OrganizationUtils.buildBaseUrl(url, org, project);
+        expect(base, equals('https://ssh.dev.azure.com:v3/myorg/myproj/'));
+      });
+
+      test('returns correct Azure HTTP URL for org base with project', () {
+        const url = 'https://ssh.dev.azure.com:v3/myorg/myproj/myrepo';
+        const org = 'myorg';
+        const project = 'myproj';
+        final base = OrganizationUtils.buildBaseUrl(url, org, project);
+        expect(base, equals('https://ssh.dev.azure.com:v3/myorg/myproj/'));
+      });
+      test('returns correct Azure HTTP for org base without project', () {
+        const url = 'https://ssh.dev.azure.com:v3/myorg/';
         const org = 'myorg';
         final base = OrganizationUtils.buildBaseUrl(url, org);
         expect(base, equals('https://ssh.dev.azure.com:v3/myorg/'));

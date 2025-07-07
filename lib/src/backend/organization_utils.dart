@@ -110,30 +110,36 @@ class OrganizationUtils {
     if (org == null) {
       return;
     }
-    final orgUrl = buildBaseUrl(repoUrl, org.name);
+    final orgUrl = buildBaseUrl(
+      repoUrl,
+      org.name,
+      org.projectName,
+    );
     addOrganization(
       workspacePath,
-      Organization(name: org.name, url: orgUrl),
+      Organization(name: org.name, url: orgUrl, projectName: org.projectName),
     );
   }
 
   /// Extracts the organization from a git repo URL (SSH or HTTP).
   /// Only accepts names with [a-z0-9_-]. Returns null for other patterns.
   static Organization? extractOrganizationFromUrl(String url) {
-    // Azure SSH: git@ssh.dev.azure.com:v3/<org>/<project>/<repo>
-    final azSsh = RegExp(r'^git@ssh\.dev\.azure\.com:v3/([a-z0-9_-]+)/');
-    final azHttp =
-        RegExp(r'^https?://ssh\.dev\.azure\.com[:/]+v3/([a-z0-9_-]+)/');
-    // SSH: git@github.com:<org>/<repo>.git
-    final sshRegex = RegExp(r'^git@[^:]+:([^/]+)/[^/]+(?:\.git)?');
+    // Normalize URL: remove trailing "/" and "#"
+    var cleanedUrl = url;
+    while (cleanedUrl.endsWith('#') || cleanedUrl.endsWith('/')) {
+      cleanedUrl = cleanedUrl.substring(0, cleanedUrl.length - 1);
+    }
 
-    // 1. Azure SSH first
-    final azSshMatch = azSsh.firstMatch(url);
+    // 1. Azure SSH: git@ssh.dev.azure.com:v3/<org>/<project>/<repo>(.git)
+    final azSsh = RegExp(
+      r'^git@ssh\.dev\.azure\.com:v3/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)(?:/[^/]+)?(?:\.git)?$',
+    );
+    final azSshMatch = azSsh.firstMatch(cleanedUrl);
     if (azSshMatch != null) {
-      final orgName = azSshMatch.group(1);
-      final projectName = azSshMatch.group(2);
+      final orgName = azSshMatch.group(1)!;
+      final projectName = azSshMatch.group(2)!;
       if (_isValidOrgName(orgName)) {
-        final baseUrl = buildBaseUrl(url, orgName!);
+        final baseUrl = buildBaseUrl(url, orgName, projectName);
         return Organization(
           name: orgName,
           url: baseUrl,
@@ -141,13 +147,16 @@ class OrganizationUtils {
         );
       }
     }
-    // 2. Azure HTTP next
-    final azHttpMatch = azHttp.firstMatch(url);
+    // 2. Azure HTTP: https://ssh.dev.azure.com:v3/<org>/<project>/...
+    final azHttp = RegExp(
+      r'^https?://ssh\.dev\.azure\.com[:/]+v3/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)(?:/[^/]+)?(?:\.git)?$',
+    );
+    final azHttpMatch = azHttp.firstMatch(cleanedUrl);
     if (azHttpMatch != null) {
-      final orgName = azHttpMatch.group(1);
-      final projectName = azHttpMatch.group(2);
+      final orgName = azHttpMatch.group(1)!;
+      final projectName = azHttpMatch.group(2)!;
       if (_isValidOrgName(orgName)) {
-        final baseUrl = buildBaseUrl(url, orgName!);
+        final baseUrl = buildBaseUrl(url, orgName, projectName);
         return Organization(
           name: orgName,
           url: baseUrl,
@@ -155,7 +164,8 @@ class OrganizationUtils {
         );
       }
     }
-    // 3. SSH (generic) last
+    // 3. GitHub SSH: git@github.com:org/repo.git
+    final sshRegex = RegExp(r'^git@[^:]+:([^/]+)/[^/]+(?:\.git)?');
     final sshMatch = sshRegex.firstMatch(url);
     if (sshMatch != null) {
       final orgName = sshMatch.group(1);
@@ -167,10 +177,10 @@ class OrganizationUtils {
         );
       }
     }
+    // 4. GitHub HTTPS or generic: https://github.com/org/[repo]...
     try {
-      final trimmed =
-          url.endsWith('/') ? url.substring(0, url.length - 1) : url;
-      final uri = Uri.parse(trimmed);
+      final uri = Uri.parse(cleanedUrl);
+
       if (uri.pathSegments.isNotEmpty &&
           uri.pathSegments.first.trim().isNotEmpty) {
         final orgName = uri.pathSegments.first.trim();
@@ -192,10 +202,15 @@ class OrganizationUtils {
   static bool _isValidOrgName(String? name) =>
       name != null && RegExp(r'^[a-z0-9_-]+').hasMatch(name);
 
-  /// Builds the base URL for an organization, given a repo URL and org name.
-  static String buildBaseUrl(String repoUrl, String org) {
+  /// Builds the base URL for an organization
+  static String buildBaseUrl(String repoUrl, String org, [String? project]) {
+    // Azure DevOps specific
     if (repoUrl.contains('ssh.dev.azure.com')) {
-      return 'https://ssh.dev.azure.com:v3/$org/';
+      if (project != null) {
+        return 'https://ssh.dev.azure.com:v3/$org/$project/';
+      } else {
+        return 'https://ssh.dev.azure.com:v3/$org/';
+      }
     }
     if (repoUrl.startsWith('git@')) {
       // Assume github for classic SSH
