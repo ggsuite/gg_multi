@@ -34,6 +34,7 @@
 - code command does not require argument if executed in ticket directory
 - change to relative path outputs in log
 - suggest cd command to user when new ticket created
+- change parameter projectName to project\_name in .organizations json file
 
 ### Removed
 

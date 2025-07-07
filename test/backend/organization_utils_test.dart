@@ -166,7 +166,7 @@ void main() {
       final file = File(path.join(tempDir.path, '.organizations'));
       final listJson = [
         {'id': '1', 'name': 'o1', 'url': 'u1'},
-        {'id': '2', 'name': 'o2', 'url': 'u2', 'projectName': 'p2'},
+        {'id': '2', 'name': 'o2', 'url': 'u2', 'project_name': 'p2'},
       ];
       file.writeAsStringSync(jsonEncode(listJson));
       final orgs = OrganizationUtils.readOrganizations(tempDir.path);
@@ -333,7 +333,7 @@ void main() {
             'id': 'id1',
             'name': 'foo',
             'url': 'u',
-            'projectName': 'pn',
+            'project_name': 'pn',
           },
           {
             'id': 'id2',

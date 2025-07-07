@@ -29,7 +29,7 @@ void main() {
         url: 'url-abc',
       );
       final map = org1.toMap();
-      expect(map.containsKey('projectName'), isFalse);
+      expect(map.containsKey('project_name'), isFalse);
       final org2 = Organization.fromMap(map);
       expect(org2.projectName, isNull);
     });

@@ -25,7 +25,7 @@ class Organization {
       id: map['id'] as String?,
       name: map['name'] as String,
       url: map['url'] as String,
-      projectName: map['projectName'] as String?,
+      projectName: map['project_name'] as String?,
     );
   }
 
@@ -37,7 +37,7 @@ class Organization {
       'url': url,
     };
     if (projectName != null) {
-      map['projectName'] = projectName;
+      map['project_name'] = projectName;
     }
     return map;
   }
