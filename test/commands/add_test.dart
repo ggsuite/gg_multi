@@ -10,6 +10,7 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:http/http.dart' as http;
 import 'package:kidney_core/src/backend/constants.dart';
+import 'package:kidney_core/src/backend/organization.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
@@ -86,8 +87,10 @@ void main() {
       // Integration check: .organizations file correctly updated
       final orgFile = File(path.join(masterWorkspacePath, '.organizations'));
       expect(orgFile.existsSync(), isTrue);
-      final orgMap = jsonDecode(orgFile.readAsStringSync()) as Map;
-      expect(orgMap['myrepo'], 'https://github.com/myrepo/');
+      final orgMap = (jsonDecode(orgFile.readAsStringSync()) as List<dynamic>)
+          .map((e) => Organization.fromMap(e as Map<String, dynamic>))
+          .toList();
+      expect(orgMap.first.url, 'https://github.com/myrepo/');
     });
 
     test(

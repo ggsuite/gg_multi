@@ -19,6 +19,7 @@
 - Add constants.dart and change master folder to .master
 - Add tests for creation of .organizations
 - Add test: logs error when primary and all fallback organization clones fail
+- Add tests for command add organization
 
 ### Changed
 
@@ -33,8 +34,12 @@
 - code command does not require argument if executed in ticket directory
 - change to relative path outputs in log
 - suggest cd command to user when new ticket created
+- change parameter projectName to project\_name in .organizations json file
+- extractOrganizationFromUrl works with azure dev ops urls
+- extract repo name of azure dev ops urls correctly
 
 ### Removed
 
 - remove trailing # and / in organization urls
 - remove command works also for tickets
+- Remove redundant code in appendOrganization

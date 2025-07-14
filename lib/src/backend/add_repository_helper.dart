@@ -89,8 +89,8 @@ Future<void> addRepositoryHelper({
       // Attempt fallback: try each known organization from .organizations
       final orgs = OrganizationUtils.readOrganizations(workspacePath);
       bool anySuccess = false;
-      for (final orgUrl in orgs.values) {
-        final baseUrl = orgUrl.endsWith('/') ? orgUrl : '$orgUrl/';
+      for (final org in orgs) {
+        final baseUrl = org.url.endsWith('/') ? org.url : '${org.url}/';
         final fallbackUrl = '$baseUrl$repoName.git';
         try {
           await gitCloner.cloneRepo(fallbackUrl, destination);
@@ -122,11 +122,9 @@ Future<void> addRepositoryHelper({
   // "https://github.com/ggsuite/" and "https://github.com/ggsuite" behave the
   // same. This must happen before any URI parsing logic.
   var cleanedUrl = targetArg;
-  if (cleanedUrl.endsWith('#')) {
+  while (cleanedUrl.endsWith('#') || cleanedUrl.endsWith('/')) {
     cleanedUrl = cleanedUrl.substring(0, cleanedUrl.length - 1);
   }
-  // Remove trailing slashes ONLY (preserve inner slashes between segments).
-  cleanedUrl = cleanedUrl.replaceAll(RegExp(r'/+$'), '');
 
   final parsedUri = Uri.tryParse(cleanedUrl);
 
@@ -168,6 +166,17 @@ Future<void> addRepositoryHelper({
       final String repoName = extractRepoName(repoUrl);
       await attemptClone(repoUrl, repoName);
     }
+  } else if (targetArg.startsWith('git@ssh.dev.azure.com:')) {
+    // Azure DevOps SSH -------------------------------------------------------
+    // Format: git@ssh.dev.azure.com:v3/org/project/repo(.git)
+    final afterColon = targetArg.split(':').skip(1).join(':');
+    final segments = afterColon.split('/');
+    final repoSegment = segments.isNotEmpty ? segments.last : targetArg;
+    var repoName = repoSegment;
+    if (repoName.endsWith('.git')) {
+      repoName = repoName.substring(0, repoName.length - 4);
+    }
+    await attemptClone(targetArg, repoName);
   } else if (targetArg.startsWith('git@')) {
     // SSH URL -----------------------------------------------------------------
     final String repoUrl = targetArg;
@@ -186,8 +195,24 @@ Future<void> addRepositoryHelper({
   }
 }
 
-/// Extracts the repository name from a git URL supporting SSH and HTTPS.
+/// Extracts the repository name from a git URL supporting:
+/// - GitHub SSH (git@github.com:owner/repo.git)
+/// - Azure DevOps SSH (git@ssh.dev.azure.com:v3/org/project/repo(.git))
+/// - HTTPS (https://github.com/owner/repo(.git))
+/// - username/repo
 String extractRepoName(String repoUrl) {
+  // Azure DevOps SSH: git@ssh.dev.azure.com:v3/org/project/repo(.git)
+  if (repoUrl.startsWith('git@ssh.dev.azure.com:')) {
+    final afterColon = repoUrl.split(':').skip(1).join(':');
+    final segments = afterColon.split('/');
+    final repoSegment = segments.isNotEmpty ? segments.last : repoUrl;
+    var repoName = repoSegment;
+    if (repoName.endsWith('.git')) {
+      repoName = repoName.substring(0, repoName.length - 4);
+    }
+    return repoName;
+  }
+  // GitHub SSH: git@github.com:owner/repo.git
   if (repoUrl.startsWith('git@')) {
     final sshRegex = RegExp(r'^git@[^:]+:([^/]+)/(.+?)(?:\.git)?$');
     final match = sshRegex.firstMatch(repoUrl);

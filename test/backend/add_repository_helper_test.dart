@@ -242,6 +242,32 @@ void main() {
       });
     });
 
+    test('Processes Azure SSH URL correctly', () async {
+      const targetArg =
+          'git@ssh.dev.azure.com:v3/goeranhegenberg/project123/project123.git';
+      final mockGitCloner = MockGitCloner();
+      when(() => mockGitCloner.cloneRepo(any(), any()))
+          .thenAnswer((_) async {});
+
+      Future<http.Response> repoFetcher(Uri uri) async {
+        fail('repoFetcher should not be called for SSH URL branch');
+      }
+
+      await addRepositoryHelper(
+        targetArg: targetArg,
+        ggLog: ggLog,
+        gitCloner: mockGitCloner,
+        repoFetcher: repoFetcher,
+        workspacePath: workspacePath,
+        force: false,
+      );
+
+      final expectedDestination = path.join(workspacePath, 'project123');
+      verify(() => mockGitCloner.cloneRepo(targetArg, expectedDestination))
+          .called(1);
+      expect(logs, contains('Added repository project123 from $targetArg'));
+    });
+
     group('Target containing "/" (non-http, non-SSH)', () {
       test('Processes target with slash correctly', () async {
         const targetArg = 'user/repo';
@@ -528,6 +554,20 @@ void main() {
     test('returns original string for invalid URL', () {
       final repoName = extractRepoName('not a url');
       expect(repoName, equals('not a url'));
+    });
+
+    test('returns repo name for Azure DevOps SSH URL with .git', () {
+      final repoName = extractRepoName(
+        'git@ssh.dev.azure.com:v3/goeranhegenberg/project123/project123.git',
+      );
+      expect(repoName, equals('project123'));
+    });
+
+    test('returns repo name for Azure DevOps SSH URL without .git', () {
+      final repoName = extractRepoName(
+        'git@ssh.dev.azure.com:v3/goeranhegenberg/project123/project123',
+      );
+      expect(repoName, equals('project123'));
     });
   });
 
