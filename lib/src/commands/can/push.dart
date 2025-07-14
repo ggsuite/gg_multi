@@ -17,10 +17,14 @@ class CanPushCommand extends Command<void> {
   /// Constructor
   CanPushCommand({
     required this.ggLog,
-  });
+    String? executionPath,
+  }) : executionPath = executionPath ?? Directory.current.path;
 
   /// Logger function
   final GgLog ggLog;
+
+  /// The path from which the command was executed.
+  final String executionPath;
 
   @override
   String get name => 'push';
@@ -33,7 +37,7 @@ class CanPushCommand extends Command<void> {
   Future<void> run() async {
     // Detect the ticket directory
     final String? ticketPath = WorkspaceUtils.detectTicketPath(
-      Directory.current.path,
+      executionPath,
     );
     if (ticketPath == null) {
       ggLog(red('This command must be run inside a ticket folder.'));

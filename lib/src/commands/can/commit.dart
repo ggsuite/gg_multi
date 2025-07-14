@@ -17,10 +17,14 @@ class CanCommitCommand extends Command<void> {
   /// Constructor
   CanCommitCommand({
     required this.ggLog,
-  });
+    String? executionPath,
+  }) : executionPath = executionPath ?? Directory.current.path;
 
   /// Logger function
   final GgLog ggLog;
+
+  /// The path from which the command was executed.
+  final String executionPath;
 
   @override
   String get name => 'commit';
@@ -33,7 +37,7 @@ class CanCommitCommand extends Command<void> {
   Future<void> run() async {
     // Detect the ticket directory
     final String? ticketPath = WorkspaceUtils.detectTicketPath(
-      Directory.current.path,
+      executionPath,
     );
     if (ticketPath == null) {
       ggLog(red('This command must be run inside a ticket folder.'));
@@ -42,7 +46,8 @@ class CanCommitCommand extends Command<void> {
 
     final ticketDir = Directory(ticketPath);
     final ticketName = path.basename(ticketDir.path);
-    final repos = ticketDir.listSync().whereType<Directory>().toList()
+    final repos = (await ticketDir.list().toList())
+        .whereType<Directory>().toList()
       ..sort((a, b) => path.basename(a.path).compareTo(path.basename(b.path)));
 
     if (repos.isEmpty) {
