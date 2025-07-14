@@ -6,75 +6,73 @@
 
 import 'dart:io';
 import 'package:args/command_runner.dart';
-import 'package:gg/gg.dart' as gg;
+import 'package:gg/gg.dart' show CanPush;
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
-import 'package:path/path.dart' as path;
 import '../../backend/workspace_utils.dart';
+import 'package:path/path.dart' as path;
 
-/// Checks if the current ticket's repositories can be pushed
+/// Typedef for creating Directory instances (for testing).
+typedef DirectoryFactory = Directory Function(String path);
+
+/// Command to check if all repos in the ticket can be pushed.
 class CanPushCommand extends Command<void> {
-  /// Constructor
+  /// Constructor for CanPushCommand
   CanPushCommand({
     required this.ggLog,
     String? executionPath,
-  }) : executionPath = executionPath ?? Directory.current.path;
+    DirectoryFactory? directoryFactory,
+    CanPush? ggCanPush,
+    // coverage:ignore-start
+  })  : _executionPath = executionPath ?? Directory.current.path,
+        _ggCanPush = ggCanPush ?? CanPush(ggLog: ggLog);
+  // coverage:ignore-end
 
-  /// Logger function
+  /// Logging function
   final GgLog ggLog;
 
-  /// The path from which the command was executed.
-  final String executionPath;
+  /// Execution path
+  final String _executionPath;
+
+  /// Instance of gg CanPush
+  final CanPush _ggCanPush;
 
   @override
   String get name => 'push';
 
   @override
-  String get description => 'Checks if the current tickets '
-      'repositories can be pushed.';
+  String get description =>
+      'Checks if all repositories in the current ticket can be pushed.';
 
   @override
   Future<void> run() async {
-    // Detect the ticket directory
-    final String? ticketPath = WorkspaceUtils.detectTicketPath(
-      executionPath,
-    );
+    final ticketPath = WorkspaceUtils.detectTicketPath(_executionPath);
     if (ticketPath == null) {
-      ggLog(red('This command must be run inside a ticket folder.'));
-      throw Exception('Not inside a ticket folder.');
+      ggLog(red('This command must be executed inside a ticket folder.'));
+      return;
     }
-
     final ticketDir = Directory(ticketPath);
     final ticketName = path.basename(ticketDir.path);
-    final repos = ticketDir.listSync().whereType<Directory>().toList()
+    final subs = ticketDir.listSync().whereType<Directory>().toList()
       ..sort((a, b) => path.basename(a.path).compareTo(path.basename(b.path)));
-
-    if (repos.isEmpty) {
+    if (subs.isEmpty) {
       ggLog(yellow('No repositories found in ticket $ticketName.'));
       return;
     }
-
-    bool hasFailures = false;
-    final canPush = gg.CanPush(ggLog: ggLog);
-
-    for (final repoDir in repos) {
+    for (final repoDir in subs) {
       final repoName = path.basename(repoDir.path);
-      ggLog('Checking if $repoName in ticket $ticketName can be pushed...');
+      ggLog(
+        yellow(
+          'Checking if $repoName in ticket $ticketName can be pushed...',
+        ),
+      );
       try {
-        await canPush.exec(directory: repoDir, ggLog: ggLog);
-        ggLog(green('✅ $repoName in ticket $ticketName can be pushed.'));
+        await _ggCanPush.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
-        ggLog(red('❌ $repoName in ticket $ticketName cannot be pushed: $e'));
-        hasFailures = true;
+        ggLog(red('Cannot push $repoName: $e'));
+        rethrow;
       }
     }
-
-    if (hasFailures) {
-      throw Exception(
-        'Some repositories in ticket $ticketName cannot be pushed.',
-      );
-    }
-
     ggLog(green('All repositories in ticket $ticketName can be pushed.'));
   }
 }
