@@ -5,16 +5,17 @@
 // found in the LICENSE file in the root of this package.
 
 import 'package:args/command_runner.dart';
+import 'package:gg_log/gg_log.dart';
 import './commands/my_command.dart';
 import './commands/add.dart';
 import './commands/add_deps.dart';
 import './commands/list.dart';
 import './commands/remove.dart';
 import './commands/init.dart';
-import 'package:gg_log/gg_log.dart';
 import './commands/create.dart';
 import './commands/code.dart';
 import './commands/review.dart';
+import './commands/can.dart';
 
 /// The command line interface for KidneyCore
 class KidneyCore extends Command<dynamic> {
@@ -29,6 +30,7 @@ class KidneyCore extends Command<dynamic> {
     addSubcommand(CreateCommand(ggLog: ggLog));
     addSubcommand(CodeCommand(ggLog: ggLog));
     addSubcommand(ReviewCommand(ggLog: ggLog));
+    addSubcommand(Can(ggLog: ggLog));
   }
 
   /// The log function
