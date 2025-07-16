@@ -55,7 +55,7 @@ class CanCommitCommand extends Command<void> {
     final subs = ticketDir.listSync().whereType<Directory>().toList()
       ..sort((a, b) => path.basename(a.path).compareTo(path.basename(b.path)));
     if (subs.isEmpty) {
-      ggLog(yellow('No repositories found in ticket $ticketName.'));
+      ggLog(yellow('⚠️ No repositories found in ticket $ticketName.'));
       return;
     }
     for (final repoDir in subs) {
@@ -68,10 +68,10 @@ class CanCommitCommand extends Command<void> {
       try {
         await _ggCanCommit.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
-        ggLog(red('Cannot commit $repoName: $e'));
+        ggLog(red('❌ Cannot commit $repoName: $e'));
         rethrow;
       }
     }
-    ggLog(green('All repositories in ticket $ticketName can be committed.'));
+    ggLog(green('✅ All repositories in ticket $ticketName can be committed.'));
   }
 }

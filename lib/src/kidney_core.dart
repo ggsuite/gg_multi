@@ -16,6 +16,7 @@ import './commands/create.dart';
 import './commands/code.dart';
 import './commands/review.dart';
 import './commands/can.dart';
+import './commands/do.dart';
 
 /// The command line interface for KidneyCore
 class KidneyCore extends Command<dynamic> {
@@ -31,6 +32,7 @@ class KidneyCore extends Command<dynamic> {
     addSubcommand(CodeCommand(ggLog: ggLog));
     addSubcommand(ReviewCommand(ggLog: ggLog));
     addSubcommand(Can(ggLog: ggLog));
+    addSubcommand(Do(ggLog: ggLog));
   }
 
   /// The log function

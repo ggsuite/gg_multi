@@ -89,7 +89,7 @@ void main() {
       await runner.run(['push']);
       expect(
         messages,
-        contains('No repositories found in ticket EMPTY.'),
+        contains('⚠️ No repositories found in ticket EMPTY.'),
       );
     });
 
@@ -106,7 +106,7 @@ void main() {
       await runner.run(['push']);
       expect(
         messages,
-        contains('All repositories in ticket TICKP can be pushed.'),
+        contains('✅ All repositories in ticket TICKP can be pushed.'),
       );
       expect(
         messages,
@@ -134,7 +134,7 @@ void main() {
       );
       expect(
         messages,
-        contains('Cannot push B: Exception: '
+        contains('❌ Cannot push B: Exception: '
             '${path.join(ticketDir.path, 'B')} failed'),
       );
       expect(messages.any((m) => m.contains('All repositories')), isFalse);

@@ -89,7 +89,7 @@ void main() {
       await runner.run(['commit']);
       expect(
         messages,
-        contains('No repositories found in ticket EMPTY.'),
+        contains('⚠️ No repositories found in ticket EMPTY.'),
       );
     });
 
@@ -106,7 +106,7 @@ void main() {
       await runner.run(['commit']);
       expect(
         messages,
-        contains('All repositories in ticket TICK can be committed.'),
+        contains('✅ All repositories in ticket TICK can be committed.'),
       );
       expect(
         messages,
@@ -136,7 +136,7 @@ void main() {
       );
       expect(
         messages,
-        contains('Cannot commit B: Exception: '
+        contains('❌ Cannot commit B: Exception: '
             '${path.join(ticketDir.path, 'B')} failed'),
       );
       expect(messages.any((m) => m.contains('All repositories')), isFalse);

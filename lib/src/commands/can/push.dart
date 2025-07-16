@@ -56,7 +56,7 @@ class CanPushCommand extends Command<void> {
     final subs = ticketDir.listSync().whereType<Directory>().toList()
       ..sort((a, b) => path.basename(a.path).compareTo(path.basename(b.path)));
     if (subs.isEmpty) {
-      ggLog(yellow('No repositories found in ticket $ticketName.'));
+      ggLog(yellow('⚠️ No repositories found in ticket $ticketName.'));
       return;
     }
     for (final repoDir in subs) {
@@ -69,10 +69,10 @@ class CanPushCommand extends Command<void> {
       try {
         await _ggCanPush.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
-        ggLog(red('Cannot push $repoName: $e'));
+        ggLog(red('❌ Cannot push $repoName: $e'));
         rethrow;
       }
     }
-    ggLog(green('All repositories in ticket $ticketName can be pushed.'));
+    ggLog(green('✅ All repositories in ticket $ticketName can be pushed.'));
   }
 }

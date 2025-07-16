@@ -17,6 +17,7 @@ dependencies:
   mocktail: ^1.0.4
   http: ^1.3.0
   pubspec_parse: ^1.5.0
+  gg_changelog: ^1.0.12
 
 dev_dependencies:
   gg_capture_print: ^1.0.9
