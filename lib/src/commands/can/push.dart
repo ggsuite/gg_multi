@@ -5,60 +5,66 @@
 // found in the LICENSE file in the root of this package.
 
 import 'dart:io';
-import 'package:args/command_runner.dart';
-import 'package:gg/gg.dart' show CanPush;
+
+import 'package:gg/gg.dart' as gg;
+import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
-import '../../backend/workspace_utils.dart';
 import 'package:path/path.dart' as path;
 
-/// Typedef for creating Directory instances (for testing).
-typedef DirectoryFactory = Directory Function(String path);
+import '../../backend/workspace_utils.dart';
 
 /// Command to check if all repos in the ticket can be pushed.
-class CanPushCommand extends Command<void> {
-  /// Constructor for CanPushCommand
+class CanPushCommand extends DirCommand<void> {
+  /// Constructor
   CanPushCommand({
-    required this.ggLog,
-    String? executionPath,
-    DirectoryFactory? directoryFactory,
-    CanPush? ggCanPush,
-    // coverage:ignore-start
-  })  : _executionPath = executionPath ?? Directory.current.path,
-        _ggCanPush = ggCanPush ?? CanPush(ggLog: ggLog);
-  // coverage:ignore-end
-
-  /// Logging function
-  final GgLog ggLog;
-
-  /// Execution path
-  final String _executionPath;
+    required super.ggLog,
+    super.name = 'push',
+    super.description =
+        'Checks if all repositories in the current ticket can be pushed.',
+    gg.CanPush? ggCanPush,
+  }) : _ggCanPush = ggCanPush ?? gg.CanPush(ggLog: ggLog);
 
   /// Instance of gg CanPush
-  final CanPush _ggCanPush;
+  final gg.CanPush _ggCanPush;
 
   @override
-  String get name => 'push';
+  Future<void> exec({
+    required Directory directory,
+    required GgLog ggLog,
+  }) =>
+      get(
+        directory: directory,
+        ggLog: ggLog,
+      );
 
   @override
-  String get description =>
-      'Checks if all repositories in the current ticket can be pushed.';
-
-  @override
-  Future<void> run() async {
-    final ticketPath = WorkspaceUtils.detectTicketPath(_executionPath);
+  Future<void> get({
+    required Directory directory,
+    required GgLog ggLog,
+  }) async {
+    // Detect if we are inside a ticket folder
+    final String? ticketPath = WorkspaceUtils.detectTicketPath(
+      path.absolute(directory.path),
+    );
     if (ticketPath == null) {
       ggLog(red('This command must be executed inside a ticket folder.'));
-      return;
+      throw Exception('Not inside a ticket folder');
     }
+
     final ticketDir = Directory(ticketPath);
     final ticketName = path.basename(ticketDir.path);
+
+    // Collect all repository directories in the ticket
     final subs = ticketDir.listSync().whereType<Directory>().toList()
       ..sort((a, b) => path.basename(a.path).compareTo(path.basename(b.path)));
+
     if (subs.isEmpty) {
       ggLog(yellow('⚠️ No repositories found in ticket $ticketName.'));
       return;
     }
+
+    // Iterate over each repository and check if it can be pushed
     for (final repoDir in subs) {
       final repoName = path.basename(repoDir.path);
       ggLog(
@@ -73,6 +79,12 @@ class CanPushCommand extends Command<void> {
         rethrow;
       }
     }
+
+    // All successful
     ggLog(green('✅ All repositories in ticket $ticketName can be pushed.'));
   }
 }
+
+/// Mock for [CanPushCommand]
+class MockCanPushCommand extends MockDirCommand<void>
+    implements CanPushCommand {}

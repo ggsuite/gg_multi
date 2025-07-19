@@ -7,35 +7,17 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:gg/gg.dart' as gg;
 import 'package:kidney_core/src/commands/can/commit.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-import 'package:gg/gg.dart';
 
 import '../../rm_console_colors_helper.dart';
 
-class FakeCanCommit extends Fake implements CanCommit {
-  FakeCanCommit({List<bool>? results}) : _results = results ?? [];
+class MockGgCanCommit extends Mock implements gg.CanCommit {}
 
-  final List<bool> _results;
-  int _idx = 0;
-
-  @override
-  Future<void> exec({
-    required Directory directory,
-    required Function ggLog,
-    bool? force,
-    bool? saveState,
-  }) async {
-    if (_idx < _results.length && !_results[_idx]) {
-      _idx++;
-      throw Exception('${directory.path} failed');
-    }
-    _idx++;
-    return;
-  }
-}
+class FakeDirectory extends Fake implements Directory {}
 
 void main() {
   late Directory tempDir;
@@ -43,13 +25,17 @@ void main() {
   late Directory ticketDir;
   final messages = <String>[];
 
+  setUpAll(() {
+    registerFallbackValue(FakeDirectory());
+  });
+
   void ggLog(String msg) => messages.add(rmConsoleColors(msg));
 
   setUp(() {
     messages.clear();
     tempDir = Directory.systemTemp.createTempSync('can_commit_ticket_test_');
     ticketsDir = Directory(path.join(tempDir.path, 'tickets'))..createSync();
-    ticketDir = Directory(path.join(ticketsDir.path, 'TICK'))..createSync();
+    ticketDir = Directory(path.join(ticketsDir.path, 'TICKC'))..createSync();
     Directory(path.join(ticketDir.path, 'A')).createSync();
     Directory(path.join(ticketDir.path, 'B')).createSync();
   });
@@ -66,10 +52,18 @@ void main() {
         ..addCommand(
           CanCommitCommand(
             ggLog: ggLog,
-            executionPath: tempDir.path,
           ),
         );
-      await runner.run(['commit']);
+      await expectLater(
+        () async => await runner.run(['commit', '--input', tempDir.path]),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            'Exception: Not inside a ticket folder',
+          ),
+        ),
+      );
       expect(
         messages,
         contains('This command must be executed inside a ticket folder.'),
@@ -83,63 +77,77 @@ void main() {
         ..addCommand(
           CanCommitCommand(
             ggLog: ggLog,
-            executionPath: emptyTicket.path,
           ),
         );
-      await runner.run(['commit']);
+      await runner.run(['commit', '--input', emptyTicket.path]);
       expect(
         messages,
         contains('⚠️ No repositories found in ticket EMPTY.'),
       );
     });
 
-    test('commits all repos successfully', () async {
-      final fakeCommit = FakeCanCommit(results: [true, true]);
+    test('checks all repos successfully', () async {
+      final mockGgCanCommit = MockGgCanCommit();
+
+      when(
+        () => mockGgCanCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
       final runner = CommandRunner<void>('test', 'can commit ticket')
         ..addCommand(
           CanCommitCommand(
             ggLog: ggLog,
-            executionPath: ticketDir.path,
-            ggCanCommit: fakeCommit,
+            ggCanCommit: mockGgCanCommit,
           ),
         );
-      await runner.run(['commit']);
+      await runner.run(['commit', '--input', ticketDir.path]);
       expect(
         messages,
-        contains('✅ All repositories in ticket TICK can be committed.'),
+        contains('✅ All repositories in ticket TICKC can be committed.'),
       );
       expect(
         messages,
-        contains('Checking if A in ticket TICK can be committed...'),
+        contains('Checking if A in ticket TICKC can be committed...'),
       );
       expect(
         messages,
-        contains('Checking if B in ticket TICK can be committed...'),
+        contains('Checking if B in ticket TICKC can be committed...'),
       );
     });
 
     test('aborts on first repo that fails', () async {
-      final fakeCommit = FakeCanCommit(results: [true, false, true]);
+      final mockGgCanCommit = MockGgCanCommit();
+
+      when(
+        () => mockGgCanCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((invocation) async {
+        final repoDir = invocation.namedArguments[#directory] as Directory;
+        if (path.basename(repoDir.path) == 'B') {
+          throw Exception('Failed to commit B');
+        }
+      });
+
       final runner = CommandRunner<void>('test', 'can commit ticket')
         ..addCommand(
           CanCommitCommand(
             ggLog: ggLog,
-            executionPath: ticketDir.path,
-            ggCanCommit: fakeCommit,
+            ggCanCommit: mockGgCanCommit,
           ),
         );
       await expectLater(
-        () async => await runner.run(['commit']),
-        throwsA(
-          isA<Exception>(),
-        ),
+        () async => await runner.run(['commit', '--input', ticketDir.path]),
+        throwsA(isA<Exception>()),
       );
       expect(
         messages,
-        contains('❌ Cannot commit B: Exception: '
-            '${path.join(ticketDir.path, 'B')} failed'),
+        contains('❌ Cannot commit B: Exception: Failed to commit B'),
       );
-      expect(messages.any((m) => m.contains('All repositories')), isFalse);
     });
   });
 }

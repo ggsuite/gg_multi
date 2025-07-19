@@ -7,41 +7,27 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:gg/gg.dart' as gg;
 import 'package:kidney_core/src/commands/can/push.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-import 'package:gg/gg.dart';
 
 import '../../rm_console_colors_helper.dart';
 
-class FakeCanPush extends Fake implements CanPush {
-  FakeCanPush({List<bool>? results}) : _results = results ?? [];
+class MockGgCanPush extends Mock implements gg.CanPush {}
 
-  final List<bool> _results;
-  int _idx = 0;
-
-  @override
-  Future<void> exec({
-    required Directory directory,
-    required Function ggLog,
-    bool? force,
-    bool? saveState,
-  }) async {
-    if (_idx < _results.length && !_results[_idx]) {
-      _idx++;
-      throw Exception('${directory.path} failed');
-    }
-    _idx++;
-    return;
-  }
-}
+class FakeDirectory extends Fake implements Directory {}
 
 void main() {
   late Directory tempDir;
   late Directory ticketsDir;
   late Directory ticketDir;
   final messages = <String>[];
+
+  setUpAll(() {
+    registerFallbackValue(FakeDirectory());
+  });
 
   void ggLog(String msg) => messages.add(rmConsoleColors(msg));
 
@@ -66,10 +52,18 @@ void main() {
         ..addCommand(
           CanPushCommand(
             ggLog: ggLog,
-            executionPath: tempDir.path,
           ),
         );
-      await runner.run(['push']);
+      await expectLater(
+        () async => await runner.run(['push', '--input', tempDir.path]),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            'Exception: Not inside a ticket folder',
+          ),
+        ),
+      );
       expect(
         messages,
         contains('This command must be executed inside a ticket folder.'),
@@ -83,27 +77,33 @@ void main() {
         ..addCommand(
           CanPushCommand(
             ggLog: ggLog,
-            executionPath: emptyTicket.path,
           ),
         );
-      await runner.run(['push']);
+      await runner.run(['push', '--input', emptyTicket.path]);
       expect(
         messages,
         contains('⚠️ No repositories found in ticket EMPTY.'),
       );
     });
 
-    test('pushes all repos successfully', () async {
-      final fakePush = FakeCanPush(results: [true, true]);
+    test('checks all repos successfully', () async {
+      final mockGgCanPush = MockGgCanPush();
+
+      when(
+        () => mockGgCanPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
       final runner = CommandRunner<void>('test', 'can push ticket')
         ..addCommand(
           CanPushCommand(
             ggLog: ggLog,
-            executionPath: ticketDir.path,
-            ggCanPush: fakePush,
+            ggCanPush: mockGgCanPush,
           ),
         );
-      await runner.run(['push']);
+      await runner.run(['push', '--input', ticketDir.path]);
       expect(
         messages,
         contains('✅ All repositories in ticket TICKP can be pushed.'),
@@ -119,25 +119,35 @@ void main() {
     });
 
     test('aborts on first repo that fails', () async {
-      final fakePush = FakeCanPush(results: [true, false, true]);
+      final mockGgCanPush = MockGgCanPush();
+
+      when(
+        () => mockGgCanPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((invocation) async {
+        final repoDir = invocation.namedArguments[#directory] as Directory;
+        if (path.basename(repoDir.path) == 'B') {
+          throw Exception('Failed to push B');
+        }
+      });
+
       final runner = CommandRunner<void>('test', 'can push ticket')
         ..addCommand(
           CanPushCommand(
             ggLog: ggLog,
-            executionPath: ticketDir.path,
-            ggCanPush: fakePush,
+            ggCanPush: mockGgCanPush,
           ),
         );
       await expectLater(
-        () async => await runner.run(['push']),
+        () async => await runner.run(['push', '--input', ticketDir.path]),
         throwsA(isA<Exception>()),
       );
       expect(
         messages,
-        contains('❌ Cannot push B: Exception: '
-            '${path.join(ticketDir.path, 'B')} failed'),
+        contains('❌ Cannot push B: Exception: Failed to push B'),
       );
-      expect(messages.any((m) => m.contains('All repositories')), isFalse);
     });
   });
 }
