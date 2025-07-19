@@ -14,7 +14,7 @@ import 'package:kidney_core/src/backend/organization.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-import 'package:kidney_core/src/commands/add.dart';
+import 'package:kidney_core/src/commands/kidney_add.dart';
 import 'package:kidney_core/src/backend/git_handler.dart';
 
 import '../rm_console_colors_helper.dart';

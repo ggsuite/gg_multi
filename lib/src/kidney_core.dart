@@ -7,16 +7,16 @@
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
 import './commands/my_command.dart';
-import './commands/add.dart';
-import './commands/add_deps.dart';
-import './commands/list.dart';
-import './commands/remove.dart';
-import './commands/init.dart';
-import './commands/create.dart';
-import './commands/code.dart';
-import './commands/review.dart';
-import './commands/can.dart';
-import './commands/do.dart';
+import './commands/kidney_add.dart';
+import './commands/kidney_add_deps.dart';
+import './commands/kidney_list.dart';
+import './commands/kidney_remove.dart';
+import './commands/kidney_init.dart';
+import './commands/kidney_create.dart';
+import './commands/kidney_code.dart';
+import './commands/kidney_review.dart';
+import './commands/kidney_can.dart';
+import './commands/kidney_do.dart';
 
 /// The command line interface for KidneyCore
 class KidneyCore extends Command<dynamic> {

@@ -1,24 +1,31 @@
 // @license
-// Copyright (c) 2025 Göran Hegenberg. All Rights Reserved.
+// Copyright (c) 2019 - 2025 Dr. Gabriel Gatzsche. All Rights Reserved.
 //
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
 
 import 'dart:io';
+
 import 'package:args/command_runner.dart';
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
-import 'package:kidney_core/src/commands/can.dart';
+import 'package:kidney_core/src/backend/constants.dart';
+import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
+import 'package:kidney_core/src/commands/kidney_list.dart';
 
 void main() {
-  group('CanCommand', () {
+  group('ListCommand', () {
     late Directory tempDir;
+    late Directory masterDir;
     final messages = <String>[];
 
     setUp(() {
       messages.clear();
-      tempDir = Directory.systemTemp.createTempSync('can_test_');
+      tempDir = Directory.systemTemp.createTempSync('list_test');
+      masterDir = Directory(
+        path.join(tempDir.path, kidneyMasterFolder),
+      )..createSync(recursive: true);
     });
 
     tearDown(() {
@@ -28,15 +35,17 @@ void main() {
     });
 
     test('should show all sub commands', () async {
-      final canCommand = Can(ggLog: messages.add);
+      final listCommand = ListCommand(
+        ggLog: messages.add,
+        workspacePath: masterDir.path,
+      );
       // Update the directory path to use the correct path separator
       final commandsDir = Directory(
-        'lib${Platform.pathSeparator}src${Platform.pathSeparator}'
-        'commands${Platform.pathSeparator}can',
+        path.join('lib', 'src', 'commands', 'list'),
       );
       final (subCommands, errorMessage) = await missingSubCommands(
         directory: commandsDir,
-        command: canCommand,
+        command: listCommand,
       );
 
       expect(subCommands, isEmpty, reason: errorMessage);
@@ -45,19 +54,22 @@ void main() {
     test('prints help message when --help is passed', () async {
       final runner = CommandRunner<void>(
         'test',
-        'CanCommand Help',
+        'ListCommand Help',
       );
       runner.addCommand(
-        Can(ggLog: (_) {}),
+        ListCommand(
+          ggLog: (_) {},
+          workspacePath: masterDir.path,
+        ),
       );
       final output = await capturePrint(
         code: () async {
-          await runner.run(['can', '--help']);
+          await runner.run(['list', '--help']);
         },
       );
       expect(
         output.first,
-        contains('Checks if you can commit or push for the current ticket.'),
+        contains('List repos, organizations, or dependencies'),
       );
     });
   });

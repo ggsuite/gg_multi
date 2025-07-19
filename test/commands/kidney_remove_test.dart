@@ -10,7 +10,7 @@ import 'package:kidney_core/src/backend/constants.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-import 'package:kidney_core/src/commands/remove.dart';
+import 'package:kidney_core/src/commands/kidney_remove.dart';
 
 import '../rm_console_colors_helper.dart';
 
