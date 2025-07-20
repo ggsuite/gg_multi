@@ -187,6 +187,42 @@ void main() {
         expect(result.repo, null);
       });
 
+      test('parses Azure HTTP URL with _git', () {
+        const url = 'https://ssh.dev.azure.com/myorg/_git/myproj/myrepo.git';
+        final result = parser.parseHttp(url);
+        expect(result.platformType, 'azure');
+        expect(result.org, 'myorg');
+        expect(result.project, 'myproj');
+        expect(result.repo, 'myrepo');
+      });
+
+      test('parses Azure HTTP URL with _git and without repo', () {
+        const url = 'https://ssh.dev.azure.com/myorg/_git/myproj';
+        final result = parser.parseHttp(url);
+        expect(result.platformType, 'azure');
+        expect(result.org, 'myorg');
+        expect(result.project, 'myproj');
+        expect(result.repo, null);
+      });
+
+      test('parses Azure HTTP URL without v3', () {
+        const url = 'https://ssh.dev.azure.com/myorg/myproj/myrepo.git';
+        final result = parser.parseHttp(url);
+        expect(result.platformType, 'azure');
+        expect(result.org, 'myorg');
+        expect(result.project, 'myproj');
+        expect(result.repo, 'myrepo');
+      });
+
+      test('parses Azure HTTP URL without v3 and without repo', () {
+        const url = 'https://ssh.dev.azure.com/myorg/myproj';
+        final result = parser.parseHttp(url);
+        expect(result.platformType, 'azure');
+        expect(result.org, 'myorg');
+        expect(result.project, 'myproj');
+        expect(result.repo, null);
+      });
+
       test('parses unknown platform for non-GitHub/non-Azure host', () {
         const url = 'https://example.com/myorg/myrepo.git';
         final result = parser.parseHttp(url);

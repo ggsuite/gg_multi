@@ -7,11 +7,11 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:kidney_core/src/backend/git_platform.dart';
-import 'package:test/test.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:http/http.dart' as http;
+import 'package:kidney_core/src/backend/git_platform.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
+import 'package:test/test.dart';
 
 import 'package:kidney_core/src/backend/add_repository_helper.dart';
 import 'package:kidney_core/src/backend/git_handler.dart';
@@ -84,7 +84,12 @@ void main() {
         ).called(1);
 
         // Verify ggLog contains the correct success message
-        expect(logs, contains('Added repository repo from $expectedRepoUrl'));
+        expect(
+          logs,
+          contains(
+            'Added repository repo from $expectedRepoUrl',
+          ),
+        );
       });
 
       test('Processes repository URL that already ends with .git', () async {
@@ -249,6 +254,39 @@ void main() {
               .called(1);
           expect(logs, contains('Added repository $repoName from $cloneUrl'));
         }
+      });
+
+      test('Processes Azure organization URL with empty repo list', () async {
+        const targetArg = 'https://ssh.dev.azure.com/v3/myorg/myproj';
+        final mockGitCloner = MockGitCloner();
+        when(() => mockGitCloner.cloneRepo(any(), any()))
+            .thenAnswer((_) async {});
+
+        final mockAzurePlatform = MockAzurePlatform();
+        when(
+          () => mockAzurePlatform.fetchOrgRepos(
+            'myorg',
+            project: 'myproj',
+            client: any(named: 'client'),
+          ),
+        ).thenAnswer((_) async => []);
+
+        await addRepositoryHelper(
+          targetArg: targetArg,
+          ggLog: ggLog,
+          gitCloner: mockGitCloner,
+          azureDevOpsPlatform: mockAzurePlatform,
+          workspacePath: workspacePath,
+          force: false,
+        );
+
+        expect(
+          logs,
+          contains(
+            'No repositories found for organization myorg and project myproj',
+          ),
+        );
+        verifyNever(() => mockGitCloner.cloneRepo(any(), any()));
       });
 
       test('Skips Azure organization if no project provided', () async {
