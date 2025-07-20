@@ -10,6 +10,7 @@ import 'dart:io';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:http/http.dart' as http;
+import 'package:kidney_core/src/backend/url_parser.dart';
 import 'package:path/path.dart' as path;
 import 'git_handler.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
@@ -163,7 +164,7 @@ Future<void> addRepositoryHelper({
       if (!repoUrl.endsWith('.git')) {
         repoUrl = '$repoUrl.git';
       }
-      final String repoName = extractRepoName(repoUrl);
+      final String repoName = extractRepoName(repoUrl) ?? 'unknown_repo';
       await attemptClone(repoUrl, repoName);
     }
   } else if (targetArg.startsWith('git@ssh.dev.azure.com:')) {
@@ -180,17 +181,17 @@ Future<void> addRepositoryHelper({
   } else if (targetArg.startsWith('git@')) {
     // SSH URL -----------------------------------------------------------------
     final String repoUrl = targetArg;
-    final String repoName = extractRepoName(repoUrl);
+    final String repoName = extractRepoName(repoUrl) ?? 'unknown_repo';
     await attemptClone(repoUrl, repoName);
   } else if (targetArg.contains('/')) {
     // username/repo -----------------------------------------------------------
     final String repoUrl = 'https://github.com/$targetArg.git';
-    final String repoName = extractRepoName(repoUrl);
+    final String repoName = extractRepoName(repoUrl) ?? 'unknown_repo';
     await attemptClone(repoUrl, repoName);
   } else {
     // plain repo name ---------------------------------------------------------
     final String repoUrl = 'https://github.com/$targetArg/$targetArg.git';
-    final String repoName = extractRepoName(repoUrl);
+    final String repoName = extractRepoName(repoUrl) ?? 'unknown_repo';
     await attemptClone(repoUrl, repoName, allowFallback: true);
   }
 }
@@ -200,36 +201,9 @@ Future<void> addRepositoryHelper({
 /// - Azure DevOps SSH (git@ssh.dev.azure.com:v3/org/project/repo(.git))
 /// - HTTPS (https://github.com/owner/repo(.git))
 /// - username/repo
-String extractRepoName(String repoUrl) {
-  // Azure DevOps SSH: git@ssh.dev.azure.com:v3/org/project/repo(.git)
-  if (repoUrl.startsWith('git@ssh.dev.azure.com:')) {
-    final afterColon = repoUrl.split(':').skip(1).join(':');
-    final segments = afterColon.split('/');
-    final repoSegment = segments.isNotEmpty ? segments.last : repoUrl;
-    var repoName = repoSegment;
-    if (repoName.endsWith('.git')) {
-      repoName = repoName.substring(0, repoName.length - 4);
-    }
-    return repoName;
-  }
-  // GitHub SSH: git@github.com:owner/repo.git
-  if (repoUrl.startsWith('git@')) {
-    final sshRegex = RegExp(r'^git@[^:]+:([^/]+)/(.+?)(?:\.git)?$');
-    final match = sshRegex.firstMatch(repoUrl);
-    if (match != null) {
-      return match.group(2)!;
-    }
-  }
-  try {
-    final uri = Uri.parse(repoUrl);
-    var repoName = uri.pathSegments.last;
-    if (repoName.endsWith('.git')) {
-      repoName = repoName.substring(0, repoName.length - 4);
-    }
-    return repoName;
-  } catch (e) {
-    return repoUrl;
-  }
+String? extractRepoName(String repoUrl) {
+  UrlParser urlParser = const UrlParser();
+  return urlParser.parse(repoUrl).repo;
 }
 
 /// Retrieves the Pubspec for a repository in the master workspace.
