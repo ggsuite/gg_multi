@@ -45,3 +45,4 @@
 - remove trailing # and / in organization urls
 - remove command works also for tickets
 - Remove redundant code in appendOrganization
+- Remove prints

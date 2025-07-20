@@ -139,11 +139,6 @@ Future<void> addRepositoryHelper({
     UrlParser urlParser = const UrlParser();
     final parsedUrl = urlParser.parse(cleanedUrl);
 
-    print(parsedUrl.org);
-    print(parsedUrl.repo);
-    print(parsedUrl.platformType);
-    print(parsedUrl.project);
-
     final uri = parsedUri;
     if (uri.pathSegments.isEmpty ||
         uri.pathSegments.every((segment) => segment.trim().isEmpty)) {
@@ -184,7 +179,6 @@ Future<void> addRepositoryHelper({
         return;
       }
       for (final repoJson in reposJson) {
-        print(repoJson);
         final repoName = repoJson['name'] as String?;
         final cloneUrl = repoJson['clone_url'] as String?;
         if (repoName == null || cloneUrl == null) continue;
