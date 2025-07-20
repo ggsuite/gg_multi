@@ -4,16 +4,15 @@
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
 
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
-import 'package:http/http.dart' as http;
 import 'package:kidney_core/src/backend/url_parser.dart';
 import 'package:path/path.dart' as path;
 import 'git_handler.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
+import 'git_platform.dart';
 import 'organization_utils.dart';
 
 /// Helper function to add a repository given a target argument.
@@ -37,12 +36,15 @@ Future<void> addRepositoryHelper({
   required String targetArg,
   required GgLog ggLog,
   required GitHandler gitCloner,
-  required Future<http.Response> Function(Uri) repoFetcher,
+  GitHubPlatform? gitHubPlatform,
   required String workspacePath,
   bool force = false,
   bool logIfAlreadyAdded = true,
   Future<void> Function(String repoName)? onRepoAdded,
 }) async {
+  // coverage:ignore-start
+  gitHubPlatform ??= GitHubPlatform();
+  // coverage:ignore-end
   // ---------------------------------------------------------------------------
   /// Attempts to clone [repoUrl] as [repoName] into [workspacePath].
   /// If [allowFallback] is true and cloning fails, tries each known
@@ -132,24 +134,26 @@ Future<void> addRepositoryHelper({
   if (parsedUri != null &&
       (parsedUri.scheme == 'http' || parsedUri.scheme == 'https') &&
       parsedUri.host.isNotEmpty) {
+    UrlParser urlParser = const UrlParser();
+    final parsedUrl = urlParser.parse(cleanedUrl);
+
     final uri = parsedUri;
     if (uri.pathSegments.isEmpty ||
         uri.pathSegments.every((segment) => segment.trim().isEmpty)) {
       throw Exception('Invalid organization URL provided: $cleanedUrl');
     }
-    if (uri.pathSegments.length < 2) {
+    if (parsedUrl.repo == null &&
+        parsedUrl.org != null &&
+        parsedUrl.platformType == 'github') {
       // Treat as organization URL ---------------------------------------------
-      final String orgName = uri.pathSegments.last.trim();
-      final String apiUrl = 'https://api.github.com/orgs/$orgName/repos';
-      final response = await repoFetcher(Uri.parse(apiUrl));
-      if (response.statusCode != 200) {
-        throw Exception('Failed to fetch repositories for '
-            'organization $orgName: ${response.body}');
-      }
-      final List<dynamic> reposJson =
-          jsonDecode(response.body) as List<dynamic>;
+
+      final List<Map<String, dynamic>> reposJson =
+          await gitHubPlatform.fetchOrgRepos(parsedUrl.org!);
       if (reposJson.isEmpty) {
-        ggLog(yellow('No repositories found for organization $orgName'));
+        ggLog(
+          yellow('No repositories found for organization '
+              '${parsedUrl.org!}'),
+        );
         return;
       }
       for (final repoJson in reposJson) {

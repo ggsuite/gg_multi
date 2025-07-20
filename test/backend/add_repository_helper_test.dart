@@ -7,6 +7,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:kidney_core/src/backend/git_platform.dart';
 import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:http/http.dart' as http;
@@ -19,6 +20,8 @@ import '../rm_console_colors_helper.dart';
 
 // Mock for GitCloner using mocktail
 class MockGitCloner extends Mock implements GitHandler {}
+
+class MockGitHubPlatform extends Mock implements GitHubPlatform {}
 
 // Dummy implementation for repoFetcher in tests
 typedef RepoFetcher = Future<http.Response> Function(Uri uri);
@@ -58,16 +61,10 @@ void main() {
         when(() => mockGitCloner.cloneRepo(any(), any()))
             .thenAnswer((_) async {});
 
-        // Dummy repoFetcher that should never be used in this branch
-        Future<http.Response> repoFetcher(Uri uri) async {
-          fail('repoFetcher should not be called for repository URL branch');
-        }
-
         await addRepositoryHelper(
           targetArg: targetArg,
           ggLog: ggLog,
           gitCloner: mockGitCloner,
-          repoFetcher: repoFetcher,
           workspacePath: workspacePath,
           force: false,
         );
@@ -94,15 +91,10 @@ void main() {
         when(() => mockGitCloner.cloneRepo(any(), any()))
             .thenAnswer((_) async {});
 
-        Future<http.Response> repoFetcher(Uri uri) async {
-          fail('repoFetcher should not be called for repository URL branch');
-        }
-
         await addRepositoryHelper(
           targetArg: targetArg,
           ggLog: ggLog,
           gitCloner: mockGitCloner,
-          repoFetcher: repoFetcher,
           workspacePath: workspacePath,
           force: false,
         );
@@ -127,20 +119,19 @@ void main() {
           {'name': 'repo2', 'clone_url': 'https://github.com/myorg/repo2.git'},
         ];
 
-        Future<http.Response> repoFetcher(Uri uri) async {
-          // Expect the URL to be https://api.github.com/orgs/myorg/repos
-          expect(
-            uri.toString(),
-            equals('https://api.github.com/orgs/myorg/repos'),
-          );
-          return http.Response(jsonEncode(repoList), 200);
-        }
+        final mockGitHubPlatform = MockGitHubPlatform();
+        when(
+          () => mockGitHubPlatform.fetchOrgRepos(
+            any(),
+            client: any(named: 'client'),
+          ),
+        ).thenAnswer((_) async => repoList);
 
         await addRepositoryHelper(
           targetArg: targetArg,
           ggLog: ggLog,
           gitCloner: mockGitCloner,
-          repoFetcher: repoFetcher,
+          gitHubPlatform: mockGitHubPlatform,
           workspacePath: workspacePath,
           force: false,
         );
@@ -164,15 +155,19 @@ void main() {
         when(() => mockGitCloner.cloneRepo(any(), any()))
             .thenAnswer((_) async {});
 
-        Future<http.Response> repoFetcher(Uri uri) async {
-          return http.Response(jsonEncode([]), 200);
-        }
+        final mockGitHubPlatform = MockGitHubPlatform();
+        when(
+          () => mockGitHubPlatform.fetchOrgRepos(
+            any(),
+            client: any(named: 'client'),
+          ),
+        ).thenAnswer((_) async => []);
 
         await addRepositoryHelper(
           targetArg: targetArg,
           ggLog: ggLog,
           gitCloner: mockGitCloner,
-          repoFetcher: repoFetcher,
+          gitHubPlatform: mockGitHubPlatform,
           workspacePath: workspacePath,
           force: false,
         );
@@ -191,16 +186,11 @@ void main() {
         when(() => mockGitCloner.cloneRepo(any(), any()))
             .thenAnswer((_) async {});
 
-        Future<http.Response> repoFetcher(Uri uri) async {
-          return http.Response('Error fetching repos', 404);
-        }
-
         expect(
           () async => await addRepositoryHelper(
             targetArg: targetArg,
             ggLog: ggLog,
             gitCloner: mockGitCloner,
-            repoFetcher: repoFetcher,
             workspacePath: workspacePath,
             force: false,
           ),
@@ -222,15 +212,10 @@ void main() {
         when(() => mockGitCloner.cloneRepo(any(), any()))
             .thenAnswer((_) async {});
 
-        Future<http.Response> repoFetcher(Uri uri) async {
-          fail('repoFetcher should not be called for SSH URL branch');
-        }
-
         await addRepositoryHelper(
           targetArg: targetArg,
           ggLog: ggLog,
           gitCloner: mockGitCloner,
-          repoFetcher: repoFetcher,
           workspacePath: workspacePath,
           force: false,
         );
@@ -249,15 +234,10 @@ void main() {
       when(() => mockGitCloner.cloneRepo(any(), any()))
           .thenAnswer((_) async {});
 
-      Future<http.Response> repoFetcher(Uri uri) async {
-        fail('repoFetcher should not be called for SSH URL branch');
-      }
-
       await addRepositoryHelper(
         targetArg: targetArg,
         ggLog: ggLog,
         gitCloner: mockGitCloner,
-        repoFetcher: repoFetcher,
         workspacePath: workspacePath,
         force: false,
       );
@@ -275,15 +255,10 @@ void main() {
         when(() => mockGitCloner.cloneRepo(any(), any()))
             .thenAnswer((_) async {});
 
-        Future<http.Response> repoFetcher(Uri uri) async {
-          fail('repoFetcher should not be called for target with slash branch');
-        }
-
         await addRepositoryHelper(
           targetArg: targetArg,
           ggLog: ggLog,
           gitCloner: mockGitCloner,
-          repoFetcher: repoFetcher,
           workspacePath: workspacePath,
           force: false,
         );
@@ -307,15 +282,10 @@ void main() {
         when(() => mockGitCloner.cloneRepo(any(), any()))
             .thenAnswer((_) async {});
 
-        Future<http.Response> repoFetcher(Uri uri) async {
-          fail('repoFetcher should not be called for plain target branch');
-        }
-
         await addRepositoryHelper(
           targetArg: targetArg,
           ggLog: ggLog,
           gitCloner: mockGitCloner,
-          repoFetcher: repoFetcher,
           workspacePath: workspacePath,
           force: false,
         );
@@ -338,16 +308,12 @@ void main() {
         final mockGitCloner = MockGitCloner();
         when(() => mockGitCloner.cloneRepo(any(), any()))
             .thenAnswer((_) async {});
-        Future<http.Response> repoFetcher(Uri uri) async {
-          fail('repoFetcher should not be called when URL is invalid');
-        }
 
         expect(
           () async => await addRepositoryHelper(
             targetArg: targetArg,
             ggLog: ggLog,
             gitCloner: mockGitCloner,
-            repoFetcher: repoFetcher,
             workspacePath: workspacePath,
             force: false,
           ),
@@ -368,16 +334,12 @@ void main() {
         final mockGitCloner = MockGitCloner();
         when(() => mockGitCloner.cloneRepo(any(), any()))
             .thenAnswer((_) async {});
-        Future<http.Response> repoFetcher(Uri uri) async {
-          fail('repoFetcher should not be called when URL is invalid');
-        }
 
         expect(
           () async => await addRepositoryHelper(
             targetArg: targetArg,
             ggLog: ggLog,
             gitCloner: mockGitCloner,
-            repoFetcher: repoFetcher,
             workspacePath: workspacePath,
             force: false,
           ),
@@ -407,7 +369,6 @@ void main() {
           targetArg: 'repo',
           ggLog: ggLog,
           gitCloner: mockGitCloner,
-          repoFetcher: (uri) async => http.Response('{}', 200),
           workspacePath: workspacePath,
           force: true,
         );
@@ -434,7 +395,6 @@ void main() {
           targetArg: 'repo',
           ggLog: ggLog,
           gitCloner: mockGitCloner,
-          repoFetcher: (uri) async => http.Response('{}', 200),
           workspacePath: workspacePath,
           force: false,
         );
@@ -476,7 +436,6 @@ void main() {
         targetArg: repoName,
         ggLog: ggLog,
         gitCloner: mockGitCloner,
-        repoFetcher: (uri) async => http.Response('{}', 200),
         workspacePath: workspacePath,
         force: false,
         onRepoAdded: onRepoAdded,
@@ -522,7 +481,6 @@ void main() {
         targetArg: repoName,
         ggLog: ggLog,
         gitCloner: mockGitCloner,
-        repoFetcher: (uri) async => http.Response('{}', 200),
         workspacePath: workspacePath,
         force: false,
       );
@@ -638,7 +596,6 @@ void main() {
       targetArg: repoName,
       ggLog: ggLog,
       gitCloner: mockGitCloner,
-      repoFetcher: (uri) async => http.Response('{}', 200),
       workspacePath: workspacePath,
       force: false,
       onRepoAdded: onRepoAdded,
@@ -665,15 +622,11 @@ void main() {
       callbackExecuted = true;
     }
 
-    Future<http.Response> repoFetcher(Uri uri) async =>
-        http.Response('{}', 200);
-
     // Act
     await addRepositoryHelper(
       targetArg: repoName,
       ggLog: ggLog,
       gitCloner: mockGitCloner,
-      repoFetcher: repoFetcher,
       workspacePath: workspacePath,
       force: true,
       onRepoAdded: callback,

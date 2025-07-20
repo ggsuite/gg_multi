@@ -8,12 +8,12 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
-import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 
 import '../backend/git_handler.dart';
 import '../backend/add_repository_helper.dart';
 import '../backend/filesystem_utils.dart';
+import '../backend/git_platform.dart';
 import '../backend/localize_refs_handler.dart';
 import '../backend/workspace_utils.dart';
 
@@ -34,13 +34,13 @@ class AddCommand extends Command<dynamic> {
   AddCommand({
     required this.ggLog,
     GitHandler? gitCloner,
-    Future<http.Response> Function(Uri)? repoFetcher,
+    GitHubPlatform? gitHubPlatform,
     String? masterWorkspacePath,
     String? executionPath,
     Future<void> Function(String repoPath)? localizeRefsFn,
     // coverage:ignore-start
   })  : gitCloner = gitCloner ?? GitHandler(),
-        repoFetcher = repoFetcher ?? http.get,
+        gitHubPlatform = gitHubPlatform ?? GitHubPlatform(),
         executionPath = executionPath ?? Directory.current.path,
         masterWorkspacePath =
             masterWorkspacePath ?? WorkspaceUtils.defaultMasterWorkspacePath(),
@@ -61,8 +61,8 @@ class AddCommand extends Command<dynamic> {
   /// Instance to handle cloning.
   final GitHandler gitCloner;
 
-  /// Function to fetch repositories from the organization API.
-  final Future<http.Response> Function(Uri) repoFetcher;
+  /// Optional GitHub platform instance to handle GitHub-specific operations.
+  final GitHubPlatform? gitHubPlatform;
 
   /// Resolved master workspace path.
   final String masterWorkspacePath;
@@ -94,7 +94,7 @@ class AddCommand extends Command<dynamic> {
         targetArg: targetArg,
         ggLog: ggLog,
         gitCloner: gitCloner,
-        repoFetcher: repoFetcher,
+        gitHubPlatform: gitHubPlatform,
         workspacePath: masterWorkspacePath,
         force: force,
         logIfAlreadyAdded: ticketPath == null,

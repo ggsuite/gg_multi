@@ -16,6 +16,7 @@ import 'package:path/path.dart' as path;
 import '../backend/constants.dart';
 import '../backend/git_handler.dart';
 import '../backend/add_repository_helper.dart';
+import '../backend/git_platform.dart';
 
 /// Command to add dependencies of a project from the master workspace.
 /// It iterates over dependencies in pubspec.yaml and adds each one using
@@ -25,12 +26,13 @@ class AddDepsCommand extends Command<void> {
   AddDepsCommand({
     required this.ggLog,
     GitHandler? gitCloner,
+    GitHubPlatform? gitHubPlatform,
     Future<http.Response> Function(Uri)? repoFetcher,
     Future<http.Response> Function(Uri)? packageFetcher,
     String? workspacePath,
     // coverage:ignore-start
   })  : gitCloner = gitCloner ?? GitHandler(),
-        repoFetcher = repoFetcher ?? http.get,
+        gitHubPlatform = gitHubPlatform ?? GitHubPlatform(),
         packageFetcher = packageFetcher ?? http.get,
         workspacePath = workspacePath ??
             path.join(Directory.current.path, kidneyMasterFolder);
@@ -42,8 +44,8 @@ class AddDepsCommand extends Command<void> {
   /// Instance to handle cloning.
   final GitHandler gitCloner;
 
-  /// Function to fetch repositories.
-  final Future<http.Response> Function(Uri) repoFetcher;
+  /// Instance to handle GitHub specific operations.
+  final GitHubPlatform gitHubPlatform;
 
   /// Function to fetch package info from pub.dev.
   final Future<http.Response> Function(Uri) packageFetcher;
@@ -111,7 +113,7 @@ class AddDepsCommand extends Command<void> {
             targetArg: repoUrl,
             ggLog: ggLog,
             gitCloner: gitCloner,
-            repoFetcher: repoFetcher,
+            gitHubPlatform: gitHubPlatform,
             workspacePath: workspacePath,
           );
         } catch (e) {
