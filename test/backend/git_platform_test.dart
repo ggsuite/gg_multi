@@ -40,6 +40,22 @@ void main() {
       expect(repos[0]['name'], 'repo1');
     });
 
+    test('fetchOrgRepos creates default client if none provided', () async {
+      final platform = GitHubPlatform();
+      await expectLater(
+        platform.fetchOrgRepos(
+          'nonexistentorg123456789abcdef',
+        ),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'toString',
+            contains('Failed to fetch repositories'),
+          ),
+        ),
+      );
+    });
+
     test('fetchOrgRepos throws on non-200 response', () async {
       final platform = GitHubPlatform();
       final mockClient =

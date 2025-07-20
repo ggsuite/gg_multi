@@ -122,7 +122,7 @@ void main() {
         ..createSync(recursive: true);
       Directory(path.join(tdir.path, 'SlashRepo')).createSync();
       await runner
-          .run(['code', 'T5\\SlashRepo']); // double backslash for literal '\'
+          .run(['code', 'T5\\SlashRepo']);
 
       expect(launched.length, 1);
       expect(

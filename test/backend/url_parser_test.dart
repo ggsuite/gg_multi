@@ -21,6 +21,15 @@ void main() {
       expect(result.repo, 'myrepo');
     });
 
+    test('parses Azure SSH URL with insufficient segments as unknown', () {
+      const url = 'git@ssh.dev.azure.com:v3/myorg/';
+      final result = parser.parse(url);
+      expect(result.platformType, 'unknown');
+      expect(result.org, null);
+      expect(result.project, null);
+      expect(result.repo, null);
+    });
+
     test('parses GitHub SSH URL correctly', () {
       const url = 'git@github.com:myorg/myrepo.git';
       final result = parser.parse(url);
@@ -45,6 +54,15 @@ void main() {
       expect(result.org, 'myorg');
       expect(result.project, 'myproj');
       expect(result.repo, 'myrepo');
+    });
+
+    test('parses HTTP Azure URL with insufficient segments as unknown', () {
+      const url = 'https://ssh.dev.azure.com/v3/myorg/';
+      final result = parser.parse(url);
+      expect(result.platformType, 'azure');
+      expect(result.org, 'myorg');
+      expect(result.project, null);
+      expect(result.repo, null);
     });
 
     test('parses username/repo format as GitHub', () {
