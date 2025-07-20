@@ -1,5 +1,5 @@
 // @license
-// Copyright (c) 2025 Göran Hegenberg. All Rights Reserved.
+// Copyright (c) 2019 - 2025 Dr. Gabriel Gatzsche. All Rights Reserved.
 //
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
@@ -10,6 +10,30 @@ import 'package:http/http.dart' as http;
 import 'package:kidney_core/src/backend/organization.dart';
 import 'package:kidney_core/src/backend/url_parser.dart';
 
+import 'dart:io';
+
+/// Typedef for running processes (for injection & tests).
+typedef ProcessRunner = Future<ProcessResult> Function(
+  String executable,
+  List<String> arguments, {
+  String? workingDirectory,
+});
+
+/// Default process runner that uses the system's `Process.run`
+// coverage:ignore-start
+Future<ProcessResult> _defaultProcessRunner(
+  String executable,
+  List<String> arguments, {
+  String? workingDirectory,
+}) =>
+    Process.run(
+      executable,
+      arguments,
+      workingDirectory: workingDirectory,
+      runInShell: true,
+    );
+// coverage:ignore-end
+
 /// Interface for Git platforms like GitHub, Azure DevOps, GitLab.
 abstract class GitPlatform {
   /// Builds the full clone URL for a repository.
@@ -18,6 +42,7 @@ abstract class GitPlatform {
   /// Fetches the list of repositories for an organization.
   Future<List<Map<String, dynamic>>> fetchOrgRepos(
     String org, {
+    String? project,
     http.Client? client,
   });
 
@@ -38,6 +63,7 @@ class GitHubPlatform implements GitPlatform {
   @override
   Future<List<Map<String, dynamic>>> fetchOrgRepos(
     String org, {
+    String? project,
     http.Client? client,
   }) async {
     client ??= http.Client();
@@ -70,6 +96,13 @@ class GitHubPlatform implements GitPlatform {
 
 /// Azure DevOps implementation of GitPlatform.
 class AzureDevOpsPlatform implements GitPlatform {
+  /// Constructor accepts an optional process runner for testing.
+  AzureDevOpsPlatform({
+    ProcessRunner? processRunner,
+  }) : _processRunner = processRunner ?? _defaultProcessRunner;
+
+  final ProcessRunner _processRunner;
+
   @override
   String buildRepoUrl(String org, String repo, [String? project]) {
     if (project == null) {
@@ -81,14 +114,42 @@ class AzureDevOpsPlatform implements GitPlatform {
   @override
   Future<List<Map<String, dynamic>>> fetchOrgRepos(
     String org, {
+    String? project,
     http.Client? client,
   }) async {
-    // Note: Azure DevOps API for fetching repos is more complex and requires
-    // authentication. This is a placeholder; implement actual API call if
-    // needed.
-    throw UnimplementedError(
-      'Fetching org repos not implemented for Azure DevOps.',
+    if (project == null) {
+      throw ArgumentError('Project name is required for Azure DevOps.');
+    }
+    final result = await _processRunner(
+      'az',
+      [
+        'repos',
+        'list',
+        '--organization',
+        'https://dev.azure.com/$org',
+        '--project',
+        project,
+      ],
     );
+    if (result.exitCode != 0) {
+      throw Exception(
+        'Failed to fetch repositories for organization $org, project $project: '
+        '${result.stderr}',
+      );
+    }
+    final jsonOutput = result.stdout.toString();
+    try {
+      final repos = jsonDecode(jsonOutput) as List<dynamic>;
+      return repos.map((repo) {
+        final repoMap = repo as Map<String, dynamic>;
+        return <String, dynamic>{
+          'name': repoMap['name'] as String?,
+          'clone_url': repoMap['sshUrl'] as String?,
+        };
+      }).toList();
+    } catch (e) {
+      throw Exception('Failed to parse Azure CLI output: $e');
+    }
   }
 
   @override

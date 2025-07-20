@@ -5,11 +5,21 @@
 // found in the LICENSE file in the root of this package.
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 import 'package:kidney_core/src/backend/git_platform.dart';
+
+class MockProcessRunner extends Mock {
+  Future<ProcessResult> call(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+  });
+}
 
 void main() {
   group('GitHubPlatform', () {
@@ -87,6 +97,26 @@ void main() {
       final base = platform.buildBaseUrl('myorg');
       expect(base, 'https://github.com/myorg/');
     });
+
+    test('fetchOrgRepos ignores project parameter', () async {
+      final platform = GitHubPlatform();
+      final mockClient = MockClient((request) async {
+        return http.Response(
+          jsonEncode(
+            [
+              {'name': 'repo', 'clone_url': 'url'},
+            ],
+          ),
+          200,
+        );
+      });
+      final repos = await platform.fetchOrgRepos(
+        'testorg',
+        project: 'ignored',
+        client: mockClient,
+      );
+      expect(repos.length, 1);
+    });
   });
 
   group('AzureDevOpsPlatform', () {
@@ -104,11 +134,86 @@ void main() {
       );
     });
 
-    test('fetchOrgRepos throws UnimplementedError', () {
+    test('fetchOrgRepos throws without project', () async {
       final platform = AzureDevOpsPlatform();
-      expect(
-        () => platform.fetchOrgRepos('myorg'),
-        throwsUnimplementedError,
+      await expectLater(
+        platform.fetchOrgRepos('myorg'),
+        throwsArgumentError,
+      );
+    });
+
+    test('fetchOrgRepos executes CLI and parses JSON', () async {
+      final mockRunner = MockProcessRunner();
+      when(
+        () => mockRunner(
+          'az',
+          any(),
+        ),
+      ).thenAnswer(
+        (_) async => ProcessResult(
+          1,
+          0,
+          jsonEncode([
+            {'name': 'repo1', 'sshUrl': 'ssh1'},
+            {'name': 'repo2', 'sshUrl': 'ssh2'},
+          ]),
+          '',
+        ),
+      );
+      final platform = AzureDevOpsPlatform(processRunner: mockRunner.call);
+      final repos = await platform.fetchOrgRepos(
+        'myorg',
+        project: 'myproj',
+      );
+      expect(repos.length, 2);
+      expect(repos[0]['name'], 'repo1');
+      expect(repos[0]['clone_url'], 'ssh1');
+      verify(
+        () => mockRunner(
+          'az',
+          [
+            'repos',
+            'list',
+            '--organization',
+            'https://dev.azure.com/myorg',
+            '--project',
+            'myproj',
+          ],
+        ),
+      ).called(1);
+    });
+
+    test('fetchOrgRepos throws on non-zero exit code', () async {
+      final mockRunner = MockProcessRunner();
+      when(
+        () => mockRunner(
+          'az',
+          any(),
+        ),
+      ).thenAnswer(
+        (_) async => ProcessResult(2, 1, '', 'CLI error'),
+      );
+      final platform = AzureDevOpsPlatform(processRunner: mockRunner.call);
+      await expectLater(
+        platform.fetchOrgRepos('myorg', project: 'myproj'),
+        throwsA(isA<Exception>()),
+      );
+    });
+
+    test('fetchOrgRepos throws on invalid JSON', () async {
+      final mockRunner = MockProcessRunner();
+      when(
+        () => mockRunner(
+          'az',
+          any(),
+        ),
+      ).thenAnswer(
+        (_) async => ProcessResult(3, 0, 'invalid json', ''),
+      );
+      final platform = AzureDevOpsPlatform(processRunner: mockRunner.call);
+      await expectLater(
+        platform.fetchOrgRepos('myorg', project: 'myproj'),
+        throwsA(isA<Exception>()),
       );
     });
 

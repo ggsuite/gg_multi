@@ -37,6 +37,7 @@ Future<void> addRepositoryHelper({
   required GgLog ggLog,
   required GitHandler gitCloner,
   GitHubPlatform? gitHubPlatform,
+  AzureDevOpsPlatform? azureDevOpsPlatform,
   required String workspacePath,
   bool force = false,
   bool logIfAlreadyAdded = true,
@@ -44,6 +45,7 @@ Future<void> addRepositoryHelper({
 }) async {
   // coverage:ignore-start
   gitHubPlatform ??= GitHubPlatform();
+  azureDevOpsPlatform ??= AzureDevOpsPlatform();
   // coverage:ignore-end
   // ---------------------------------------------------------------------------
   /// Attempts to clone [repoUrl] as [repoName] into [workspacePath].
@@ -137,6 +139,11 @@ Future<void> addRepositoryHelper({
     UrlParser urlParser = const UrlParser();
     final parsedUrl = urlParser.parse(cleanedUrl);
 
+    print(parsedUrl.org);
+    print(parsedUrl.repo);
+    print(parsedUrl.platformType);
+    print(parsedUrl.project);
+
     final uri = parsedUri;
     if (uri.pathSegments.isEmpty ||
         uri.pathSegments.every((segment) => segment.trim().isEmpty)) {
@@ -157,6 +164,27 @@ Future<void> addRepositoryHelper({
         return;
       }
       for (final repoJson in reposJson) {
+        final repoName = repoJson['name'] as String?;
+        final cloneUrl = repoJson['clone_url'] as String?;
+        if (repoName == null || cloneUrl == null) continue;
+        await attemptClone(cloneUrl, repoName);
+      }
+    } else if (parsedUrl.repo == null &&
+        parsedUrl.org != null &&
+        parsedUrl.platformType == 'azure' &&
+        parsedUrl.project != null) {
+      // Treat as Azure organization URL ---------------------------------------
+      final List<Map<String, dynamic>> reposJson = await azureDevOpsPlatform
+          .fetchOrgRepos(parsedUrl.org!, project: parsedUrl.project);
+      if (reposJson.isEmpty) {
+        ggLog(
+          yellow('No repositories found for organization '
+              '${parsedUrl.org!} and project ${parsedUrl.project}'),
+        );
+        return;
+      }
+      for (final repoJson in reposJson) {
+        print(repoJson);
         final repoName = repoJson['name'] as String?;
         final cloneUrl = repoJson['clone_url'] as String?;
         if (repoName == null || cloneUrl == null) continue;

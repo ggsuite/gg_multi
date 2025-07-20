@@ -23,6 +23,8 @@ class MockGitCloner extends Mock implements GitHandler {}
 
 class MockGitHubPlatform extends Mock implements GitHubPlatform {}
 
+class MockAzurePlatform extends Mock implements AzureDevOpsPlatform {}
+
 // Dummy implementation for repoFetcher in tests
 typedef RepoFetcher = Future<http.Response> Function(Uri uri);
 
@@ -203,6 +205,79 @@ void main() {
           ),
         );
       });
+
+      test('Processes Azure organization URL with project', () async {
+        const targetArg = 'https://ssh.dev.azure.com/v3/myorg/myproj';
+        final mockGitCloner = MockGitCloner();
+        when(() => mockGitCloner.cloneRepo(any(), any()))
+            .thenAnswer((_) async {});
+
+        final repoList = [
+          {
+            'name': 'repo1',
+            'clone_url': 'https://dev.azure.com/myorg/myproj/repo1.git',
+          },
+          {
+            'name': 'repo2',
+            'clone_url': 'https://dev.azure.com/myorg/myproj/repo2.git',
+          },
+        ];
+
+        final mockAzurePlatform = MockAzurePlatform();
+        when(
+          () => mockAzurePlatform.fetchOrgRepos(
+            'myorg',
+            project: 'myproj',
+            client: any(named: 'client'),
+          ),
+        ).thenAnswer((_) async => repoList);
+
+        await addRepositoryHelper(
+          targetArg: targetArg,
+          ggLog: ggLog,
+          gitCloner: mockGitCloner,
+          azureDevOpsPlatform: mockAzurePlatform,
+          workspacePath: workspacePath,
+          force: false,
+        );
+
+        for (final repo in repoList) {
+          final repoName = repo['name']!;
+          final cloneUrl = repo['clone_url']!;
+          final destination = path.join(workspacePath, repoName);
+          verify(() => mockGitCloner.cloneRepo(cloneUrl, destination))
+              .called(1);
+          expect(logs, contains('Added repository $repoName from $cloneUrl'));
+        }
+      });
+
+      test('Skips Azure organization if no project provided', () async {
+        const targetArg = 'https://ssh.dev.azure.com/v3/myorg';
+        final mockGitCloner = MockGitCloner();
+        when(() => mockGitCloner.cloneRepo(any(), any()))
+            .thenAnswer((_) async {});
+
+        final mockAzurePlatform = MockAzurePlatform();
+        when(
+          () => mockAzurePlatform.fetchOrgRepos(
+            any(),
+            project: any(named: 'project'),
+            client: any(named: 'client'),
+          ),
+        ).thenThrow(ArgumentError('Project required'));
+
+        await addRepositoryHelper(
+          targetArg: targetArg,
+          ggLog: ggLog,
+          gitCloner: mockGitCloner,
+          azureDevOpsPlatform: mockAzurePlatform,
+          workspacePath: workspacePath,
+          force: false,
+        );
+
+        // Since no project, it should treat as repo URL, not org
+        verify(() => mockGitCloner.cloneRepo(any(), any())).called(1);
+      });
     });
 
     group('SSH URL target', () {
@@ -366,7 +441,7 @@ void main() {
             .thenAnswer((_) async {});
 
         await addRepositoryHelper(
-          targetArg: 'repo',
+          targetArg: repoName,
           ggLog: ggLog,
           gitCloner: mockGitCloner,
           workspacePath: workspacePath,
@@ -392,7 +467,7 @@ void main() {
             .thenAnswer((_) async {});
 
         await addRepositoryHelper(
-          targetArg: 'repo',
+          targetArg: repoName,
           ggLog: ggLog,
           gitCloner: mockGitCloner,
           workspacePath: workspacePath,

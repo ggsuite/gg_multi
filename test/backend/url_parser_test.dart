@@ -214,8 +214,8 @@ void main() {
         final result = parser.parseHttp(url);
         expect(result.platformType, 'azure');
         expect(result.org, 'myorg');
-        expect(result.project, null);
-        expect(result.repo, 'myproj');
+        expect(result.project, 'myproj');
+        expect(result.repo, 'myrepo');
       });
     });
 

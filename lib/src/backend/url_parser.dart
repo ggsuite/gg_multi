@@ -96,14 +96,32 @@ class UrlParser {
     final segments =
         uri.pathSegments.where((s) => s.trim().isNotEmpty).toList();
     if (segments.isEmpty) return ParseResult(platformType: platform);
-    if (platform == 'azure' && segments[0] == 'v3') {
-      // Azure-specific: skip 'v3'
-      return ParseResult(
-        org: segments.length > 1 ? segments[1] : null,
-        project: segments.length > 2 ? segments[2] : null,
-        repo: segments.length > 3 ? segments[3].replaceAll('.git', '') : null,
-        platformType: 'azure',
-      );
+    if (platform == 'azure') {
+      if (segments[0] == 'v3' || segments[0] == 'v4') {
+        // Azure-specific: skip 'v3'
+        return ParseResult(
+          org: segments.length > 1 ? segments[1] : null,
+          project: segments.length > 2 ? segments[2] : null,
+          repo: segments.length > 3 ? segments[3].replaceAll('.git', '') : null,
+          platformType: 'azure',
+        );
+      } else if (segments[1] == '_git') {
+        // Azure with '_git' in the path
+        return ParseResult(
+          org: segments[0],
+          project: segments.length > 2 ? segments[2] : null,
+          repo: segments.length > 3 ? segments[3].replaceAll('.git', '') : null,
+          platformType: 'azure',
+        );
+      } else {
+        // Azure without 'v3'
+        return ParseResult(
+          org: segments[0],
+          project: segments.length > 1 ? segments[1] : null,
+          repo: segments.length > 2 ? segments[2].replaceAll('.git', '') : null,
+          platformType: 'azure',
+        );
+      }
     }
     return ParseResult(
       org: segments[0],
