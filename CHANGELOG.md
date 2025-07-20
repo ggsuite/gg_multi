@@ -20,6 +20,7 @@
 - Add tests for creation of .organizations
 - Add test: logs error when primary and all fallback organization clones fail
 - Add tests for command add organization
+- add tests for url parser
 
 ### Changed
 

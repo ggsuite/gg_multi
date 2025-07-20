@@ -44,19 +44,20 @@ class UrlParser {
 
     // Detect platform based on format
     if (cleaned.startsWith('git@ssh.dev.azure.com:')) {
-      return _parseAzure(cleaned);
+      return parseAzure(cleaned);
     } else if (cleaned.startsWith('git@')) {
-      return _parseGitHubSsh(cleaned);
+      return parseGitHubSsh(cleaned);
     } else if (Uri.tryParse(cleaned)?.scheme.startsWith('http') ?? false) {
-      return _parseHttp(cleaned);
+      return parseHttp(cleaned);
     } else if (cleaned.contains('/')) {
-      return _parseUsernameRepo(cleaned);
+      return parseUsernameRepo(cleaned);
     } else {
-      return _parsePlainRepo(cleaned);
+      return parsePlainRepo(cleaned);
     }
   }
 
-  ParseResult _parseAzure(String url) {
+  /// Internal helper to parse Azure URLs. Not intended for external use.
+  ParseResult parseAzure(String url) {
     final afterColon = url.split(':').skip(1).join(':');
     final segments = afterColon.split('/');
     if (segments.length >= 3) {
@@ -70,7 +71,8 @@ class UrlParser {
     return ParseResult(platformType: 'unknown');
   }
 
-  ParseResult _parseGitHubSsh(String url) {
+  /// Internal helper to parse GitHub SSH URLs. Not intended for external use.
+  ParseResult parseGitHubSsh(String url) {
     final sshRegex = RegExp(r'^git@[^:]+:([^/]+)/(.+?)(?:\.git)?$');
     final match = sshRegex.firstMatch(url);
     if (match != null) {
@@ -83,7 +85,8 @@ class UrlParser {
     return ParseResult(platformType: 'unknown');
   }
 
-  ParseResult _parseHttp(String url) {
+  /// Internal helper to parse HTTP URLs. Not intended for external use.
+  ParseResult parseHttp(String url) {
     final uri = Uri.tryParse(url);
     if (uri == null) return ParseResult(platformType: 'unknown');
     final host = uri.host.toLowerCase();
@@ -109,7 +112,8 @@ class UrlParser {
     );
   }
 
-  ParseResult _parseUsernameRepo(String target) {
+  /// Internal helper to parse username/repo format. Not intended for external use.
+  ParseResult parseUsernameRepo(String target) {
     final parts = target.split('/');
     if (parts.length == 2) {
       return ParseResult(
@@ -121,7 +125,8 @@ class UrlParser {
     return ParseResult(platformType: 'unknown');
   }
 
-  ParseResult _parsePlainRepo(String repo) {
+  /// Internal helper to parse plain repo names. Not intended for external use.
+  ParseResult parsePlainRepo(String repo) {
     if (repo.contains('/') || repo.contains(':')) {
       // Invalid plain repo format
       return ParseResult(platformType: 'unknown');

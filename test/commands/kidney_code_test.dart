@@ -121,8 +121,7 @@ void main() {
       final tdir = Directory(path.join(tempRoot.path, kidneyTicketFolder, 'T5'))
         ..createSync(recursive: true);
       Directory(path.join(tdir.path, 'SlashRepo')).createSync();
-      await runner
-          .run(['code', 'T5\\SlashRepo']);
+      await runner.run(['code', 'T5\\SlashRepo']);
 
       expect(launched.length, 1);
       expect(
