@@ -172,21 +172,13 @@ Future<void> addRepositoryHelper({
       await attemptClone(repoUrl, repoName);
     }
   } else if (targetArg.startsWith('git@ssh.dev.azure.com:')) {
-    // Azure DevOps SSH -------------------------------------------------------
-    // Format: git@ssh.dev.azure.com:v3/org/project/repo(.git)
-    final afterColon = targetArg.split(':').skip(1).join(':');
-    final segments = afterColon.split('/');
-    final repoSegment = segments.isNotEmpty ? segments.last : targetArg;
-    var repoName = repoSegment;
-    if (repoName.endsWith('.git')) {
-      repoName = repoName.substring(0, repoName.length - 4);
-    }
+    // Azure DevOps SSH --------------------------------------------------------
+    final String repoName = extractRepoName(targetArg) ?? 'unknown_repo';
     await attemptClone(targetArg, repoName);
   } else if (targetArg.startsWith('git@')) {
     // SSH URL -----------------------------------------------------------------
-    final String repoUrl = targetArg;
-    final String repoName = extractRepoName(repoUrl) ?? 'unknown_repo';
-    await attemptClone(repoUrl, repoName);
+    final String repoName = extractRepoName(targetArg) ?? 'unknown_repo';
+    await attemptClone(targetArg, repoName);
   } else if (targetArg.contains('/')) {
     // username/repo -----------------------------------------------------------
     final String repoUrl = 'https://github.com/$targetArg.git';

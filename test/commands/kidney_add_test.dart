@@ -179,7 +179,8 @@ void main() {
       expect(
         logMessages,
         equals([
-          'Added repository kidney_core from https://github.com/ggsuite/kidney_core.git',
+          'Added repository kidney_core from '
+              'https://github.com/ggsuite/kidney_core.git',
         ]),
       );
     });
@@ -190,11 +191,11 @@ void main() {
       final repoList = [
         {
           'name': 'repo1',
-          'clone_url': 'https://github.com/myorganization/repo1.git'
+          'clone_url': 'https://github.com/myorganization/repo1.git',
         },
         {
           'name': 'repo2',
-          'clone_url': 'https://github.com/myorganization/repo2.git'
+          'clone_url': 'https://github.com/myorganization/repo2.git',
         },
       ];
 
