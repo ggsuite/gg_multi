@@ -94,7 +94,7 @@ class TicketCommand extends Command<void> {
     ticketFile.writeAsStringSync(jsonEncode(data));
 
     ggLog(green('Created ticket $issueId at ${_rel(ticketsPath)}'));
-    ggLog('Execute "cd ${_rel(ticketsPath)}" '
+    ggLog('Execute "${blue('cd ${_rel(ticketsPath)}')}" '
         'to enter the ticket workspace.');
   }
 }

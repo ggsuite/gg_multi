@@ -6,7 +6,6 @@
 
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
-import './commands/my_command.dart';
 import './commands/kidney_add.dart';
 import './commands/kidney_add_deps.dart';
 import './commands/kidney_list.dart';
@@ -22,7 +21,6 @@ import './commands/kidney_do.dart';
 class KidneyCore extends Command<dynamic> {
   /// Constructor
   KidneyCore({required this.ggLog}) {
-    addSubcommand(MyCommand(ggLog: ggLog));
     addSubcommand(AddCommand(ggLog: ggLog));
     addSubcommand(ListCommand(ggLog: ggLog));
     addSubcommand(AddDepsCommand(ggLog: ggLog));

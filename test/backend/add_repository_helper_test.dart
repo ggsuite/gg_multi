@@ -333,8 +333,8 @@ void main() {
         ).thenThrow(
           Exception(
             'Bitte installiere die Azure CLI mit folgenden Befehlen: \n'
-                '    winget install --exact --id Microsoft.AzureCLI \n'
-                '    az extension add --name azure-devops',
+            '    winget install --exact --id Microsoft.AzureCLI \n'
+            '    az extension add --name azure-devops',
           ),
         );
 
@@ -351,8 +351,8 @@ void main() {
           logs,
           contains(
             'Bitte installiere die Azure CLI mit folgenden Befehlen: \n'
-                '    winget install --exact --id Microsoft.AzureCLI \n'
-                '    az extension add --name azure-devops',
+            '    winget install --exact --id Microsoft.AzureCLI \n'
+            '    az extension add --name azure-devops',
           ),
         );
         verifyNever(() => mockGitCloner.cloneRepo(any(), any()));

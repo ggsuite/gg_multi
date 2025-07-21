@@ -33,10 +33,15 @@ void main() {
       test('should allow to run the code from command line', () async {
         await capturePrint(
           ggLog: messages.add,
-          code: () async =>
-              await runner.run(['kidneyCore', 'my-command', '--input', 'foo']),
+          code: () async => await runner.run(['kidneyCore', 'list', 'repos']),
         );
-        expect(messages, contains('Running my-command with param foo'));
+        expect(
+          messages.last,
+          contains(
+            'No repositories found '
+            'in the master workspace.',
+          ),
+        );
       });
 
       // .......................................................................
