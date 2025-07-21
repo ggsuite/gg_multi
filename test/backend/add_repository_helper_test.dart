@@ -18,7 +18,7 @@ import 'package:kidney_core/src/backend/git_handler.dart';
 
 import '../rm_console_colors_helper.dart';
 
-// Mock for GitCloner using mocktail
+// Create a mock for GitCloner
 class MockGitCloner extends Mock implements GitHandler {}
 
 class MockGitHubPlatform extends Mock implements GitHubPlatform {}
@@ -86,9 +86,9 @@ void main() {
         // Verify ggLog contains the correct success message
         expect(
           logs,
-          contains(
+          equals([
             'Added repository repo from $expectedRepoUrl',
-          ),
+          ]),
         );
       });
 
@@ -315,6 +315,85 @@ void main() {
 
         // Since no project, it should treat as repo URL, not org
         verify(() => mockGitCloner.cloneRepo(any(), any())).called(1);
+      });
+
+      test('Handles az not installed for Azure organization URL', () async {
+        const targetArg = 'https://ssh.dev.azure.com/v3/myorg/myproj';
+        final mockGitCloner = MockGitCloner();
+        when(() => mockGitCloner.cloneRepo(any(), any()))
+            .thenAnswer((_) async {});
+
+        final mockAzurePlatform = MockAzurePlatform();
+        when(
+          () => mockAzurePlatform.fetchOrgRepos(
+            'myorg',
+            project: 'myproj',
+            client: any(named: 'client'),
+          ),
+        ).thenThrow(
+          Exception(
+            'Bitte installiere die Azure CLI mit folgenden Befehlen: \n'
+                '    winget install --exact --id Microsoft.AzureCLI \n'
+                '    az extension add --name azure-devops',
+          ),
+        );
+
+        await addRepositoryHelper(
+          targetArg: targetArg,
+          ggLog: ggLog,
+          gitCloner: mockGitCloner,
+          azureDevOpsPlatform: mockAzurePlatform,
+          workspacePath: workspacePath,
+          force: false,
+        );
+
+        expect(
+          logs,
+          contains(
+            'Bitte installiere die Azure CLI mit folgenden Befehlen: \n'
+                '    winget install --exact --id Microsoft.AzureCLI \n'
+                '    az extension add --name azure-devops',
+          ),
+        );
+        verifyNever(() => mockGitCloner.cloneRepo(any(), any()));
+      });
+
+      test('Rethrows non-az-install exceptions for Azure organization',
+          () async {
+        const targetArg = 'https://ssh.dev.azure.com/v3/myorg/myproj';
+        final mockGitCloner = MockGitCloner();
+        when(() => mockGitCloner.cloneRepo(any(), any()))
+            .thenAnswer((_) async {});
+
+        final mockAzurePlatform = MockAzurePlatform();
+        when(
+          () => mockAzurePlatform.fetchOrgRepos(
+            'myorg',
+            project: 'myproj',
+            client: any(named: 'client'),
+          ),
+        ).thenThrow(Exception('Other error'));
+
+        await expectLater(
+          () => addRepositoryHelper(
+            targetArg: targetArg,
+            ggLog: ggLog,
+            gitCloner: mockGitCloner,
+            azureDevOpsPlatform: mockAzurePlatform,
+            workspacePath: workspacePath,
+            force: false,
+          ),
+          throwsException,
+        );
+
+        expect(
+          logs.any(
+            (msg) => msg.contains(
+              'Bitte installiere die Azure CLI',
+            ),
+          ),
+          isFalse,
+        );
       });
     });
 

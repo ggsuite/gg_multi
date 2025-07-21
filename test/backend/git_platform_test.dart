@@ -217,6 +217,31 @@ void main() {
       );
     });
 
+    test('fetchOrgRepos throws when az is not installed', () async {
+      final mockRunner = MockProcessRunner();
+      // First call: az --version fails
+      when(
+        () => mockRunner('az', ['--version']),
+      ).thenAnswer(
+        (_) async => ProcessResult(4, 1, '', 'az not found'),
+      );
+      final platform = AzureDevOpsPlatform(processRunner: mockRunner.call);
+      await expectLater(
+        platform.fetchOrgRepos('myorg', project: 'myproj'),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Bitte installiere die Azure CLI'),
+          ),
+        ),
+      );
+      // Main az repos list should not be called
+      verifyNever(
+        () => mockRunner('az', any(that: contains('repos'))),
+      );
+    });
+
     test('extractOrgFromUrl returns Organization for Azure URL', () {
       final platform = AzureDevOpsPlatform();
       final org = platform.extractOrgFromUrl(

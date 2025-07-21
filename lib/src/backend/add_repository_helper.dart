@@ -169,20 +169,32 @@ Future<void> addRepositoryHelper({
         parsedUrl.platformType == 'azure' &&
         parsedUrl.project != null) {
       // Treat as Azure organization URL ---------------------------------------
-      final List<Map<String, dynamic>> reposJson = await azureDevOpsPlatform
-          .fetchOrgRepos(parsedUrl.org!, project: parsedUrl.project);
-      if (reposJson.isEmpty) {
-        ggLog(
-          yellow('No repositories found for organization '
-              '${parsedUrl.org!} and project ${parsedUrl.project}'),
+      try {
+        final List<Map<String, dynamic>> reposJson =
+            await azureDevOpsPlatform.fetchOrgRepos(
+          parsedUrl.org!,
+          project: parsedUrl.project,
         );
-        return;
-      }
-      for (final repoJson in reposJson) {
-        final repoName = repoJson['name'] as String?;
-        final cloneUrl = repoJson['clone_url'] as String?;
-        if (repoName == null || cloneUrl == null) continue;
-        await attemptClone(cloneUrl, repoName);
+        if (reposJson.isEmpty) {
+          ggLog(
+            yellow('No repositories found for organization '
+                '${parsedUrl.org!} and project ${parsedUrl.project}'),
+          );
+          return;
+        }
+        for (final repoJson in reposJson) {
+          final repoName = repoJson['name'] as String?;
+          final cloneUrl = repoJson['clone_url'] as String?;
+          if (repoName == null || cloneUrl == null) continue;
+          await attemptClone(cloneUrl, repoName);
+        }
+      } catch (e) {
+        if (e.toString().contains('Bitte installiere die Azure CLI')) {
+          ggLog(yellow(e.toString().replaceAll('Exception: ', '')));
+          return;
+        } else {
+          rethrow;
+        }
       }
     } else {
       // Treat as a repository URL ---------------------------------------------

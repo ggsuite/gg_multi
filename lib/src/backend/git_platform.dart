@@ -120,6 +120,7 @@ class AzureDevOpsPlatform implements GitPlatform {
     if (project == null) {
       throw ArgumentError('Project name is required for Azure DevOps.');
     }
+    await _checkAzInstalled();
     final result = await _processRunner(
       'az',
       [
@@ -149,6 +150,23 @@ class AzureDevOpsPlatform implements GitPlatform {
       }).toList();
     } catch (e) {
       throw Exception('Failed to parse Azure CLI output: $e');
+    }
+  }
+
+  /// Checks if az CLI is installed by running 'az --version'.
+  /// Throws an exception with installation instructions if not installed.
+  Future<void> _checkAzInstalled() async {
+    try {
+      final result = await _processRunner('az', ['--version']);
+      if (result.exitCode != 0) {
+        throw Exception(result.stderr);
+      }
+    } catch (e) {
+      throw Exception(
+        'Bitte installiere die Azure CLI mit folgenden Befehlen: \n'
+        '    winget install --exact --id Microsoft.AzureCLI \n'
+        '    az extension add --name azure-devops',
+      );
     }
   }
 
