@@ -47,7 +47,6 @@ void main() {
           gitCloner: mockGitCloner,
           masterWorkspacePath: masterWorkspacePath,
           executionPath: executionPath ?? Directory.current.path,
-          localizeRefsFn: localizeRefsFn,
         ),
       );
     }
@@ -403,7 +402,8 @@ void main() {
       expect(
         logMessages,
         contains(
-          'Failed to localize refs for REFFAIL: Exception: mock localize error',
+          'Failed to localize refs for REFFAIL: Exception: An error occurred: '
+          'Exception: No project root found. No files were changed.',
         ),
       );
     });

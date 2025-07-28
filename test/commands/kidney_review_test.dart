@@ -10,6 +10,8 @@ import 'package:test/test.dart';
 import 'package:path/path.dart' as path;
 import 'package:args/command_runner.dart';
 import 'package:kidney_core/src/commands/kidney_review.dart';
+import 'package:gg_localize_refs/gg_localize_refs.dart';
+import 'package:mocktail/mocktail.dart';
 
 import '../rm_console_colors_helper.dart';
 
@@ -24,6 +26,10 @@ Future<ProcessResult> fakeProcSuccess(
 }) async =>
     ProcessResult(0, 0, '', '');
 
+class MockUnlocalizeRefs extends Mock implements UnlocalizeRefs {}
+
+class MockLocalizeRefs extends Mock implements LocalizeRefs {}
+
 void main() {
   group('ReviewCommand', () {
     late Directory tempDir;
@@ -36,6 +42,7 @@ void main() {
     setUp(() {
       tempDir = Directory.systemTemp.createTempSync('review_test_');
       logMessages = <String>[];
+      registerFallbackValue(Directory(''));
     });
 
     tearDown(() {
@@ -112,6 +119,24 @@ void main() {
         ..createSync(recursive: true);
       Directory(path.join(ticket.path, 'A')).createSync();
       Directory(path.join(ticket.path, 'B')).createSync();
+
+      final mockUnloc = MockUnlocalizeRefs();
+      final mockLoc = MockLocalizeRefs();
+
+      when(
+        () => mockUnloc.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockLoc.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          git: any(named: 'git'),
+        ),
+      ).thenAnswer((_) async {});
+
       final calls = <Map<String, Object?>>[];
       Future<ProcessResult> runner(
         String exe,
@@ -127,16 +152,6 @@ void main() {
         if (exe == 'git' && (args as List)[0] == 'status') {
           return ProcessResult(1, 0, '', '');
         }
-        // Simulate unlocalize-refs
-        if (exe == 'gg_localize_refs' &&
-            (args as List).first == 'unlocalize-refs') {
-          return ProcessResult(2, 0, '', '');
-        }
-        // Simulate localize-refs --git
-        if (exe == 'gg_localize_refs' &&
-            ((args as List).first == 'localize-refs')) {
-          return ProcessResult(4, 0, '', '');
-        }
         // Simulate PR create
         if (exe == 'gh' && (args as List).take(2).join(' ') == 'pr create') {
           return ProcessResult(3, 0, '', '');
@@ -150,6 +165,8 @@ void main() {
             ggLog: ggLog,
             executionPath: ticket.path,
             processRunner: runner,
+            unlocalizeRefs: mockUnloc,
+            localizeRefs: mockLoc,
           ),
         );
       await runnerCmd.run(['review']);
@@ -160,22 +177,19 @@ void main() {
         ),
         hasLength(2),
       );
-      expect(
-        calls.where(
-          (c) =>
-              c['exe'] == 'gg_localize_refs' &&
-              (c['args'] as List).first == 'unlocalize-refs',
+      verify(
+        () => mockUnloc.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-        hasLength(2),
-      );
-      expect(
-        calls.where(
-          (c) =>
-              c['exe'] == 'gg_localize_refs' &&
-              (c['args'] as List).first == 'localize-refs',
+      ).called(2);
+      verify(
+        () => mockLoc.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          git: true,
         ),
-        hasLength(2),
-      );
+      ).called(2);
       expect(
         calls.where((c) => c['exe'] == 'gh'),
         hasLength(2),
@@ -211,6 +225,16 @@ void main() {
         ..createSync(recursive: true);
       Directory(path.join(ticket.path, 'C')).createSync();
 
+      final mockUnloc = MockUnlocalizeRefs();
+      final mockLoc = MockLocalizeRefs();
+
+      when(
+        () => mockUnloc.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenThrow(Exception('broken!'));
+
       final calls = <Map<String, Object?>>[];
       Future<ProcessResult> runner(
         String exe,
@@ -225,10 +249,6 @@ void main() {
         if (exe == 'git' && (args as List)[0] == 'status') {
           return ProcessResult(1, 0, '', '');
         }
-        if (exe == 'gg_localize_refs' &&
-            (args as List).first == 'unlocalize-refs') {
-          return ProcessResult(2, 1, '', 'broken!');
-        }
         // PR create never called if unlocalize-refs fails
         return ProcessResult(0, 0, '', '');
       }
@@ -239,6 +259,8 @@ void main() {
             ggLog: ggLog,
             executionPath: ticket.path,
             processRunner: runner,
+            unlocalizeRefs: mockUnloc,
+            localizeRefs: mockLoc,
           ),
         );
       await runnerCmd.run(['review']);
@@ -255,6 +277,23 @@ void main() {
         ..createSync(recursive: true);
       Directory(path.join(ticket.path, 'D')).createSync();
 
+      final mockUnloc = MockUnlocalizeRefs();
+      final mockLoc = MockLocalizeRefs();
+
+      when(
+        () => mockUnloc.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockLoc.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          git: any(named: 'git'),
+        ),
+      ).thenAnswer((_) async {});
+
       final calls = <Map<String, Object?>>[];
       Future<ProcessResult> runner(
         String exe,
@@ -269,10 +308,6 @@ void main() {
         if (exe == 'git' && (args as List)[0] == 'status') {
           return ProcessResult(1, 0, '', '');
         }
-        if (exe == 'gg_localize_refs') {
-          // Always succeed for either unlocalize-refs or localize-refs
-          return ProcessResult(2, 0, '', '');
-        }
         if (exe == 'gh') {
           return ProcessResult(3, 1, '', 'badpr!');
         }
@@ -285,6 +320,8 @@ void main() {
             ggLog: ggLog,
             executionPath: ticket.path,
             processRunner: runner,
+            unlocalizeRefs: mockUnloc,
+            localizeRefs: mockLoc,
           ),
         );
       await runnerCmd.run(['review']);

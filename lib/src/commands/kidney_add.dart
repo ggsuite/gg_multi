@@ -7,6 +7,7 @@
 import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
+import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 
@@ -14,7 +15,6 @@ import '../backend/git_handler.dart';
 import '../backend/add_repository_helper.dart';
 import '../backend/filesystem_utils.dart';
 import '../backend/git_platform.dart';
-import '../backend/localize_refs_handler.dart';
 import '../backend/workspace_utils.dart';
 
 /// Command to add a repository or all repositories from an organization.
@@ -37,14 +37,12 @@ class AddCommand extends Command<dynamic> {
     GitHubPlatform? gitHubPlatform,
     String? masterWorkspacePath,
     String? executionPath,
-    Future<void> Function(String repoPath)? localizeRefsFn,
     // coverage:ignore-start
   })  : gitCloner = gitCloner ?? GitHandler(),
         gitHubPlatform = gitHubPlatform ?? GitHubPlatform(),
         executionPath = executionPath ?? Directory.current.path,
         masterWorkspacePath =
-            masterWorkspacePath ?? WorkspaceUtils.defaultMasterWorkspacePath(),
-        _localizeRefsFn = localizeRefsFn ?? localizeRefs
+            masterWorkspacePath ?? WorkspaceUtils.defaultMasterWorkspacePath()
   // coverage:ignore-end
   {
     argParser.addFlag(
@@ -69,9 +67,6 @@ class AddCommand extends Command<dynamic> {
 
   /// The path from which the command was executed.
   final String executionPath;
-
-  /// Optional injected localizeRefs function for testing
-  final Future<void> Function(String repoPath) _localizeRefsFn;
 
   @override
   String get name => 'add';
@@ -143,7 +138,8 @@ class AddCommand extends Command<dynamic> {
     }
     // Run gg_localize_refs localize-refs in the repo
     try {
-      await _localizeRefsFn(destDir.path);
+      final localizeCmd = LocalizeRefs(ggLog: ggLog);
+      await localizeCmd.get(directory: destDir, ggLog: ggLog);
     } catch (e) {
       ggLog(red('Failed to localize refs for $ticketName: $e'));
     }

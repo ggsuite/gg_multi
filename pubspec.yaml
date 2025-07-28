@@ -2,6 +2,7 @@ name: kidney_core
 description: Das Herzstück der Kidney Suite. Fungiert als Backend und CMD-Line Tool.
 version: 1.0.0
 repository: https://github.com/inlavigo/kidney_core.git
+publish_to: none
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -19,6 +20,8 @@ dependencies:
   pubspec_parse: ^1.5.0
   gg_changelog: ^1.0.12
   recase: ^4.1.0
+  gg_localize_refs:
+    git: git@github.com:ggsuite/gg_localize_refs.git
 
 dev_dependencies:
   gg_capture_print: ^1.0.9
