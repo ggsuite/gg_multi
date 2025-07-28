@@ -373,5 +373,64 @@ void main() {
         reason: 'Help should mention the review description.',
       );
     });
+
+    test('logs failure of localize-refs and continues', () async {
+      final ticket = Directory(path.join(tempDir.path, 'tickets', 'T7'))
+        ..createSync(recursive: true);
+      Directory(path.join(ticket.path, 'E')).createSync();
+
+      final mockUnloc = MockUnlocalizeRefs();
+      final mockLoc = MockLocalizeRefs();
+
+      when(
+        () => mockUnloc.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockLoc.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          git: any(named: 'git'),
+        ),
+      ).thenThrow(Exception('localize failed'));
+
+      final calls = <Map<String, Object?>>[];
+      Future<ProcessResult> runner(
+        String exe,
+        List<String> args, {
+        String? workingDirectory,
+      }) async {
+        calls.add({
+          'exe': exe,
+          'args': args,
+          'dir': workingDirectory,
+        });
+        if (exe == 'git' && (args as List)[0] == 'status') {
+          return ProcessResult(1, 0, '', '');
+        }
+        return ProcessResult(0, 0, '', '');
+      }
+
+      final runnerCmd = CommandRunner<void>('test', 'review')
+        ..addCommand(
+          ReviewCommand(
+            ggLog: ggLog,
+            executionPath: ticket.path,
+            processRunner: runner,
+            unlocalizeRefs: mockUnloc,
+            localizeRefs: mockLoc,
+          ),
+        );
+      await runnerCmd.run(['review']);
+      expect(
+        logMessages.any(
+          (m) => m.contains('Failed to localize refs with --git for '
+              'E: Exception: localize failed'),
+        ),
+        isTrue,
+      );
+    });
   });
 }

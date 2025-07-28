@@ -270,5 +270,32 @@ void main() {
       final base = platform.buildBaseUrl('myorg');
       expect(base, 'https://ssh.dev.azure.com:v3/myorg/');
     });
+
+    test('fetchOrgRepos throws with correct message on non-zero exit code',
+        () async {
+      final mockRunner = MockProcessRunner();
+      when(
+        () => mockRunner('az', any()),
+      ).thenAnswer(
+        (_) async => ProcessResult(3, 1, '', 'CLI error message'),
+      );
+      when(
+        () => mockRunner('az', ['--version']),
+      ).thenAnswer(
+        (_) async => ProcessResult(2, 0, '', 'azure-cli 2.75.0'),
+      );
+      final platform = AzureDevOpsPlatform(processRunner: mockRunner.call);
+      await expectLater(
+        platform.fetchOrgRepos('myorg', project: 'myproj'),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            'Exception: Failed to fetch repositories for organization myorg, '
+                'project myproj: CLI error message',
+          ),
+        ),
+      );
+    });
   });
 }

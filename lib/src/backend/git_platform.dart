@@ -134,8 +134,8 @@ class AzureDevOpsPlatform implements GitPlatform {
     );
     if (result.exitCode != 0) {
       throw Exception(
-        'Failed to fetch repositories for organization $org, project $project: '
-        '${result.stderr}',
+        'Failed to fetch repositories for organization $org, '
+        'project $project: ${result.stderr}',
       );
     }
     final jsonOutput = result.stdout.toString();
