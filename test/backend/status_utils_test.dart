@@ -85,5 +85,55 @@ void main() {
       expect(StatusUtils.statusLocalMerged, 'local-merged');
       expect(StatusUtils.statusMerged, 'merged');
     });
+
+    group('readStatus', () {
+      test('returns status when file exists and is valid', () {
+        final repoDir = Directory(path.join(tempDir.path, 'repo'))
+          ..createSync(recursive: true);
+        File(path.join(repoDir.path, '.kidney_status'))
+            .writeAsStringSync(jsonEncode({'status': 'localized'}));
+
+        final status = StatusUtils.readStatus(repoDir, ggLog: ggLog);
+        expect(status, 'localized');
+        expect(logMessages, isEmpty);
+      });
+
+      test('returns null and logs error when file does not exist', () {
+        final repoDir = Directory(path.join(tempDir.path, 'no_file_repo'))
+          ..createSync(recursive: true);
+
+        final status = StatusUtils.readStatus(repoDir, ggLog: ggLog);
+        expect(status, isNull);
+        expect(
+          logMessages.first,
+          contains('Missing .kidney_status file in ${repoDir.path}'),
+        );
+      });
+
+      test('returns null and logs error when parsing fails', () {
+        final repoDir = Directory(path.join(tempDir.path, 'bad_json_repo'))
+          ..createSync(recursive: true);
+        File(path.join(repoDir.path, '.kidney_status'))
+            .writeAsStringSync('invalid json');
+
+        final status = StatusUtils.readStatus(repoDir, ggLog: ggLog);
+        expect(status, isNull);
+        expect(
+          logMessages.first,
+          contains('Failed to read status from ${repoDir.path}: '),
+        );
+      });
+
+      test('returns null when status key is missing in JSON', () {
+        final repoDir = Directory(path.join(tempDir.path, 'missing_key_repo'))
+          ..createSync(recursive: true);
+        File(path.join(repoDir.path, '.kidney_status'))
+            .writeAsStringSync(jsonEncode({}));
+
+        final status = StatusUtils.readStatus(repoDir, ggLog: ggLog);
+        expect(status, isNull);
+        expect(logMessages, isEmpty);
+      });
+    });
   });
 }

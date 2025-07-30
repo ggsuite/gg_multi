@@ -5,7 +5,6 @@
 // found in the LICENSE file in the root of this package.
 
 import 'dart:io';
-import 'dart:convert';
 
 import 'package:gg/gg.dart' as gg;
 import 'package:gg_args/gg_args.dart';
@@ -106,14 +105,7 @@ class DoMergeCommand extends DirCommand<void> {
       ggLog(yellow('Merging $repoName in ticket $ticketName...'));
       try {
         // Step 2: Check status
-        final statusFile = File(path.join(repoDir.path, '.kidney_status'));
-        if (!statusFile.existsSync()) {
-          throw Exception('Missing .kidney_status file for $repoName');
-        }
-        final content = jsonDecode(
-          statusFile.readAsStringSync(),
-        ) as Map<String, dynamic>;
-        final status = content['status'] as String?;
+        final status = StatusUtils.readStatus(repoDir, ggLog: ggLog);
         if (status != StatusUtils.statusGitLocalized) {
           throw Exception('Please execute kidney_core review before merging');
         }

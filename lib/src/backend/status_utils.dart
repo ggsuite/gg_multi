@@ -42,4 +42,26 @@ class StatusUtils {
       ggLog(red('Failed to set status in ${repoDir.path}: $e'));
     }
   }
+
+  /// Reads the status from the .kidney_status file inside [repoDir].
+  /// Returns the status string if successful, or null on failure.
+  /// Logs errors in red.
+  static String? readStatus(
+    Directory repoDir, {
+    required GgLog ggLog,
+  }) {
+    final statusFile = File(path.join(repoDir.path, '.kidney_status'));
+    if (!statusFile.existsSync()) {
+      ggLog(red('Missing .kidney_status file in ${repoDir.path}'));
+      return null;
+    }
+    try {
+      final content = statusFile.readAsStringSync();
+      final data = jsonDecode(content) as Map<String, dynamic>;
+      return data['status'] as String?;
+    } catch (e) {
+      ggLog(red('Failed to read status from ${repoDir.path}: $e'));
+      return null;
+    }
+  }
 }
