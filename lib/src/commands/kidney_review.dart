@@ -80,34 +80,6 @@ class ReviewCommand extends Command<void> {
   @override
   String get description => 'Starts the review workflow for a ticket.';
 
-  /// Runs an external command and logs the result.
-  /// - On success (exitCode == 0): Log the [successMessage] in green.
-  /// - On failure: Log the [failureMessage] and error in red.
-  /// - Returns true on success, false otherwise.
-  Future<bool> _runCommand(
-    String executable,
-    List<String> arguments,
-    String successMessage,
-    String failureMessage, {
-    required String workingDirectory,
-  }) async {
-    try {
-      final result = await _runProc(
-        executable,
-        arguments,
-        workingDirectory: workingDirectory,
-      );
-      if (result.exitCode != 0) {
-        throw Exception(result.stderr);
-      }
-      ggLog(green(successMessage));
-      return true;
-    } catch (e) {
-      ggLog(red('$failureMessage: $e'));
-      return false;
-    }
-  }
-
   @override
   Future<void> run() async {
     // Step 1. Locate the ticket directory (must be inside ticket)
@@ -172,14 +144,6 @@ class ReviewCommand extends Command<void> {
       } catch (e) {
         ggLog(red('Failed to localize refs with --git for $name: $e'));
       }
-      // PR create. Error logs, but continues.
-      await _runCommand(
-        'gh',
-        ['pr', 'create'],
-        'Created PR for $name',
-        'Failed to create PR for $name',
-        workingDirectory: repoDir.path,
-      );
     }
   }
 }

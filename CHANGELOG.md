@@ -46,3 +46,4 @@
 - remove command works also for tickets
 - Remove redundant code in appendOrganization
 - Remove prints
+- Remove gh pr create from review

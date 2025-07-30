@@ -191,10 +191,6 @@ void main() {
         ),
       ).called(2);
       expect(
-        calls.where((c) => c['exe'] == 'gh'),
-        hasLength(2),
-      );
-      expect(
         logMessages,
         contains('Unlocalized refs for A'),
       );
@@ -209,14 +205,6 @@ void main() {
       expect(
         logMessages,
         contains('Localized refs for B'),
-      );
-      expect(
-        logMessages,
-        contains('Created PR for A'),
-      );
-      expect(
-        logMessages,
-        contains('Created PR for B'),
       );
     });
 
@@ -268,69 +256,6 @@ void main() {
         logMessages.last,
         contains('Failed to unlocalize refs for C: Exception: broken!'),
       );
-      // There should not be any message about "Created PR for C".
-      expect(logMessages.any((m) => m.contains('Created PR for C')), isFalse);
-    });
-
-    test('logs failure of gh pr create and continues', () async {
-      final ticket = Directory(path.join(tempDir.path, 'tickets', 'T6'))
-        ..createSync(recursive: true);
-      Directory(path.join(ticket.path, 'D')).createSync();
-
-      final mockUnloc = MockUnlocalizeRefs();
-      final mockLoc = MockLocalizeRefs();
-
-      when(
-        () => mockUnloc.get(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-      when(
-        () => mockLoc.get(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          git: any(named: 'git'),
-        ),
-      ).thenAnswer((_) async {});
-
-      final calls = <Map<String, Object?>>[];
-      Future<ProcessResult> runner(
-        String exe,
-        List<String> args, {
-        String? workingDirectory,
-      }) async {
-        calls.add({
-          'exe': exe,
-          'args': args,
-          'dir': workingDirectory,
-        });
-        if (exe == 'git' && (args as List)[0] == 'status') {
-          return ProcessResult(1, 0, '', '');
-        }
-        if (exe == 'gh') {
-          return ProcessResult(3, 1, '', 'badpr!');
-        }
-        return ProcessResult(0, 0, '', '');
-      }
-
-      final runnerCmd = CommandRunner<void>('test', 'review')
-        ..addCommand(
-          ReviewCommand(
-            ggLog: ggLog,
-            executionPath: ticket.path,
-            processRunner: runner,
-            unlocalizeRefs: mockUnloc,
-            localizeRefs: mockLoc,
-          ),
-        );
-      await runnerCmd.run(['review']);
-      expect(
-        logMessages.last,
-        contains('Failed to create PR for D: Exception: badpr!'),
-      );
-      // There should not be any green message about "Created PR for D".
-      expect(logMessages.any((m) => m.contains('Created PR for D')), isFalse);
     });
 
     test('logs no repositories found when ticket folder is empty', () async {
