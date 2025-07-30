@@ -22,6 +22,12 @@ class StatusUtils {
   /// Status Git Unlocalized
   static const String statusGitLocalized = 'git-localized';
 
+  /// Status Local Merged
+  static const String statusLocalMerged = 'local-merged';
+
+  /// Status Merged
+  static const String statusMerged = 'merged';
+
   /// Sets the status in the .kidney_status file inside [repoDir].
   /// Logs success in green or error in red, but does not throw on error.
   static void setStatus(

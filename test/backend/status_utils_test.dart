@@ -82,6 +82,8 @@ void main() {
       expect(StatusUtils.statusUnlocalized, 'unlocalized');
       expect(StatusUtils.statusLocalized, 'localized');
       expect(StatusUtils.statusGitLocalized, 'git-localized');
+      expect(StatusUtils.statusLocalMerged, 'local-merged');
+      expect(StatusUtils.statusMerged, 'merged');
     });
   });
 }

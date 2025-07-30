@@ -9,6 +9,7 @@ import 'package:gg_log/gg_log.dart';
 
 import 'do/commit.dart';
 import 'do/push.dart';
+import 'do/merge.dart';
 
 /// Command to perform actions such as committing
 /// and pushing across ticket repositories.
@@ -34,5 +35,6 @@ class Do extends Command<void> {
   void _initSubCommands() {
     addSubcommand(DoCommitCommand(ggLog: ggLog));
     addSubcommand(DoPushCommand(ggLog: ggLog));
+    addSubcommand(DoMergeCommand(ggLog: ggLog));
   }
 }
