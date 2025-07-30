@@ -128,6 +128,9 @@ void main() {
         statusFile.writeAsStringSync(
           jsonEncode({'status': StatusUtils.statusGitLocalized}),
         );
+        var pubspecContent = 'name: $repoName\nversion: 1.2.3';
+        File(path.join(ticketDir.path, repoName, 'pubspec.yaml'))
+            .writeAsStringSync(pubspecContent);
       }
 
       final runner = CommandRunner<void>('test', 'do merge ticket')
@@ -175,6 +178,9 @@ void main() {
       final statusFileA = File(path.join(ticketDir.path, 'A', '.kidney_status'))
         ..createSync(recursive: true);
       statusFileA.writeAsStringSync(jsonEncode({'status': 'wrong'}));
+      var pubspecContent = 'name: A\nversion: 1.2.3';
+      File(path.join(ticketDir.path, 'A', 'pubspec.yaml'))
+          .writeAsStringSync(pubspecContent);
 
       final runner = CommandRunner<void>('test', 'do merge ticket')
         ..addCommand(
@@ -222,6 +228,9 @@ void main() {
         statusFile.writeAsStringSync(
           jsonEncode({'status': StatusUtils.statusGitLocalized}),
         );
+        var pubspecContent = 'name: $repoName\nversion: 1.2.3';
+        File(path.join(ticketDir.path, repoName, 'pubspec.yaml'))
+            .writeAsStringSync(pubspecContent);
       }
 
       final runner = CommandRunner<void>('test', 'do merge ticket')
@@ -279,6 +288,9 @@ void main() {
         statusFile.writeAsStringSync(
           jsonEncode({'status': StatusUtils.statusGitLocalized}),
         );
+        var pubspecContent = 'name: $repoName\nversion: 1.2.3';
+        File(path.join(ticketDir.path, repoName, 'pubspec.yaml'))
+            .writeAsStringSync(pubspecContent);
       }
 
       final runner = CommandRunner<void>('test', 'do merge ticket')

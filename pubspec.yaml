@@ -22,6 +22,8 @@ dependencies:
   recase: ^4.1.0
   gg_localize_refs:
     git: git@github.com:ggsuite/gg_localize_refs.git
+  gg_local_package_dependencies:
+    git: git@github.com:ggsuite/gg_local_package_dependencies.git
 
 dev_dependencies:
   gg_capture_print: ^1.0.9

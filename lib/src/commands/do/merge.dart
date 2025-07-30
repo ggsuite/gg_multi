@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:gg/gg.dart' as gg;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
+import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 
@@ -48,9 +49,12 @@ class DoMergeCommand extends DirCommand<void> {
         'checks out main, and pushes for all repos in the ticket.',
     gg.CanCommit? ggCanCommit,
     gg.DoCommit? ggDoCommit,
+    SortedProcessingList? sortedProcessingList,
     ProcessRunner? processRunner,
   })  : _ggCanCommit = ggCanCommit ?? gg.CanCommit(ggLog: ggLog),
         _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
+        _sortedProcessingList =
+            sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
         _processRunner = processRunner ?? _defaultProcessRunner;
 
   /// Instance of gg CanCommit
@@ -58,6 +62,9 @@ class DoMergeCommand extends DirCommand<void> {
 
   /// Instance of gg DoCommit
   final gg.DoCommit _ggDoCommit;
+
+  /// Instance of SortedProcessingList
+  final SortedProcessingList _sortedProcessingList;
 
   /// The process runner
   final ProcessRunner _processRunner;
@@ -90,8 +97,10 @@ class DoMergeCommand extends DirCommand<void> {
     final ticketName = path.basename(ticketDir.path);
 
     // Collect all repository directories in the ticket
-    final subs = ticketDir.listSync().whereType<Directory>().toList()
-      ..sort((a, b) => path.basename(a.path).compareTo(path.basename(b.path)));
+    final subs = await _sortedProcessingList.get(
+      directory: ticketDir,
+      ggLog: ggLog,
+    );
 
     if (subs.isEmpty) {
       ggLog(yellow('⚠️ No repositories found in ticket $ticketName.'));
@@ -100,7 +109,8 @@ class DoMergeCommand extends DirCommand<void> {
 
     // Iterate over each repository and perform the merge
     final failedRepos = <String>[];
-    for (final repoDir in subs) {
+    for (final repo in subs) {
+      final repoDir = repo.directory;
       final repoName = path.basename(repoDir.path);
       ggLog(yellow('Merging $repoName in ticket $ticketName...'));
       try {
