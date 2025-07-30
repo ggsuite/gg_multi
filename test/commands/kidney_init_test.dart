@@ -7,7 +7,7 @@
 import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:kidney_core/src/backend/constants.dart';
-import 'package:kidney_core/src/commands/init.dart';
+import 'package:kidney_core/src/commands/kidney_init.dart';
 import 'package:test/test.dart';
 import 'package:path/path.dart' as path;
 
@@ -62,9 +62,9 @@ void main() {
         );
 
       await runner.run(['init']);
-      // Should detect folder and not re-create
-      print('Messages: $messages');
-      expect(messages.any((m) => m.contains('already exists')), isTrue);
+
+      expect(messages[0], contains('Master workspace already exists at:'));
+      expect(messages[0], contains(kidneyMasterFolder));
       expect(Directory(wsPath).existsSync(), isTrue);
     });
 
@@ -138,11 +138,7 @@ void main() {
             rootPath: tempDir.path,
           ),
         );
-      await runner.run(
-        ['init', '--help'],
-      );
-      // (actually, CommandRunner writes only to stdout, not to ggLog)
-      // So here we only check that calling does not throw
+
       expect(
         () async {
           await runner.run(['init', '--help']);

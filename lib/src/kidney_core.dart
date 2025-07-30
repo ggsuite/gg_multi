@@ -5,22 +5,22 @@
 // found in the LICENSE file in the root of this package.
 
 import 'package:args/command_runner.dart';
-import './commands/my_command.dart';
-import './commands/add.dart';
-import './commands/add_deps.dart';
-import './commands/list.dart';
-import './commands/remove.dart';
-import './commands/init.dart';
 import 'package:gg_log/gg_log.dart';
-import './commands/create.dart';
-import './commands/code.dart';
-import './commands/review.dart';
+import './commands/kidney_add.dart';
+import './commands/kidney_add_deps.dart';
+import './commands/kidney_list.dart';
+import './commands/kidney_remove.dart';
+import './commands/kidney_init.dart';
+import './commands/kidney_create.dart';
+import './commands/kidney_code.dart';
+import './commands/kidney_review.dart';
+import './commands/kidney_can.dart';
+import './commands/kidney_do.dart';
 
 /// The command line interface for KidneyCore
 class KidneyCore extends Command<dynamic> {
   /// Constructor
   KidneyCore({required this.ggLog}) {
-    addSubcommand(MyCommand(ggLog: ggLog));
     addSubcommand(AddCommand(ggLog: ggLog));
     addSubcommand(ListCommand(ggLog: ggLog));
     addSubcommand(AddDepsCommand(ggLog: ggLog));
@@ -29,6 +29,8 @@ class KidneyCore extends Command<dynamic> {
     addSubcommand(CreateCommand(ggLog: ggLog));
     addSubcommand(CodeCommand(ggLog: ggLog));
     addSubcommand(ReviewCommand(ggLog: ggLog));
+    addSubcommand(Can(ggLog: ggLog));
+    addSubcommand(Do(ggLog: ggLog));
   }
 
   /// The log function

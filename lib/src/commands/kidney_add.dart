@@ -7,14 +7,14 @@
 import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
+import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_log/gg_log.dart';
-import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 
 import '../backend/git_handler.dart';
 import '../backend/add_repository_helper.dart';
 import '../backend/filesystem_utils.dart';
-import '../backend/localize_refs_handler.dart';
+import '../backend/git_platform.dart';
 import '../backend/workspace_utils.dart';
 
 /// Command to add a repository or all repositories from an organization.
@@ -34,17 +34,15 @@ class AddCommand extends Command<dynamic> {
   AddCommand({
     required this.ggLog,
     GitHandler? gitCloner,
-    Future<http.Response> Function(Uri)? repoFetcher,
+    GitHubPlatform? gitHubPlatform,
     String? masterWorkspacePath,
     String? executionPath,
-    Future<void> Function(String repoPath)? localizeRefsFn,
     // coverage:ignore-start
   })  : gitCloner = gitCloner ?? GitHandler(),
-        repoFetcher = repoFetcher ?? http.get,
+        gitHubPlatform = gitHubPlatform ?? GitHubPlatform(),
         executionPath = executionPath ?? Directory.current.path,
         masterWorkspacePath =
-            masterWorkspacePath ?? WorkspaceUtils.defaultMasterWorkspacePath(),
-        _localizeRefsFn = localizeRefsFn ?? localizeRefs
+            masterWorkspacePath ?? WorkspaceUtils.defaultMasterWorkspacePath()
   // coverage:ignore-end
   {
     argParser.addFlag(
@@ -61,17 +59,14 @@ class AddCommand extends Command<dynamic> {
   /// Instance to handle cloning.
   final GitHandler gitCloner;
 
-  /// Function to fetch repositories from the organization API.
-  final Future<http.Response> Function(Uri) repoFetcher;
+  /// Optional GitHub platform instance to handle GitHub-specific operations.
+  final GitHubPlatform? gitHubPlatform;
 
   /// Resolved master workspace path.
   final String masterWorkspacePath;
 
   /// The path from which the command was executed.
   final String executionPath;
-
-  /// Optional injected localizeRefs function for testing
-  final Future<void> Function(String repoPath) _localizeRefsFn;
 
   @override
   String get name => 'add';
@@ -94,7 +89,7 @@ class AddCommand extends Command<dynamic> {
         targetArg: targetArg,
         ggLog: ggLog,
         gitCloner: gitCloner,
-        repoFetcher: repoFetcher,
+        gitHubPlatform: gitHubPlatform,
         workspacePath: masterWorkspacePath,
         force: force,
         logIfAlreadyAdded: ticketPath == null,
@@ -143,7 +138,8 @@ class AddCommand extends Command<dynamic> {
     }
     // Run gg_localize_refs localize-refs in the repo
     try {
-      await _localizeRefsFn(destDir.path);
+      final localizeCmd = LocalizeRefs(ggLog: ggLog);
+      await localizeCmd.get(directory: destDir, ggLog: ggLog);
     } catch (e) {
       ggLog(red('Failed to localize refs for $ticketName: $e'));
     }

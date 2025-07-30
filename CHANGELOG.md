@@ -20,6 +20,8 @@
 - Add tests for creation of .organizations
 - Add test: logs error when primary and all fallback organization clones fail
 - Add tests for command add organization
+- add tests for url parser
+- Add tests for azure urls
 
 ### Changed
 
@@ -43,3 +45,4 @@
 - remove trailing # and / in organization urls
 - remove command works also for tickets
 - Remove redundant code in appendOrganization
+- Remove prints

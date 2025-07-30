@@ -1,31 +1,24 @@
 // @license
-// Copyright (c) 2019 - 2025 Dr. Gabriel Gatzsche. All Rights Reserved.
+// Copyright (c) 2019 - 2024 Dr. Gabriel Gatzsche. All Rights Reserved.
 //
-// Use of this source code is governed by terms that can be
+// Use of this source code is governed by terms that do be
 // found in the LICENSE file in the root of this package.
 
 import 'dart:io';
-
 import 'package:args/command_runner.dart';
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
-import 'package:kidney_core/src/backend/constants.dart';
-import 'package:path/path.dart' as path;
+import 'package:kidney_core/src/commands/kidney_do.dart';
 import 'package:test/test.dart';
-import 'package:kidney_core/src/commands/list.dart';
 
 void main() {
-  group('ListCommand', () {
+  group('DoCommand', () {
     late Directory tempDir;
-    late Directory masterDir;
     final messages = <String>[];
 
     setUp(() {
       messages.clear();
-      tempDir = Directory.systemTemp.createTempSync('list_test');
-      masterDir = Directory(
-        path.join(tempDir.path, kidneyMasterFolder),
-      )..createSync(recursive: true);
+      tempDir = Directory.systemTemp.createTempSync('do_test_');
     });
 
     tearDown(() {
@@ -35,17 +28,15 @@ void main() {
     });
 
     test('should show all sub commands', () async {
-      final listCommand = ListCommand(
-        ggLog: messages.add,
-        workspacePath: masterDir.path,
-      );
+      final doCommand = Do(ggLog: messages.add);
       // Update the directory path to use the correct path separator
       final commandsDir = Directory(
-        path.join('lib', 'src', 'commands', 'list'),
+        'lib${Platform.pathSeparator}src${Platform.pathSeparator}'
+        'commands${Platform.pathSeparator}do',
       );
       final (subCommands, errorMessage) = await missingSubCommands(
         directory: commandsDir,
-        command: listCommand,
+        command: doCommand,
       );
 
       expect(subCommands, isEmpty, reason: errorMessage);
@@ -54,22 +45,20 @@ void main() {
     test('prints help message when --help is passed', () async {
       final runner = CommandRunner<void>(
         'test',
-        'ListCommand Help',
+        'DoCommand Help',
       );
       runner.addCommand(
-        ListCommand(
-          ggLog: (_) {},
-          workspacePath: masterDir.path,
-        ),
+        Do(ggLog: (_) {}),
       );
       final output = await capturePrint(
         code: () async {
-          await runner.run(['list', '--help']);
+          await runner.run(['do', '--help']);
         },
       );
       expect(
         output.first,
-        contains('List repos, organizations, or dependencies'),
+        contains('Perform actions like committing or '
+            'pushing across ticket repositories.'),
       );
     });
   });

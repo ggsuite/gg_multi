@@ -10,6 +10,7 @@ import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 import '../backend/workspace_utils.dart';
+import 'package:gg_localize_refs/gg_localize_refs.dart';
 
 /// Typedef for creating Directory instances (for testing).
 typedef DirectoryFactory = Directory Function(String path);
@@ -45,10 +46,14 @@ class ReviewCommand extends Command<void> {
     String? executionPath,
     DirectoryFactory? directoryFactory,
     ProcessRunner? processRunner,
+    UnlocalizeRefs? unlocalizeRefs,
+    LocalizeRefs? localizeRefs,
     // coverage:ignore-start
   })  : executionPath = executionPath ?? Directory.current.path,
         _dirFactory = directoryFactory ?? Directory.new,
-        _runProc = processRunner ?? _defaultProcessRunner;
+        _runProc = processRunner ?? _defaultProcessRunner,
+        _unlocalizeRefs = unlocalizeRefs ?? UnlocalizeRefs(ggLog: ggLog),
+        _localizeRefs = localizeRefs ?? LocalizeRefs(ggLog: ggLog);
   // coverage:ignore-end
 
   /// Logger function
@@ -62,6 +67,12 @@ class ReviewCommand extends Command<void> {
 
   /// Function to run processes (for injection & tests).
   final ProcessRunner _runProc;
+
+  /// Instance of UnlocalizeRefs for unlocalizing refs.
+  final UnlocalizeRefs _unlocalizeRefs;
+
+  /// Instance of LocalizeRefs for localizing refs.
+  final LocalizeRefs _localizeRefs;
 
   @override
   String get name => 'review';
@@ -142,24 +153,25 @@ class ReviewCommand extends Command<void> {
     for (final repoDir in subs) {
       final name = path.basename(repoDir.path);
       // Unlocalize refs. If failed, skip to next repo.
-      final okUnloc = await _runCommand(
-        'gg_localize_refs',
-        ['unlocalize-refs'],
-        'Unlocalized refs for $name',
-        'Failed to unlocalize refs for $name',
-        workingDirectory: repoDir.path,
-      );
+      bool okUnloc = false;
+      try {
+        await _unlocalizeRefs.get(directory: repoDir, ggLog: ggLog);
+        ggLog(green('Unlocalized refs for $name'));
+        okUnloc = true;
+      } catch (e) {
+        ggLog(red('Failed to unlocalize refs for $name: $e'));
+        okUnloc = false;
+      }
       if (!okUnloc) {
         continue;
       }
       // Localize refs with --git. Error logs, but continues.
-      await _runCommand(
-        'gg_localize_refs',
-        ['localize-refs', '--git'],
-        'Localized refs for $name',
-        'Failed to localize refs with --git for $name',
-        workingDirectory: repoDir.path,
-      );
+      try {
+        await _localizeRefs.get(directory: repoDir, ggLog: ggLog, git: true);
+        ggLog(green('Localized refs for $name'));
+      } catch (e) {
+        ggLog(red('Failed to localize refs with --git for $name: $e'));
+      }
       // PR create. Error logs, but continues.
       await _runCommand(
         'gh',

@@ -8,13 +8,13 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:http/http.dart' as http;
 import 'package:kidney_core/src/backend/constants.dart';
+import 'package:kidney_core/src/backend/git_platform.dart';
 import 'package:kidney_core/src/backend/organization.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-import 'package:kidney_core/src/commands/add.dart';
+import 'package:kidney_core/src/commands/kidney_add.dart';
 import 'package:kidney_core/src/backend/git_handler.dart';
 
 import '../rm_console_colors_helper.dart';
@@ -22,7 +22,7 @@ import '../rm_console_colors_helper.dart';
 // Create a mock for GitCloner
 class MockGitCloner extends Mock implements GitHandler {}
 
-typedef RepoFetcher = Future<http.Response> Function(Uri uri);
+class MockGitHubPlatform extends Mock implements GitHubPlatform {}
 
 void main() {
   group('AddCommand', () {
@@ -47,7 +47,6 @@ void main() {
           gitCloner: mockGitCloner,
           masterWorkspacePath: masterWorkspacePath,
           executionPath: executionPath ?? Directory.current.path,
-          localizeRefsFn: localizeRefsFn,
         ),
       );
     }
@@ -179,7 +178,8 @@ void main() {
       expect(
         logMessages,
         equals([
-          'Added repository kidney_core from https://github.com/ggsuite/kidney_core.git',
+          'Added repository kidney_core from '
+              'https://github.com/ggsuite/kidney_core.git',
         ]),
       );
     });
@@ -187,28 +187,32 @@ void main() {
     test(
         'should clone repositories when '
         'target is an organization URL', () async {
+      final repoList = [
+        {
+          'name': 'repo1',
+          'clone_url': 'https://github.com/myorganization/repo1.git',
+        },
+        {
+          'name': 'repo2',
+          'clone_url': 'https://github.com/myorganization/repo2.git',
+        },
+      ];
+
+      final mockGitHubPlatform = MockGitHubPlatform();
+      when(
+        () => mockGitHubPlatform.fetchOrgRepos(
+          any(),
+          client: any(named: 'client'),
+        ),
+      ).thenAnswer((_) async => repoList);
+
       final orgRunner = CommandRunner<void>('test', 'Test for AddCommand Org');
       orgRunner.addCommand(
         AddCommand(
           ggLog: ggLog,
           gitCloner: mockGitCloner,
+          gitHubPlatform: mockGitHubPlatform,
           masterWorkspacePath: masterWorkspacePath,
-          repoFetcher: (uri) async {
-            final expectedApi =
-                Uri.parse('https://api.github.com/orgs/myorganization/repos');
-            expect(uri, equals(expectedApi));
-            final fakeRepos = [
-              {
-                'name': 'repo1',
-                'clone_url': 'https://github.com/myorganization/repo1.git',
-              },
-              {
-                'name': 'repo2',
-                'clone_url': 'https://github.com/myorganization/repo2.git',
-              }
-            ];
-            return http.Response(jsonEncode(fakeRepos), 200);
-          },
         ),
       );
       const orgUrl = 'https://github.com/myorganization';
@@ -236,38 +240,6 @@ void main() {
       );
     });
 
-    test('should throw exception when API returns error status', () async {
-      final orgRunner = CommandRunner<void>(
-        'test',
-        'Test for AddCommand Org Error',
-      );
-      orgRunner.addCommand(
-        AddCommand(
-          ggLog: ggLog,
-          gitCloner: mockGitCloner,
-          masterWorkspacePath: masterWorkspacePath,
-          repoFetcher: (uri) async {
-            final expectedApi =
-                Uri.parse('https://api.github.com/orgs/errororg/repos');
-            expect(uri, equals(expectedApi));
-            return http.Response('Not found', 404);
-          },
-        ),
-      );
-      const orgUrl = 'https://github.com/errororg';
-      expect(
-        () => orgRunner.run(['add', orgUrl]),
-        throwsA(
-          isA<Exception>().having(
-            (e) => e.toString(),
-            'toString',
-            contains('Failed to fetch repositories for '
-                'organization errororg: Not found'),
-          ),
-        ),
-      );
-    });
-
     test('should throw UsageException when target parameter is missing',
         () async {
       expect(
@@ -287,9 +259,6 @@ void main() {
           ggLog: ggLog,
           gitCloner: mockGitCloner,
           masterWorkspacePath: masterWorkspacePath,
-          repoFetcher: (uri) async {
-            return http.Response('[]', 200);
-          },
         ),
       );
       const invalidOrgUrl = 'https://github.com/';
@@ -433,7 +402,8 @@ void main() {
       expect(
         logMessages,
         contains(
-          'Failed to localize refs for REFFAIL: Exception: mock localize error',
+          'Failed to localize refs for REFFAIL: Exception: An error occurred: '
+          'Exception: No project root found. No files were changed.',
         ),
       );
     });
