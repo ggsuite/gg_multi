@@ -11,11 +11,13 @@ import 'package:args/command_runner.dart';
 import 'package:kidney_core/src/backend/constants.dart';
 import 'package:kidney_core/src/backend/git_platform.dart';
 import 'package:kidney_core/src/backend/organization.dart';
+import 'package:kidney_core/src/backend/status_utils.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/kidney_add.dart';
 import 'package:kidney_core/src/backend/git_handler.dart';
+import 'package:gg_localize_refs/gg_localize_refs.dart';
 
 import '../rm_console_colors_helper.dart';
 
@@ -23,6 +25,8 @@ import '../rm_console_colors_helper.dart';
 class MockGitCloner extends Mock implements GitHandler {}
 
 class MockGitHubPlatform extends Mock implements GitHubPlatform {}
+
+class MockLocalizeRefs extends Mock implements LocalizeRefs {}
 
 void main() {
   group('AddCommand', () {
@@ -54,6 +58,7 @@ void main() {
     setUp(() {
       mockGitCloner = MockGitCloner();
       logMessages = [];
+      registerFallbackValue(Directory(''));
       when(() => mockGitCloner.cloneRepo(any(), any()))
           .thenAnswer((_) async {});
       tempDir = Directory.systemTemp.createTempSync('add_test');
@@ -309,6 +314,16 @@ void main() {
         // Create a file inside the repo
         final fileInRepo = File(path.join(repoDir.path, 'target.txt'));
         fileInRepo.writeAsStringSync('content');
+        const pubspecContent = '''
+name: project123
+version: 1.0.0
+dependencies:
+  json_dart: ^3.5.2
+dev_dependencies:
+  json_serializer: ^1.4.2
+''';
+        final pubspecFile = File(path.join(repoDir.path, 'pubspec.yaml'));
+        pubspecFile.writeAsStringSync(pubspecContent);
 
         // Setup ticket workspace and change cwd
         final ticketDir = Directory(
@@ -330,6 +345,16 @@ void main() {
             'Added repository $repoName to ticket workspace.',
           ),
         );
+
+        print(logMessages);
+
+        final statusFile = File(
+          path.join(ticketDir.path, repoName, '.kidney_status'),
+        );
+        expect(statusFile.existsSync(), isTrue);
+        final content =
+            jsonDecode(statusFile.readAsStringSync()) as Map<String, dynamic>;
+        expect(content['status'], StatusUtils.statusLocalized);
       },
     );
 
@@ -439,6 +464,64 @@ void main() {
         contains('Added repository repoB from '
             'https://github.com/repoB/repoB.git'),
       );
+    });
+
+    /*test('sets status to "localized" after successful localize-refs',
+        () async {
+      const repoName = 'statusRepo';
+      final repoDir = Directory(path.join(masterWorkspacePath, repoName))
+        ..createSync(recursive: true);
+      File(path.join(repoDir.path, 'dummy.txt')).writeAsStringSync('data');
+
+      final ticketDir = Directory(
+        path.join(tempDir.path, kidneyTicketFolder, 'TICKET-STATUS'),
+      )..createSync(recursive: true);
+      createRunner(executionPath: ticketDir.path);
+
+      final mockLocalizeRefs = MockLocalizeRefs();
+      when(
+        () => mockLocalizeRefs.get(
+          directory: any(named: 'directory'), 
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      await runner.run(['add', repoName]);
+
+      final statusFile = File(
+        path.join(ticketDir.path, repoName, '.kidney_status'),
+      );
+      expect(statusFile.existsSync(), isTrue);
+      final content = jsonDecode(statusFile.readAsStringSync()) 
+        as Map<String, dynamic>;
+      expect(content['status'], StatusUtils.statusLocalized);
+    });*/
+
+    test('does not set status if localize-refs fails', () async {
+      const repoName = 'failStatusRepo';
+      final repoDir = Directory(path.join(masterWorkspacePath, repoName))
+        ..createSync(recursive: true);
+      File(path.join(repoDir.path, 'dummy.txt')).writeAsStringSync('data');
+
+      final ticketDir = Directory(
+        path.join(tempDir.path, kidneyTicketFolder, 'TICKET-FAIL'),
+      )..createSync(recursive: true);
+      createRunner(executionPath: ticketDir.path);
+
+      final mockLocalizeRefs = MockLocalizeRefs();
+      when(
+        () => mockLocalizeRefs.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenThrow(Exception('localize failed'));
+
+      await runner.run(['add', repoName]);
+
+      final statusFile = File(
+        path.join(ticketDir.path, repoName, '.kidney_status'),
+      );
+      expect(statusFile.existsSync(), isFalse);
     });
   });
 }

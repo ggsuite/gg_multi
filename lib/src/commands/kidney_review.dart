@@ -11,6 +11,7 @@ import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 import '../backend/workspace_utils.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
+import '../backend/status_utils.dart';
 
 /// Typedef for creating Directory instances (for testing).
 typedef DirectoryFactory = Directory Function(String path);
@@ -130,6 +131,11 @@ class ReviewCommand extends Command<void> {
         await _unlocalizeRefs.get(directory: repoDir, ggLog: ggLog);
         ggLog(green('Unlocalized refs for $name'));
         okUnloc = true;
+        StatusUtils.setStatus(
+          repoDir,
+          StatusUtils.statusUnlocalized,
+          ggLog: ggLog,
+        );
       } catch (e) {
         ggLog(red('Failed to unlocalize refs for $name: $e'));
         okUnloc = false;
@@ -141,6 +147,11 @@ class ReviewCommand extends Command<void> {
       try {
         await _localizeRefs.get(directory: repoDir, ggLog: ggLog, git: true);
         ggLog(green('Localized refs for $name'));
+        StatusUtils.setStatus(
+          repoDir,
+          StatusUtils.statusGitLocalized,
+          ggLog: ggLog,
+        );
       } catch (e) {
         ggLog(red('Failed to localize refs with --git for $name: $e'));
       }

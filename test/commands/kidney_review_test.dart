@@ -4,6 +4,7 @@
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
 
+import 'dart:convert';
 import 'dart:io';
 import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:test/test.dart';
@@ -11,6 +12,7 @@ import 'package:path/path.dart' as path;
 import 'package:args/command_runner.dart';
 import 'package:kidney_core/src/commands/kidney_review.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
+import 'package:kidney_core/src/backend/status_utils.dart';
 import 'package:mocktail/mocktail.dart';
 
 import '../rm_console_colors_helper.dart';
@@ -206,6 +208,19 @@ void main() {
         logMessages,
         contains('Localized refs for B'),
       );
+      // Check status files
+      final statusA = File(path.join(ticket.path, 'A', '.kidney_status'));
+      expect(statusA.existsSync(), isTrue);
+      expect(
+        jsonDecode(statusA.readAsStringSync())['status'],
+        StatusUtils.statusGitLocalized,
+      );
+      final statusB = File(path.join(ticket.path, 'B', '.kidney_status'));
+      expect(statusB.existsSync(), isTrue);
+      expect(
+        jsonDecode(statusB.readAsStringSync())['status'],
+        StatusUtils.statusGitLocalized,
+      );
     });
 
     test('logs failure of unlocalize-refs and continues', () async {
@@ -256,6 +271,10 @@ void main() {
         logMessages.last,
         contains('Failed to unlocalize refs for C: Exception: broken!'),
       );
+
+      // Status file should not be created
+      final statusFile = File(path.join(ticket.path, 'C', '.kidney_status'));
+      expect(statusFile.existsSync(), isFalse);
     });
 
     test('logs no repositories found when ticket folder is empty', () async {
@@ -356,6 +375,13 @@ void main() {
         ),
         isTrue,
       );
+
+      // Status should be set to unlocalized but not git-localized
+      final statusFile = File(path.join(ticket.path, 'E', '.kidney_status'));
+      expect(statusFile.existsSync(), isTrue);
+      final content =
+          jsonDecode(statusFile.readAsStringSync()) as Map<String, dynamic>;
+      expect(content['status'], StatusUtils.statusUnlocalized);
     });
   });
 }

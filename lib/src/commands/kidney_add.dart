@@ -16,6 +16,7 @@ import '../backend/add_repository_helper.dart';
 import '../backend/filesystem_utils.dart';
 import '../backend/git_platform.dart';
 import '../backend/workspace_utils.dart';
+import '../backend/status_utils.dart';
 
 /// Command to add a repository or all repositories from an organization.
 ///
@@ -140,6 +141,11 @@ class AddCommand extends Command<dynamic> {
     try {
       final localizeCmd = LocalizeRefs(ggLog: ggLog);
       await localizeCmd.get(directory: destDir, ggLog: ggLog);
+      StatusUtils.setStatus(
+        destDir,
+        StatusUtils.statusLocalized,
+        ggLog: ggLog,
+      );
     } catch (e) {
       ggLog(red('Failed to localize refs for $ticketName: $e'));
     }

@@ -39,6 +39,7 @@
 - change parameter projectName to project\_name in .organizations json file
 - extractOrganizationFromUrl works with azure dev ops urls
 - extract repo name of azure dev ops urls correctly
+- Write kidney\_status file
 
 ### Removed
 
