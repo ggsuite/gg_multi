@@ -38,6 +38,7 @@ void main() {
       final (subCommands, errorMessage) = await missingSubCommands(
         directory: commandsDir,
         command: doCommand,
+        additionalSubCommands: ['publish'],
       );
 
       expect(subCommands, isEmpty, reason: errorMessage);
