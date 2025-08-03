@@ -38,7 +38,7 @@ void main() {
       final (subCommands, errorMessage) = await missingSubCommands(
         directory: commandsDir,
         command: canCommand,
-        additionalSubCommands: ['publish'],
+        additionalSubCommands: ['commit', 'push', 'publish', 'review'],
       );
 
       expect(subCommands, isEmpty, reason: errorMessage);
@@ -59,7 +59,8 @@ void main() {
       );
       expect(
         output.first,
-        contains('Checks if you can commit or push for the current ticket.'),
+        contains('Checks if you can commit, '
+            'push or review for the current ticket.'),
       );
     });
   });

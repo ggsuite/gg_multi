@@ -6,7 +6,6 @@
 
 import 'dart:io';
 
-import 'package:gg/gg.dart' as gg;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
@@ -24,14 +23,12 @@ class DoReviewCommand extends DirCommand<void> {
   DoReviewCommand({
     required super.ggLog,
     super.name = 'review',
-    super.description =
-        'Reviews all repositories in the current ticket.',
+    super.description = 'Reviews all repositories in the current ticket.',
     CanReviewCommand? canReviewCommand,
     UnlocalizeRefs? unlocalizeRefs,
     LocalizeRefs? localizeRefs,
     SortedProcessingList? sortedProcessingList,
-  })  : _canReviewCommand =
-            canReviewCommand ?? CanReviewCommand(ggLog: ggLog),
+  })  : _canReviewCommand = canReviewCommand ?? CanReviewCommand(ggLog: ggLog),
         _unlocalizeRefs = unlocalizeRefs ?? UnlocalizeRefs(ggLog: ggLog),
         _localizeRefs = localizeRefs ?? LocalizeRefs(ggLog: ggLog),
         _sortedProcessingList =
@@ -135,7 +132,8 @@ class DoReviewCommand extends DirCommand<void> {
     // Summarize the results
     if (failedRepos.isEmpty) {
       ggLog(
-        green('✅ All repositories in ticket $ticketName reviewed successfully.'),
+        green('✅ All repositories in ticket '
+            '$ticketName reviewed successfully.'),
       );
     } else {
       ggLog(

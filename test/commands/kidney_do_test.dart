@@ -38,7 +38,7 @@ void main() {
       final (subCommands, errorMessage) = await missingSubCommands(
         directory: commandsDir,
         command: doCommand,
-        additionalSubCommands: ['publish'],
+        additionalSubCommands: ['commit', 'push', 'publish', 'review'],
       );
 
       expect(subCommands, isEmpty, reason: errorMessage);
@@ -59,8 +59,8 @@ void main() {
       );
       expect(
         output.first,
-        contains('Perform actions like committing or '
-            'pushing across ticket repositories.'),
+        contains('Perform actions like committing, pushing or '
+            'reviewing across ticket repositories.'),
       );
     });
   });
