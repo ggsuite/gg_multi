@@ -22,6 +22,7 @@
 - Add tests for command add organization
 - add tests for url parser
 - Add tests for azure urls
+- Add tests for can publish
 
 ### Changed
 

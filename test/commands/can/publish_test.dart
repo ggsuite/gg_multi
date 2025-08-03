@@ -459,6 +459,199 @@ void main() {
       );
       expect(messages.any((m) => m.contains(' - B')), isTrue);
     });
+
+    test('fails when can commit throws exception', () async {
+      // Set status for all repos to git-localized
+      for (final repoName in ['A', 'B']) {
+        final statusFile =
+            File(path.join(ticketDir.path, repoName, '.kidney_status'))
+              ..createSync(recursive: true);
+        statusFile.writeAsStringSync(
+          jsonEncode({'status': StatusUtils.statusGitLocalized}),
+        );
+      }
+
+      final mockGgCanCommit = MockGgCanCommit();
+      final mockGgCanMerge = MockGgCanMerge();
+      final mockSortedProcessingList = MockSortedProcessingList();
+      final mockProcessRunner = MockProcessRunner();
+      final mockCanCommitCommand = MockCanCommitCommand();
+      final mockDoPushCommand = MockDoPushCommand();
+
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: Directory(path.join(ticketDir.path, 'A')),
+            pubspec: Pubspec('A'),
+          ),
+          Node(
+            name: 'B',
+            directory: Directory(path.join(ticketDir.path, 'B')),
+            pubspec: Pubspec('B'),
+          ),
+        ],
+      );
+
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['status', '--porcelain'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(1, 0, '', ''));
+
+      when(
+        () => mockCanCommitCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenThrow(Exception('Can commit failed'));
+
+      when(
+        () => mockDoPushCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockGgCanMerge.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      final runner = CommandRunner<void>('test', 'can publish ticket')
+        ..addCommand(
+          CanPublishCommand(
+            ggLog: ggLog,
+            ggCanCommit: mockGgCanCommit,
+            ggCanMerge: mockGgCanMerge,
+            sortedProcessingList: mockSortedProcessingList,
+            processRunner: mockProcessRunner.call,
+            canCommitCommand: mockCanCommitCommand,
+            doPushCommand: mockDoPushCommand,
+          ),
+        );
+      await expectLater(
+        () async => await runner.run(['publish', '--input', ticketDir.path]),
+        throwsA(isA<Exception>()),
+      );
+      expect(
+        messages.any(
+          (m) => m.contains(
+            'kidney_core can commit failed: Exception: Can commit failed',
+          ),
+        ),
+        isTrue,
+      );
+    });
+
+    test('fails when do push throws exception', () async {
+      // Set status for all repos to git-localized
+      for (final repoName in ['A', 'B']) {
+        final statusFile =
+            File(path.join(ticketDir.path, repoName, '.kidney_status'))
+              ..createSync(recursive: true);
+        statusFile.writeAsStringSync(
+          jsonEncode({'status': StatusUtils.statusGitLocalized}),
+        );
+      }
+
+      final mockGgCanCommit = MockGgCanCommit();
+      final mockGgCanMerge = MockGgCanMerge();
+      final mockSortedProcessingList = MockSortedProcessingList();
+      final mockProcessRunner = MockProcessRunner();
+      final mockCanCommitCommand = MockCanCommitCommand();
+      final mockDoPushCommand = MockDoPushCommand();
+
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: Directory(path.join(ticketDir.path, 'A')),
+            pubspec: Pubspec('A'),
+          ),
+          Node(
+            name: 'B',
+            directory: Directory(path.join(ticketDir.path, 'B')),
+            pubspec: Pubspec('B'),
+          ),
+        ],
+      );
+
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['status', '--porcelain'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(1, 0, '', ''));
+
+      when(
+        () => mockCanCommitCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockDoPushCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenThrow(Exception('do push failed'));
+
+      when(
+        () => mockGgCanMerge.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      final runner = CommandRunner<void>('test', 'can publish ticket')
+        ..addCommand(
+          CanPublishCommand(
+            ggLog: ggLog,
+            ggCanCommit: mockGgCanCommit,
+            ggCanMerge: mockGgCanMerge,
+            sortedProcessingList: mockSortedProcessingList,
+            processRunner: mockProcessRunner.call,
+            canCommitCommand: mockCanCommitCommand,
+            doPushCommand: mockDoPushCommand,
+          ),
+        );
+      await expectLater(
+        () async => await runner.run(['publish', '--input', ticketDir.path]),
+        throwsA(isA<Exception>()),
+      );
+      expect(
+        messages.any(
+          (m) => m.contains(
+            'kidney_core do push failed: Exception: do push failed',
+          ),
+        ),
+        isTrue,
+      );
+      // Ensure can merge is not called
+      verifyNever(
+        () => mockGgCanMerge.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      );
+    });
   });
 }
 
