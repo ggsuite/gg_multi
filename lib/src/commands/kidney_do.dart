@@ -10,6 +10,7 @@ import 'package:gg_log/gg_log.dart';
 import 'do/commit.dart';
 import 'do/push.dart';
 import 'do/publish.dart';
+import 'do/review.dart';
 
 /// Command to perform actions such as committing
 /// and pushing across ticket repositories.
@@ -29,12 +30,14 @@ class Do extends Command<void> {
   /// The description of the command
   @override
   final description =
-      'Perform actions like committing or pushing across ticket repositories.';
+      'Perform actions like committing, pushing or '
+      'reviewing across ticket repositories.';
 
   // ...........................................................................
   void _initSubCommands() {
     addSubcommand(DoCommitCommand(ggLog: ggLog));
     addSubcommand(DoPushCommand(ggLog: ggLog));
     addSubcommand(DoPublishCommand(ggLog: ggLog));
+    addSubcommand(DoReviewCommand(ggLog: ggLog));
   }
 }
