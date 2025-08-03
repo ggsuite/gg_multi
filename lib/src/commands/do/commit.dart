@@ -29,6 +29,8 @@ class DoCommitCommand extends DirCommand<void> {
     _addArgs();
   }
 
+  String? get _messageOption => argResults?['message'] as String?;
+
   /// Instance of gg DoCommit to perform the commit action
   final gg.DoCommit _ggDoCommit;
 
@@ -56,6 +58,8 @@ class DoCommitCommand extends DirCommand<void> {
     cl.LogType? logType,
     bool? updateChangeLog,
   }) async {
+    message ??= _messageOption;
+
     // Detect if we are inside a ticket folder
     final String? ticketPath = WorkspaceUtils.detectTicketPath(
       path.absolute(directory.path),

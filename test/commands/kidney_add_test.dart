@@ -9,14 +9,14 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:kidney_core/src/backend/constants.dart';
-import 'package:kidney_core/src/backend/git_platform.dart';
+import 'package:kidney_core/src/backend/git_platform.dart' hide ProcessRunner;
 import 'package:kidney_core/src/backend/organization.dart';
 import 'package:kidney_core/src/backend/status_utils.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/kidney_add.dart';
-import 'package:kidney_core/src/backend/git_handler.dart';
+import 'package:kidney_core/src/backend/git_handler.dart' hide ProcessRunner;
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 
 import '../rm_console_colors_helper.dart';
@@ -27,6 +27,14 @@ class MockGitCloner extends Mock implements GitHandler {}
 class MockGitHubPlatform extends Mock implements GitHubPlatform {}
 
 class MockLocalizeRefs extends Mock implements LocalizeRefs {}
+
+class MockProcessRunner extends Mock {
+  Future<ProcessResult> call(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+  });
+}
 
 void main() {
   group('AddCommand', () {
@@ -43,12 +51,14 @@ void main() {
     void createRunner({
       String? executionPath,
       Future<void> Function(String repoPath)? localizeRefsFn,
+      ProcessRunner? processRunner,
     }) {
       runner = CommandRunner<void>('test', 'Test for AddCommand');
       runner.addCommand(
         AddCommand(
           ggLog: ggLog,
           gitCloner: mockGitCloner,
+          processRunner: processRunner,
           masterWorkspacePath: masterWorkspacePath,
           executionPath: executionPath ?? Directory.current.path,
         ),
@@ -170,8 +180,8 @@ void main() {
     });
 
     test(
-        'should clone single repository '
-        'when target is a URL with trailing #', () async {
+        'should clone single repository when '
+        'target is a URL with trailing #', () async {
       const urlWithHash = 'https://github.com/ggsuite/kidney_core#';
       await runner.run(['add', urlWithHash]);
       verify(
@@ -466,37 +476,6 @@ dev_dependencies:
       );
     });
 
-    /*test('sets status to "localized" after successful localize-refs',
-        () async {
-      const repoName = 'statusRepo';
-      final repoDir = Directory(path.join(masterWorkspacePath, repoName))
-        ..createSync(recursive: true);
-      File(path.join(repoDir.path, 'dummy.txt')).writeAsStringSync('data');
-
-      final ticketDir = Directory(
-        path.join(tempDir.path, kidneyTicketFolder, 'TICKET-STATUS'),
-      )..createSync(recursive: true);
-      createRunner(executionPath: ticketDir.path);
-
-      final mockLocalizeRefs = MockLocalizeRefs();
-      when(
-        () => mockLocalizeRefs.get(
-          directory: any(named: 'directory'), 
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-
-      await runner.run(['add', repoName]);
-
-      final statusFile = File(
-        path.join(ticketDir.path, repoName, '.kidney_status'),
-      );
-      expect(statusFile.existsSync(), isTrue);
-      final content = jsonDecode(statusFile.readAsStringSync()) 
-        as Map<String, dynamic>;
-      expect(content['status'], StatusUtils.statusLocalized);
-    });*/
-
     test('does not set status if localize-refs fails', () async {
       const repoName = 'failStatusRepo';
       final repoDir = Directory(path.join(masterWorkspacePath, repoName))
@@ -522,6 +501,76 @@ dev_dependencies:
         path.join(ticketDir.path, repoName, '.kidney_status'),
       );
       expect(statusFile.existsSync(), isFalse);
+    });
+
+    group('dart pub get in _addRepoToTicket', () {
+      late MockProcessRunner mockProcessRunner;
+      late Directory ticketDir;
+      late Directory repoDir;
+      const repoName = 'pubgetRepo';
+
+      setUp(() async {
+        mockProcessRunner = MockProcessRunner();
+        repoDir = Directory(path.join(masterWorkspacePath, repoName))
+          ..createSync(recursive: true);
+        File(path.join(repoDir.path, 'dummy.txt')).writeAsStringSync('data');
+        ticketDir = Directory(
+          path.join(tempDir.path, kidneyTicketFolder, 'TICKET-PUBGET'),
+        )..createSync(recursive: true);
+        createRunner(
+          executionPath: ticketDir.path,
+          processRunner: mockProcessRunner.call,
+        );
+      });
+
+      test('executes dart pub get if pubspec.yaml exists and logs success',
+          () async {
+        File(path.join(repoDir.path, 'pubspec.yaml'))
+            .writeAsStringSync('name: pubgetRepo');
+        when(
+          () => mockProcessRunner(
+            'dart',
+            ['pub', 'get'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'Pub get success', ''));
+
+        await runner.run(['add', repoName]);
+
+        verify(
+          () => mockProcessRunner(
+            'dart',
+            ['pub', 'get'],
+            workingDirectory: path.join(ticketDir.path, repoName),
+          ),
+        ).called(1);
+        expect(
+          logMessages,
+          contains('Executed dart pub get in $repoName.'),
+        );
+      });
+
+      test('logs error if dart pub get fails', () async {
+        File(path.join(repoDir.path, 'pubspec.yaml'))
+            .writeAsStringSync('name: pubgetRepo');
+        when(
+          () => mockProcessRunner(
+            'dart',
+            ['pub', 'get'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(2, 1, '', 'Pub get error'));
+
+        await runner.run(['add', repoName]);
+
+        expect(
+          logMessages.any(
+            (m) => m.contains('Failed to execute dart pub get '
+                'in $repoName: Pub get error'),
+          ),
+          isTrue,
+        );
+      });
     });
   });
 }

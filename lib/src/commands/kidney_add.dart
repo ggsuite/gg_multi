@@ -18,6 +18,13 @@ import '../backend/git_platform.dart';
 import '../backend/workspace_utils.dart';
 import '../backend/status_utils.dart';
 
+/// Typedef for a process runner function.
+typedef ProcessRunner = Future<ProcessResult> Function(
+  String,
+  List<String>, {
+  String? workingDirectory,
+});
+
 /// Command to add a repository or all repositories from an organization.
 ///
 /// This command adds the specified git repo (also Gitlab and other servers
@@ -36,11 +43,13 @@ class AddCommand extends Command<dynamic> {
     required this.ggLog,
     GitHandler? gitCloner,
     GitHubPlatform? gitHubPlatform,
+    ProcessRunner? processRunner,
     String? masterWorkspacePath,
     String? executionPath,
     // coverage:ignore-start
   })  : gitCloner = gitCloner ?? GitHandler(),
         gitHubPlatform = gitHubPlatform ?? GitHubPlatform(),
+        processRunner = processRunner ?? Process.run,
         executionPath = executionPath ?? Directory.current.path,
         masterWorkspacePath =
             masterWorkspacePath ?? WorkspaceUtils.defaultMasterWorkspacePath()
@@ -62,6 +71,9 @@ class AddCommand extends Command<dynamic> {
 
   /// Optional GitHub platform instance to handle GitHub-specific operations.
   final GitHubPlatform? gitHubPlatform;
+
+  /// Instance to handle running general processes.
+  final ProcessRunner processRunner;
 
   /// Resolved master workspace path.
   final String masterWorkspacePath;
@@ -148,6 +160,21 @@ class AddCommand extends Command<dynamic> {
       );
     } catch (e) {
       ggLog(red('Failed to localize refs for $ticketName: $e'));
+    }
+    // Run dart pub get in the repo
+    final result = await processRunner(
+      'dart',
+      ['pub', 'get'],
+      workingDirectory: destDir.path,
+    );
+    if (result.exitCode == 0) {
+      ggLog(green('Executed dart pub get in $repoName.'));
+    } else {
+      ggLog(
+        red(
+          'Failed to execute dart pub get in $repoName: ${result.stderr}',
+        ),
+      );
     }
     ggLog(green('Added repository $repoName to ticket workspace.'));
   }
