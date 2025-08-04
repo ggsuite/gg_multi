@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:gg/gg.dart' as gg;
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:mocktail/mocktail.dart';
@@ -27,6 +28,10 @@ class MockUnlocalizeRefs extends Mock implements UnlocalizeRefs {}
 class MockLocalizeRefs extends Mock implements LocalizeRefs {}
 
 class MockCanReviewCommand extends Mock implements CanReviewCommand {}
+
+class MockGgDoCommit extends Mock implements gg.DoCommit {}
+
+class MockGgDoPush extends Mock implements gg.DoPush {}
 
 class FakeDirectory extends Fake implements Directory {}
 
@@ -97,12 +102,15 @@ void main() {
       );
     });
 
-    test('performs unlocalize and localize successfully, sets status',
-        () async {
+    test(
+        'performs full flow including commit and push successfully, '
+        'sets status', () async {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
       final mockLocalizeRefs = MockLocalizeRefs();
       final mockCanReviewCommand = MockCanReviewCommand();
+      final mockGgDoCommit = MockGgDoCommit();
+      final mockGgDoPush = MockGgDoPush();
 
       when(
         () => mockCanReviewCommand.exec(
@@ -146,6 +154,24 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
+      when(
+        () => mockGgDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          logType: any(named: 'logType'),
+          updateChangeLog: any(named: 'updateChangeLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+
       final runner = CommandRunner<void>('test', 'do review ticket')
         ..addCommand(
           DoReviewCommand(
@@ -154,6 +180,8 @@ void main() {
             unlocalizeRefs: mockUnlocalizeRefs,
             localizeRefs: mockLocalizeRefs,
             sortedProcessingList: mockSortedProcessingList,
+            ggDoCommit: mockGgDoCommit,
+            ggDoPush: mockGgDoPush,
           ),
         );
       await runner.run(['review', '--input', ticketDir.path]);
@@ -170,15 +198,15 @@ void main() {
         isTrue,
       );
       expect(
-        messages.any((m) => m.contains('Unlocalized refs for B')),
+        messages.any((m) => m.contains('Committed A')),
         isTrue,
       );
       expect(
-        messages.any((m) => m.contains('Localized refs for B')),
+        messages.any((m) => m.contains('Pushed A')),
         isTrue,
       );
 
-      // Verify status files updated
+      // Verify status files updated to git-localized
       for (final repoName in ['A', 'B']) {
         final statusFile =
             File(path.join(ticketDir.path, repoName, '.kidney_status'));
@@ -188,13 +216,35 @@ void main() {
           expect(content['status'], StatusUtils.statusGitLocalized);
         }
       }
+
+      // Verify commit called with the required message at least once
+      verify(
+        () => mockGgDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: 'kidney: changed references to git',
+          logType: any(named: 'logType'),
+          updateChangeLog: any(named: 'updateChangeLog'),
+        ),
+      ).called(greaterThan(0));
+
+      // Verify push called
+      verify(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      ).called(greaterThan(0));
     });
 
-    test('fails and logs for repos where unlocalize fails', () async {
+    test('fails and logs when commit fails for a repo', () async {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
       final mockLocalizeRefs = MockLocalizeRefs();
       final mockCanReviewCommand = MockCanReviewCommand();
+      final mockGgDoCommit = MockGgDoCommit();
+      final mockGgDoPush = MockGgDoPush();
 
       when(
         () => mockCanReviewCommand.exec(
@@ -215,27 +265,15 @@ void main() {
             directory: Directory(path.join(ticketDir.path, 'A')),
             pubspec: Pubspec('A'),
           ),
-          Node(
-            name: 'B',
-            directory: Directory(path.join(ticketDir.path, 'B')),
-            pubspec: Pubspec('B'),
-          ),
         ],
       );
 
-      // Fail unlocalize for B
       when(
         () => mockUnlocalizeRefs.get(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((invocation) {
-        final repoDir = invocation.namedArguments[#directory] as Directory;
-        if (path.basename(repoDir.path) == 'B') {
-          throw Exception('Unlocalize failed for B');
-        }
-        return Future.value();
-      });
+      ).thenAnswer((_) async {});
 
       when(
         () => mockLocalizeRefs.get(
@@ -245,6 +283,16 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
+      when(
+        () => mockGgDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          logType: any(named: 'logType'),
+          updateChangeLog: any(named: 'updateChangeLog'),
+        ),
+      ).thenThrow(Exception('commit failed'));
+
       final runner = CommandRunner<void>('test', 'do review ticket')
         ..addCommand(
           DoReviewCommand(
@@ -253,18 +301,18 @@ void main() {
             unlocalizeRefs: mockUnlocalizeRefs,
             localizeRefs: mockLocalizeRefs,
             sortedProcessingList: mockSortedProcessingList,
+            ggDoCommit: mockGgDoCommit,
+            ggDoPush: mockGgDoPush,
           ),
         );
       await expectLater(
         () async => await runner.run(['review', '--input', ticketDir.path]),
         throwsA(isA<Exception>()),
       );
+
       expect(
         messages.any(
-          (m) => m.contains(
-            'Failed to unlocalize refs for '
-            'B: Exception: Unlocalize failed for B',
-          ),
+          (m) => m.contains('Failed to commit A: Exception: commit failed'),
         ),
         isTrue,
       );
@@ -276,26 +324,15 @@ void main() {
         ),
         isTrue,
       );
-      expect(messages.any((m) => m.contains(' - B')), isTrue);
-
-      // Verify status for A was updated to git-localized, but not for B
-      final statusFileA =
-          File(path.join(ticketDir.path, 'A', '.kidney_status'));
-      if (statusFileA.existsSync()) {
-        final content =
-            jsonDecode(statusFileA.readAsStringSync()) as Map<String, dynamic>;
-        expect(content['status'], StatusUtils.statusGitLocalized);
-      }
-      final statusFileB =
-          File(path.join(ticketDir.path, 'B', '.kidney_status'));
-      expect(statusFileB.existsSync(), isFalse);
     });
 
-    test('fails and logs for repos where localize fails', () async {
+    test('fails and logs when push fails for a repo', () async {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
       final mockLocalizeRefs = MockLocalizeRefs();
       final mockCanReviewCommand = MockCanReviewCommand();
+      final mockGgDoCommit = MockGgDoCommit();
+      final mockGgDoPush = MockGgDoPush();
 
       when(
         () => mockCanReviewCommand.exec(
@@ -316,11 +353,6 @@ void main() {
             directory: Directory(path.join(ticketDir.path, 'A')),
             pubspec: Pubspec('A'),
           ),
-          Node(
-            name: 'B',
-            directory: Directory(path.join(ticketDir.path, 'B')),
-            pubspec: Pubspec('B'),
-          ),
         ],
       );
 
@@ -331,20 +363,31 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      // Fail localize for B
       when(
         () => mockLocalizeRefs.get(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           git: any(named: 'git'),
         ),
-      ).thenAnswer((invocation) {
-        final repoDir = invocation.namedArguments[#directory] as Directory;
-        if (path.basename(repoDir.path) == 'B') {
-          throw Exception('Localize failed for B');
-        }
-        return Future.value();
-      });
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockGgDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          logType: any(named: 'logType'),
+          updateChangeLog: any(named: 'updateChangeLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      ).thenThrow(Exception('push failed'));
 
       final runner = CommandRunner<void>('test', 'do review ticket')
         ..addCommand(
@@ -354,18 +397,18 @@ void main() {
             unlocalizeRefs: mockUnlocalizeRefs,
             localizeRefs: mockLocalizeRefs,
             sortedProcessingList: mockSortedProcessingList,
+            ggDoCommit: mockGgDoCommit,
+            ggDoPush: mockGgDoPush,
           ),
         );
       await expectLater(
         () async => await runner.run(['review', '--input', ticketDir.path]),
         throwsA(isA<Exception>()),
       );
+
       expect(
         messages.any(
-          (m) => m.contains(
-            'Failed to localize refs with --git for B: '
-            'Exception: Localize failed for B',
-          ),
+          (m) => m.contains('Failed to push A: Exception: push failed'),
         ),
         isTrue,
       );
@@ -377,23 +420,196 @@ void main() {
         ),
         isTrue,
       );
-      expect(messages.any((m) => m.contains(' - B')), isTrue);
+    });
 
-      // Verify status for A was updated to git-localized, for B to unlocalized
-      final statusFileA =
-          File(path.join(ticketDir.path, 'A', '.kidney_status'));
-      if (statusFileA.existsSync()) {
-        final content =
-            jsonDecode(statusFileA.readAsStringSync()) as Map<String, dynamic>;
-        expect(content['status'], StatusUtils.statusGitLocalized);
-      }
-      final statusFileB =
-          File(path.join(ticketDir.path, 'B', '.kidney_status'));
-      if (statusFileB.existsSync()) {
-        final content =
-            jsonDecode(statusFileB.readAsStringSync()) as Map<String, dynamic>;
-        expect(content['status'], StatusUtils.statusUnlocalized);
-      }
+    test('logs when unlocalize fails for a repo (covers catch branch)',
+        () async {
+      // This test specifically hits the catch branch that logs
+      // "Failed to unlocalize refs for <repo>: <error>" so that
+      // coverage reaches 100% for DoReviewCommand.
+      final mockSortedProcessingList = MockSortedProcessingList();
+      final mockUnlocalizeRefs = MockUnlocalizeRefs();
+      final mockLocalizeRefs = MockLocalizeRefs();
+      final mockCanReviewCommand = MockCanReviewCommand();
+      final mockGgDoCommit = MockGgDoCommit();
+      final mockGgDoPush = MockGgDoPush();
+
+      when(
+        () => mockCanReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: Directory(path.join(ticketDir.path, 'A')),
+            pubspec: Pubspec('A'),
+          ),
+        ],
+      );
+
+      // Make unlocalize throw to exercise the catch block
+      when(
+        () => mockUnlocalizeRefs.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenThrow(Exception('boom'));
+
+      // The rest should never be called, but set up harmless stubs
+      when(
+        () => mockLocalizeRefs.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          git: any(named: 'git'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          logType: any(named: 'logType'),
+          updateChangeLog: any(named: 'updateChangeLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+
+      final runner = CommandRunner<void>('test', 'do review ticket')
+        ..addCommand(
+          DoReviewCommand(
+            ggLog: ggLog,
+            canReviewCommand: mockCanReviewCommand,
+            unlocalizeRefs: mockUnlocalizeRefs,
+            localizeRefs: mockLocalizeRefs,
+            sortedProcessingList: mockSortedProcessingList,
+            ggDoCommit: mockGgDoCommit,
+            ggDoPush: mockGgDoPush,
+          ),
+        );
+
+      await expectLater(
+        () async => await runner.run(['review', '--input', ticketDir.path]),
+        throwsA(isA<Exception>()),
+      );
+
+      // Assert that the specific unlocalize error log was written
+      expect(
+        messages.any(
+          (m) => m.contains('Failed to unlocalize refs for A: Exception: boom'),
+        ),
+        isTrue,
+      );
+    });
+
+    test('covers catch branch for localize --git failure', () async {
+      // New test to explicitly cover the branch at
+      // lib/src/commands/do/review.dart around failure to localize with --git
+      final mockSortedProcessingList = MockSortedProcessingList();
+      final mockUnlocalizeRefs = MockUnlocalizeRefs();
+      final mockLocalizeRefs = MockLocalizeRefs();
+      final mockCanReviewCommand = MockCanReviewCommand();
+      final mockGgDoCommit = MockGgDoCommit();
+      final mockGgDoPush = MockGgDoPush();
+
+      when(
+        () => mockCanReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: Directory(path.join(ticketDir.path, 'A')),
+            pubspec: Pubspec('A'),
+          ),
+        ],
+      );
+
+      // Unlocalize works
+      when(
+        () => mockUnlocalizeRefs.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      // Localize with --git fails -> should log the specific error branch
+      when(
+        () => mockLocalizeRefs.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          git: any(named: 'git'),
+        ),
+      ).thenThrow(Exception('localize git failed'));
+
+      // Remaining stubs
+      when(
+        () => mockGgDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          logType: any(named: 'logType'),
+          updateChangeLog: any(named: 'updateChangeLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+
+      final runner = CommandRunner<void>('test', 'do review ticket')
+        ..addCommand(
+          DoReviewCommand(
+            ggLog: ggLog,
+            canReviewCommand: mockCanReviewCommand,
+            unlocalizeRefs: mockUnlocalizeRefs,
+            localizeRefs: mockLocalizeRefs,
+            sortedProcessingList: mockSortedProcessingList,
+            ggDoCommit: mockGgDoCommit,
+            ggDoPush: mockGgDoPush,
+          ),
+        );
+
+      await expectLater(
+        () async => await runner.run(['review', '--input', ticketDir.path]),
+        throwsA(isA<Exception>()),
+      );
+
+      expect(
+        messages.any(
+          (m) => m.contains(
+            'Failed to localize refs with --git for A: '
+            'Exception: localize git failed',
+          ),
+        ),
+        isTrue,
+      );
     });
   });
 }

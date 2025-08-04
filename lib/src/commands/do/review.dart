@@ -6,6 +6,7 @@
 
 import 'dart:io';
 
+import 'package:gg/gg.dart' as gg;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
@@ -28,11 +29,15 @@ class DoReviewCommand extends DirCommand<void> {
     UnlocalizeRefs? unlocalizeRefs,
     LocalizeRefs? localizeRefs,
     SortedProcessingList? sortedProcessingList,
+    gg.DoCommit? ggDoCommit,
+    gg.DoPush? ggDoPush,
   })  : _canReviewCommand = canReviewCommand ?? CanReviewCommand(ggLog: ggLog),
         _unlocalizeRefs = unlocalizeRefs ?? UnlocalizeRefs(ggLog: ggLog),
         _localizeRefs = localizeRefs ?? LocalizeRefs(ggLog: ggLog),
         _sortedProcessingList =
-            sortedProcessingList ?? SortedProcessingList(ggLog: ggLog);
+            sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
+        _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
+        _ggDoPush = ggDoPush ?? gg.DoPush(ggLog: ggLog);
 
   /// Instance of CanReviewCommand
   final CanReviewCommand _canReviewCommand;
@@ -45,6 +50,12 @@ class DoReviewCommand extends DirCommand<void> {
 
   /// Instance of SortedProcessingList
   final SortedProcessingList _sortedProcessingList;
+
+  /// Instance of gg DoCommit
+  final gg.DoCommit _ggDoCommit;
+
+  /// Instance of gg DoPush
+  final gg.DoPush _ggDoPush;
 
   @override
   Future<void> exec({
@@ -128,6 +139,31 @@ class DoReviewCommand extends DirCommand<void> {
       } catch (e) {
         ggLog(red('Failed to localize refs with --git for $repoName: $e'));
         failedRepos.add(repoName);
+        continue;
+      }
+
+      // Step 4: Commit the changes in the repo with a predefined message
+      try {
+        await _ggDoCommit.exec(
+          directory: repoDir,
+          ggLog: ggLog,
+          message: 'kidney: changed references to git',
+        );
+        ggLog(green('Committed $repoName'));
+      } catch (e) {
+        ggLog(red('Failed to commit $repoName: $e'));
+        failedRepos.add(repoName);
+        continue;
+      }
+
+      // Step 5: Push the changes
+      try {
+        await _ggDoPush.exec(directory: repoDir, ggLog: ggLog);
+        ggLog(green('Pushed $repoName'));
+      } catch (e) {
+        ggLog(red('Failed to push $repoName: $e'));
+        failedRepos.add(repoName);
+        continue;
       }
     }
 
