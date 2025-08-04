@@ -106,11 +106,10 @@ class DoReviewCommand extends DirCommand<void> {
     }
 
     // Step 3: Perform unlocalize and localize for each repo
-    final failedRepos = <String>[];
     for (final repo in subs) {
       final repoDir = repo.directory;
       final repoName = path.basename(repoDir.path);
-      bool okUnloc = false;
+
       try {
         await _unlocalizeRefs.get(directory: repoDir, ggLog: ggLog);
         ggLog(green('Unlocalized refs for $repoName'));
@@ -119,15 +118,12 @@ class DoReviewCommand extends DirCommand<void> {
           StatusUtils.statusUnlocalized,
           ggLog: ggLog,
         );
-        okUnloc = true;
       } catch (e) {
         ggLog(red('Failed to unlocalize refs for $repoName: $e'));
-        okUnloc = false;
+        throw Exception('Failed to review some '
+            'repositories in ticket $ticketName');
       }
-      if (!okUnloc) {
-        failedRepos.add(repoName);
-        continue;
-      }
+
       try {
         await _localizeRefs.get(directory: repoDir, ggLog: ggLog, git: true);
         ggLog(green('Localized refs for $repoName'));
@@ -138,11 +134,11 @@ class DoReviewCommand extends DirCommand<void> {
         );
       } catch (e) {
         ggLog(red('Failed to localize refs with --git for $repoName: $e'));
-        failedRepos.add(repoName);
-        continue;
+        throw Exception('Failed to review some '
+            'repositories in ticket $ticketName');
       }
 
-      // Step 4: Commit the changes in the repo with a predefined message
+      // Commit
       try {
         await _ggDoCommit.exec(
           directory: repoDir,
@@ -152,41 +148,25 @@ class DoReviewCommand extends DirCommand<void> {
         ggLog(green('Committed $repoName'));
       } catch (e) {
         ggLog(red('Failed to commit $repoName: $e'));
-        failedRepos.add(repoName);
-        continue;
+        throw Exception('Failed to review some '
+            'repositories in ticket $ticketName');
       }
 
-      // Step 5: Push the changes
+      // Push
       try {
         await _ggDoPush.exec(directory: repoDir, ggLog: ggLog);
         ggLog(green('Pushed $repoName'));
       } catch (e) {
         ggLog(red('Failed to push $repoName: $e'));
-        failedRepos.add(repoName);
-        continue;
+        throw Exception('Failed to review some '
+            'repositories in ticket $ticketName');
       }
     }
 
-    // Summarize the results
-    if (failedRepos.isEmpty) {
-      ggLog(
-        green('✅ All repositories in ticket '
-            '$ticketName reviewed successfully.'),
-      );
-    } else {
-      ggLog(
-        red(
-          '❌ Failed to review the following '
-          'repositories in ticket $ticketName:',
-        ),
-      );
-      for (final repoName in failedRepos) {
-        ggLog(red(' - $repoName'));
-      }
-      throw Exception(
-        'Failed to review some repositories in ticket $ticketName',
-      );
-    }
+    // All successful
+    ggLog(
+      green('✅ All repositories in ticket $ticketName reviewed successfully.'),
+    );
   }
 }
 

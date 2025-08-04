@@ -238,7 +238,8 @@ void main() {
       ).called(greaterThan(0));
     });
 
-    test('fails and logs when commit fails for a repo', () async {
+    test('fails and logs when commit fails for a repo (stop immediately)',
+        () async {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
       final mockLocalizeRefs = MockLocalizeRefs();
@@ -316,17 +317,20 @@ void main() {
         ),
         isTrue,
       );
+      // Since the command should stop immediately,
+      // there must be no summary list
       expect(
         messages.any(
           (m) => m.contains(
-            '❌ Failed to review the following repositories in ticket TICKDR:',
+            '❌ Failed to review the following repositories in ticket',
           ),
         ),
-        isTrue,
+        isFalse,
       );
     });
 
-    test('fails and logs when push fails for a repo', () async {
+    test('fails and logs when push fails for a repo (stop immediately)',
+        () async {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
       final mockLocalizeRefs = MockLocalizeRefs();
@@ -412,21 +416,22 @@ void main() {
         ),
         isTrue,
       );
+      // No summary list expected because we stop immediately
       expect(
         messages.any(
           (m) => m.contains(
-            '❌ Failed to review the following repositories in ticket TICKDR:',
+            '❌ Failed to review the following repositories in ticket',
           ),
         ),
-        isTrue,
+        isFalse,
       );
     });
 
     test('logs when unlocalize fails for a repo (covers catch branch)',
         () async {
       // This test specifically hits the catch branch that logs
-      // "Failed to unlocalize refs for <repo>: <error>" so that
-      // coverage reaches 100% for DoReviewCommand.
+      // "Failed to unlocalize refs for <repo>: <error>" and ensures
+      // the command stops immediately.
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
       final mockLocalizeRefs = MockLocalizeRefs();
@@ -514,11 +519,22 @@ void main() {
         ),
         isTrue,
       );
+      // No summary list should be printed when stopping immediately
+      expect(
+        messages.any(
+          (m) => m.contains(
+            '❌ Failed to review the following repositories in ticket',
+          ),
+        ),
+        isFalse,
+      );
     });
 
-    test('covers catch branch for localize --git failure', () async {
+    test('covers catch branch for localize --git failure (stop immediately)',
+        () async {
       // New test to explicitly cover the branch at
       // lib/src/commands/do/review.dart around failure to localize with --git
+      // and ensure immediate abort.
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
       final mockLocalizeRefs = MockLocalizeRefs();
@@ -609,6 +625,15 @@ void main() {
           ),
         ),
         isTrue,
+      );
+      // No summary list should be printed when stopping immediately
+      expect(
+        messages.any(
+          (m) => m.contains(
+            '❌ Failed to review the following repositories in ticket',
+          ),
+        ),
+        isFalse,
       );
     });
   });

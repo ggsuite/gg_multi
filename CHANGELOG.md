@@ -41,6 +41,7 @@
 - extractOrganizationFromUrl works with azure dev ops urls
 - extract repo name of azure dev ops urls correctly
 - Write kidney\_status file
+- Abort directly if a command fails in do review
 
 ### Removed
 
