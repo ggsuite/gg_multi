@@ -23,6 +23,7 @@
 - add tests for url parser
 - Add tests for azure urls
 - Add tests for can publish
+- Add do execute command
 
 ### Changed
 

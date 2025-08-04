@@ -1,0 +1,174 @@
+// @license
+// Copyright (c) 2019 - 2025 Dr. Gabriel Gatzsche. All Rights Reserved.
+//
+// Use of this source code is governed by terms that can be
+// found in the LICENSE file in the root of this package.
+
+import 'dart:io';
+
+import 'package:args/command_runner.dart';
+import 'package:gg_args/gg_args.dart';
+import 'package:gg_console_colors/gg_console_colors.dart';
+import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
+import 'package:gg_log/gg_log.dart';
+import 'package:path/path.dart' as path;
+
+import '../../backend/workspace_utils.dart';
+
+/// Typedef for running processes (for injection & tests).
+typedef ProcessRunner = Future<ProcessResult> Function(
+  String executable,
+  List<String> arguments, {
+  String? workingDirectory,
+});
+
+/// Command that executes a shell command in all repositories of the
+/// current ticket in the order of the processing list.
+class DoExecuteCommand extends DirCommand<void> {
+  /// Constructor
+  DoExecuteCommand({
+    required super.ggLog,
+    super.name = 'execute',
+    super.description =
+        'Executes a command in all repositories in the current ticket.',
+    SortedProcessingList? sortedProcessingList,
+    ProcessRunner? processRunner,
+  })  : _sortedProcessingList =
+            sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
+        _processRunner = processRunner ?? _defaultProcessRunner {
+    _addArgs();
+  }
+
+  /// Sorted processing helper
+  final SortedProcessingList _sortedProcessingList;
+
+  /// The process runner used to execute commands
+  final ProcessRunner _processRunner;
+
+  /// Default process runner using Process.run with runInShell: true
+  // coverage:ignore-start
+  static Future<ProcessResult> _defaultProcessRunner(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+  }) =>
+      Process.run(
+        executable,
+        arguments,
+        workingDirectory: workingDirectory,
+        runInShell: true,
+      );
+  // coverage:ignore-end
+
+  @override
+  Future<void> exec({
+    required Directory directory,
+    required GgLog ggLog,
+  }) =>
+      get(
+        directory: directory,
+        ggLog: ggLog,
+      );
+
+  @override
+  Future<void> get({
+    required Directory directory,
+    required GgLog ggLog,
+  }) async {
+    // Validate command arguments
+    final rest = argResults?.rest ?? [];
+    if (rest.isEmpty) {
+      throw UsageException('Missing command parameter.', usage);
+    }
+    final cmd = rest.first;
+    final cmdArgs = rest.sublist(1);
+    final fullCmdString = [cmd, ...cmdArgs].join(' ');
+
+    // Detect ticket folder
+    final String? ticketPath = WorkspaceUtils.detectTicketPath(
+      path.absolute(directory.path),
+    );
+    if (ticketPath == null) {
+      ggLog(red('This command must be executed inside a ticket folder.'));
+      throw Exception('Not inside a ticket folder');
+    }
+
+    final ticketDir = Directory(ticketPath);
+    final ticketName = path.basename(ticketDir.path);
+
+    // Collect repositories in processing order
+    final nodes = await _sortedProcessingList.get(
+      directory: ticketDir,
+      ggLog: ggLog,
+    );
+
+    if (nodes.isEmpty) {
+      ggLog(yellow('⚠️ No repositories found in ticket $ticketName.'));
+      return;
+    }
+
+    final failed = <String>[];
+
+    for (final node in nodes) {
+      final repoDir = node.directory;
+      final repoName = path.basename(repoDir.path);
+
+      ggLog(
+        yellow(
+          "Executing '$fullCmdString' in $repoName in ticket "
+          '$ticketName...',
+        ),
+      );
+
+      final result = await _processRunner(
+        cmd,
+        cmdArgs,
+        workingDirectory: repoDir.path,
+      );
+
+      if (result.exitCode != 0) {
+        final stderrStr = result.stderr?.toString() ?? '';
+        final stdoutStr = result.stdout?.toString() ?? '';
+        final errMsg = stderrStr.isNotEmpty ? stderrStr : stdoutStr;
+        ggLog(red('❌ Failed to execute in $repoName: $errMsg'));
+        failed.add(repoName);
+      }
+    }
+
+    if (failed.isEmpty) {
+      ggLog(
+        green(
+          '✅ Command executed successfully in all repositories in ticket '
+          '$ticketName.',
+        ),
+      );
+    } else {
+      ggLog(
+        red(
+          '❌ Failed to execute the command in the following repositories '
+          'in ticket $ticketName:',
+        ),
+      );
+      for (final name in failed) {
+        ggLog(red(' - $name'));
+      }
+      throw Exception(
+        'Failed to execute command in some repositories in ticket '
+        '$ticketName',
+      );
+    }
+  }
+
+  /// Add passthrough flag so args like -l 120 don't break parsing.
+  void _addArgs() {
+    // Accept a common formatting length flag used by tests so that
+    // command line parsing does not fail before forwarding to the
+    // real tool. We don't use it here - it is consumed by the tool
+    // we invoke (e.g. `dart fmt -l 120`).
+    argParser.addOption(
+      'line-length',
+      abbr: 'l',
+      help: 'Passthrough. Ignored by this command.',
+    );
+  }
+}
