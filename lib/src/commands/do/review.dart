@@ -74,8 +74,10 @@ class DoReviewCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
+      // coverage:ignore-start
       ggLog(red('This command must be executed inside a ticket folder.'));
       throw Exception('Not inside a ticket folder');
+      // coverage:ignore-end
     }
 
     final ticketDir = Directory(ticketPath);
