@@ -36,8 +36,12 @@ void main() {
     tempDir = Directory.systemTemp.createTempSync('can_push_ticket_test_');
     ticketsDir = Directory(path.join(tempDir.path, 'tickets'))..createSync();
     ticketDir = Directory(path.join(ticketsDir.path, 'TICKP'))..createSync();
-    Directory(path.join(ticketDir.path, 'A')).createSync();
-    Directory(path.join(ticketDir.path, 'B')).createSync();
+    // Create repositories containing a pubspec.yaml so that
+    // SortedProcessingList can detect them as valid packages.
+    final aDir = Directory(path.join(ticketDir.path, 'A'))..createSync();
+    File(path.join(aDir.path, 'pubspec.yaml')).writeAsStringSync('name: A');
+    final bDir = Directory(path.join(ticketDir.path, 'B'))..createSync();
+    File(path.join(bDir.path, 'pubspec.yaml')).writeAsStringSync('name: B');
   });
 
   tearDown(() {

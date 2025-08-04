@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:gg/gg.dart' as gg;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
+import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 
@@ -23,10 +24,16 @@ class CanCommitCommand extends DirCommand<void> {
     super.description =
         'Checks if all repositories in the current ticket can be committed.',
     gg.CanCommit? ggCanCommit,
-  }) : _ggCanCommit = ggCanCommit ?? gg.CanCommit(ggLog: ggLog);
+    SortedProcessingList? sortedProcessingList,
+  })  : _ggCanCommit = ggCanCommit ?? gg.CanCommit(ggLog: ggLog),
+        _sortedProcessingList =
+            sortedProcessingList ?? SortedProcessingList(ggLog: ggLog);
 
   /// Instance of gg CanCommit
   final gg.CanCommit _ggCanCommit;
+
+  /// Sorted processing list for repos
+  final SortedProcessingList _sortedProcessingList;
 
   @override
   Future<void> exec({
@@ -55,17 +62,20 @@ class CanCommitCommand extends DirCommand<void> {
     final ticketDir = Directory(ticketPath);
     final ticketName = path.basename(ticketDir.path);
 
-    // Collect all repository directories in the ticket
-    final subs = ticketDir.listSync().whereType<Directory>().toList()
-      ..sort((a, b) => path.basename(a.path).compareTo(path.basename(b.path)));
+    // Collect all repository directories in the ticket via SortedProcessingList
+    final nodes = await _sortedProcessingList.get(
+      directory: ticketDir,
+      ggLog: ggLog,
+    );
 
-    if (subs.isEmpty) {
+    if (nodes.isEmpty) {
       ggLog(yellow('⚠️ No repositories found in ticket $ticketName.'));
       return;
     }
 
     // Iterate over each repository and check if it can be committed
-    for (final repoDir in subs) {
+    for (final node in nodes) {
+      final repoDir = node.directory;
       final repoName = path.basename(repoDir.path);
       ggLog(
         yellow(
