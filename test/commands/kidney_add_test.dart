@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:gg/gg.dart' as gg;
 import 'package:kidney_core/src/backend/constants.dart';
 import 'package:kidney_core/src/backend/git_platform.dart' hide ProcessRunner;
 import 'package:kidney_core/src/backend/organization.dart';
@@ -36,6 +37,8 @@ class MockProcessRunner extends Mock {
   });
 }
 
+class MockGgDoCommit extends Mock implements gg.DoCommit {}
+
 void main() {
   group('AddCommand', () {
     late MockGitCloner mockGitCloner;
@@ -52,6 +55,7 @@ void main() {
       String? executionPath,
       Future<void> Function(String repoPath)? localizeRefsFn,
       ProcessRunner? processRunner,
+      gg.DoCommit? ggDoCommit,
     }) {
       runner = CommandRunner<void>('test', 'Test for AddCommand');
       runner.addCommand(
@@ -61,6 +65,7 @@ void main() {
           processRunner: processRunner,
           masterWorkspacePath: masterWorkspacePath,
           executionPath: executionPath ?? Directory.current.path,
+          ggDoCommit: ggDoCommit,
         ),
       );
     }
@@ -141,8 +146,8 @@ void main() {
     });
 
     test(
-        'should clone single repository '
-        'when target is a git SSH URL', () async {
+        'should clone single repository when '
+        'target is a git SSH URL', () async {
       const repoUrl = 'git@github.com:ggsuite/kidney_core.git';
       await runner.run(['add', repoUrl]);
       verify(
@@ -314,16 +319,15 @@ void main() {
     });
 
     test(
-      'copies repo into ticket workspace',
+      'copies repo into ticket workspace and commits after localization',
       () async {
-        // Arrange: create a repo with a file and a symbolic link
-        const repoName = 'testRepo';
+        // Arrange: create a repo with a file
+        const repoName = 'testRepoCommit';
         final repoDir = Directory(
           path.join(masterWorkspacePath, repoName),
         )..createSync(recursive: true);
-        // Create a file inside the repo
-        final fileInRepo = File(path.join(repoDir.path, 'target.txt'));
-        fileInRepo.writeAsStringSync('content');
+        File(path.join(repoDir.path, 'target.txt'))
+            .writeAsStringSync('content');
         const pubspecContent = '''
 name: project123
 version: 1.0.0
@@ -339,7 +343,22 @@ dev_dependencies:
         final ticketDir = Directory(
           path.join(tempDir.path, kidneyTicketFolder, 'TICKET'),
         )..createSync(recursive: true);
-        createRunner(executionPath: ticketDir.path);
+
+        final mockDoCommit = MockGgDoCommit();
+        when(
+          () => mockDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            logType: any(named: 'logType'),
+            updateChangeLog: any(named: 'updateChangeLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        createRunner(
+          executionPath: ticketDir.path,
+          ggDoCommit: mockDoCommit,
+        );
 
         // Act
         await runner.run(['add', repoName]);
@@ -349,14 +368,17 @@ dev_dependencies:
           path.join(ticketDir.path, repoName, 'target.txt'),
         );
         expect(copiedFileInTicket.existsSync(), isTrue);
-        expect(
-          logMessages,
-          contains(
-            'Added repository $repoName to ticket workspace.',
-          ),
-        );
 
-        print(logMessages);
+        // Verify commit was called with the expected message
+        verify(
+          () => mockDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: 'kidney: changed references to local',
+            logType: any(named: 'logType'),
+            updateChangeLog: any(named: 'updateChangeLog'),
+          ),
+        ).called(greaterThanOrEqualTo(1));
 
         final statusFile = File(
           path.join(ticketDir.path, repoName, '.kidney_status'),
@@ -424,14 +446,9 @@ dev_dependencies:
       final ticketDir = Directory(
         path.join(tempDir.path, kidneyTicketFolder, 'REFFAIL'),
       )..createSync(recursive: true);
-      // Use a localizeRefs function that throws
-      Future<void> failingLocalizeRefs(String repoPath) async {
-        throw Exception('mock localize error');
-      }
 
       createRunner(
         executionPath: ticketDir.path,
-        localizeRefsFn: failingLocalizeRefs,
       );
       await runner.run(['add', repoName]);
       expect(
@@ -485,15 +502,18 @@ dev_dependencies:
       final ticketDir = Directory(
         path.join(tempDir.path, kidneyTicketFolder, 'TICKET-FAIL'),
       )..createSync(recursive: true);
-      createRunner(executionPath: ticketDir.path);
-
-      final mockLocalizeRefs = MockLocalizeRefs();
+      final mockDoCommit = MockGgDoCommit();
       when(
-        () => mockLocalizeRefs.get(
+        () => mockDoCommit.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          logType: any(named: 'logType'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
-      ).thenThrow(Exception('localize failed'));
+      ).thenAnswer((_) async {});
+
+      createRunner(executionPath: ticketDir.path, ggDoCommit: mockDoCommit);
 
       await runner.run(['add', repoName]);
 
@@ -501,6 +521,16 @@ dev_dependencies:
         path.join(ticketDir.path, repoName, '.kidney_status'),
       );
       expect(statusFile.existsSync(), isFalse);
+      // Commit must not be called when localization fails
+      verifyNever(
+        () => mockDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          logType: any(named: 'logType'),
+          updateChangeLog: any(named: 'updateChangeLog'),
+        ),
+      );
     });
 
     group('dart pub get in _addRepoToTicket', () {
@@ -571,6 +601,49 @@ dev_dependencies:
           isTrue,
         );
       });
+    });
+
+    test('commit failures are logged and flow continues', () async {
+      // Arrange: create a repo with a file and pubspec
+      const repoName = 'commitFailRepo';
+      final repoDir = Directory(path.join(masterWorkspacePath, repoName))
+        ..createSync(recursive: true);
+      File(path.join(repoDir.path, 'dummy.txt')).writeAsStringSync('data');
+      File(path.join(repoDir.path, 'pubspec.yaml'))
+          .writeAsStringSync('name: x');
+
+      final ticketDir = Directory(
+        path.join(tempDir.path, kidneyTicketFolder, 'TICKET-COMMIT-FAIL'),
+      )..createSync(recursive: true);
+
+      final mockDoCommit = MockGgDoCommit();
+      when(
+        () => mockDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          logType: any(named: 'logType'),
+          updateChangeLog: any(named: 'updateChangeLog'),
+        ),
+      ).thenThrow(Exception('commit error'));
+
+      createRunner(executionPath: ticketDir.path, ggDoCommit: mockDoCommit);
+
+      await runner.run(['add', repoName]);
+
+      expect(
+        logMessages.any(
+          (m) => m.contains(
+            'Failed to commit TICKET-COMMIT-FAIL: Exception: commit error',
+          ),
+        ),
+        isTrue,
+      );
+      // Ensure final "Added repository ..." log exists
+      expect(
+        logMessages.any((m) => m.contains('Added repository $repoName')),
+        isTrue,
+      );
     });
   });
 }

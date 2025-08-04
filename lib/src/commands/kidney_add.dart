@@ -6,6 +6,7 @@
 
 import 'dart:io';
 import 'package:args/command_runner.dart';
+import 'package:gg/gg.dart' as gg;
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_log/gg_log.dart';
@@ -46,13 +47,15 @@ class AddCommand extends Command<dynamic> {
     ProcessRunner? processRunner,
     String? masterWorkspacePath,
     String? executionPath,
+    gg.DoCommit? ggDoCommit,
     // coverage:ignore-start
   })  : gitCloner = gitCloner ?? GitHandler(),
         gitHubPlatform = gitHubPlatform ?? GitHubPlatform(),
         processRunner = processRunner ?? Process.run,
         executionPath = executionPath ?? Directory.current.path,
         masterWorkspacePath =
-            masterWorkspacePath ?? WorkspaceUtils.defaultMasterWorkspacePath()
+            masterWorkspacePath ?? WorkspaceUtils.defaultMasterWorkspacePath(),
+        _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog)
   // coverage:ignore-end
   {
     argParser.addFlag(
@@ -80,6 +83,9 @@ class AddCommand extends Command<dynamic> {
 
   /// The path from which the command was executed.
   final String executionPath;
+
+  /// gg do commit instance used after localizing refs in ticket copies.
+  final gg.DoCommit _ggDoCommit;
 
   @override
   String get name => 'add';
@@ -158,6 +164,16 @@ class AddCommand extends Command<dynamic> {
         StatusUtils.statusLocalized,
         ggLog: ggLog,
       );
+      // After successful localization, commit the changes
+      try {
+        await _ggDoCommit.exec(
+          directory: destDir,
+          ggLog: ggLog,
+          message: 'kidney: changed references to local',
+        );
+      } catch (e) {
+        ggLog(red('Failed to commit $ticketName: $e'));
+      }
     } catch (e) {
       ggLog(red('Failed to localize refs for $ticketName: $e'));
     }

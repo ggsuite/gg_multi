@@ -42,6 +42,7 @@
 - extract repo name of azure dev ops urls correctly
 - Write kidney\_status file
 - Abort directly if a command fails in do review
+- Execute gg do commit after localizing in kidney add
 
 ### Removed
 
