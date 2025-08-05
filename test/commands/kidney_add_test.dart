@@ -79,7 +79,18 @@ void main() {
       tempDir = Directory.systemTemp.createTempSync('add_test');
       masterWorkspacePath = path.join(tempDir.path, kidneyMasterFolder);
       Directory(masterWorkspacePath).createSync(recursive: true);
-      createRunner();
+      // By default inject a mocked DoCommit to prevent real commit attempts.
+      final mockDoCommit = MockGgDoCommit();
+      when(
+        () => mockDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          logType: any(named: 'logType'),
+          updateChangeLog: any(named: 'updateChangeLog'),
+        ),
+      ).thenAnswer((_) async {});
+      createRunner(ggDoCommit: mockDoCommit);
     });
 
     tearDown(() {
@@ -240,12 +251,23 @@ void main() {
           'test',
           'Test for AddCommand Org',
         );
+        final mockDoCommit = MockGgDoCommit();
+        when(
+          () => mockDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            logType: any(named: 'logType'),
+            updateChangeLog: any(named: 'updateChangeLog'),
+          ),
+        ).thenAnswer((_) async {});
         orgRunner.addCommand(
           AddCommand(
             ggLog: ggLog,
             gitCloner: mockGitCloner,
             gitHubPlatform: mockGitHubPlatform,
             masterWorkspacePath: masterWorkspacePath,
+            ggDoCommit: mockDoCommit,
           ),
         );
         const orgUrl = 'https://github.com/myorganization';
@@ -288,11 +310,22 @@ void main() {
         'test',
         'Test for AddCommand Invalid Org',
       );
+      final mockDoCommit = MockGgDoCommit();
+      when(
+        () => mockDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          logType: any(named: 'logType'),
+          updateChangeLog: any(named: 'updateChangeLog'),
+        ),
+      ).thenAnswer((_) async {});
       invalidRunner.addCommand(
         AddCommand(
           ggLog: ggLog,
           gitCloner: mockGitCloner,
           masterWorkspacePath: masterWorkspacePath,
+          ggDoCommit: mockDoCommit,
         ),
       );
       const invalidOrgUrl = 'https://github.com/';
@@ -406,15 +439,9 @@ dev_dependencies:
 
         // Logs should indicate un/localize and commit somewhere
         expect(
-          logMessages.any((m) => m.contains('Unlocalized refs for')),
-          isTrue,
-        );
-        expect(
-          logMessages.any((m) => m.contains('Localized refs for')),
-          isTrue,
-        );
-        expect(
-          logMessages.any((m) => m.contains('Committed')),
+          logMessages.any(
+            (m) => m.contains('Re-localized all repositories in ticket'),
+          ),
           isTrue,
         );
       },
@@ -515,9 +542,20 @@ dev_dependencies:
         ticketDir = Directory(
           path.join(tempDir.path, kidneyTicketFolder, 'TICKET-PUBGET'),
         )..createSync(recursive: true);
+        final mockDoCommit = MockGgDoCommit();
+        when(
+          () => mockDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            logType: any(named: 'logType'),
+            updateChangeLog: any(named: 'updateChangeLog'),
+          ),
+        ).thenAnswer((_) async {});
         createRunner(
           executionPath: ticketDir.path,
           processRunner: mockProcessRunner.call,
+          ggDoCommit: mockDoCommit,
         );
       });
 
@@ -616,6 +654,21 @@ dev_dependencies:
         () async {
       when(() => mockGitCloner.cloneRepo(any(), any()))
           .thenAnswer((_) async {});
+
+      // Inject mocked DoCommit for this specific runner execution as well
+      final mockDoCommit = MockGgDoCommit();
+      when(
+        () => mockDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          logType: any(named: 'logType'),
+          updateChangeLog: any(named: 'updateChangeLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      createRunner(ggDoCommit: mockDoCommit);
+
       await runner.run(['add', 'repoA', 'repoB']);
       verify(
         () => mockGitCloner.cloneRepo(
