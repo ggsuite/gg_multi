@@ -24,6 +24,7 @@
 - Add tests for azure urls
 - Add tests for can publish
 - Add do execute command
+- add tests for kidney add
 
 ### Changed
 

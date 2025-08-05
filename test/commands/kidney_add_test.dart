@@ -1,6 +1,5 @@
 // @license
-// Copyright (c) 2019 - 2025 Dr. Gabriel Gatzsche. All Rights
-// Reserved.
+// Copyright (c) 2019 - 2025 Dr. Gabriel Gatzsche. All Rights Reserved.
 //
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
@@ -721,8 +720,7 @@ dev_dependencies:
     });
 
     test(
-      'relocalization aborts and logs when unlocalize fails '
-      'during AddCommand relocalization',
+      'relocalization aborts and logs when unlocalize fails',
       () async {
         // Arrange master repo
         const repoName = 'unlocalizeFailRepo';
@@ -753,9 +751,6 @@ dev_dependencies:
           ),
         ).thenAnswer((_) async {});
 
-        // After copy, the repo will be at ticketDir/repoName. We return a
-        // node pointing to that directory. We can build the path now; it will
-        // exist after copy.
         Future<List<Node>> futureNode() async => [
               Node(
                 name: repoName,
@@ -810,6 +805,93 @@ dev_dependencies:
             (m) => m.contains(
               'Failed to unlocalize refs for $repoName: '
               'Exception: boom',
+            ),
+          ),
+          isTrue,
+        );
+      },
+    );
+    test(
+      'relocalization aborts and logs when localize fails',
+      () async {
+        // Arrange master repo
+        const repoName = 'localizeFailRepo';
+        final repoDir = Directory(path.join(masterWorkspacePath, repoName))
+          ..createSync(recursive: true);
+        File(path.join(repoDir.path, 'pubspec.yaml'))
+            .writeAsStringSync('name: $repoName');
+
+        // Ticket setup
+        final ticketDir = Directory(
+          path.join(tempDir.path, kidneyTicketFolder, 'TICKET-LOCFAIL'),
+        )..createSync(recursive: true);
+
+        final mockSorted = MockSortedProcessingList();
+        final mockUnloc = MockUnlocalizeRefs();
+        final mockLoc = MockLocalizeRefs();
+        final mockDoCommit = MockGgDoCommit();
+
+        when(
+          () => mockDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            logType: any(named: 'logType'),
+            updateChangeLog: any(named: 'updateChangeLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        // Node for the newly copied repo in ticket
+        Future<List<Node>> futureNode() async => [
+              Node(
+                name: repoName,
+                directory: Directory(
+                  path.join(ticketDir.path, repoName),
+                ),
+                pubspec: Pubspec(repoName),
+              ),
+            ];
+
+        when(
+          () => mockSorted.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async => await futureNode());
+
+        // Unlocalize works
+        when(
+          () => mockUnloc.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+        // Localize throws to hit the catch branch under test
+        when(
+          () => mockLoc.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenThrow(Exception('localize failed'));
+
+        createRunner(
+          executionPath: ticketDir.path,
+          ggDoCommit: mockDoCommit,
+          sortedProcessingList: mockSorted,
+          unlocalizeRefs: mockUnloc,
+          localizeRefs: mockLoc,
+        );
+
+        await expectLater(
+          () async => await runner.run(['add', repoName]),
+          throwsA(isA<Exception>()),
+        );
+
+        expect(
+          logMessages.any(
+            (m) => m.contains(
+              'Failed to localize refs for $repoName: '
+              'Exception: localize failed',
             ),
           ),
           isTrue,
