@@ -1,5 +1,6 @@
 // @license
-// Copyright (c) 2019 - 2025 Dr. Gabriel Gatzsche. All Rights Reserved.
+// Copyright (c) 2019 - 2025 Dr. Gabriel Gatzsche. All Rights
+// Reserved.
 //
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
@@ -19,6 +20,8 @@ import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/kidney_add.dart';
 import 'package:kidney_core/src/backend/git_handler.dart' hide ProcessRunner;
 import 'package:gg_localize_refs/gg_localize_refs.dart';
+import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
+import 'package:pubspec_parse/pubspec_parse.dart';
 
 import '../rm_console_colors_helper.dart';
 
@@ -39,6 +42,11 @@ class MockProcessRunner extends Mock {
 
 class MockGgDoCommit extends Mock implements gg.DoCommit {}
 
+// Mocks for relocalization helpers
+class MockSortedProcessingList extends Mock implements SortedProcessingList {}
+
+class MockUnlocalizeRefs extends Mock implements UnlocalizeRefs {}
+
 void main() {
   group('AddCommand', () {
     late MockGitCloner mockGitCloner;
@@ -56,6 +64,9 @@ void main() {
       Future<void> Function(String repoPath)? localizeRefsFn,
       ProcessRunner? processRunner,
       gg.DoCommit? ggDoCommit,
+      SortedProcessingList? sortedProcessingList,
+      UnlocalizeRefs? unlocalizeRefs,
+      LocalizeRefs? localizeRefs,
     }) {
       runner = CommandRunner<void>('test', 'Test for AddCommand');
       runner.addCommand(
@@ -66,6 +77,9 @@ void main() {
           masterWorkspacePath: masterWorkspacePath,
           executionPath: executionPath ?? Directory.current.path,
           ggDoCommit: ggDoCommit,
+          sortedProcessingList: sortedProcessingList,
+          unlocalizeRefs: unlocalizeRefs,
+          localizeRefs: localizeRefs,
         ),
       );
     }
@@ -79,7 +93,8 @@ void main() {
       tempDir = Directory.systemTemp.createTempSync('add_test');
       masterWorkspacePath = path.join(tempDir.path, kidneyMasterFolder);
       Directory(masterWorkspacePath).createSync(recursive: true);
-      // By default inject a mocked DoCommit to prevent real commit attempts.
+      // By default inject a mocked DoCommit to prevent real commit
+      // attempts.
       final mockDoCommit = MockGgDoCommit();
       when(
         () => mockDoCommit.exec(
@@ -110,7 +125,8 @@ void main() {
       expect(
         logMessages,
         equals([
-          'Added repository myrepo from https://github.com/myrepo/myrepo.git',
+          'Added repository myrepo from '
+              'https://github.com/myrepo/myrepo.git',
         ]),
       );
 
@@ -124,7 +140,8 @@ void main() {
     });
 
     test(
-      'should clone single repository when target is in username/repo format',
+      'should clone single repository when target is in username/repo '
+      'format',
       () async {
         await runner.run(['add', 'testuser/testrepo']);
         verify(
@@ -144,8 +161,8 @@ void main() {
     );
 
     test(
-      'should clone single repository when target '
-      'is a full repository URL with .git',
+      'should clone single repository when '
+      'target is a full repository URL with .git',
       () async {
         const repoUrl = 'https://gitlab.com/someuser/somerepo.git';
         await runner.run(['add', repoUrl]);
@@ -344,7 +361,10 @@ void main() {
         Directory(destination).createSync(recursive: true);
         File(path.join(destination, 'dummy.txt')).writeAsStringSync('data');
 
-        await runner.run(['add', 'git@github.com:ggsuite/kidney_core.git']);
+        await runner.run([
+          'add',
+          'git@github.com:ggsuite/kidney_core.git',
+        ]);
 
         verifyNever(() => mockGitCloner.cloneRepo(any(), any()));
         expect(logMessages, contains('$repoName already added.'));
@@ -360,15 +380,19 @@ void main() {
         Directory(destination).createSync(recursive: true);
         File(path.join(destination, 'dummy.txt')).writeAsStringSync('data');
 
-        await runner
-            .run(['add', 'git@github.com:ggsuite/kidney_core.git', '--force']);
+        await runner.run([
+          'add',
+          'git@github.com:ggsuite/kidney_core.git',
+          '--force',
+        ]);
 
         verify(() => mockGitCloner.cloneRepo(any(), any())).called(1);
       },
     );
 
     test(
-      'copies repo into ticket workspace and relocalizes ticket (two passes)',
+      'copies repo into ticket workspace and relocalizes ticket '
+      '(two passes)',
       () async {
         // Arrange: create a repo with a file and pubspec in master
         const repoName = 'testRepoCommit';
@@ -485,8 +509,9 @@ dev_dependencies:
       },
     );
 
-    test('does not set status if localization fails in ticket relocalization',
-        () async {
+    test(
+        'does not set status if localization fails in ticket '
+        'relocalization', () async {
       const repoName = 'failStatusRepo';
       final repoDir = Directory(path.join(masterWorkspacePath, repoName))
         ..createSync(recursive: true);
@@ -515,8 +540,9 @@ dev_dependencies:
       );
       expect(statusFile.existsSync(), isFalse);
       // Commit must not be called when localization fails early
-      // (our environment without proper project roots will cause localization
-      // to fail inside the command). So ensure there is no commit recorded.
+      // (our environment without proper project roots will cause
+      // localization to fail inside the command). So ensure there is
+      // no commit recorded.
       verifyNever(
         () => mockDoCommit.exec(
           directory: any(named: 'directory'),
@@ -693,5 +719,102 @@ dev_dependencies:
             'https://github.com/repoB/repoB.git'),
       );
     });
+
+    test(
+      'relocalization aborts and logs when unlocalize fails '
+      'during AddCommand relocalization',
+      () async {
+        // Arrange master repo
+        const repoName = 'unlocalizeFailRepo';
+        final repoDir = Directory(path.join(masterWorkspacePath, repoName))
+          ..createSync(recursive: true);
+        // Ensure pubspec exists so Node(pubspec) is valid
+        File(path.join(repoDir.path, 'pubspec.yaml'))
+            .writeAsStringSync('name: $repoName');
+
+        // Ticket setup
+        final ticketDir = Directory(
+          path.join(tempDir.path, kidneyTicketFolder, 'TICKET-UNLOC'),
+        )..createSync(recursive: true);
+
+        // Mocks for relocalization
+        final mockSorted = MockSortedProcessingList();
+        final mockUnloc = MockUnlocalizeRefs();
+        final mockLoc = MockLocalizeRefs();
+        final mockDoCommit = MockGgDoCommit();
+
+        when(
+          () => mockDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            logType: any(named: 'logType'),
+            updateChangeLog: any(named: 'updateChangeLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        // After copy, the repo will be at ticketDir/repoName. We return a
+        // node pointing to that directory. We can build the path now; it will
+        // exist after copy.
+        Future<List<Node>> futureNode() async => [
+              Node(
+                name: repoName,
+                directory: Directory(
+                  path.join(ticketDir.path, repoName),
+                ),
+                pubspec: Pubspec(repoName),
+              ),
+            ];
+
+        when(
+          () => mockSorted.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async => await futureNode());
+
+        // Make unlocalize throw to hit the catch branch in AddCommand
+        when(
+          () => mockUnloc.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenThrow(Exception('boom'));
+
+        // Localize is not reached, but provide a harmless stub
+        when(
+          () => mockLoc.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        // Create runner with injections
+        createRunner(
+          executionPath: ticketDir.path,
+          ggDoCommit: mockDoCommit,
+          sortedProcessingList: mockSorted,
+          unlocalizeRefs: mockUnloc,
+          localizeRefs: mockLoc,
+        );
+
+        // Act & Assert
+        await expectLater(
+          () async => await runner.run(['add', repoName]),
+          throwsA(isA<Exception>()),
+        );
+
+        // Assert log contains the specific unlocalize error
+        expect(
+          logMessages.any(
+            (m) => m.contains(
+              'Failed to unlocalize refs for $repoName: '
+              'Exception: boom',
+            ),
+          ),
+          isTrue,
+        );
+      },
+    );
   });
 }
