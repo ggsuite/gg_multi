@@ -11,6 +11,7 @@ import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:interact/interact.dart';
 import 'package:path/path.dart' as path;
 
 import '../../backend/workspace_utils.dart';
@@ -106,6 +107,25 @@ class DoPublishCommand extends DirCommand<void> {
     for (final repo in subs) {
       final repoDir = repo.directory;
       final repoName = path.basename(repoDir.path);
+
+      if(StatusUtils.readStatus(repoDir, ggLog: ggLog) ==
+          StatusUtils.statusMerged) {
+        ggLog(
+          yellow('Repository $repoName in ticket '
+              '$ticketName is already merged.'),
+        );
+        continue;
+      }
+
+      final answer = Confirm(
+        prompt: 'Ready to publish $repoName in ticket $ticketName?',
+        defaultValue: false, // this is optional
+        waitForNewLine: true, // optional and will be false by default
+      ).interact();
+      if(answer == false) {
+        return;
+      }
+
       ggLog(yellow('Publishing $repoName in ticket $ticketName...'));
       try {
         // Execute gg do merge
