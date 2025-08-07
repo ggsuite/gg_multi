@@ -10,8 +10,8 @@ import 'package:gg/gg.dart' as gg;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
+import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_log/gg_log.dart';
-import 'package:interact/interact.dart';
 import 'package:path/path.dart' as path;
 
 import '../../backend/workspace_utils.dart';
@@ -32,17 +32,32 @@ class DoPublishCommand extends DirCommand<void> {
     required super.ggLog,
     super.name = 'publish',
     super.description = 'Publishes all repositories in the current ticket.',
+    gg.DoCommit? ggDoCommit,
+    UnlocalizeRefs? unlocalizeRefs,
+    gg.DoPush? ggDoPush,
     gg.DoMerge? ggDoMerge,
     gg.DoPublish? ggDoPublish,
     SortedProcessingList? sortedProcessingList,
     ProcessRunner? processRunner,
     CanPublishCommand? canPublishCommand,
-  })  : _ggDoMerge = ggDoMerge ?? gg.DoMerge(ggLog: ggLog),
+  })  : _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
+        _unlocalizeRefs = unlocalizeRefs ?? UnlocalizeRefs(ggLog: ggLog),
+        _ggDoPush = ggDoPush ?? gg.DoPush(ggLog: ggLog),
+        _ggDoMerge = ggDoMerge ?? gg.DoMerge(ggLog: ggLog),
         _ggDoPublish = ggDoPublish ?? gg.DoPublish(ggLog: ggLog),
         _sortedProcessingList =
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
         _canPublishCommand =
             canPublishCommand ?? CanPublishCommand(ggLog: ggLog);
+
+  /// Instance of gg DoCommit
+  final gg.DoCommit _ggDoCommit;
+
+  /// Instance of UnlocalizeRefs
+  final UnlocalizeRefs _unlocalizeRefs;
+
+  /// Instance of gg DoPush
+  final gg.DoPush _ggDoPush;
 
   /// Instance of gg DoMerge
   final gg.DoMerge _ggDoMerge;
@@ -108,7 +123,7 @@ class DoPublishCommand extends DirCommand<void> {
       final repoDir = repo.directory;
       final repoName = path.basename(repoDir.path);
 
-      if(StatusUtils.readStatus(repoDir, ggLog: ggLog) ==
+      if (StatusUtils.readStatus(repoDir, ggLog: ggLog) ==
           StatusUtils.statusMerged) {
         ggLog(
           yellow('Repository $repoName in ticket '
@@ -117,17 +132,41 @@ class DoPublishCommand extends DirCommand<void> {
         continue;
       }
 
-      final answer = Confirm(
-        prompt: 'Ready to publish $repoName in ticket $ticketName?',
-        defaultValue: false, // this is optional
-        waitForNewLine: true, // optional and will be false by default
-      ).interact();
-      if(answer == false) {
-        return;
-      }
-
       ggLog(yellow('Publishing $repoName in ticket $ticketName...'));
       try {
+        try {
+          await _unlocalizeRefs.get(directory: repoDir, ggLog: ggLog);
+          ggLog(green('Unlocalized refs for $repoName'));
+        } catch (e) {
+          ggLog(red('Failed to unlocalize refs for $repoName: $e'));
+          throw Exception('Failed to review some '
+              'repositories in ticket $ticketName');
+        }
+
+        // Commit
+        try {
+          await _ggDoCommit.exec(
+            directory: repoDir,
+            ggLog: ggLog,
+            message: 'kidney: changed references to pub.dev',
+          );
+          ggLog(green('Committed $repoName'));
+        } catch (e) {
+          ggLog(red('Failed to commit $repoName: $e'));
+          throw Exception('Failed to review some '
+              'repositories in ticket $ticketName');
+        }
+
+        // Push
+        try {
+          await _ggDoPush.exec(directory: repoDir, ggLog: ggLog);
+          ggLog(green('Pushed $repoName'));
+        } catch (e) {
+          ggLog(red('Failed to push $repoName: $e'));
+          throw Exception('Failed to review some '
+              'repositories in ticket $ticketName');
+        }
+
         // Execute gg do merge
         await _ggDoMerge.exec(directory: repoDir, ggLog: ggLog);
         // Set status to merged
