@@ -40,6 +40,9 @@ class DoPublishCommand extends DirCommand<void> {
     SortedProcessingList? sortedProcessingList,
     ProcessRunner? processRunner,
     CanPublishCommand? canPublishCommand,
+    GetVersion? getVersionCommand,
+    SetRefVersion? setRefVersionCommand,
+    GetRefVersion? getRefVersionCommand,
   })  : _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
         _unlocalizeRefs = unlocalizeRefs ?? UnlocalizeRefs(ggLog: ggLog),
         _ggDoPush = ggDoPush ?? gg.DoPush(ggLog: ggLog),
@@ -48,7 +51,10 @@ class DoPublishCommand extends DirCommand<void> {
         _sortedProcessingList =
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
         _canPublishCommand =
-            canPublishCommand ?? CanPublishCommand(ggLog: ggLog);
+            canPublishCommand ?? CanPublishCommand(ggLog: ggLog),
+        _getVersion = getVersionCommand ?? GetVersion(ggLog: ggLog),
+        _setRefVersion = setRefVersionCommand ?? SetRefVersion(ggLog: ggLog),
+        _getRefVersion = getRefVersionCommand ?? GetRefVersion(ggLog: ggLog);
 
   /// Instance of gg DoCommit
   final gg.DoCommit _ggDoCommit;
@@ -70,6 +76,15 @@ class DoPublishCommand extends DirCommand<void> {
 
   /// Instance of CanPublishCommand
   final CanPublishCommand _canPublishCommand;
+
+  /// Reads the current package version from pubspec.yaml
+  final GetVersion _getVersion;
+
+  /// Sets the version/spec of a dependency in pubspec.yaml
+  final SetRefVersion _setRefVersion;
+
+  /// Reads the version/spec of a dependency from pubspec.yaml
+  final GetRefVersion _getRefVersion;
 
   @override
   Future<void> exec({
@@ -117,6 +132,9 @@ class DoPublishCommand extends DirCommand<void> {
       return;
     }
 
+    // Map of reference name to version captured from repos processed so far.
+    final refVersions = <String, String>{};
+
     // Step 3-4: Iterate over each repository and perform merge and publish
     final failedRepos = <String>[];
     for (final repo in subs) {
@@ -141,6 +159,38 @@ class DoPublishCommand extends DirCommand<void> {
           ggLog(red('Failed to unlocalize refs for $repoName: $e'));
           throw Exception('Failed to review some '
               'repositories in ticket $ticketName');
+        }
+
+        // Capture current repo version and propagate known versions
+        try {
+          final version = await _getVersion.get(
+            directory: repoDir,
+            ggLog: (_) {},
+          );
+          if (version != null && version.isNotEmpty) {
+            refVersions[repoName] = version;
+          }
+        } catch (_) {
+          // Intentionally ignore errors to keep publish flow robust
+        }
+
+        // Apply all known reference versions to this repo if it depends on them
+        for (final entry in refVersions.entries) {
+          final refName = entry.key;
+          final refVersion = entry.value;
+          final spec = await _getRefVersion.get(
+            directory: repoDir,
+            ggLog: (_) {},
+            ref: refName,
+          );
+          if (spec != null) {
+            await _setRefVersion.get(
+              directory: repoDir,
+              ggLog: (_) {},
+              ref: refName,
+              version: '^$refVersion',
+            );
+          }
         }
 
         // Commit
