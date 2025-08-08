@@ -12,6 +12,7 @@ import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:interact/interact.dart';
 import 'package:path/path.dart' as path;
 
 import '../../backend/workspace_utils.dart';
@@ -54,7 +55,9 @@ class DoPublishCommand extends DirCommand<void> {
             canPublishCommand ?? CanPublishCommand(ggLog: ggLog),
         _getVersion = getVersionCommand ?? GetVersion(ggLog: ggLog),
         _setRefVersion = setRefVersionCommand ?? SetRefVersion(ggLog: ggLog),
-        _getRefVersion = getRefVersionCommand ?? GetRefVersion(ggLog: ggLog);
+        _getRefVersion = getRefVersionCommand ?? GetRefVersion(ggLog: ggLog) {
+    _addArgs();
+  }
 
   /// Instance of gg DoCommit
   final gg.DoCommit _ggDoCommit;
@@ -90,17 +93,22 @@ class DoPublishCommand extends DirCommand<void> {
   Future<void> exec({
     required Directory directory,
     required GgLog ggLog,
+    bool? force,
   }) =>
       get(
         directory: directory,
         ggLog: ggLog,
+        force: force,
       );
 
   @override
   Future<void> get({
     required Directory directory,
     required GgLog ggLog,
+    bool? force,
   }) async {
+    final finalForce = force ?? (argResults?['force'] as bool? ?? false);
+
     // Step 1: Detect ticket folder
     final String? ticketPath = WorkspaceUtils.detectTicketPath(
       path.absolute(directory.path),
@@ -148,6 +156,20 @@ class DoPublishCommand extends DirCommand<void> {
               '$ticketName is already merged.'),
         );
         continue;
+      }
+
+      // Skip confirmation when --force is set
+      if (!finalForce) {
+        // coverage:ignore-start
+        final answer = Confirm(
+          prompt: 'Ready to publish $repoName in ticket $ticketName?',
+          defaultValue: false, // this is optional
+          waitForNewLine: true, // optional and will be false by default
+        ).interact();
+        if (answer == false) {
+          return;
+        }
+        // coverage:ignore-end
       }
 
       ggLog(yellow('Publishing $repoName in ticket $ticketName...'));
@@ -250,6 +272,17 @@ class DoPublishCommand extends DirCommand<void> {
         'Failed to publish some repositories in ticket $ticketName',
       );
     }
+  }
+
+  // Adds command line arguments
+  void _addArgs() {
+    argParser.addFlag(
+      'force',
+      abbr: 'f',
+      help: 'Skip confirmation prompts and continue without asking.',
+      defaultsTo: false,
+      negatable: true,
+    );
   }
 }
 
