@@ -94,11 +94,13 @@ class DoPublishCommand extends DirCommand<void> {
     required Directory directory,
     required GgLog ggLog,
     bool? force,
+    String? message,
   }) =>
       get(
         directory: directory,
         ggLog: ggLog,
         force: force,
+        message: message,
       );
 
   @override
@@ -106,8 +108,10 @@ class DoPublishCommand extends DirCommand<void> {
     required Directory directory,
     required GgLog ggLog,
     bool? force,
+    String? message,
   }) async {
-    final finalForce = force ?? (argResults?['force'] as bool? ?? false);
+    force ??= argResults?['force'] as bool? ?? false;
+    message ??= argResults?['message'] as String?;
 
     // Step 1: Detect ticket folder
     final String? ticketPath = WorkspaceUtils.detectTicketPath(
@@ -159,7 +163,7 @@ class DoPublishCommand extends DirCommand<void> {
       }
 
       // Skip confirmation when --force is set
-      if (!finalForce) {
+      if (!force) {
         // coverage:ignore-start
         final answer = Confirm(
           prompt: 'Ready to publish $repoName in ticket $ticketName?',
@@ -176,7 +180,7 @@ class DoPublishCommand extends DirCommand<void> {
       try {
         try {
           await _unlocalizeRefs.get(directory: repoDir, ggLog: ggLog);
-          ggLog(green('Unlocalized refs for $repoName'));
+          ggLog(green('$repoName: unlocalized refs.'));
         } catch (e) {
           ggLog(red('Failed to unlocalize refs for $repoName: $e'));
           throw Exception('Failed to review some '
@@ -222,7 +226,6 @@ class DoPublishCommand extends DirCommand<void> {
             ggLog: ggLog,
             message: 'kidney: changed references to pub.dev',
           );
-          ggLog(green('Committed $repoName'));
         } catch (e) {
           ggLog(red('Failed to commit $repoName: $e'));
           throw Exception('Failed to review some '
@@ -232,21 +235,54 @@ class DoPublishCommand extends DirCommand<void> {
         // Push
         try {
           await _ggDoPush.exec(directory: repoDir, ggLog: ggLog);
-          ggLog(green('Pushed $repoName'));
         } catch (e) {
           ggLog(red('Failed to push $repoName: $e'));
           throw Exception('Failed to review some '
               'repositories in ticket $ticketName');
         }
 
+        ggLog(green('$repoName: updated with new references.'));
+
         // Execute gg do merge
-        await _ggDoMerge.exec(directory: repoDir, ggLog: ggLog);
+        await _ggDoMerge.exec(
+          directory: repoDir,
+          ggLog: ggLog,
+          local: true,
+          message: message,
+        );
         // Set status to merged
         StatusUtils.setStatus(repoDir, StatusUtils.statusMerged, ggLog: ggLog);
+
+        // Commit
+        try {
+          await _ggDoCommit.exec(
+            directory: repoDir,
+            ggLog: ggLog,
+            message: 'kidney: set kidney status to merged',
+          );
+        } catch (e) {
+          ggLog(red('Failed to commit $repoName: $e'));
+          throw Exception('Failed to review some '
+              'repositories in ticket $ticketName');
+        }
+
+        // Push
+        try {
+          await _ggDoPush.exec(directory: repoDir, ggLog: ggLog);
+        } catch (e) {
+          ggLog(red('Failed to push $repoName: $e'));
+          throw Exception('Failed to review some '
+              'repositories in ticket $ticketName');
+        }
+
+        ggLog(green('$repoName: merged and pushed.'));
+
         // Execute gg do publish
         await _ggDoPublish.exec(directory: repoDir, ggLog: ggLog);
-      } catch (e) {
-        ggLog(red('❌ Failed to publish $repoName: $e'));
+
+        ggLog(green('$repoName: published successfully.'));
+      } catch (e, s) {
+        ggLog(red('❌ Failed to publish $repoName: $e, $s'));
         failedRepos.add(repoName);
       }
     }
@@ -282,6 +318,11 @@ class DoPublishCommand extends DirCommand<void> {
       help: 'Skip confirmation prompts and continue without asking.',
       defaultsTo: false,
       negatable: true,
+    );
+    argParser.addOption(
+      'message',
+      abbr: 'm',
+      help: 'The merge commit message.',
     );
   }
 }
