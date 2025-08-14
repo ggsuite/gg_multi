@@ -54,6 +54,7 @@ class AddCommand extends Command<dynamic> {
     SortedProcessingList? sortedProcessingList,
     UnlocalizeRefs? unlocalizeRefs,
     LocalizeRefs? localizeRefs,
+    Graph? graph,
     // coverage:ignore-start
   })  : gitCloner = gitCloner ?? GitHandler(),
         gitHubPlatform = gitHubPlatform ?? GitHubPlatform(),
@@ -65,7 +66,8 @@ class AddCommand extends Command<dynamic> {
         _sortedProcessingList =
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
         _unlocalizeRefs = unlocalizeRefs ?? UnlocalizeRefs(ggLog: ggLog),
-        _localizeRefs = localizeRefs ?? LocalizeRefs(ggLog: ggLog)
+        _localizeRefs = localizeRefs ?? LocalizeRefs(ggLog: ggLog),
+        _graph = graph ?? Graph(ggLog: ggLog)
   // coverage:ignore-end
   {
     argParser.addFlag(
@@ -106,6 +108,9 @@ class AddCommand extends Command<dynamic> {
   /// Localize refs helper.
   final LocalizeRefs _localizeRefs;
 
+  /// Graph helper for determining nodes between endpoints.
+  final Graph _graph;
+
   @override
   String get name => 'add';
 
@@ -121,10 +126,34 @@ class AddCommand extends Command<dynamic> {
     if (argResults!.rest.isEmpty) {
       throw UsageException('Missing target parameter.', usage);
     }
+
     final targets = argResults!.rest;
     final bool force = argResults!['force'] as bool;
     final String? ticketPath = WorkspaceUtils.detectTicketPath(executionPath);
+
+    // If not in a ticket workspace: keep original behaviour (no graph logic).
+    if (ticketPath == null) {
+      for (final targetArg in targets) {
+        await addRepositoryHelper(
+          targetArg: targetArg,
+          ggLog: ggLog,
+          gitCloner: gitCloner,
+          gitHubPlatform: gitHubPlatform,
+          workspacePath: masterWorkspacePath,
+          force: force,
+          logIfAlreadyAdded: true,
+        );
+      }
+      return;
+    }
+
+    // Ticket mode: ensure requested repos are present in master first.
+    final requestedRepoNames = <String>{};
     for (final targetArg in targets) {
+      final repoName = extractRepoName(targetArg);
+      if (repoName != null) {
+        requestedRepoNames.add(repoName);
+      }
       await addRepositoryHelper(
         targetArg: targetArg,
         ggLog: ggLog,
@@ -132,27 +161,84 @@ class AddCommand extends Command<dynamic> {
         gitHubPlatform: gitHubPlatform,
         workspacePath: masterWorkspacePath,
         force: force,
-        logIfAlreadyAdded: ticketPath == null,
-        onRepoAdded: ticketPath == null
-            ? null
-            : (String repoName) async {
-                await _addRepoToTicket(
-                  repoName: repoName,
-                  ticketPath: ticketPath,
-                );
-              },
+        // When inside a ticket we do not spam "already added" messages.
+        logIfAlreadyAdded: false,
+        // We intentionally do not copy here; we copy after graph processing.
       );
     }
+
+    // Build the dependency graph of the master workspace and compute
+    // all nodes between the provided endpoints.
+    Map<String, Node> allNodes = const {};
+    try {
+      allNodes = await _graph.get(
+        directory: Directory(masterWorkspacePath),
+        ggLog: ggLog,
+      );
+    } catch (e) {
+      ggLog(
+        red('Failed to build dependency graph: $e'),
+      );
+      allNodes = const {};
+    }
+
+    final endpoints = <Node>[];
+    for (final name in requestedRepoNames) {
+      final node = findNode(nodes: allNodes, packageName: name);
+      if (node != null) {
+        endpoints.add(node);
+      }
+    }
+
+    final betweenNodes = endpoints.length >= 2
+        ? _graph.getNodesBetween(allNodes, endpoints)
+        : <Node>[];
+
+    final finalToCopy = <String>{
+      ...requestedRepoNames,
+      ...betweenNodes.map((n) => n.name),
+    };
+
+    // Copy all required repositories into the ticket.
+    for (final repoName in finalToCopy) {
+      await _copyRepoToTicket(
+        repoName: repoName,
+        ticketPath: ticketPath,
+      );
+    }
+
+    // Finally perform a single re-localization pass for the whole ticket.
+    await _relocalizeAllReposInTicket(Directory(ticketPath));
   }
 
   // ---------------------------------------------------------------------------
   // Ticket support helpers ----------------------------------------------------
 
-  /// Copies the repository from the master workspace to the [ticketPath]. If
-  /// the repository already exists in the ticket workspace, nothing happens.
-  /// Afterwards perform a two-pass re-localization on ALL repos inside the
-  /// ticket in sorted processing order.
-  Future<void> _addRepoToTicket({
+  // ...........................................................................
+  /// Find a node by package name in the dependency graph
+  Node? findNode({
+    required String packageName,
+    required Map<String, Node> nodes,
+  }) {
+    if (nodes.isEmpty) {
+      return null;
+    }
+    Node? node = nodes[packageName];
+    if (node != null) {
+      return node;
+    }
+    for (Node n in nodes.values) {
+      Node? foundNode = findNode(packageName: packageName, nodes: n.dependencies);
+      if (foundNode != null) {
+        return foundNode;
+      }
+    }
+    return null;
+  }
+
+  /// Copies the repository from the master workspace to the [ticketPath] but
+  /// does not trigger a ticket-wide relocalization.
+  Future<void> _copyRepoToTicket({
     required String repoName,
     required String ticketPath,
   }) async {
@@ -197,9 +283,6 @@ class AddCommand extends Command<dynamic> {
     }
 
     ggLog(green('Added repository $repoName to ticket workspace.'));
-
-    // Ticket-wide two-pass re-localization ------------------------------------
-    await _relocalizeAllReposInTicket(Directory(ticketPath));
   }
 
   /// Performs two iterations over all repositories in the ticket in

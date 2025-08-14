@@ -898,5 +898,91 @@ dev_dependencies:
         );
       },
     );
+
+    // NEW TESTS ---------------------------------------------------------------
+    test(
+      'adds between nodes into ticket when executed inside a ticket',
+      () async {
+        // master graph a -> b -> c
+        final aDir = Directory(path.join(masterWorkspacePath, 'a'))
+          ..createSync(recursive: true);
+        final bDir = Directory(path.join(masterWorkspacePath, 'b'))
+          ..createSync(recursive: true);
+        final cDir = Directory(path.join(masterWorkspacePath, 'c'))
+          ..createSync(recursive: true);
+
+        File(path.join(aDir.path, 'pubspec.yaml')).writeAsStringSync('''
+name: a
+version: 1.0.0
+dependencies:
+  b: ^1.0.0
+''');
+        File(path.join(bDir.path, 'pubspec.yaml')).writeAsStringSync('''
+name: b
+version: 1.0.0
+dependencies:
+  c: ^1.0.0
+''');
+        File(path.join(cDir.path, 'pubspec.yaml')).writeAsStringSync('''
+name: c
+version: 1.0.0
+''');
+
+        // ticket dir
+        final ticketDir = Directory(
+          path.join(tempDir.path, kidneyTicketFolder, 'TXYZ'),
+        )..createSync(recursive: true);
+
+        // ensure dart pub get succeeds for copies
+        final mockRunner = MockProcessRunner();
+        when(
+          () => mockRunner(
+            'dart',
+            ['pub', 'get'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+
+        final mockDoCommit = MockGgDoCommit();
+        when(
+          () => mockDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            logType: any(named: 'logType'),
+            updateChangeLog: any(named: 'updateChangeLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        createRunner(
+          executionPath: ticketDir.path,
+          processRunner: mockRunner.call,
+          ggDoCommit: mockDoCommit,
+        );
+
+        await runner.run(['add', 'a', 'c']);
+
+        // All a, b, c should be copied into ticket
+        expect(Directory(path.join(ticketDir.path, 'a')).existsSync(), isTrue);
+        expect(Directory(path.join(ticketDir.path, 'b')).existsSync(), isTrue);
+        expect(Directory(path.join(ticketDir.path, 'c')).existsSync(), isTrue);
+
+        // Log should show that b was added to ticket workspace as well
+        expect(
+          logMessages.any(
+            (m) => m == 'Added repository b to ticket workspace.',
+          ),
+          isTrue,
+        );
+
+        // Relocalization should have been done once at the end
+        expect(
+          logMessages.any(
+            (m) => m.contains('Re-localized all repositories in ticket TXYZ'),
+          ),
+          isTrue,
+        );
+      },
+    );
   });
 }
