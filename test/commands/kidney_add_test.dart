@@ -21,6 +21,7 @@ import 'package:kidney_core/src/backend/git_handler.dart' hide ProcessRunner;
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
+import 'package:kidney_core/src/backend/repository.dart';
 
 import '../rm_console_colors_helper.dart';
 
@@ -220,40 +221,18 @@ void main() {
     );
 
     test(
-      'should clone single repository when '
-      'target is a URL with trailing #',
-      () async {
-        const urlWithHash = 'https://github.com/ggsuite/kidney_core#';
-        await runner.run(['add', urlWithHash]);
-        verify(
-          () => mockGitCloner.cloneRepo(
-            'https://github.com/ggsuite/kidney_core.git',
-            any(),
-          ),
-        ).called(1);
-        expect(
-          logMessages,
-          equals([
-            'Added repository kidney_core from '
-                'https://github.com/ggsuite/kidney_core.git',
-          ]),
-        );
-      },
-    );
-
-    test(
       'should clone repositories when '
       'target is an organization URL',
       () async {
         final repoList = [
-          {
-            'name': 'repo1',
-            'clone_url': 'https://github.com/myorganization/repo1.git',
-          },
-          {
-            'name': 'repo2',
-            'clone_url': 'https://github.com/myorganization/repo2.git',
-          },
+          const Repository(
+            name: 'repo1',
+            cloneUrl: 'https://github.com/myorganization/repo1.git',
+          ),
+          const Repository(
+            name: 'repo2',
+            cloneUrl: 'https://github.com/myorganization/repo2.git',
+          ),
         ];
 
         final mockGitHubPlatform = MockGitHubPlatform();

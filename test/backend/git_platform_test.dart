@@ -12,6 +12,7 @@ import 'package:http/testing.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 import 'package:kidney_core/src/backend/git_platform.dart';
+import 'package:kidney_core/src/backend/repository.dart';
 
 class MockProcessRunner extends Mock {
   Future<ProcessResult> call(
@@ -32,8 +33,9 @@ void main() {
     test('fetchOrgRepos fetches and returns repo list', () async {
       final platform = GitHubPlatform();
       final mockClient = MockClient((request) async {
-        if (request.url.toString().contains(
-            'https://api.github.com/orgs/testorg/repos',)) {
+        if (request.url
+            .toString()
+            .contains('https://api.github.com/orgs/testorg/repos',)) {
           return http.Response(
             jsonEncode([
               {'name': 'repo1', 'clone_url': 'url1'},
@@ -47,7 +49,9 @@ void main() {
 
       final repos = await platform.fetchOrgRepos('testorg', client: mockClient);
       expect(repos.length, 2);
-      expect(repos[0]['name'], 'repo1');
+      expect(repos[0], isA<Repository>());
+      expect(repos[0].name, 'repo1');
+      expect(repos[1].cloneUrl, 'url2');
     });
 
     test('fetchOrgRepos creates default client if none provided', () async {
@@ -116,6 +120,8 @@ void main() {
         client: mockClient,
       );
       expect(repos.length, 1);
+      expect(repos.first.name, 'repo');
+      expect(repos.first.cloneUrl, 'url');
     });
   });
 
@@ -166,8 +172,8 @@ void main() {
         project: 'myproj',
       );
       expect(repos.length, 2);
-      expect(repos[0]['name'], 'repo1');
-      expect(repos[0]['clone_url'], 'ssh1');
+      expect(repos[0].name, 'repo1');
+      expect(repos[0].cloneUrl, 'ssh1');
       verify(
         () => mockRunner(
           'az',

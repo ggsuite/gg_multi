@@ -12,6 +12,8 @@ import 'package:kidney_core/src/backend/url_parser.dart';
 
 import 'dart:io';
 
+import 'repository.dart';
+
 /// Typedef for running processes (for injection & tests).
 typedef ProcessRunner = Future<ProcessResult> Function(
   String executable,
@@ -40,7 +42,7 @@ abstract class GitPlatform {
   String buildRepoUrl(String org, String repo, [String? project]);
 
   /// Fetches the list of repositories for an organization.
-  Future<List<Map<String, dynamic>>> fetchOrgRepos(
+  Future<List<Repository>> fetchOrgRepos(
     String org, {
     String? project,
     http.Client? client,
@@ -61,13 +63,15 @@ class GitHubPlatform implements GitPlatform {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> fetchOrgRepos(
+  Future<List<Repository>> fetchOrgRepos(
     String org, {
     String? project,
     http.Client? client,
   }) async {
     client ??= http.Client();
-    final uri = Uri.parse('https://api.github.com/orgs/$org/repos?per_page=100');
+    final uri = Uri.parse(
+        'https://api.github.com/orgs/$org/repos?per_page=100',
+    );
     final response = await client.get(uri);
     if (response.statusCode != 200) {
       throw Exception(
@@ -75,7 +79,17 @@ class GitHubPlatform implements GitPlatform {
         '${response.body}',
       );
     }
-    return (jsonDecode(response.body) as List).cast<Map<String, dynamic>>();
+    final decoded = (jsonDecode(response.body) as List)
+        .cast<Map<String, dynamic>>();
+    return decoded
+        .map(
+          (m) => Repository(
+            name: (m['name'] ?? '').toString(),
+            cloneUrl: (m['clone_url'] ?? '').toString(),
+          ),
+        )
+        .where((r) => r.name.isNotEmpty && r.cloneUrl.isNotEmpty)
+        .toList();
   }
 
   @override
@@ -112,7 +126,7 @@ class AzureDevOpsPlatform implements GitPlatform {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> fetchOrgRepos(
+  Future<List<Repository>> fetchOrgRepos(
     String org, {
     String? project,
     http.Client? client,
@@ -143,11 +157,11 @@ class AzureDevOpsPlatform implements GitPlatform {
       final repos = jsonDecode(jsonOutput) as List<dynamic>;
       return repos.map((repo) {
         final repoMap = repo as Map<String, dynamic>;
-        return <String, dynamic>{
-          'name': repoMap['name'] as String?,
-          'clone_url': repoMap['sshUrl'] as String?,
-        };
-      }).toList();
+        return Repository(
+          name: (repoMap['name'] ?? '').toString(),
+          cloneUrl: (repoMap['sshUrl'] ?? '').toString(),
+        );
+      }).where((r) => r.name.isNotEmpty && r.cloneUrl.isNotEmpty).toList();
     } catch (e) {
       throw Exception('Failed to parse Azure CLI output: $e');
     }
