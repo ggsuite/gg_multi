@@ -144,6 +144,7 @@ class DoReviewCommand extends DirCommand<void> {
           directory: repoDir,
           ggLog: ggLog,
           message: 'kidney: changed references to git',
+          force: true,
         );
         ggLog(green('Committed $repoName'));
       } catch (e) {

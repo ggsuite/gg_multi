@@ -225,6 +225,7 @@ class DoPublishCommand extends DirCommand<void> {
             directory: repoDir,
             ggLog: ggLog,
             message: 'kidney: changed references to pub.dev',
+            force: true,
           );
         } catch (e) {
           ggLog(red('Failed to commit $repoName: $e'));
@@ -259,6 +260,7 @@ class DoPublishCommand extends DirCommand<void> {
             directory: repoDir,
             ggLog: ggLog,
             message: 'kidney: set kidney status to merged',
+            force: true,
           );
         } catch (e) {
           ggLog(red('Failed to commit $repoName: $e'));

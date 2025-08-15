@@ -168,6 +168,7 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
 
@@ -277,7 +278,7 @@ void main() {
       when(
         () => mockCanPublishCommand.exec(
           directory: any(named: 'directory'),
-          ggLog: ggLog,
+          ggLog: any(named: 'ggLog'),
         ),
       ).thenThrow(Exception('can publish failed'));
 
@@ -360,6 +361,7 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
 
@@ -505,6 +507,7 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
 
@@ -664,6 +667,7 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
 
@@ -813,6 +817,7 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((invocation) {
         final repoDir = invocation.namedArguments[#directory] as Directory;
@@ -968,6 +973,7 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
 
@@ -1121,6 +1127,7 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
       when(

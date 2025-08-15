@@ -161,6 +161,7 @@ void main() {
           message: any(named: 'message'),
           logType: any(named: 'logType'),
           updateChangeLog: any(named: 'updateChangeLog'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
 
@@ -225,6 +226,7 @@ void main() {
           message: 'kidney: changed references to git',
           logType: any(named: 'logType'),
           updateChangeLog: any(named: 'updateChangeLog'),
+          force: any(named: 'force'),
         ),
       ).called(greaterThan(0));
 
@@ -291,6 +293,7 @@ void main() {
           message: any(named: 'message'),
           logType: any(named: 'logType'),
           updateChangeLog: any(named: 'updateChangeLog'),
+          force: any(named: 'force'),
         ),
       ).thenThrow(Exception('commit failed'));
 
@@ -382,6 +385,7 @@ void main() {
           message: any(named: 'message'),
           logType: any(named: 'logType'),
           updateChangeLog: any(named: 'updateChangeLog'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
 
@@ -484,6 +488,7 @@ void main() {
           message: any(named: 'message'),
           logType: any(named: 'logType'),
           updateChangeLog: any(named: 'updateChangeLog'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -589,6 +594,7 @@ void main() {
           message: any(named: 'message'),
           logType: any(named: 'logType'),
           updateChangeLog: any(named: 'updateChangeLog'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
       when(
