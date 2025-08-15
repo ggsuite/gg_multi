@@ -6,18 +6,25 @@
 
 /// Represents a repository entry provided by a Git platform.
 ///
-/// Contains the repository [name] and a [cloneUrl] that can be used
+/// Contains the repository [name] and a [httpsUrl] that can be used
 /// for cloning (e.g. HTTPS or SSH URL).
 class Repository {
-  /// Creates a repository description with [name] and [cloneUrl].
+  /// Creates a repository description with [name] and [httpsUrl].
   const Repository({
     required this.name,
-    required this.cloneUrl,
+    required this.httpsUrl,
+    this.sshUrl,
   });
 
   /// The repository name.
   final String name;
 
-  /// The clone URL (HTTPS or SSH).
-  final String cloneUrl;
+  /// HTTP(S) URL for cloning the repository.
+  final String httpsUrl;
+
+  /// SSH URL
+  final String? sshUrl;
+
+  /// Returns the URL that can be used to clone the repository.
+  String get cloneUrl => sshUrl ?? httpsUrl;
 }

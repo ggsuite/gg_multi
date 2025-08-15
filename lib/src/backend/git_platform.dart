@@ -85,7 +85,8 @@ class GitHubPlatform implements GitPlatform {
         .map(
           (m) => Repository(
             name: (m['name'] ?? '').toString(),
-            cloneUrl: (m['clone_url'] ?? '').toString(),
+            httpsUrl: (m['clone_url'] ?? '').toString(),
+            sshUrl: (m['ssh_url'] ?? '').toString(),
           ),
         )
         .where((r) => r.name.isNotEmpty && r.cloneUrl.isNotEmpty)
@@ -159,7 +160,8 @@ class AzureDevOpsPlatform implements GitPlatform {
         final repoMap = repo as Map<String, dynamic>;
         return Repository(
           name: (repoMap['name'] ?? '').toString(),
-          cloneUrl: (repoMap['sshUrl'] ?? '').toString(),
+          httpsUrl: (repoMap['remoteUrl'] ?? '').toString(),
+          sshUrl: (repoMap['sshUrl'] ?? '').toString(),
         );
       }).where((r) => r.name.isNotEmpty && r.cloneUrl.isNotEmpty).toList();
     } catch (e) {

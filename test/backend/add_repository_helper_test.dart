@@ -125,11 +125,11 @@ void main() {
         final repoList = <Repository>[
           const Repository(
               name: 'repo1',
-              cloneUrl: 'https://github.com/myorg/repo1.git',
+              httpsUrl: 'https://github.com/myorg/repo1.git',
           ),
           const Repository(
               name: 'repo2',
-              cloneUrl: 'https://github.com/myorg/repo2.git',
+              httpsUrl: 'https://github.com/myorg/repo2.git',
           ),
         ];
 
@@ -153,7 +153,7 @@ void main() {
         // Verify cloneRepo called for each repository
         for (final repo in repoList) {
           final repoName = repo.name;
-          final cloneUrl = repo.cloneUrl;
+          final cloneUrl = repo.httpsUrl;
           final destination = path.join(workspacePath, repoName);
           verify(() => mockGitCloner.cloneRepo(cloneUrl, destination))
               .called(1);
@@ -227,11 +227,11 @@ void main() {
         final repoList = <Repository>[
           const Repository(
               name: 'repo1',
-              cloneUrl: 'https://dev.azure.com/myorg/myproj/repo1.git',
+              httpsUrl: 'https://dev.azure.com/myorg/myproj/repo1.git',
           ),
           const Repository(
               name: 'repo2',
-              cloneUrl: 'https://dev.azure.com/myorg/myproj/repo2.git',
+              httpsUrl: 'https://dev.azure.com/myorg/myproj/repo2.git',
           ),
         ];
 
@@ -255,7 +255,7 @@ void main() {
 
         for (final repo in repoList) {
           final repoName = repo.name;
-          final cloneUrl = repo.cloneUrl;
+          final cloneUrl = repo.httpsUrl;
           final destination = path.join(workspacePath, repoName);
           verify(() => mockGitCloner.cloneRepo(cloneUrl, destination))
               .called(1);

@@ -38,8 +38,8 @@ void main() {
             .contains('https://api.github.com/orgs/testorg/repos',)) {
           return http.Response(
             jsonEncode([
-              {'name': 'repo1', 'clone_url': 'url1'},
-              {'name': 'repo2', 'clone_url': 'url2'},
+              {'name': 'repo1', 'clone_url': 'url1', 'ssh_url': 'ssh1'},
+              {'name': 'repo2', 'clone_url': 'url2', 'ssh_url': 'ssh2'},
             ]),
             200,
           );
@@ -51,7 +51,7 @@ void main() {
       expect(repos.length, 2);
       expect(repos[0], isA<Repository>());
       expect(repos[0].name, 'repo1');
-      expect(repos[1].cloneUrl, 'url2');
+      expect(repos[1].httpsUrl, 'url2');
     });
 
     test('fetchOrgRepos creates default client if none provided', () async {
@@ -108,7 +108,7 @@ void main() {
         return http.Response(
           jsonEncode(
             [
-              {'name': 'repo', 'clone_url': 'url'},
+              {'name': 'repo', 'clone_url': 'url', 'ssh_url': 'ssh'},
             ],
           ),
           200,
@@ -121,7 +121,7 @@ void main() {
       );
       expect(repos.length, 1);
       expect(repos.first.name, 'repo');
-      expect(repos.first.cloneUrl, 'url');
+      expect(repos.first.httpsUrl, 'url');
     });
   });
 
@@ -160,8 +160,8 @@ void main() {
           1,
           0,
           jsonEncode([
-            {'name': 'repo1', 'sshUrl': 'ssh1'},
-            {'name': 'repo2', 'sshUrl': 'ssh2'},
+            {'name': 'repo1', 'sshUrl': 'ssh1', 'remoteUrl': 'https1'},
+            {'name': 'repo2', 'sshUrl': 'ssh2', 'remoteUrl': 'https2'},
           ]),
           '',
         ),

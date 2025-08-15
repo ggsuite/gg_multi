@@ -227,11 +227,11 @@ void main() {
         final repoList = [
           const Repository(
             name: 'repo1',
-            cloneUrl: 'https://github.com/myorganization/repo1.git',
+            httpsUrl: 'https://github.com/myorganization/repo1.git',
           ),
           const Repository(
             name: 'repo2',
-            cloneUrl: 'https://github.com/myorganization/repo2.git',
+            httpsUrl: 'https://github.com/myorganization/repo2.git',
           ),
         ];
 

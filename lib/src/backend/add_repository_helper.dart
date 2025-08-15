@@ -160,10 +160,7 @@ Future<void> addRepositoryHelper({
         return;
       }
       for (final repo in repos) {
-        final repoName = repo.name;
-        final cloneUrl = repo.cloneUrl;
-        if (repoName.isEmpty || cloneUrl.isEmpty) continue;
-        await attemptClone(cloneUrl, repoName);
+        await attemptClone(repo.cloneUrl, repo.name);
       }
     } else if (parsedUrl.repo == null &&
         parsedUrl.org != null &&
