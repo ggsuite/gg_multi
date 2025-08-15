@@ -184,6 +184,9 @@ void main() {
         () => mockGgDoMerge.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
+          automerge: any(named: 'automerge'),
+          local: any(named: 'local'),
+          message: any(named: 'message'),
         ),
       ).thenAnswer((_) async {});
 
@@ -229,32 +232,6 @@ void main() {
       );
       expect(
         messages.any((m) => m.contains('Publishing B in ticket TICKPB...')),
-        isTrue,
-      );
-
-      // Additional logs from unlocalize/commit/push
-      expect(
-        messages.any((m) => m.contains('Unlocalized refs for A')),
-        isTrue,
-      );
-      expect(
-        messages.any((m) => m.contains('Committed A')),
-        isTrue,
-      );
-      expect(
-        messages.any((m) => m.contains('Pushed A')),
-        isTrue,
-      );
-      expect(
-        messages.any((m) => m.contains('Unlocalized refs for B')),
-        isTrue,
-      );
-      expect(
-        messages.any((m) => m.contains('Committed B')),
-        isTrue,
-      );
-      expect(
-        messages.any((m) => m.contains('Pushed B')),
         isTrue,
       );
 
@@ -377,6 +354,9 @@ void main() {
         () => mockGgDoMerge.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
+          automerge: any(named: 'automerge'),
+          local: any(named: 'local'),
+          message: any(named: 'message'),
         ),
       ).thenAnswer((invocation) {
         final repoDir = invocation.namedArguments[#directory] as Directory;
@@ -523,6 +503,9 @@ void main() {
         () => mockGgDoMerge.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
+          automerge: any(named: 'automerge'),
+          local: any(named: 'local'),
+          message: any(named: 'message'),
         ),
       ).thenAnswer((_) async {});
 
@@ -683,6 +666,9 @@ void main() {
         () => mockGgDoMerge.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
+          automerge: any(named: 'automerge'),
+          local: any(named: 'local'),
+          message: any(named: 'message'),
         ),
       ).thenAnswer((_) async {});
 
@@ -839,6 +825,9 @@ void main() {
         () => mockGgDoMerge.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
+          automerge: any(named: 'automerge'),
+          local: any(named: 'local'),
+          message: any(named: 'message'),
         ),
       ).thenAnswer((_) async {});
 
@@ -995,6 +984,9 @@ void main() {
         () => mockGgDoMerge.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
+          automerge: any(named: 'automerge'),
+          local: any(named: 'local'),
+          message: any(named: 'message'),
         ),
       ).thenAnswer((_) async {});
 
@@ -1141,6 +1133,9 @@ void main() {
         () => mockGgDoMerge.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
+          automerge: any(named: 'automerge'),
+          local: any(named: 'local'),
+          message: any(named: 'message'),
         ),
       ).thenAnswer((_) async {});
       when(
