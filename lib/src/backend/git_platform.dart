@@ -67,7 +67,7 @@ class GitHubPlatform implements GitPlatform {
     http.Client? client,
   }) async {
     client ??= http.Client();
-    final uri = Uri.parse('https://api.github.com/orgs/$org/repos');
+    final uri = Uri.parse('https://api.github.com/orgs/$org/repos?per_page=100');
     final response = await client.get(uri);
     if (response.statusCode != 200) {
       throw Exception(

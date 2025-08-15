@@ -32,8 +32,8 @@ void main() {
     test('fetchOrgRepos fetches and returns repo list', () async {
       final platform = GitHubPlatform();
       final mockClient = MockClient((request) async {
-        if (request.url.toString() ==
-            'https://api.github.com/orgs/testorg/repos') {
+        if (request.url.toString().contains(
+            'https://api.github.com/orgs/testorg/repos',)) {
           return http.Response(
             jsonEncode([
               {'name': 'repo1', 'clone_url': 'url1'},
