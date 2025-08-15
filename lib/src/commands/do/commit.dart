@@ -103,7 +103,7 @@ class DoCommitCommand extends DirCommand<void> {
           message: message,
           logType: logType,
           updateChangeLog: updateChangeLog,
-          force: true,
+          force: false,
         );
       } catch (e) {
         ggLog(red('❌ Failed to commit $repoName: $e'));

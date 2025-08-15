@@ -337,6 +337,7 @@ class AddCommand extends Command<dynamic> {
           directory: repoDir,
           ggLog: ggLog,
           message: 'kidney: changed references to git',
+          force: true,
         );
       } catch (e) {
         ggLog(red('Failed to commit $repoName: $e'));

@@ -35,8 +35,8 @@ class MockProcessRunner extends Mock {
   Future<ProcessResult> call(
     String executable,
     List<String> arguments, {
-    String? workingDirectory,
-  });
+      String? workingDirectory,
+    });
 }
 
 class MockGgDoCommit extends Mock implements gg.DoCommit {}
@@ -102,6 +102,7 @@ void main() {
           message: any(named: 'message'),
           logType: any(named: 'logType'),
           updateChangeLog: any(named: 'updateChangeLog'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
       createRunner(ggDoCommit: mockDoCommit);
@@ -275,6 +276,7 @@ void main() {
             message: any(named: 'message'),
             logType: any(named: 'logType'),
             updateChangeLog: any(named: 'updateChangeLog'),
+            force: any(named: 'force'),
           ),
         ).thenAnswer((_) async {});
         orgRunner.addCommand(
@@ -334,6 +336,7 @@ void main() {
           message: any(named: 'message'),
           logType: any(named: 'logType'),
           updateChangeLog: any(named: 'updateChangeLog'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
       invalidRunner.addCommand(
@@ -424,6 +427,7 @@ dev_dependencies:
             message: any(named: 'message'),
             logType: any(named: 'logType'),
             updateChangeLog: any(named: 'updateChangeLog'),
+            force: any(named: 'force'),
           ),
         ).thenAnswer((_) async {});
 
@@ -441,7 +445,7 @@ dev_dependencies:
         );
         expect(copiedFileInTicket.existsSync(), isTrue);
 
-        // Verify commit was called with the expected git message
+        // Verify commit was called with the expected git message and force=true
         verify(
           () => mockDoCommit.exec(
             directory: any(named: 'directory'),
@@ -449,6 +453,7 @@ dev_dependencies:
             message: 'kidney: changed references to git',
             logType: any(named: 'logType'),
             updateChangeLog: any(named: 'updateChangeLog'),
+            force: true,
           ),
         ).called(greaterThanOrEqualTo(1));
 
@@ -527,6 +532,7 @@ dev_dependencies:
           message: any(named: 'message'),
           logType: any(named: 'logType'),
           updateChangeLog: any(named: 'updateChangeLog'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
 
@@ -549,6 +555,7 @@ dev_dependencies:
           message: any(named: 'message'),
           logType: any(named: 'logType'),
           updateChangeLog: any(named: 'updateChangeLog'),
+          force: any(named: 'force'),
         ),
       );
     });
@@ -575,6 +582,7 @@ dev_dependencies:
             message: any(named: 'message'),
             logType: any(named: 'logType'),
             updateChangeLog: any(named: 'updateChangeLog'),
+            force: any(named: 'force'),
           ),
         ).thenAnswer((_) async {});
         createRunner(
@@ -655,6 +663,7 @@ dev_dependencies:
           message: any(named: 'message'),
           logType: any(named: 'logType'),
           updateChangeLog: any(named: 'updateChangeLog'),
+          force: any(named: 'force'),
         ),
       ).thenThrow(Exception('commit error'));
 
@@ -689,6 +698,7 @@ dev_dependencies:
           message: any(named: 'message'),
           logType: any(named: 'logType'),
           updateChangeLog: any(named: 'updateChangeLog'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
 
@@ -748,6 +758,7 @@ dev_dependencies:
             message: any(named: 'message'),
             logType: any(named: 'logType'),
             updateChangeLog: any(named: 'updateChangeLog'),
+            force: any(named: 'force'),
           ),
         ).thenAnswer((_) async {});
 
@@ -838,6 +849,7 @@ dev_dependencies:
             message: any(named: 'message'),
             logType: any(named: 'logType'),
             updateChangeLog: any(named: 'updateChangeLog'),
+            force: any(named: 'force'),
           ),
         ).thenAnswer((_) async {});
 
@@ -951,6 +963,7 @@ version: 1.0.0
             message: any(named: 'message'),
             logType: any(named: 'logType'),
             updateChangeLog: any(named: 'updateChangeLog'),
+            force: any(named: 'force'),
           ),
         ).thenAnswer((_) async {});
 
