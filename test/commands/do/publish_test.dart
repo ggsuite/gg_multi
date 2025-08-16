@@ -93,13 +93,10 @@ void main() {
           isA<Exception>().having(
             (e) => e.toString(),
             'message',
-            'Exception: Not inside a ticket folder',
+            'Exception: This command must be executed inside a '
+                'ticket folder.',
           ),
         ),
-      );
-      expect(
-        messages,
-        contains('This command must be executed inside a ticket folder.'),
       );
     });
 
@@ -224,7 +221,8 @@ void main() {
       await runner.run(['publish', '--force', '--input', ticketDir.path]);
       expect(
         messages,
-        contains('✅ All repositories in ticket TICKPB published successfully.'),
+        contains('✅ All repositories in ticket TICKPB published '
+            'successfully.'),
       );
       expect(
         messages.any((m) => m.contains('Publishing A in ticket TICKPB...')),
@@ -271,21 +269,15 @@ void main() {
           ),
         );
       await expectLater(
-        () async => await runner.run([
-          'publish',
-          '--force',
-          '--input',
-          ticketDir.path,
-        ]),
-        throwsA(isA<Exception>()),
-      );
-      expect(
-        messages.any(
-          (m) => m.contains(
-            'kidney_core can publish failed: Exception: can publish failed',
+        () async =>
+            await runner.run(['publish', '--force', '--input', ticketDir.path]),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('kidney_core can publish failed:'),
           ),
         ),
-        isTrue,
       );
     });
 
@@ -417,7 +409,8 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            '❌ Failed to publish the following repositories in ticket TICKPB:',
+            '❌ Failed to publish the following repositories in ticket '
+            'TICKPB:',
           ),
         ),
         isTrue,
@@ -438,7 +431,7 @@ void main() {
       expect(contentB['status'], StatusUtils.statusGitLocalized);
     });
 
-    test('aborts on gg do publish failure for specific repos', () async {
+    test('aborts on do publish failure for specific repos', () async {
       final mockGgDoMerge = MockGgDoMerge();
       final mockGgDoPublish = MockGgDoPublish();
       final mockGgDoCommit = MockGgDoCommit();
@@ -570,7 +563,8 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            '❌ Failed to publish the following repositories in ticket TICKPB:',
+            '❌ Failed to publish the following repositories in ticket '
+            'TICKPB:',
           ),
         ),
         isTrue,
@@ -715,8 +709,8 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            'Failed to unlocalize refs for B: Exception: '
-            'Unlocalize failed for B',
+            '❌ Failed to publish B: Exception: Failed to '
+            'unlocalize refs for B',
           ),
         ),
         isTrue,
@@ -724,16 +718,8 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            '❌ Failed to publish B: Exception: '
-            'Failed to review some repositories in ticket TICKPB',
-          ),
-        ),
-        isTrue,
-      );
-      expect(
-        messages.any(
-          (m) => m.contains(
-            '❌ Failed to publish the following repositories in ticket TICKPB:',
+            '❌ Failed to publish the following repositories in ticket '
+            'TICKPB:',
           ),
         ),
         isTrue,
@@ -874,7 +860,7 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            'Failed to commit B: Exception: Commit failed for B',
+            '❌ Failed to publish B: Exception: Failed to commit B',
           ),
         ),
         isTrue,
@@ -882,17 +868,8 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            '❌ Failed to publish B: Exception: Failed to '
-            'review some repositories in ticket TICKPB',
-          ),
-        ),
-        isTrue,
-      );
-      expect(
-        messages.any(
-          (m) => m.contains(
-            '❌ Failed to publish the following '
-            'repositories in ticket TICKPB:',
+            '❌ Failed to publish the following repositories in ticket '
+            'TICKPB:',
           ),
         ),
         isTrue,
@@ -1033,7 +1010,7 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            'Failed to push B: Exception: Push failed for B',
+            '❌ Failed to publish B: Exception: Failed to push B',
           ),
         ),
         isTrue,
@@ -1041,16 +1018,8 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            '❌ Failed to publish B: Exception: '
-            'Failed to review some repositories in ticket TICKPB',
-          ),
-        ),
-        isTrue,
-      );
-      expect(
-        messages.any(
-          (m) => m.contains(
-            '❌ Failed to publish the following repositories in ticket TICKPB:',
+            '❌ Failed to publish the following repositories in ticket '
+            'TICKPB:',
           ),
         ),
         isTrue,

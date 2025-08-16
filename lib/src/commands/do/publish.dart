@@ -118,8 +118,7 @@ class DoPublishCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      ggLog(red('This command must be executed inside a ticket folder.'));
-      throw Exception('Not inside a ticket folder');
+      throw Exception('This command must be executed inside a ticket folder.');
     }
 
     final ticketDir = Directory(ticketPath);
@@ -129,8 +128,7 @@ class DoPublishCommand extends DirCommand<void> {
     try {
       await _canPublishCommand.exec(directory: ticketDir, ggLog: ggLog);
     } catch (e) {
-      ggLog(red('kidney_core can publish failed: $e'));
-      throw Exception('kidney_core can publish failed');
+      throw Exception('kidney_core can publish failed: $e');
     }
 
     // Get sorted repos
@@ -182,9 +180,7 @@ class DoPublishCommand extends DirCommand<void> {
           await _unlocalizeRefs.get(directory: repoDir, ggLog: ggLog);
           ggLog(green('$repoName: unlocalized refs.'));
         } catch (e) {
-          ggLog(red('Failed to unlocalize refs for $repoName: $e'));
-          throw Exception('Failed to review some '
-              'repositories in ticket $ticketName');
+          throw Exception('Failed to unlocalize refs for $repoName: $e');
         }
 
         // Capture current repo version and propagate known versions
@@ -228,18 +224,14 @@ class DoPublishCommand extends DirCommand<void> {
             force: true,
           );
         } catch (e) {
-          ggLog(red('Failed to commit $repoName: $e'));
-          throw Exception('Failed to review some '
-              'repositories in ticket $ticketName');
+          throw Exception('Failed to commit $repoName: $e');
         }
 
         // Push
         try {
           await _ggDoPush.exec(directory: repoDir, ggLog: ggLog);
         } catch (e) {
-          ggLog(red('Failed to push $repoName: $e'));
-          throw Exception('Failed to review some '
-              'repositories in ticket $ticketName');
+          throw Exception('Failed to push $repoName: $e');
         }
 
         ggLog(green('$repoName: updated with new references.'));
@@ -263,18 +255,14 @@ class DoPublishCommand extends DirCommand<void> {
             force: true,
           );
         } catch (e) {
-          ggLog(red('Failed to commit $repoName: $e'));
-          throw Exception('Failed to review some '
-              'repositories in ticket $ticketName');
+          throw Exception('Failed to commit $repoName: $e');
         }
 
         // Push
         try {
           await _ggDoPush.exec(directory: repoDir, ggLog: ggLog);
         } catch (e) {
-          ggLog(red('Failed to push $repoName: $e'));
-          throw Exception('Failed to review some '
-              'repositories in ticket $ticketName');
+          throw Exception('Failed to push $repoName: $e');
         }
 
         ggLog(green('$repoName: merged and pushed.'));
