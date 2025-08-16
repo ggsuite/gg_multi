@@ -229,8 +229,8 @@ class AddCommand extends Command<dynamic> {
     }
     for (Node n in nodes.values) {
       Node? foundNode = findNode(
-          packageName: packageName,
-          nodes: n.dependencies,
+        packageName: packageName,
+        nodes: n.dependencies,
       );
       if (foundNode != null) {
         return foundNode;

@@ -70,7 +70,7 @@ class GitHubPlatform implements GitPlatform {
   }) async {
     client ??= http.Client();
     final uri = Uri.parse(
-        'https://api.github.com/orgs/$org/repos?per_page=100',
+      'https://api.github.com/orgs/$org/repos?per_page=100',
     );
     final response = await client.get(uri);
     if (response.statusCode != 200) {
@@ -79,8 +79,8 @@ class GitHubPlatform implements GitPlatform {
         '${response.body}',
       );
     }
-    final decoded = (jsonDecode(response.body) as List)
-        .cast<Map<String, dynamic>>();
+    final decoded =
+        (jsonDecode(response.body) as List).cast<Map<String, dynamic>>();
     return decoded
         .map(
           (m) => Repository(
@@ -156,14 +156,17 @@ class AzureDevOpsPlatform implements GitPlatform {
     final jsonOutput = result.stdout.toString();
     try {
       final repos = jsonDecode(jsonOutput) as List<dynamic>;
-      return repos.map((repo) {
-        final repoMap = repo as Map<String, dynamic>;
-        return Repository(
-          name: (repoMap['name'] ?? '').toString(),
-          httpsUrl: (repoMap['remoteUrl'] ?? '').toString(),
-          sshUrl: (repoMap['sshUrl'] ?? '').toString(),
-        );
-      }).where((r) => r.name.isNotEmpty && r.cloneUrl.isNotEmpty).toList();
+      return repos
+          .map((repo) {
+            final repoMap = repo as Map<String, dynamic>;
+            return Repository(
+              name: (repoMap['name'] ?? '').toString(),
+              httpsUrl: (repoMap['remoteUrl'] ?? '').toString(),
+              sshUrl: (repoMap['sshUrl'] ?? '').toString(),
+            );
+          })
+          .where((r) => r.name.isNotEmpty && r.cloneUrl.isNotEmpty)
+          .toList();
     } catch (e) {
       throw Exception('Failed to parse Azure CLI output: $e');
     }

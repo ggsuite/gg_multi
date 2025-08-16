@@ -124,12 +124,12 @@ void main() {
         // Build a fake repo list response with two repositories
         final repoList = <Repository>[
           const Repository(
-              name: 'repo1',
-              httpsUrl: 'https://github.com/myorg/repo1.git',
+            name: 'repo1',
+            httpsUrl: 'https://github.com/myorg/repo1.git',
           ),
           const Repository(
-              name: 'repo2',
-              httpsUrl: 'https://github.com/myorg/repo2.git',
+            name: 'repo2',
+            httpsUrl: 'https://github.com/myorg/repo2.git',
           ),
         ];
 
@@ -226,12 +226,12 @@ void main() {
 
         final repoList = <Repository>[
           const Repository(
-              name: 'repo1',
-              httpsUrl: 'https://dev.azure.com/myorg/myproj/repo1.git',
+            name: 'repo1',
+            httpsUrl: 'https://dev.azure.com/myorg/myproj/repo1.git',
           ),
           const Repository(
-              name: 'repo2',
-              httpsUrl: 'https://dev.azure.com/myorg/myproj/repo2.git',
+            name: 'repo2',
+            httpsUrl: 'https://dev.azure.com/myorg/myproj/repo2.git',
           ),
         ];
 

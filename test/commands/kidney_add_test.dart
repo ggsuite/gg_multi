@@ -36,8 +36,8 @@ class MockProcessRunner extends Mock {
   Future<ProcessResult> call(
     String executable,
     List<String> arguments, {
-      String? workingDirectory,
-    });
+    String? workingDirectory,
+  });
 }
 
 class MockGgDoCommit extends Mock implements gg.DoCommit {}
