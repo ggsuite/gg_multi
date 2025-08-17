@@ -146,7 +146,6 @@ class DoPublishCommand extends DirCommand<void> {
     final refVersions = <String, String>{};
 
     // Step 3-4: Iterate over each repository and perform merge and publish
-    final failedRepos = <String>[];
     for (final repo in subs) {
       final repoDir = repo.directory;
       final repoName = path.basename(repoDir.path);
@@ -175,129 +174,119 @@ class DoPublishCommand extends DirCommand<void> {
       }
 
       ggLog(yellow('Publishing $repoName in ticket $ticketName...'));
+
       try {
-        try {
-          await _unlocalizeRefs.get(directory: repoDir, ggLog: ggLog);
-          ggLog(green('$repoName: unlocalized refs.'));
-        } catch (e) {
-          throw Exception('Failed to unlocalize refs for $repoName: $e');
-        }
+        await _unlocalizeRefs.get(directory: repoDir, ggLog: ggLog);
+        ggLog(green('$repoName: unlocalized refs.'));
+      } catch (e) {
+        throw Exception('Failed to unlocalize refs for $repoName: $e');
+      }
 
-        // Capture current repo version and propagate known versions
-        try {
-          final version = await _getVersion.get(
-            directory: repoDir,
-            ggLog: (_) {},
-          );
-          if (version != null && version.isNotEmpty) {
-            refVersions[repoName] = version;
-          }
-        } catch (_) {
-          // Intentionally ignore errors to keep publish flow robust
+      // Capture current repo version and propagate known versions
+      try {
+        final version = await _getVersion.get(
+          directory: repoDir,
+        );
+        if (version != null && version.isNotEmpty) {
+          refVersions[repoName] = version;
         }
+      } catch (e) {
+        throw Exception('Failed to get version of $repoName: $e');
+      }
 
-        // Apply all known reference versions to this repo if it depends on them
-        for (final entry in refVersions.entries) {
-          final refName = entry.key;
-          final refVersion = entry.value;
+      // Apply all known reference versions to this repo if it depends on them
+      for (final entry in refVersions.entries) {
+        final refName = entry.key;
+        final refVersion = entry.value;
+        try {
           final spec = await _getRefVersion.get(
             directory: repoDir,
-            ggLog: (_) {},
             ref: refName,
           );
           if (spec != null) {
             await _setRefVersion.get(
               directory: repoDir,
-              ggLog: (_) {},
               ref: refName,
               version: '^$refVersion',
             );
           }
-        }
-
-        // Commit
-        try {
-          await _ggDoCommit.exec(
-            directory: repoDir,
-            ggLog: ggLog,
-            message: 'kidney: changed references to pub.dev',
-            force: true,
-          );
         } catch (e) {
-          throw Exception('Failed to commit $repoName: $e');
+          throw Exception('Failed to update version of $refName '
+              'in $repoName: $e');
         }
+      }
 
-        // Push
-        try {
-          await _ggDoPush.exec(directory: repoDir, ggLog: ggLog);
-        } catch (e) {
-          throw Exception('Failed to push $repoName: $e');
-        }
+      // Commit
+      try {
+        await _ggDoCommit.exec(
+          directory: repoDir,
+          ggLog: ggLog,
+          message: 'kidney: changed references to pub.dev',
+          force: true,
+        );
+      } catch (e) {
+        throw Exception('Failed to commit $repoName: $e');
+      }
 
-        ggLog(green('$repoName: updated with new references.'));
+      // Push
+      try {
+        await _ggDoPush.exec(directory: repoDir, ggLog: ggLog);
+      } catch (e) {
+        throw Exception('Failed to push $repoName: $e');
+      }
 
-        // Execute gg do merge
+      ggLog(green('$repoName: updated with new references.'));
+
+      // Execute gg do merge
+      try {
         await _ggDoMerge.exec(
           directory: repoDir,
           ggLog: ggLog,
           local: true,
           message: message,
         );
-        // Set status to merged
-        StatusUtils.setStatus(repoDir, StatusUtils.statusMerged, ggLog: ggLog);
+      } catch (e) {
+        throw Exception('Failed to merge $repoName: $e');
+      }
+      // Set status to merged
+      StatusUtils.setStatus(repoDir, StatusUtils.statusMerged, ggLog: ggLog);
 
-        // Commit
-        try {
-          await _ggDoCommit.exec(
-            directory: repoDir,
-            ggLog: ggLog,
-            message: 'kidney: set kidney status to merged',
-            force: true,
-          );
-        } catch (e) {
-          throw Exception('Failed to commit $repoName: $e');
-        }
+      // Commit
+      try {
+        await _ggDoCommit.exec(
+          directory: repoDir,
+          ggLog: ggLog,
+          message: 'kidney: set kidney status to merged',
+          force: true,
+        );
+      } catch (e) {
+        throw Exception('Failed to commit $repoName: $e');
+      }
 
-        // Push
-        try {
-          await _ggDoPush.exec(directory: repoDir, ggLog: ggLog);
-        } catch (e) {
-          throw Exception('Failed to push $repoName: $e');
-        }
+      // Push
+      try {
+        await _ggDoPush.exec(directory: repoDir, ggLog: ggLog);
+      } catch (e) {
+        throw Exception('Failed to push $repoName: $e');
+      }
 
-        ggLog(green('$repoName: merged and pushed.'));
+      ggLog(green('$repoName: merged and pushed.'));
 
-        // Execute gg do publish
+      // Execute gg do publish
+      try {
         await _ggDoPublish.exec(directory: repoDir, ggLog: ggLog);
-
-        ggLog(green('$repoName: published successfully.'));
-      } catch (e, s) {
-        ggLog(red('❌ Failed to publish $repoName: $e, $s'));
-        failedRepos.add(repoName);
+      } catch (e) {
+        throw Exception('Failed to publish $repoName: $e');
       }
+
+      ggLog(green('$repoName: published successfully.'));
     }
 
-    // Summarize the results
-    if (failedRepos.isEmpty) {
-      ggLog(
-        green(
-          '✅ All repositories in ticket $ticketName published successfully.',
-        ),
-      );
-    } else {
-      ggLog(
-        red(
-          '❌ Failed to publish the following '
-          'repositories in ticket $ticketName:',
-        ),
-      );
-      for (final repoName in failedRepos) {
-        ggLog(red(' - $repoName'));
-      }
-      throw Exception(
-        'Failed to publish some repositories in ticket $ticketName',
-      );
-    }
+    ggLog(
+      green(
+        '✅ All repositories in ticket $ticketName published successfully.',
+      ),
+    );
   }
 
   // Adds command line arguments
