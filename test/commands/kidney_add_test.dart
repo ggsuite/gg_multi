@@ -1,5 +1,6 @@
 // @license
-// Copyright (c) 2019 - 2025 Dr. Gabriel Gatzsche. All Rights Reserved.
+// Copyright (c) 2019 - 2025 Dr. Gabriel Gatzsche. All Rights
+// Reserved.
 //
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
@@ -25,7 +26,6 @@ import 'package:kidney_core/src/backend/repository.dart';
 
 import '../rm_console_colors_helper.dart';
 
-// Create a mock for GitCloner
 class MockGitCloner extends Mock implements GitHandler {}
 
 class MockGitHubPlatform extends Mock implements GitHubPlatform {}
@@ -42,10 +42,11 @@ class MockProcessRunner extends Mock {
 
 class MockGgDoCommit extends Mock implements gg.DoCommit {}
 
-// Mocks for relocalization helpers
 class MockSortedProcessingList extends Mock implements SortedProcessingList {}
 
 class MockUnlocalizeRefs extends Mock implements UnlocalizeRefs {}
+
+class MockGraph extends Mock implements Graph {}
 
 void main() {
   group('AddCommand', () {
@@ -971,6 +972,64 @@ version: 1.0.0
         expect(
           logMessages.any(
             (m) => m.contains('Re-localized all repositories in ticket TXYZ'),
+          ),
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      'logs when dependency graph building fails and continues',
+      () async {
+        // Prepare a master repo that is already present
+        const repoName = 'graphFailRepo';
+        final repoDir = Directory(path.join(masterWorkspacePath, repoName))
+          ..createSync(recursive: true);
+        File(path.join(repoDir.path, 'file.txt')).writeAsStringSync('x');
+
+        // Create a ticket workspace to trigger ticket mode
+        final ticketDir = Directory(
+          path.join(tempDir.path, kidneyTicketFolder, 'T-DFG'),
+        )..createSync(recursive: true);
+
+        // Mock graph to throw on get
+        final mockGraph = MockGraph();
+        when(
+          () => mockGraph.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenThrow(Exception('graph error'));
+
+        // Provide a harmless process runner for pub get
+        final mockProc = MockProcessRunner();
+        when(
+          () => mockProc(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, '', ''));
+
+        final cmdRunner = CommandRunner<void>('test', 'Add with graph mock')
+          ..addCommand(
+            AddCommand(
+              ggLog: ggLog,
+              gitCloner: mockGitCloner,
+              masterWorkspacePath: masterWorkspacePath,
+              executionPath: ticketDir.path,
+              processRunner: mockProc.call,
+              graph: mockGraph,
+            ),
+          );
+
+        await cmdRunner.run(['add', repoName]);
+
+        expect(
+          logMessages.any(
+            (m) => m.contains(
+              'Failed to build dependency graph: Exception: graph error',
+            ),
           ),
           isTrue,
         );
