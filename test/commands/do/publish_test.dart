@@ -1509,6 +1509,14 @@ void main() {
           () => mockGetVersion.get(directory: bDir),
         ).thenAnswer((_) async => '0.0.1');
 
+        // General stub first
+        when(
+          () => mockGetRefVersion.get(
+            directory: any(named: 'directory'),
+            ref: any(named: 'ref'),
+          ),
+        ).thenAnswer((_) async => null);
+
         // B depends on A -> return non-null spec for B/A
         when(
           () => mockGetRefVersion.get(
@@ -1516,13 +1524,6 @@ void main() {
             ref: 'A',
           ),
         ).thenAnswer((_) async => '^any');
-        // all other getRefVersion calls return null
-        when(
-          () => mockGetRefVersion.get(
-            directory: any(named: 'directory'),
-            ref: any(named: 'ref'),
-          ),
-        ).thenAnswer((_) async => null);
 
         // setRefVersion stub
         when(
@@ -1607,6 +1608,154 @@ void main() {
             version: '^1.2.3',
           ),
         ).called(1);
+      },
+    );
+
+    test(
+      'aborts when updating dependent ref version fails',
+      () async {
+        final mockGgDoMerge = MockGgDoMerge();
+        final mockGgDoPublish = MockGgDoPublish();
+        final mockGgDoCommit = MockGgDoCommit();
+        final mockGgDoPush = MockGgDoPush();
+        final mockUnlocalizeRefs = MockUnlocalizeRefs();
+        final mockSortedProcessingList = MockSortedProcessingList();
+        final mockProcessRunner = MockProcessRunner();
+        final mockCanPublishCommand = MockCanPublishCommand();
+        final mockGetVersion = MockGetVersion();
+        final mockSetRefVersion = MockSetRefVersion();
+        final mockGetRefVersion = MockGetRefVersion();
+
+        when(
+          () => mockCanPublishCommand.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        final aDir = Directory(path.join(ticketDir.path, 'A'));
+        final bDir = Directory(path.join(ticketDir.path, 'B'));
+        when(
+          () => mockSortedProcessingList.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            Node(name: 'A', directory: aDir, pubspec: Pubspec('A')),
+            Node(name: 'B', directory: bDir, pubspec: Pubspec('B')),
+          ],
+        );
+
+        when(
+          () => mockUnlocalizeRefs.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        // A has version 2.0.0, B depends on A
+        when(() => mockGetVersion.get(directory: aDir))
+            .thenAnswer((_) async => '2.0.0');
+        when(() => mockGetVersion.get(directory: bDir))
+            .thenAnswer((_) async => '0.1.0');
+
+        when(
+          () => mockGetRefVersion.get(
+            directory: any(named: 'directory'),
+            ref: any(named: 'ref'),
+          ),
+        ).thenAnswer((_) async => null);
+        when(
+          () => mockGetRefVersion.get(
+            directory: bDir,
+            ref: 'A',
+          ),
+        ).thenAnswer((_) async => '^any');
+
+        // setRefVersion throws -> should be caught and rethrown
+        when(
+          () => mockSetRefVersion.get(
+            directory: bDir,
+            ref: 'A',
+            version: '^2.0.0',
+          ),
+        ).thenThrow(Exception('update failed'));
+
+        // Harmless stubs for the rest
+        when(
+          () => mockGgDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => mockGgDoPush.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => mockGgDoMerge.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            automerge: any(named: 'automerge'),
+            local: any(named: 'local'),
+            message: any(named: 'message'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => mockGgDoPublish.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        for (final repo in ['A', 'B']) {
+          final f = File(path.join(ticketDir.path, repo, '.kidney_status'))
+            ..createSync(recursive: true);
+          f.writeAsStringSync(
+            jsonEncode({'status': StatusUtils.statusGitLocalized}),
+          );
+        }
+
+        final runner = CommandRunner<void>('test', 'do publish ticket')
+          ..addCommand(
+            DoPublishCommand(
+              ggLog: ggLog,
+              ggDoMerge: mockGgDoMerge,
+              ggDoPublish: mockGgDoPublish,
+              ggDoCommit: mockGgDoCommit,
+              ggDoPush: mockGgDoPush,
+              unlocalizeRefs: mockUnlocalizeRefs,
+              sortedProcessingList: mockSortedProcessingList,
+              processRunner: mockProcessRunner.call,
+              canPublishCommand: mockCanPublishCommand,
+              getVersionCommand: mockGetVersion,
+              setRefVersionCommand: mockSetRefVersion,
+              getRefVersionCommand: mockGetRefVersion,
+            ),
+          );
+
+        await expectLater(
+          () async => await runner.run([
+            'publish',
+            '--force',
+            '--input',
+            ticketDir.path,
+          ]),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('Failed to update version of A in B: '
+                  'Exception: update failed'),
+            ),
+          ),
+        );
       },
     );
   });
