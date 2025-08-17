@@ -15,6 +15,7 @@ import 'package:test/test.dart';
 
 import 'package:kidney_core/src/backend/add_repository_helper.dart';
 import 'package:kidney_core/src/backend/git_handler.dart';
+import 'package:kidney_core/src/backend/repository.dart';
 
 import '../rm_console_colors_helper.dart';
 
@@ -121,9 +122,15 @@ void main() {
             .thenAnswer((_) async {});
 
         // Build a fake repo list response with two repositories
-        final repoList = [
-          {'name': 'repo1', 'clone_url': 'https://github.com/myorg/repo1.git'},
-          {'name': 'repo2', 'clone_url': 'https://github.com/myorg/repo2.git'},
+        final repoList = <Repository>[
+          const Repository(
+            name: 'repo1',
+            httpsUrl: 'https://github.com/myorg/repo1.git',
+          ),
+          const Repository(
+            name: 'repo2',
+            httpsUrl: 'https://github.com/myorg/repo2.git',
+          ),
         ];
 
         final mockGitHubPlatform = MockGitHubPlatform();
@@ -145,8 +152,8 @@ void main() {
 
         // Verify cloneRepo called for each repository
         for (final repo in repoList) {
-          final repoName = repo['name']!;
-          final cloneUrl = repo['clone_url']!;
+          final repoName = repo.name;
+          final cloneUrl = repo.httpsUrl;
           final destination = path.join(workspacePath, repoName);
           verify(() => mockGitCloner.cloneRepo(cloneUrl, destination))
               .called(1);
@@ -168,7 +175,7 @@ void main() {
             any(),
             client: any(named: 'client'),
           ),
-        ).thenAnswer((_) async => []);
+        ).thenAnswer((_) async => <Repository>[]);
 
         await addRepositoryHelper(
           targetArg: targetArg,
@@ -217,15 +224,15 @@ void main() {
         when(() => mockGitCloner.cloneRepo(any(), any()))
             .thenAnswer((_) async {});
 
-        final repoList = [
-          {
-            'name': 'repo1',
-            'clone_url': 'https://dev.azure.com/myorg/myproj/repo1.git',
-          },
-          {
-            'name': 'repo2',
-            'clone_url': 'https://dev.azure.com/myorg/myproj/repo2.git',
-          },
+        final repoList = <Repository>[
+          const Repository(
+            name: 'repo1',
+            httpsUrl: 'https://dev.azure.com/myorg/myproj/repo1.git',
+          ),
+          const Repository(
+            name: 'repo2',
+            httpsUrl: 'https://dev.azure.com/myorg/myproj/repo2.git',
+          ),
         ];
 
         final mockAzurePlatform = MockAzurePlatform();
@@ -247,8 +254,8 @@ void main() {
         );
 
         for (final repo in repoList) {
-          final repoName = repo['name']!;
-          final cloneUrl = repo['clone_url']!;
+          final repoName = repo.name;
+          final cloneUrl = repo.httpsUrl;
           final destination = path.join(workspacePath, repoName);
           verify(() => mockGitCloner.cloneRepo(cloneUrl, destination))
               .called(1);
@@ -269,7 +276,7 @@ void main() {
             project: 'myproj',
             client: any(named: 'client'),
           ),
-        ).thenAnswer((_) async => []);
+        ).thenAnswer((_) async => <Repository>[]);
 
         await addRepositoryHelper(
           targetArg: targetArg,

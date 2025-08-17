@@ -1,10 +1,11 @@
 // @license
-// Copyright (c) 2025 Göran Hegenberg. All Rights Reserved.
+// Copyright (c) 2019 - 2025 Dr. Gabriel Gatzsche. All Rights Reserved.
 //
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
 
 import 'dart:io';
+
 import 'package:args/command_runner.dart';
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
@@ -37,6 +38,7 @@ void main() {
       final (subCommands, errorMessage) = await missingSubCommands(
         directory: commandsDir,
         command: canCommand,
+        additionalSubCommands: ['commit', 'push', 'publish', 'review'],
       );
 
       expect(subCommands, isEmpty, reason: errorMessage);
@@ -57,7 +59,8 @@ void main() {
       );
       expect(
         output.first,
-        contains('Checks if you can commit or push for the current ticket.'),
+        contains('Checks if you can commit, '
+            'push or review for the current ticket.'),
       );
     });
   });

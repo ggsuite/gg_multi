@@ -74,8 +74,10 @@ void main() {
     test('opens all repos under a ticket', () async {
       final tdir = Directory(path.join(tempRoot.path, kidneyTicketFolder, 'T2'))
         ..createSync(recursive: true);
-      Directory(path.join(tdir.path, 'A')).createSync();
-      Directory(path.join(tdir.path, 'B')).createSync();
+      final a = Directory(path.join(tdir.path, 'A'))..createSync();
+      File(path.join(a.path, 'pubspec.yaml')).writeAsStringSync('name: A');
+      final b = Directory(path.join(tdir.path, 'B'))..createSync();
+      File(path.join(b.path, 'pubspec.yaml')).writeAsStringSync('name: B');
       await runner.run(['code', 'T2']);
 
       // must have launched twice, once for each subdir
@@ -95,7 +97,8 @@ void main() {
     test('opens single repo when specified', () async {
       final tdir = Directory(path.join(tempRoot.path, kidneyTicketFolder, 'T3'))
         ..createSync(recursive: true);
-      Directory(path.join(tdir.path, 'MyRepo')).createSync();
+      final r = Directory(path.join(tdir.path, 'MyRepo'))..createSync();
+      File(path.join(r.path, 'pubspec.yaml')).writeAsStringSync('name: MyRepo');
       await runner.run(['code', 'T3/MyRepo']);
 
       expect(launched.length, 1);
@@ -120,7 +123,9 @@ void main() {
     test('opens single repo when specified with backslash separator', () async {
       final tdir = Directory(path.join(tempRoot.path, kidneyTicketFolder, 'T5'))
         ..createSync(recursive: true);
-      Directory(path.join(tdir.path, 'SlashRepo')).createSync();
+      final r = Directory(path.join(tdir.path, 'SlashRepo'))..createSync();
+      File(path.join(r.path, 'pubspec.yaml'))
+          .writeAsStringSync('name: SlashRepo');
       await runner.run(['code', 'T5\\SlashRepo']);
 
       expect(launched.length, 1);
@@ -170,8 +175,10 @@ void main() {
       final ticketDir = Directory(
         path.join(tempRoot.path, kidneyTicketFolder, 'T_noArgs'),
       )..createSync(recursive: true);
-      Directory(path.join(ticketDir.path, 'A')).createSync();
-      Directory(path.join(ticketDir.path, 'B')).createSync();
+      final a = Directory(path.join(ticketDir.path, 'A'))..createSync();
+      File(path.join(a.path, 'pubspec.yaml')).writeAsStringSync('name: A');
+      final b = Directory(path.join(ticketDir.path, 'B'))..createSync();
+      File(path.join(b.path, 'pubspec.yaml')).writeAsStringSync('name: B');
 
       // Here we must call CodeCommand with executionPath = ticketDir.path
       final localRunner = CommandRunner<void>('test', 'test')

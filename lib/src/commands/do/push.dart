@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:gg/gg.dart' as gg;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
+import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 
@@ -24,12 +25,18 @@ class DoPushCommand extends DirCommand<void> {
         'Pushes changes across all repositories in the current ticket.',
     gg.CanPush? ggCanPush,
     gg.DoPush? ggDoPush,
-  }) : _ggDoPush = ggDoPush ?? gg.DoPush(ggLog: ggLog) {
+    SortedProcessingList? sortedProcessingList,
+  })  : _ggDoPush = ggDoPush ?? gg.DoPush(ggLog: ggLog),
+        _sortedProcessingList =
+            sortedProcessingList ?? SortedProcessingList(ggLog: ggLog) {
     _addArgs();
   }
 
   /// Instance of gg DoPush to perform the push action
   final gg.DoPush _ggDoPush;
+
+  /// Sorted processing of repositories within a ticket
+  final SortedProcessingList _sortedProcessingList;
 
   @override
   Future<void> exec({
@@ -61,18 +68,22 @@ class DoPushCommand extends DirCommand<void> {
     final ticketDir = Directory(ticketPath);
     final ticketName = path.basename(ticketDir.path);
 
-    // Collect all repository directories in the ticket
-    final subs = ticketDir.listSync().whereType<Directory>().toList()
-      ..sort((a, b) => path.basename(a.path).compareTo(path.basename(b.path)));
+    // Collect all repository directories
+    // in the ticket using SortedProcessingList
+    final nodes = await _sortedProcessingList.get(
+      directory: ticketDir,
+      ggLog: ggLog,
+    );
 
-    if (subs.isEmpty) {
+    if (nodes.isEmpty) {
       ggLog(yellow('⚠️ No repositories found in ticket $ticketName.'));
       return;
     }
 
     // Iterate over each repository and perform the push
     final failedRepos = <String>[];
-    for (final repoDir in subs) {
+    for (final node in nodes) {
+      final repoDir = node.directory;
       final repoName = path.basename(repoDir.path);
       ggLog(yellow('Pushing $repoName in ticket $ticketName...'));
       try {

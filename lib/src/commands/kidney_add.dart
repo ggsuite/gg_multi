@@ -6,7 +6,9 @@
 
 import 'dart:io';
 import 'package:args/command_runner.dart';
+import 'package:gg/gg.dart' as gg;
 import 'package:gg_console_colors/gg_console_colors.dart';
+import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
@@ -16,6 +18,14 @@ import '../backend/add_repository_helper.dart';
 import '../backend/filesystem_utils.dart';
 import '../backend/git_platform.dart';
 import '../backend/workspace_utils.dart';
+import '../backend/status_utils.dart';
+
+/// Typedef for a process runner function.
+typedef ProcessRunner = Future<ProcessResult> Function(
+  String,
+  List<String>, {
+  String? workingDirectory,
+});
 
 /// Command to add a repository or all repositories from an organization.
 ///
@@ -23,9 +33,11 @@ import '../backend/workspace_utils.dart';
 /// compatible) or all git repos of the specified organization.
 /// It clones the project into the master workspace of the project root and-
 /// if executed from inside a ticket directory (./tickets/ticket)-it also
-/// copies the repository into this ticket directory.  When the repository is
-/// already present in the master workspace it is **not** cloned again but just
-/// copied into the ticket.
+/// copies the repository into this ticket directory.  After copying, it
+/// performs a ticket-wide two-pass re-localization:
+/// 1) Unlocalize all repositories in the ticket in sorted processing order.
+/// 2) Localize all repositories with --git, set git-localized status and
+///    commit changes per repository. Any error aborts the flow immediately.
 ///
 /// Use the "--force" flag to overwrite an existing repository in the master
 /// workspace.
@@ -35,14 +47,27 @@ class AddCommand extends Command<dynamic> {
     required this.ggLog,
     GitHandler? gitCloner,
     GitHubPlatform? gitHubPlatform,
+    ProcessRunner? processRunner,
     String? masterWorkspacePath,
     String? executionPath,
+    gg.DoCommit? ggDoCommit,
+    SortedProcessingList? sortedProcessingList,
+    UnlocalizeRefs? unlocalizeRefs,
+    LocalizeRefs? localizeRefs,
+    Graph? graph,
     // coverage:ignore-start
   })  : gitCloner = gitCloner ?? GitHandler(),
         gitHubPlatform = gitHubPlatform ?? GitHubPlatform(),
+        processRunner = processRunner ?? Process.run,
         executionPath = executionPath ?? Directory.current.path,
         masterWorkspacePath =
-            masterWorkspacePath ?? WorkspaceUtils.defaultMasterWorkspacePath()
+            masterWorkspacePath ?? WorkspaceUtils.defaultMasterWorkspacePath(),
+        _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
+        _sortedProcessingList =
+            sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
+        _unlocalizeRefs = unlocalizeRefs ?? UnlocalizeRefs(ggLog: ggLog),
+        _localizeRefs = localizeRefs ?? LocalizeRefs(ggLog: ggLog),
+        _graph = graph ?? Graph(ggLog: ggLog)
   // coverage:ignore-end
   {
     argParser.addFlag(
@@ -62,11 +87,29 @@ class AddCommand extends Command<dynamic> {
   /// Optional GitHub platform instance to handle GitHub-specific operations.
   final GitHubPlatform? gitHubPlatform;
 
+  /// Instance to handle running general processes.
+  final ProcessRunner processRunner;
+
   /// Resolved master workspace path.
   final String masterWorkspacePath;
 
   /// The path from which the command was executed.
   final String executionPath;
+
+  /// gg do commit instance used after localization with --git in ticket copies.
+  final gg.DoCommit _ggDoCommit;
+
+  /// Sorted processing helper for ticket-wide iteration.
+  final SortedProcessingList _sortedProcessingList;
+
+  /// Unlocalize refs helper.
+  final UnlocalizeRefs _unlocalizeRefs;
+
+  /// Localize refs helper.
+  final LocalizeRefs _localizeRefs;
+
+  /// Graph helper for determining nodes between endpoints.
+  final Graph _graph;
 
   @override
   String get name => 'add';
@@ -74,17 +117,43 @@ class AddCommand extends Command<dynamic> {
   @override
   String get description => 'Adds the specified git repo or all git repos '
       'from the specified organization into the master workspace-and if run '
-      'from inside a ticket, also into that ticket workspace.';
+      'from inside a ticket, also into that ticket workspace. After adding, '
+      'all repositories in the ticket are unlocalized and then localized '
+      'with --git in two passes.';
 
   @override
   Future<void> run() async {
     if (argResults!.rest.isEmpty) {
       throw UsageException('Missing target parameter.', usage);
     }
+
     final targets = argResults!.rest;
     final bool force = argResults!['force'] as bool;
     final String? ticketPath = WorkspaceUtils.detectTicketPath(executionPath);
+
+    // If not in a ticket workspace: keep original behaviour (no graph logic).
+    if (ticketPath == null) {
+      for (final targetArg in targets) {
+        await addRepositoryHelper(
+          targetArg: targetArg,
+          ggLog: ggLog,
+          gitCloner: gitCloner,
+          gitHubPlatform: gitHubPlatform,
+          workspacePath: masterWorkspacePath,
+          force: force,
+          logIfAlreadyAdded: true,
+        );
+      }
+      return;
+    }
+
+    // Ticket mode: ensure requested repos are present in master first.
+    final requestedRepoNames = <String>{};
     for (final targetArg in targets) {
+      final repoName = extractRepoName(targetArg);
+      if (repoName != null) {
+        requestedRepoNames.add(repoName);
+      }
       await addRepositoryHelper(
         targetArg: targetArg,
         ggLog: ggLog,
@@ -92,31 +161,92 @@ class AddCommand extends Command<dynamic> {
         gitHubPlatform: gitHubPlatform,
         workspacePath: masterWorkspacePath,
         force: force,
-        logIfAlreadyAdded: ticketPath == null,
-        onRepoAdded: ticketPath == null
-            ? null
-            : (String repoName) async {
-                await _addRepoToTicket(
-                  repoName: repoName,
-                  ticketPath: ticketPath,
-                );
-              },
+        // When inside a ticket we do not spam "already added" messages.
+        logIfAlreadyAdded: false,
+        // We intentionally do not copy here; we copy after graph processing.
       );
     }
+
+    // Build the dependency graph of the master workspace and compute
+    // all nodes between the provided endpoints.
+    Map<String, Node> allNodes = const {};
+    try {
+      allNodes = await _graph.get(
+        directory: Directory(masterWorkspacePath),
+        ggLog: ggLog,
+      );
+    } catch (e) {
+      ggLog(
+        red('Failed to build dependency graph: $e'),
+      );
+      allNodes = const {};
+    }
+
+    final endpoints = <Node>[];
+    for (final name in requestedRepoNames) {
+      final node = findNode(nodes: allNodes, packageName: name);
+      if (node != null) {
+        endpoints.add(node);
+      }
+    }
+
+    final betweenNodes = endpoints.length >= 2
+        ? _graph.getNodesBetween(allNodes, endpoints)
+        : <Node>[];
+
+    final finalToCopy = <String>{
+      ...requestedRepoNames,
+      ...betweenNodes.map((n) => n.name),
+    };
+
+    // Copy all required repositories into the ticket.
+    for (final repoName in finalToCopy) {
+      await _copyRepoToTicket(
+        repoName: repoName,
+        ticketPath: ticketPath,
+      );
+    }
+
+    // Finally perform a single re-localization pass for the whole ticket.
+    await _relocalizeAllReposInTicket(Directory(ticketPath));
   }
 
   // ---------------------------------------------------------------------------
   // Ticket support helpers ----------------------------------------------------
 
-  /// Copies the repository from the master workspace to the [ticketPath].  If
-  /// the repository already exists in the ticket workspace, nothing happens.
-  Future<void> _addRepoToTicket({
+  // ...........................................................................
+  /// Find a node by package name in the dependency graph
+  Node? findNode({
+    required String packageName,
+    required Map<String, Node> nodes,
+  }) {
+    if (nodes.isEmpty) {
+      return null;
+    }
+    Node? node = nodes[packageName];
+    if (node != null) {
+      return node;
+    }
+    for (Node n in nodes.values) {
+      Node? foundNode = findNode(
+        packageName: packageName,
+        nodes: n.dependencies,
+      );
+      if (foundNode != null) {
+        return foundNode;
+      }
+    }
+    return null;
+  }
+
+  /// Copies the repository from the master workspace to the [ticketPath] but
+  /// does not trigger a ticket-wide relocalization.
+  Future<void> _copyRepoToTicket({
     required String repoName,
     required String ticketPath,
   }) async {
     final srcDir = Directory(path.join(masterWorkspacePath, repoName));
     if (!srcDir.existsSync()) {
-      // Should never happen - repo must be present in master at this point.
       ggLog(red('Repository $repoName not found in master workspace.'));
       return;
     }
@@ -127,22 +257,97 @@ class AddCommand extends Command<dynamic> {
       return;
     }
 
+    // Copy from master into ticket --------------------------------------------
     await copyDirectory(srcDir, destDir);
 
     final String ticketName = path.basename(ticketPath);
-    // Checkout a branch named as the ticket
+
+    // Checkout a branch named as the ticket -----------------------------------
     try {
       await gitCloner.checkoutBranch(ticketName, destDir.path);
     } catch (e) {
       ggLog(red('Failed to checkout branch $ticketName: $e'));
     }
-    // Run gg_localize_refs localize-refs in the repo
-    try {
-      final localizeCmd = LocalizeRefs(ggLog: ggLog);
-      await localizeCmd.get(directory: destDir, ggLog: ggLog);
-    } catch (e) {
-      ggLog(red('Failed to localize refs for $ticketName: $e'));
+
+    // Run dart pub get in the repo --------------------------------------------
+    final result = await processRunner(
+      'dart',
+      ['pub', 'get'],
+      workingDirectory: destDir.path,
+    );
+    if (result.exitCode == 0) {
+      ggLog(green('Executed dart pub get in $repoName.'));
+    } else {
+      ggLog(
+        red(
+          'Failed to execute dart pub get in $repoName: ${result.stderr}',
+        ),
+      );
     }
+
     ggLog(green('Added repository $repoName to ticket workspace.'));
+  }
+
+  /// Performs two iterations over all repositories in the ticket in
+  /// SortedProcessingList order:
+  /// 1) Unlocalize
+  /// 2) Localize with --git, set status to git-localized, commit
+  Future<void> _relocalizeAllReposInTicket(Directory ticketDir) async {
+    final ticketName = path.basename(ticketDir.path);
+
+    // Collect repositories in processing order.
+    final nodes = await _sortedProcessingList.get(
+      directory: ticketDir,
+      ggLog: ggLog,
+    );
+
+    if (nodes.isEmpty) {
+      ggLog(yellow('⚠️ No repositories found in ticket $ticketName.'));
+      return;
+    }
+
+    // Iteration 1: Unlocalize all ---------------------------------------------
+    for (final node in nodes) {
+      final repoDir = node.directory;
+      final repoName = path.basename(repoDir.path);
+      try {
+        await _unlocalizeRefs.get(directory: repoDir, ggLog: ggLog);
+      } catch (e) {
+        ggLog(red('Failed to unlocalize refs for $repoName: $e'));
+        throw Exception('Failed to relocalize ticket $ticketName');
+      }
+    }
+
+    // Iteration 2: Localize with --git all ------------------------------------
+    for (final node in nodes) {
+      final repoDir = node.directory;
+      final repoName = path.basename(repoDir.path);
+      try {
+        await _localizeRefs.get(directory: repoDir, ggLog: ggLog);
+        StatusUtils.setStatus(
+          repoDir,
+          StatusUtils.statusLocalized,
+          ggLog: ggLog,
+        );
+      } catch (e) {
+        ggLog(red('Failed to localize refs for $repoName: $e'));
+        throw Exception('Failed to relocalize ticket $ticketName');
+      }
+
+      // Commit changes per repository -----------------------------------------
+      try {
+        await _ggDoCommit.exec(
+          directory: repoDir,
+          ggLog: ggLog,
+          message: 'kidney: changed references to git',
+          force: true,
+        );
+      } catch (e) {
+        ggLog(red('Failed to commit $repoName: $e'));
+        throw Exception('Failed to relocalize ticket $ticketName');
+      }
+    }
+
+    ggLog(green('✅ Re-localized all repositories in ticket $ticketName.'));
   }
 }

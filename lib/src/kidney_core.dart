@@ -13,7 +13,6 @@ import './commands/kidney_remove.dart';
 import './commands/kidney_init.dart';
 import './commands/kidney_create.dart';
 import './commands/kidney_code.dart';
-import './commands/kidney_review.dart';
 import './commands/kidney_can.dart';
 import './commands/kidney_do.dart';
 
@@ -28,7 +27,6 @@ class KidneyCore extends Command<dynamic> {
     addSubcommand(InitCommand(ggLog: ggLog));
     addSubcommand(CreateCommand(ggLog: ggLog));
     addSubcommand(CodeCommand(ggLog: ggLog));
-    addSubcommand(ReviewCommand(ggLog: ggLog));
     addSubcommand(Can(ggLog: ggLog));
     addSubcommand(Do(ggLog: ggLog));
   }

@@ -38,8 +38,11 @@ void main() {
     tempDir = Directory.systemTemp.createTempSync('do_commit_ticket_test_');
     ticketsDir = Directory(path.join(tempDir.path, 'tickets'))..createSync();
     ticketDir = Directory(path.join(ticketsDir.path, 'TICKC'))..createSync();
-    Directory(path.join(ticketDir.path, 'A')).createSync();
-    Directory(path.join(ticketDir.path, 'B')).createSync();
+    // Create repositories with pubspec.yaml for SortedProcessingList
+    final aDir = Directory(path.join(ticketDir.path, 'A'))..createSync();
+    File(path.join(aDir.path, 'pubspec.yaml')).writeAsStringSync('name: A');
+    final bDir = Directory(path.join(ticketDir.path, 'B'))..createSync();
+    File(path.join(bDir.path, 'pubspec.yaml')).writeAsStringSync('name: B');
   });
 
   tearDown(() {
@@ -106,6 +109,7 @@ void main() {
           message: any(named: 'message'),
           logType: any(named: 'logType'),
           updateChangeLog: any(named: 'updateChangeLog'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
 
@@ -152,6 +156,7 @@ void main() {
           message: any(named: 'message'),
           logType: any(named: 'logType'),
           updateChangeLog: any(named: 'updateChangeLog'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((invocation) async {
         final repoDir = invocation.namedArguments[#directory] as Directory;

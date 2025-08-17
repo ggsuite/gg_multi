@@ -22,6 +22,10 @@
 - Add tests for command add organization
 - add tests for url parser
 - Add tests for azure urls
+- Add tests for can publish
+- Add do execute command
+- add tests for kidney add
+- add tests for do publish
 
 ### Changed
 
@@ -39,6 +43,9 @@
 - change parameter projectName to project\_name in .organizations json file
 - extractOrganizationFromUrl works with azure dev ops urls
 - extract repo name of azure dev ops urls correctly
+- Write kidney\_status file
+- Abort directly if a command fails in do review
+- Execute gg do commit after localizing in kidney add
 
 ### Removed
 
@@ -46,3 +53,4 @@
 - remove command works also for tickets
 - Remove redundant code in appendOrganization
 - Remove prints
+- Remove gh pr create from review

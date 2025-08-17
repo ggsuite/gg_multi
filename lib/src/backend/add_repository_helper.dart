@@ -14,6 +14,7 @@ import 'git_handler.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'git_platform.dart';
 import 'organization_utils.dart';
+import 'repository.dart';
 
 /// Helper function to add a repository given a target argument.
 /// It supports various formats like URLs, SSH links, and plain names.
@@ -149,20 +150,17 @@ Future<void> addRepositoryHelper({
         parsedUrl.platformType == 'github') {
       // Treat as organization URL ---------------------------------------------
 
-      final List<Map<String, dynamic>> reposJson =
+      final List<Repository> repos =
           await gitHubPlatform.fetchOrgRepos(parsedUrl.org!);
-      if (reposJson.isEmpty) {
+      if (repos.isEmpty) {
         ggLog(
           yellow('No repositories found for organization '
               '${parsedUrl.org!}'),
         );
         return;
       }
-      for (final repoJson in reposJson) {
-        final repoName = repoJson['name'] as String?;
-        final cloneUrl = repoJson['clone_url'] as String?;
-        if (repoName == null || cloneUrl == null) continue;
-        await attemptClone(cloneUrl, repoName);
+      for (final repo in repos) {
+        await attemptClone(repo.cloneUrl, repo.name);
       }
     } else if (parsedUrl.repo == null &&
         parsedUrl.org != null &&
@@ -170,23 +168,19 @@ Future<void> addRepositoryHelper({
         parsedUrl.project != null) {
       // Treat as Azure organization URL ---------------------------------------
       try {
-        final List<Map<String, dynamic>> reposJson =
-            await azureDevOpsPlatform.fetchOrgRepos(
+        final List<Repository> repos = await azureDevOpsPlatform.fetchOrgRepos(
           parsedUrl.org!,
           project: parsedUrl.project,
         );
-        if (reposJson.isEmpty) {
+        if (repos.isEmpty) {
           ggLog(
             yellow('No repositories found for organization '
                 '${parsedUrl.org!} and project ${parsedUrl.project}'),
           );
           return;
         }
-        for (final repoJson in reposJson) {
-          final repoName = repoJson['name'] as String?;
-          final cloneUrl = repoJson['clone_url'] as String?;
-          if (repoName == null || cloneUrl == null) continue;
-          await attemptClone(cloneUrl, repoName);
+        for (final repo in repos) {
+          await attemptClone(repo.cloneUrl, repo.name);
         }
       } catch (e) {
         if (e.toString().contains('Bitte installiere die Azure CLI')) {

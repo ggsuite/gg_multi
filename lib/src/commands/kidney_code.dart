@@ -8,6 +8,7 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
+import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 import '../backend/constants.dart';
@@ -24,11 +25,14 @@ class CodeCommand extends Command<void> {
     String? executionPath,
     DirectoryFactory? directoryFactory,
     VSCodeLauncher? launcher,
+    SortedProcessingList? sortedProcessingList,
     // coverage:ignore-start
   })  : workspacePath = rootPath ?? WorkspaceUtils.defaultKidneyWorkspacePath(),
         _executionPath = executionPath ?? Directory.current.path,
         _dirFactory = directoryFactory ?? Directory.new,
-        _launcher = launcher ?? VSCodeLauncher();
+        _launcher = launcher ?? VSCodeLauncher(),
+        _sortedProcessingList =
+            sortedProcessingList ?? SortedProcessingList(ggLog: ggLog);
   // coverage:ignore-end
 
   /// The log function.
@@ -45,6 +49,9 @@ class CodeCommand extends Command<void> {
 
   /// Responsible for launching VS Code.
   final VSCodeLauncher _launcher;
+
+  /// Sorted processing helper for determining repositories in a ticket
+  final SortedProcessingList _sortedProcessingList;
 
   String _rel(String absPath) => p.relative(absPath, from: _executionPath);
 
@@ -109,17 +116,22 @@ class CodeCommand extends Command<void> {
 
   /// Opens all repo directories inside [ticketDir] in VS Code
   Future<void> _openAllReposInTicket(Directory ticketDir) async {
-    final subs = ticketDir.listSync().whereType<Directory>().toList()
-      ..sort((a, b) => a.path.compareTo(b.path));
-    if (subs.isEmpty) {
+    // Use SortedProcessingList to determine repositories
+    final nodes = await _sortedProcessingList.get(
+      directory: ticketDir,
+      ggLog: ggLog,
+    );
+
+    if (nodes.isEmpty) {
       ggLog(
         red('No repositories found under ticket '
             '${path.basename(ticketDir.path)}.'),
       );
       return;
     }
-    for (final d in subs) {
-      await _openInVSCode(d);
+
+    for (final node in nodes) {
+      await _openInVSCode(node.directory);
     }
   }
 

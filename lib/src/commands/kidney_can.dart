@@ -8,6 +8,8 @@ import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:kidney_core/src/commands/can/commit.dart';
 import 'package:kidney_core/src/commands/can/push.dart';
+import 'package:kidney_core/src/commands/can/publish.dart';
+import 'package:kidney_core/src/commands/can/review.dart';
 
 /// Commands to check if actions can be performed for the current ticket
 class Can extends Command<void> {
@@ -23,12 +25,14 @@ class Can extends Command<void> {
   String get name => 'can';
 
   @override
-  String get description => 'Checks if you can commit '
-      'or push for the current ticket.';
+  String get description => 'Checks if you can commit, '
+      'push or review for the current ticket.';
 
   // ...........................................................................
   void _initSubCommands() {
     addSubcommand(CanCommitCommand(ggLog: ggLog));
     addSubcommand(CanPushCommand(ggLog: ggLog));
+    addSubcommand(CanPublishCommand(ggLog: ggLog));
+    addSubcommand(CanReviewCommand(ggLog: ggLog));
   }
 }
