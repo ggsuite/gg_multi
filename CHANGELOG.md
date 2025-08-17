@@ -25,6 +25,7 @@
 - Add tests for can publish
 - Add do execute command
 - add tests for kidney add
+- add tests for do publish
 
 ### Changed
 

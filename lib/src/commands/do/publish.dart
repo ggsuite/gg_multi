@@ -229,11 +229,7 @@ class DoPublishCommand extends DirCommand<void> {
       }
 
       // Push
-      try {
-        await _ggDoPush.exec(directory: repoDir, ggLog: ggLog);
-      } catch (e) {
-        throw Exception('Failed to push $repoName: $e');
-      }
+      await _ggDoPush.exec(directory: repoDir, ggLog: ggLog);
 
       ggLog(green('$repoName: updated with new references.'));
 
@@ -264,11 +260,7 @@ class DoPublishCommand extends DirCommand<void> {
       }
 
       // Push
-      try {
-        await _ggDoPush.exec(directory: repoDir, ggLog: ggLog);
-      } catch (e) {
-        throw Exception('Failed to push $repoName: $e');
-      }
+      await _ggDoPush.exec(directory: repoDir, ggLog: ggLog);
 
       ggLog(green('$repoName: merged and pushed.'));
 

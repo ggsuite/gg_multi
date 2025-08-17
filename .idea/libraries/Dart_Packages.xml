@@ -145,7 +145,7 @@
         <entry key="gg">
           <value>
             <list>
-              <option value="$USER_HOME$/AppData/Local/Pub/Cache/git/gg-eb497e3f91fb887cd809a5fa42ebe93755f122ba//lib" />
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/git/gg-1f4a92761b332341589709db4fd68e084cbed115//lib" />
             </list>
           </value>
         </entry>
@@ -187,7 +187,7 @@
         <entry key="gg_git">
           <value>
             <list>
-              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/gg_git-3.0.2/lib" />
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/gg_git-3.0.6/lib" />
             </list>
           </value>
         </entry>
@@ -215,14 +215,14 @@
         <entry key="gg_local_package_dependencies">
           <value>
             <list>
-              <option value="$USER_HOME$/AppData/Local/Pub/Cache/git/gg_local_package_dependencies-11d932d814f74092747e84e8970af57dd62efdb0//lib" />
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/git/gg_local_package_dependencies-91563cbd4455c3714c2017884bec58f093894713//lib" />
             </list>
           </value>
         </entry>
         <entry key="gg_localize_refs">
           <value>
             <list>
-              <option value="$USER_HOME$/AppData/Local/Pub/Cache/git/gg_localize_refs-37a1ccc242aea661133057c0e02b10562c763df2//lib" />
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/git/gg_localize_refs-a27e6815b2f2a9d5ab7a2987fe4e948f4e9ec94b//lib" />
             </list>
           </value>
         </entry>
@@ -642,9 +642,9 @@
       </option>
     </properties>
     <CLASSES>
-      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/git/gg-eb497e3f91fb887cd809a5fa42ebe93755f122ba//lib" />
-      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/git/gg_local_package_dependencies-11d932d814f74092747e84e8970af57dd62efdb0//lib" />
-      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/git/gg_localize_refs-37a1ccc242aea661133057c0e02b10562c763df2//lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/git/gg-1f4a92761b332341589709db4fd68e084cbed115//lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/git/gg_local_package_dependencies-91563cbd4455c3714c2017884bec58f093894713//lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/git/gg_localize_refs-a27e6815b2f2a9d5ab7a2987fe4e948f4e9ec94b//lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/_fe_analyzer_shared-88.0.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/analyzer-8.1.1/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/args-2.7.0/lib" />
@@ -670,7 +670,7 @@
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/gg_changelog-1.0.12/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/gg_console_colors-2.1.5/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/gg_direct_json-2.0.1/lib" />
-      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/gg_git-3.0.2/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/gg_git-3.0.6/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/gg_hash-1.0.4/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/gg_is_flutter-1.0.7/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/gg_is_github-1.0.6/lib" />
