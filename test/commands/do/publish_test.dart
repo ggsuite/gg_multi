@@ -1,5 +1,6 @@
 // @license
-// Copyright (c) 2019 - 2025 Dr. Gabriel Gatzsche. All Rights Reserved.
+// Copyright (c) 2019 - 2025 Dr. Gabriel Gatzsche. All Rights
+// Reserved.
 //
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
@@ -41,6 +42,13 @@ class MockCanPublishCommand extends Mock implements CanPublishCommand {}
 
 /// Mock for UnlocalizeRefs
 class MockUnlocalizeRefs extends Mock implements UnlocalizeRefs {}
+
+/// Mocks for version/ref helpers
+class MockGetVersion extends Mock implements GetVersion {}
+
+class MockSetRefVersion extends Mock implements SetRefVersion {}
+
+class MockGetRefVersion extends Mock implements GetRefVersion {}
 
 class FakeDirectory extends Fake implements Directory {}
 
@@ -125,6 +133,9 @@ void main() {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       final mockCanPublishCommand = MockCanPublishCommand();
+      final mockGetVersion = MockGetVersion();
+      final mockSetRefVersion = MockSetRefVersion();
+      final mockGetRefVersion = MockGetRefVersion();
 
       when(
         () => mockCanPublishCommand.exec(
@@ -194,6 +205,27 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
+      when(
+        () => mockGetVersion.get(
+          directory: any(named: 'directory'),
+        ),
+      ).thenAnswer((_) async => '1.0.0');
+
+      when(
+        () => mockGetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+        ),
+      ).thenAnswer((_) async => null);
+
+      when(
+        () => mockSetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+          version: any(named: 'version'),
+        ),
+      ).thenAnswer((_) async {});
+
       // Set initial status to git-localized for each repo
       for (final repoName in ['A', 'B']) {
         final statusFile =
@@ -216,6 +248,9 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
+            getVersionCommand: mockGetVersion,
+            setRefVersionCommand: mockSetRefVersion,
+            getRefVersionCommand: mockGetRefVersion,
           ),
         );
       await runner.run(['publish', '--force', '--input', ticketDir.path]);
@@ -249,6 +284,9 @@ void main() {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       final mockCanPublishCommand = MockCanPublishCommand();
+      final mockGetVersion = MockGetVersion();
+      final mockSetRefVersion = MockSetRefVersion();
+      final mockGetRefVersion = MockGetRefVersion();
 
       when(
         () => mockCanPublishCommand.exec(
@@ -256,6 +294,25 @@ void main() {
           ggLog: any(named: 'ggLog'),
         ),
       ).thenThrow(Exception('can publish failed'));
+
+      when(
+        () => mockGetVersion.get(
+          directory: any(named: 'directory'),
+        ),
+      ).thenAnswer((_) async => '1.0.0');
+      when(
+        () => mockGetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => mockSetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+          version: any(named: 'version'),
+        ),
+      ).thenAnswer((_) async {});
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
@@ -266,6 +323,9 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
+            getVersionCommand: mockGetVersion,
+            setRefVersionCommand: mockSetRefVersion,
+            getRefVersionCommand: mockGetRefVersion,
           ),
         );
       await expectLater(
@@ -290,6 +350,9 @@ void main() {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       final mockCanPublishCommand = MockCanPublishCommand();
+      final mockGetVersion = MockGetVersion();
+      final mockSetRefVersion = MockSetRefVersion();
+      final mockGetRefVersion = MockGetRefVersion();
 
       when(
         () => mockCanPublishCommand.exec(
@@ -365,6 +428,25 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
+      when(
+        () => mockGetVersion.get(
+          directory: any(named: 'directory'),
+        ),
+      ).thenAnswer((_) async => '1.0.0');
+      when(
+        () => mockGetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => mockSetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+          version: any(named: 'version'),
+        ),
+      ).thenAnswer((_) async {});
+
       // Set initial status to git-localized for each repo
       for (final repoName in ['A', 'B']) {
         final statusFile =
@@ -387,6 +469,9 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
+            getVersionCommand: mockGetVersion,
+            setRefVersionCommand: mockSetRefVersion,
+            getRefVersionCommand: mockGetRefVersion,
           ),
         );
       await expectLater(
@@ -396,26 +481,15 @@ void main() {
           '--input',
           ticketDir.path,
         ]),
-        throwsA(isA<Exception>()),
-      );
-      expect(
-        messages.any(
-          (m) => m.contains(
-            '❌ Failed to publish B: Exception: Merge failed for B',
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Exception: Failed to merge B: Exception: Merge '
+                'failed for B'),
           ),
         ),
-        isTrue,
       );
-      expect(
-        messages.any(
-          (m) => m.contains(
-            '❌ Failed to publish the following repositories in ticket '
-            'TICKPB:',
-          ),
-        ),
-        isTrue,
-      );
-      expect(messages.any((m) => m.contains(' - B')), isTrue);
 
       // Verify status for A was updated to merged, but not for B
       final statusFileA =
@@ -440,6 +514,9 @@ void main() {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       final mockCanPublishCommand = MockCanPublishCommand();
+      final mockGetVersion = MockGetVersion();
+      final mockSetRefVersion = MockSetRefVersion();
+      final mockGetRefVersion = MockGetRefVersion();
 
       when(
         () => mockCanPublishCommand.exec(
@@ -515,15 +592,30 @@ void main() {
         return Future.value();
       });
 
+      when(
+        () => mockGetVersion.get(
+          directory: any(named: 'directory'),
+        ),
+      ).thenAnswer((_) async => '1.0.0');
+      when(
+        () => mockGetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => mockSetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+          version: any(named: 'version'),
+        ),
+      ).thenAnswer((_) async {});
+
       // Set initial status to git-localized for each repo
       for (final repoName in ['A', 'B']) {
-        final statusFile = File(
-          path.join(
-            ticketDir.path,
-            repoName,
-            '.kidney_status',
-          ),
-        )..createSync(recursive: true);
+        final statusFile =
+            File(path.join(ticketDir.path, repoName, '.kidney_status'))
+              ..createSync(recursive: true);
         statusFile.writeAsStringSync(
           jsonEncode({'status': StatusUtils.statusGitLocalized}),
         );
@@ -541,6 +633,9 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
+            getVersionCommand: mockGetVersion,
+            setRefVersionCommand: mockSetRefVersion,
+            getRefVersionCommand: mockGetRefVersion,
           ),
         );
       await expectLater(
@@ -550,26 +645,15 @@ void main() {
           '--input',
           ticketDir.path,
         ]),
-        throwsA(isA<Exception>()),
-      );
-      expect(
-        messages.any(
-          (m) => m.contains(
-            '❌ Failed to publish B: Exception: Publish failed for B',
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Exception: Failed to publish B: Exception: '
+                'Publish failed for B'),
           ),
         ),
-        isTrue,
       );
-      expect(
-        messages.any(
-          (m) => m.contains(
-            '❌ Failed to publish the following repositories in ticket '
-            'TICKPB:',
-          ),
-        ),
-        isTrue,
-      );
-      expect(messages.any((m) => m.contains(' - B')), isTrue);
 
       // Verify status for A was updated to merged,
       // for B also since merge succeeded but publish failed
@@ -598,6 +682,9 @@ void main() {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       final mockCanPublishCommand = MockCanPublishCommand();
+      final mockGetVersion = MockGetVersion();
+      final mockSetRefVersion = MockSetRefVersion();
+      final mockGetRefVersion = MockGetRefVersion();
 
       when(
         () => mockCanPublishCommand.exec(
@@ -673,6 +760,25 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
+      when(
+        () => mockGetVersion.get(
+          directory: any(named: 'directory'),
+        ),
+      ).thenAnswer((_) async => '1.0.0');
+      when(
+        () => mockGetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => mockSetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+          version: any(named: 'version'),
+        ),
+      ).thenAnswer((_) async {});
+
       // Set initial status to git-localized for each repo
       for (final repoName in ['A', 'B']) {
         final statusFile =
@@ -695,6 +801,9 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
+            getVersionCommand: mockGetVersion,
+            setRefVersionCommand: mockSetRefVersion,
+            getRefVersionCommand: mockGetRefVersion,
           ),
         );
       await expectLater(
@@ -704,27 +813,15 @@ void main() {
           '--input',
           ticketDir.path,
         ]),
-        throwsA(isA<Exception>()),
-      );
-      expect(
-        messages.any(
-          (m) => m.contains(
-            '❌ Failed to publish B: Exception: Failed to '
-            'unlocalize refs for B',
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Exception: Failed to unlocalize refs for B: Exception: '
+                'Unlocalize failed for B'),
           ),
         ),
-        isTrue,
       );
-      expect(
-        messages.any(
-          (m) => m.contains(
-            '❌ Failed to publish the following repositories in ticket '
-            'TICKPB:',
-          ),
-        ),
-        isTrue,
-      );
-      expect(messages.any((m) => m.contains(' - B')), isTrue);
 
       // Verify status for A was updated to merged, but not for B
       final statusFileA =
@@ -749,6 +846,9 @@ void main() {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       final mockCanPublishCommand = MockCanPublishCommand();
+      final mockGetVersion = MockGetVersion();
+      final mockSetRefVersion = MockSetRefVersion();
+      final mockGetRefVersion = MockGetRefVersion();
 
       when(
         () => mockCanPublishCommand.exec(
@@ -824,6 +924,25 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
+      when(
+        () => mockGetVersion.get(
+          directory: any(named: 'directory'),
+        ),
+      ).thenAnswer((_) async => '1.0.0');
+      when(
+        () => mockGetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => mockSetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+          version: any(named: 'version'),
+        ),
+      ).thenAnswer((_) async {});
+
       // Set initial status to git-localized for each repo
       for (final repoName in ['A', 'B']) {
         final statusFile =
@@ -846,6 +965,9 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
+            getVersionCommand: mockGetVersion,
+            setRefVersionCommand: mockSetRefVersion,
+            getRefVersionCommand: mockGetRefVersion,
           ),
         );
       await expectLater(
@@ -855,26 +977,15 @@ void main() {
           '--input',
           ticketDir.path,
         ]),
-        throwsA(isA<Exception>()),
-      );
-      expect(
-        messages.any(
-          (m) => m.contains(
-            '❌ Failed to publish B: Exception: Failed to commit B',
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Exception: Failed to commit B: Exception: '
+                'Commit failed for B'),
           ),
         ),
-        isTrue,
       );
-      expect(
-        messages.any(
-          (m) => m.contains(
-            '❌ Failed to publish the following repositories in ticket '
-            'TICKPB:',
-          ),
-        ),
-        isTrue,
-      );
-      expect(messages.any((m) => m.contains(' - B')), isTrue);
 
       // Verify status for A was updated to merged, but not for B
       final statusFileA =
@@ -899,6 +1010,9 @@ void main() {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       final mockCanPublishCommand = MockCanPublishCommand();
+      final mockGetVersion = MockGetVersion();
+      final mockSetRefVersion = MockSetRefVersion();
+      final mockGetRefVersion = MockGetRefVersion();
 
       when(
         () => mockCanPublishCommand.exec(
@@ -974,6 +1088,25 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
+      when(
+        () => mockGetVersion.get(
+          directory: any(named: 'directory'),
+        ),
+      ).thenAnswer((_) async => '1.0.0');
+      when(
+        () => mockGetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => mockSetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+          version: any(named: 'version'),
+        ),
+      ).thenAnswer((_) async {});
+
       // Set initial status to git-localized for each repo
       for (final repoName in ['A', 'B']) {
         final statusFile =
@@ -996,6 +1129,9 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
+            getVersionCommand: mockGetVersion,
+            setRefVersionCommand: mockSetRefVersion,
+            getRefVersionCommand: mockGetRefVersion,
           ),
         );
       await expectLater(
@@ -1005,26 +1141,15 @@ void main() {
           '--input',
           ticketDir.path,
         ]),
-        throwsA(isA<Exception>()),
-      );
-      expect(
-        messages.any(
-          (m) => m.contains(
-            '❌ Failed to publish B: Exception: Failed to push B',
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Exception: Failed to push B: Exception: Push '
+                'failed for B'),
           ),
         ),
-        isTrue,
       );
-      expect(
-        messages.any(
-          (m) => m.contains(
-            '❌ Failed to publish the following repositories in ticket '
-            'TICKPB:',
-          ),
-        ),
-        isTrue,
-      );
-      expect(messages.any((m) => m.contains(' - B')), isTrue);
 
       // Verify status for A was updated to merged, but not for B
       final statusFileA =
@@ -1049,6 +1174,9 @@ void main() {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       final mockCanPublishCommand = MockCanPublishCommand();
+      final mockGetVersion = MockGetVersion();
+      final mockSetRefVersion = MockSetRefVersion();
+      final mockGetRefVersion = MockGetRefVersion();
 
       when(
         () => mockCanPublishCommand.exec(
@@ -1126,6 +1254,25 @@ void main() {
         jsonEncode({'status': StatusUtils.statusGitLocalized}),
       );
 
+      when(
+        () => mockGetVersion.get(
+          directory: any(named: 'directory'),
+        ),
+      ).thenAnswer((_) async => '1.0.0');
+      when(
+        () => mockGetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => mockSetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+          version: any(named: 'version'),
+        ),
+      ).thenAnswer((_) async {});
+
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
           DoPublishCommand(
@@ -1138,6 +1285,9 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
+            getVersionCommand: mockGetVersion,
+            setRefVersionCommand: mockSetRefVersion,
+            getRefVersionCommand: mockGetRefVersion,
           ),
         );
 
