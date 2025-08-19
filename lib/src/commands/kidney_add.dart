@@ -38,6 +38,8 @@ typedef ProcessRunner = Future<ProcessResult> Function(
 /// 1) Unlocalize all repositories in the ticket in sorted processing order.
 /// 2) Localize all repositories with --git, set git-localized status and
 ///    commit changes per repository. Any error aborts the flow immediately.
+///    After localization, if a pubspec.yaml exists, "dart pub upgrade" is
+///    executed and must succeed before committing.
 ///
 /// Use the "--force" flag to overwrite an existing repository in the master
 /// workspace.
@@ -292,6 +294,7 @@ class AddCommand extends Command<dynamic> {
   /// SortedProcessingList order:
   /// 1) Unlocalize
   /// 2) Localize with --git, set status to git-localized, commit
+  ///    and execute "dart pub upgrade" if a pubspec.yaml exists.
   Future<void> _relocalizeAllReposInTicket(Directory ticketDir) async {
     final ticketName = path.basename(ticketDir.path);
 
@@ -332,6 +335,27 @@ class AddCommand extends Command<dynamic> {
       } catch (e) {
         ggLog(red('Failed to localize refs for $repoName: $e'));
         throw Exception('Failed to relocalize ticket $ticketName');
+      }
+
+      // Execute "dart pub upgrade" if pubspec.yaml exists --------------------
+      final pubspec = File(path.join(repoDir.path, 'pubspec.yaml'));
+      if (pubspec.existsSync()) {
+        final upgrade = await processRunner(
+          'dart',
+          ['pub', 'upgrade'],
+          workingDirectory: repoDir.path,
+        );
+        if (upgrade.exitCode == 0) {
+          ggLog(green('Executed dart pub upgrade in $repoName.'));
+        } else {
+          ggLog(
+            red(
+              'Failed to execute dart pub upgrade in '
+              '$repoName: ${upgrade.stderr}',
+            ),
+          );
+          throw Exception('Failed to relocalize ticket $ticketName');
+        }
       }
 
       // Commit changes per repository -----------------------------------------

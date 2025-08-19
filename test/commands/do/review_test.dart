@@ -35,6 +35,14 @@ class MockGgDoPush extends Mock implements gg.DoPush {}
 
 class FakeDirectory extends Fake implements Directory {}
 
+class MockProcessRunner extends Mock {
+  Future<ProcessResult> call(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+  });
+}
+
 void main() {
   late Directory tempDir;
   late Directory ticketsDir;
@@ -642,5 +650,232 @@ void main() {
         isFalse,
       );
     });
+
+    test(
+      'executes dart pub upgrade after localize and before commit, logs '
+      'success',
+      () async {
+        final mockSortedProcessingList = MockSortedProcessingList();
+        final mockUnlocalizeRefs = MockUnlocalizeRefs();
+        final mockLocalizeRefs = MockLocalizeRefs();
+        final mockCanReviewCommand = MockCanReviewCommand();
+        final mockGgDoCommit = MockGgDoCommit();
+        final mockGgDoPush = MockGgDoPush();
+        final mockProcessRunner = MockProcessRunner();
+
+        // Create pubspec to trigger upgrade
+        final repoADir = Directory(path.join(ticketDir.path, 'A'));
+        File(path.join(repoADir.path, 'pubspec.yaml')).writeAsStringSync(
+          'name: A',
+        );
+
+        when(
+          () => mockCanReviewCommand.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockSortedProcessingList.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            Node(
+              name: 'A',
+              directory: Directory(path.join(ticketDir.path, 'A')),
+              pubspec: Pubspec('A'),
+            ),
+          ],
+        );
+
+        when(
+          () => mockUnlocalizeRefs.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockLocalizeRefs.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            git: any(named: 'git'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockGgDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            logType: any(named: 'logType'),
+            updateChangeLog: any(named: 'updateChangeLog'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockGgDoPush.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockProcessRunner(
+            'dart',
+            ['pub', 'upgrade'],
+            workingDirectory: path.join(ticketDir.path, 'A'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+        final runner = CommandRunner<void>('test', 'do review ticket')
+          ..addCommand(
+            DoReviewCommand(
+              ggLog: ggLog,
+              canReviewCommand: mockCanReviewCommand,
+              unlocalizeRefs: mockUnlocalizeRefs,
+              localizeRefs: mockLocalizeRefs,
+              sortedProcessingList: mockSortedProcessingList,
+              ggDoCommit: mockGgDoCommit,
+              ggDoPush: mockGgDoPush,
+              processRunner: mockProcessRunner.call,
+            ),
+          );
+
+        await runner.run(['review', '--input', ticketDir.path]);
+
+        expect(
+          messages.any(
+            (m) => m.contains('Executed dart pub upgrade in A.'),
+          ),
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      'fails and logs when dart pub upgrade fails (stop immediately)',
+      () async {
+        final mockSortedProcessingList = MockSortedProcessingList();
+        final mockUnlocalizeRefs = MockUnlocalizeRefs();
+        final mockLocalizeRefs = MockLocalizeRefs();
+        final mockCanReviewCommand = MockCanReviewCommand();
+        final mockGgDoCommit = MockGgDoCommit();
+        final mockGgDoPush = MockGgDoPush();
+        final mockProcessRunner = MockProcessRunner();
+
+        // Create pubspec to trigger upgrade
+        final repoADir = Directory(path.join(ticketDir.path, 'A'));
+        File(path.join(repoADir.path, 'pubspec.yaml')).writeAsStringSync(
+          'name: A',
+        );
+
+        when(
+          () => mockCanReviewCommand.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockSortedProcessingList.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            Node(
+              name: 'A',
+              directory: Directory(path.join(ticketDir.path, 'A')),
+              pubspec: Pubspec('A'),
+            ),
+          ],
+        );
+
+        when(
+          () => mockUnlocalizeRefs.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockLocalizeRefs.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            git: any(named: 'git'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockGgDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            logType: any(named: 'logType'),
+            updateChangeLog: any(named: 'updateChangeLog'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockGgDoPush.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockProcessRunner(
+            'dart',
+            ['pub', 'upgrade'],
+            workingDirectory: path.join(ticketDir.path, 'A'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 1, '', 'upgrade error'));
+
+        final runner = CommandRunner<void>('test', 'do review ticket')
+          ..addCommand(
+            DoReviewCommand(
+              ggLog: ggLog,
+              canReviewCommand: mockCanReviewCommand,
+              unlocalizeRefs: mockUnlocalizeRefs,
+              localizeRefs: mockLocalizeRefs,
+              sortedProcessingList: mockSortedProcessingList,
+              ggDoCommit: mockGgDoCommit,
+              ggDoPush: mockGgDoPush,
+              processRunner: mockProcessRunner.call,
+            ),
+          );
+
+        await expectLater(
+          () async => await runner.run(['review', '--input', ticketDir.path]),
+          throwsA(isA<Exception>()),
+        );
+
+        expect(
+          messages.any(
+            (m) => m.contains(
+              'Failed to execute dart pub upgrade in A: upgrade error',
+            ),
+          ),
+          isTrue,
+        );
+        // No summary list should be printed when stopping immediately
+        expect(
+          messages.any(
+            (m) => m.contains(
+              '❌ Failed to review the following repositories in ticket',
+            ),
+          ),
+          isFalse,
+        );
+      },
+    );
   });
 }

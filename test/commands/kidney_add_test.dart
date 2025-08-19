@@ -68,6 +68,7 @@ void main() {
       SortedProcessingList? sortedProcessingList,
       UnlocalizeRefs? unlocalizeRefs,
       LocalizeRefs? localizeRefs,
+      Graph? graph,
     }) {
       runner = CommandRunner<void>('test', 'Test for AddCommand');
       runner.addCommand(
@@ -81,6 +82,7 @@ void main() {
           sortedProcessingList: sortedProcessingList,
           unlocalizeRefs: unlocalizeRefs,
           localizeRefs: localizeRefs,
+          graph: graph,
         ),
       );
     }
@@ -411,9 +413,28 @@ dev_dependencies:
           ),
         ).thenAnswer((_) async {});
 
+        final mockProc = MockProcessRunner();
+        // pub get during copy
+        when(
+          () => mockProc(
+            'dart',
+            ['pub', 'get'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+        // pub upgrade during relocalization
+        when(
+          () => mockProc(
+            'dart',
+            ['pub', 'upgrade'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+
         createRunner(
           executionPath: ticketDir.path,
           ggDoCommit: mockDoCommit,
+          processRunner: mockProc.call,
         );
 
         // Act
@@ -583,6 +604,14 @@ dev_dependencies:
             workingDirectory: any(named: 'workingDirectory'),
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'Pub get success', ''));
+        // Also stub pub upgrade during relocalization
+        when(
+          () => mockProcessRunner(
+            'dart',
+            ['pub', 'upgrade'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
 
         await runner.run(['add', repoName]);
 
@@ -609,6 +638,14 @@ dev_dependencies:
             workingDirectory: any(named: 'workingDirectory'),
           ),
         ).thenAnswer((_) async => ProcessResult(2, 1, '', 'Pub get error'));
+        // Stub pub upgrade to avoid unexpected failures later
+        when(
+          () => mockProcessRunner(
+            'dart',
+            ['pub', 'upgrade'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
 
         await runner.run(['add', repoName]);
 
@@ -647,7 +684,27 @@ dev_dependencies:
         ),
       ).thenThrow(Exception('commit error'));
 
-      createRunner(executionPath: ticketDir.path, ggDoCommit: mockDoCommit);
+      final mockProc = MockProcessRunner();
+      when(
+        () => mockProc(
+          'dart',
+          ['pub', 'get'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+      when(
+        () => mockProc(
+          'dart',
+          ['pub', 'upgrade'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+
+      createRunner(
+        executionPath: ticketDir.path,
+        ggDoCommit: mockDoCommit,
+        processRunner: mockProc.call,
+      );
 
       await expectLater(
         () async => await runner.run(['add', repoName]),
@@ -925,12 +982,19 @@ version: 1.0.0
           path.join(tempDir.path, kidneyTicketFolder, 'TXYZ'),
         )..createSync(recursive: true);
 
-        // ensure dart pub get succeeds for copies
+        // ensure dart pub get and upgrade succeeds for copies
         final mockRunner = MockProcessRunner();
         when(
           () => mockRunner(
             'dart',
             ['pub', 'get'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+        when(
+          () => mockRunner(
+            'dart',
+            ['pub', 'upgrade'],
             workingDirectory: any(named: 'workingDirectory'),
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
@@ -1001,7 +1065,7 @@ version: 1.0.0
           ),
         ).thenThrow(Exception('graph error'));
 
-        // Provide a harmless process runner for pub get
+        // Provide a harmless process runner for pub get/upgrade
         final mockProc = MockProcessRunner();
         when(
           () => mockProc(
@@ -1035,5 +1099,205 @@ version: 1.0.0
         );
       },
     );
+
+    group('dart pub upgrade in relocalization', () {
+      test('executes dart pub upgrade after localize and logs success',
+          () async {
+        // Arrange master repo with pubspec
+        const repoName = 'upgradeRepo';
+        final repoDir = Directory(path.join(masterWorkspacePath, repoName))
+          ..createSync(recursive: true);
+        File(path.join(repoDir.path, 'pubspec.yaml')).writeAsStringSync(
+          'name: $repoName',
+        );
+
+        // Ticket setup
+        final ticketDir = Directory(
+          path.join(tempDir.path, kidneyTicketFolder, 'T-UPG'),
+        )..createSync(recursive: true);
+
+        // Sorted list returns the ticket repo node
+        final mockSorted = MockSortedProcessingList();
+        when(
+          () => mockSorted.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            Node(
+              name: repoName,
+              directory: Directory(path.join(ticketDir.path, repoName)),
+              pubspec: Pubspec(repoName),
+            ),
+          ],
+        );
+
+        // Un/localize OK
+        final mockUnloc = MockUnlocalizeRefs();
+        final mockLoc = MockLocalizeRefs();
+        when(
+          () => mockUnloc.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => mockLoc.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        // pub get for copy and pub upgrade for relocalization
+        final mockProc = MockProcessRunner();
+        when(
+          () => mockProc(
+            'dart',
+            ['pub', 'get'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+        when(
+          () => mockProc(
+            'dart',
+            ['pub', 'upgrade'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+
+        final mockDoCommit = MockGgDoCommit();
+        when(
+          () => mockDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            logType: any(named: 'logType'),
+            updateChangeLog: any(named: 'updateChangeLog'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        createRunner(
+          executionPath: ticketDir.path,
+          processRunner: mockProc.call,
+          ggDoCommit: mockDoCommit,
+          sortedProcessingList: mockSorted,
+          unlocalizeRefs: mockUnloc,
+          localizeRefs: mockLoc,
+        );
+
+        await runner.run(['add', repoName]);
+
+        expect(
+          logMessages.any(
+            (m) => m.contains('Executed dart pub upgrade in $repoName.'),
+          ),
+          isTrue,
+        );
+      });
+
+      test(
+          'logs error and aborts when dart pub upgrade '
+          'fails in relocalization', () async {
+        // Arrange master repo with pubspec
+        const repoName = 'upgradeFailRepo';
+        final repoDir = Directory(path.join(masterWorkspacePath, repoName))
+          ..createSync(recursive: true);
+        File(path.join(repoDir.path, 'pubspec.yaml')).writeAsStringSync(
+          'name: $repoName',
+        );
+
+        // Ticket setup
+        final ticketDir = Directory(
+          path.join(tempDir.path, kidneyTicketFolder, 'T-UPG-FAIL'),
+        )..createSync(recursive: true);
+
+        // Sorted list returns the ticket repo node
+        final mockSorted = MockSortedProcessingList();
+        when(
+          () => mockSorted.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            Node(
+              name: repoName,
+              directory: Directory(path.join(ticketDir.path, repoName)),
+              pubspec: Pubspec(repoName),
+            ),
+          ],
+        );
+
+        // Un/localize OK
+        final mockUnloc = MockUnlocalizeRefs();
+        final mockLoc = MockLocalizeRefs();
+        when(
+          () => mockUnloc.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => mockLoc.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        // pub get for copy OK, pub upgrade fails
+        final mockProc = MockProcessRunner();
+        when(
+          () => mockProc(
+            'dart',
+            ['pub', 'get'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+        when(
+          () => mockProc(
+            'dart',
+            ['pub', 'upgrade'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 1, '', 'Upgrade error'));
+
+        final mockDoCommit = MockGgDoCommit();
+        when(
+          () => mockDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            logType: any(named: 'logType'),
+            updateChangeLog: any(named: 'updateChangeLog'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        createRunner(
+          executionPath: ticketDir.path,
+          processRunner: mockProc.call,
+          ggDoCommit: mockDoCommit,
+          sortedProcessingList: mockSorted,
+          unlocalizeRefs: mockUnloc,
+          localizeRefs: mockLoc,
+        );
+
+        await expectLater(
+          () async => await runner.run(['add', repoName]),
+          throwsA(isA<Exception>()),
+        );
+
+        expect(
+          logMessages.any(
+            (m) => m.contains(
+              'Failed to execute dart pub upgrade in $repoName: Upgrade error',
+            ),
+          ),
+          isTrue,
+        );
+      });
+    });
   });
 }

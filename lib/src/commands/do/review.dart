@@ -18,6 +18,28 @@ import '../../backend/workspace_utils.dart';
 import '../../backend/status_utils.dart';
 import '../../commands/can/review.dart';
 
+/// Typedef for running processes (for injection & tests).
+typedef ProcessRunner = Future<ProcessResult> Function(
+  String executable,
+  List<String> arguments, {
+  String? workingDirectory,
+});
+
+/// Default process runner that uses the system's `Process.run`
+// coverage:ignore-start
+Future<ProcessResult> _defaultProcessRunner(
+  String executable,
+  List<String> arguments, {
+  String? workingDirectory,
+}) =>
+    Process.run(
+      executable,
+      arguments,
+      workingDirectory: workingDirectory,
+      runInShell: true,
+    );
+// coverage:ignore-end
+
 /// Command to review all repos in the ticket.
 class DoReviewCommand extends DirCommand<void> {
   /// Constructor
@@ -31,13 +53,15 @@ class DoReviewCommand extends DirCommand<void> {
     SortedProcessingList? sortedProcessingList,
     gg.DoCommit? ggDoCommit,
     gg.DoPush? ggDoPush,
+    ProcessRunner? processRunner,
   })  : _canReviewCommand = canReviewCommand ?? CanReviewCommand(ggLog: ggLog),
         _unlocalizeRefs = unlocalizeRefs ?? UnlocalizeRefs(ggLog: ggLog),
         _localizeRefs = localizeRefs ?? LocalizeRefs(ggLog: ggLog),
         _sortedProcessingList =
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
         _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
-        _ggDoPush = ggDoPush ?? gg.DoPush(ggLog: ggLog);
+        _ggDoPush = ggDoPush ?? gg.DoPush(ggLog: ggLog),
+        _processRunner = processRunner ?? _defaultProcessRunner;
 
   /// Instance of CanReviewCommand
   final CanReviewCommand _canReviewCommand;
@@ -56,6 +80,10 @@ class DoReviewCommand extends DirCommand<void> {
 
   /// Instance of gg DoPush
   final gg.DoPush _ggDoPush;
+
+  /// The injected process runner used to execute system processes like
+  /// "dart pub upgrade" after localization.
+  final ProcessRunner _processRunner;
 
   @override
   Future<void> exec({
@@ -136,6 +164,28 @@ class DoReviewCommand extends DirCommand<void> {
         ggLog(red('Failed to localize refs with --git for $repoName: $e'));
         throw Exception('Failed to review some '
             'repositories in ticket $ticketName');
+      }
+
+      // Run "dart pub upgrade" if a pubspec.yaml exists ---------------------
+      final pubspec = File(path.join(repoDir.path, 'pubspec.yaml'));
+      if (pubspec.existsSync()) {
+        final result = await _processRunner(
+          'dart',
+          ['pub', 'upgrade'],
+          workingDirectory: repoDir.path,
+        );
+        if (result.exitCode == 0) {
+          ggLog(green('Executed dart pub upgrade in $repoName.'));
+        } else {
+          ggLog(
+            red(
+              'Failed to execute dart pub upgrade in '
+              '$repoName: ${result.stderr}',
+            ),
+          );
+          throw Exception('Failed to review some '
+              'repositories in ticket $ticketName');
+        }
       }
 
       // Commit
