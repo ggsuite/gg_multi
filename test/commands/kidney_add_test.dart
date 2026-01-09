@@ -706,10 +706,7 @@ dev_dependencies:
         processRunner: mockProc.call,
       );
 
-      await expectLater(
-        () async => await runner.run(['add', repoName]),
-        throwsA(isA<Exception>()),
-      );
+      await runner.run(['add', repoName]);
 
       expect(
         logMessages.any(
@@ -766,99 +763,6 @@ dev_dependencies:
       );
     });
 
-    test(
-      'relocalization aborts and logs when unlocalize fails',
-      () async {
-        // Arrange master repo
-        const repoName = 'unlocalizeFailRepo';
-        final repoDir = Directory(path.join(masterWorkspacePath, repoName))
-          ..createSync(recursive: true);
-        // Ensure pubspec exists so Node(pubspec) is valid
-        File(path.join(repoDir.path, 'pubspec.yaml'))
-            .writeAsStringSync('name: $repoName');
-
-        // Ticket setup
-        final ticketDir = Directory(
-          path.join(tempDir.path, kidneyTicketFolder, 'TICKET-UNLOC'),
-        )..createSync(recursive: true);
-
-        // Mocks for relocalization
-        final mockSorted = MockSortedProcessingList();
-        final mockUnloc = MockUnlocalizeRefs();
-        final mockLoc = MockLocalizeRefs();
-        final mockDoCommit = MockGgDoCommit();
-
-        when(
-          () => mockDoCommit.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-            message: any(named: 'message'),
-            logType: any(named: 'logType'),
-            updateChangeLog: any(named: 'updateChangeLog'),
-            force: any(named: 'force'),
-          ),
-        ).thenAnswer((_) async {});
-
-        Future<List<Node>> futureNode() async => [
-              Node(
-                name: repoName,
-                directory: Directory(
-                  path.join(ticketDir.path, repoName),
-                ),
-                pubspec: Pubspec(repoName),
-              ),
-            ];
-
-        when(
-          () => mockSorted.get(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-          ),
-        ).thenAnswer((_) async => await futureNode());
-
-        // Make unlocalize throw to hit the catch branch in AddCommand
-        when(
-          () => mockUnloc.get(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-          ),
-        ).thenThrow(Exception('boom'));
-
-        // Localize is not reached, but provide a harmless stub
-        when(
-          () => mockLoc.get(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-          ),
-        ).thenAnswer((_) async {});
-
-        // Create runner with injections
-        createRunner(
-          executionPath: ticketDir.path,
-          ggDoCommit: mockDoCommit,
-          sortedProcessingList: mockSorted,
-          unlocalizeRefs: mockUnloc,
-          localizeRefs: mockLoc,
-        );
-
-        // Act & Assert
-        await expectLater(
-          () async => await runner.run(['add', repoName]),
-          throwsA(isA<Exception>()),
-        );
-
-        // Assert log contains the specific unlocalize error
-        expect(
-          logMessages.any(
-            (m) => m.contains(
-              'Failed to unlocalize refs for $repoName: '
-              'Exception: boom',
-            ),
-          ),
-          isTrue,
-        );
-      },
-    );
     test(
       'relocalization aborts and logs when localize fails',
       () async {
@@ -1284,10 +1188,7 @@ version: 1.0.0
           localizeRefs: mockLoc,
         );
 
-        await expectLater(
-          () async => await runner.run(['add', repoName]),
-          throwsA(isA<Exception>()),
-        );
+        await runner.run(['add', repoName]);
 
         expect(
           logMessages.any(

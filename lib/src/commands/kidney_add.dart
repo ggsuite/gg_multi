@@ -314,7 +314,10 @@ class AddCommand extends Command<dynamic> {
       final repoDir = node.directory;
       final repoName = path.basename(repoDir.path);
       try {
-        await _unlocalizeRefs.get(directory: repoDir, ggLog: ggLog);
+        File backupFile = File('${repoDir.path}/.gg_localize_refs_backup.json');
+        if (backupFile.existsSync()) {
+          await _unlocalizeRefs.get(directory: repoDir, ggLog: ggLog);
+        }
       } catch (e) {
         ggLog(red('Failed to unlocalize refs for $repoName: $e'));
         throw Exception('Failed to relocalize ticket $ticketName');
@@ -354,7 +357,6 @@ class AddCommand extends Command<dynamic> {
               '$repoName: ${upgrade.stderr}',
             ),
           );
-          throw Exception('Failed to relocalize ticket $ticketName');
         }
       }
 
@@ -368,7 +370,6 @@ class AddCommand extends Command<dynamic> {
         );
       } catch (e) {
         ggLog(red('Failed to commit $repoName: $e'));
-        throw Exception('Failed to relocalize ticket $ticketName');
       }
     }
 
