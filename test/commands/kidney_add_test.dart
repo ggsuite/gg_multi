@@ -96,8 +96,6 @@ void main() {
       tempDir = Directory.systemTemp.createTempSync('add_test');
       masterWorkspacePath = path.join(tempDir.path, kidneyMasterFolder);
       Directory(masterWorkspacePath).createSync(recursive: true);
-      // By default inject a mocked DoCommit to prevent real commit
-      // attempts.
       final mockDoCommit = MockGgDoCommit();
       when(
         () => mockDoCommit.exec(
@@ -134,7 +132,6 @@ void main() {
         ]),
       );
 
-      // Integration check: .organizations file correctly updated
       final orgFile = File(path.join(masterWorkspacePath, '.organizations'));
       expect(orgFile.existsSync(), isTrue);
       final orgMap = (jsonDecode(orgFile.readAsStringSync()) as List<dynamic>)
@@ -378,7 +375,6 @@ void main() {
       'copies repo into ticket workspace and relocalizes ticket '
       '(two passes)',
       () async {
-        // Arrange: create a repo with a file and pubspec in master
         const repoName = 'testRepoCommit';
         final repoDir = Directory(
           path.join(masterWorkspacePath, repoName),
@@ -396,7 +392,6 @@ dev_dependencies:
         final pubspecFile = File(path.join(repoDir.path, 'pubspec.yaml'));
         pubspecFile.writeAsStringSync(pubspecContent);
 
-        // Setup ticket workspace
         final ticketDir = Directory(
           path.join(tempDir.path, kidneyTicketFolder, 'TICKET'),
         )..createSync(recursive: true);
@@ -414,7 +409,6 @@ dev_dependencies:
         ).thenAnswer((_) async {});
 
         final mockProc = MockProcessRunner();
-        // pub get during copy
         when(
           () => mockProc(
             'dart',
@@ -422,7 +416,6 @@ dev_dependencies:
             workingDirectory: any(named: 'workingDirectory'),
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
-        // pub upgrade during relocalization
         when(
           () => mockProc(
             'dart',
@@ -437,16 +430,13 @@ dev_dependencies:
           processRunner: mockProc.call,
         );
 
-        // Act
         await runner.run(['add', repoName]);
 
-        // Assert: ensure the target file has been copied
         final copiedFileInTicket = File(
           path.join(ticketDir.path, repoName, 'target.txt'),
         );
         expect(copiedFileInTicket.existsSync(), isTrue);
 
-        // Verify commit was called with the expected git message and force=true
         verify(
           () => mockDoCommit.exec(
             directory: any(named: 'directory'),
@@ -466,7 +456,6 @@ dev_dependencies:
             jsonDecode(statusFile.readAsStringSync()) as Map<String, dynamic>;
         expect(content['status'], StatusUtils.statusLocalized);
 
-        // Logs should indicate un/localize and commit somewhere
         expect(
           logMessages.any(
             (m) => m.contains('Re-localized all repositories in ticket'),
@@ -476,7 +465,6 @@ dev_dependencies:
       },
     );
 
-    // New test to cover error when master workspace missing repository
     test('logs error when repo not found in master workspace', () async {
       final ticketDir = Directory(
         path.join(tempDir.path, kidneyTicketFolder, 'TICKET-MISSING'),
@@ -545,10 +533,6 @@ dev_dependencies:
         path.join(ticketDir.path, repoName, '.kidney_status'),
       );
       expect(statusFile.existsSync(), isFalse);
-      // Commit must not be called when localization fails early
-      // (our environment without proper project roots will cause
-      // localization to fail inside the command). So ensure there is
-      // no commit recorded.
       verifyNever(
         () => mockDoCommit.exec(
           directory: any(named: 'directory'),
@@ -604,7 +588,6 @@ dev_dependencies:
             workingDirectory: any(named: 'workingDirectory'),
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'Pub get success', ''));
-        // Also stub pub upgrade during relocalization
         when(
           () => mockProcessRunner(
             'dart',
@@ -637,8 +620,9 @@ dev_dependencies:
             ['pub', 'get'],
             workingDirectory: any(named: 'workingDirectory'),
           ),
-        ).thenAnswer((_) async => ProcessResult(2, 1, '', 'Pub get error'));
-        // Stub pub upgrade to avoid unexpected failures later
+        ).thenAnswer(
+          (_) async => ProcessResult(2, 1, '', 'Pub get error'),
+        );
         when(
           () => mockProcessRunner(
             'dart',
@@ -660,7 +644,6 @@ dev_dependencies:
     });
 
     test('commit failures are logged and aborts immediately', () async {
-      // Arrange: create a repo with a file and pubspec
       const repoName = 'commitFailRepo';
       final repoDir = Directory(path.join(masterWorkspacePath, repoName))
         ..createSync(recursive: true);
@@ -723,7 +706,6 @@ dev_dependencies:
       when(() => mockGitCloner.cloneRepo(any(), any()))
           .thenAnswer((_) async {});
 
-      // Inject mocked DoCommit for this specific runner execution as well
       final mockDoCommit = MockGgDoCommit();
       when(
         () => mockDoCommit.exec(
@@ -766,14 +748,12 @@ dev_dependencies:
     test(
       'relocalization aborts and logs when localize fails',
       () async {
-        // Arrange master repo
         const repoName = 'localizeFailRepo';
         final repoDir = Directory(path.join(masterWorkspacePath, repoName))
           ..createSync(recursive: true);
         File(path.join(repoDir.path, 'pubspec.yaml'))
             .writeAsStringSync('name: $repoName');
 
-        // Ticket setup
         final ticketDir = Directory(
           path.join(tempDir.path, kidneyTicketFolder, 'TICKET-LOCFAIL'),
         )..createSync(recursive: true);
@@ -794,7 +774,6 @@ dev_dependencies:
           ),
         ).thenAnswer((_) async {});
 
-        // Node for the newly copied repo in ticket
         Future<List<Node>> futureNode() async => [
               Node(
                 name: repoName,
@@ -812,14 +791,12 @@ dev_dependencies:
           ),
         ).thenAnswer((_) async => await futureNode());
 
-        // Unlocalize works
         when(
           () => mockUnloc.get(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
           ),
         ).thenAnswer((_) async {});
-        // Localize throws to hit the catch branch under test
         when(
           () => mockLoc.get(
             directory: any(named: 'directory'),
@@ -852,11 +829,9 @@ dev_dependencies:
       },
     );
 
-    // NEW TESTS ---------------------------------------------------------------
     test(
       'adds between nodes into ticket when executed inside a ticket',
       () async {
-        // master graph a -> b -> c
         final aDir = Directory(path.join(masterWorkspacePath, 'a'))
           ..createSync(recursive: true);
         final bDir = Directory(path.join(masterWorkspacePath, 'b'))
@@ -881,12 +856,10 @@ name: c
 version: 1.0.0
 ''');
 
-        // ticket dir
         final ticketDir = Directory(
           path.join(tempDir.path, kidneyTicketFolder, 'TXYZ'),
         )..createSync(recursive: true);
 
-        // ensure dart pub get and upgrade succeeds for copies
         final mockRunner = MockProcessRunner();
         when(
           () => mockRunner(
@@ -923,12 +896,10 @@ version: 1.0.0
 
         await runner.run(['add', 'a', 'c']);
 
-        // All a, b, c should be copied into ticket
         expect(Directory(path.join(ticketDir.path, 'a')).existsSync(), isTrue);
         expect(Directory(path.join(ticketDir.path, 'b')).existsSync(), isTrue);
         expect(Directory(path.join(ticketDir.path, 'c')).existsSync(), isTrue);
 
-        // Log should show that b was added to ticket workspace as well
         expect(
           logMessages.any(
             (m) => m == 'Added repository b to ticket workspace.',
@@ -936,7 +907,6 @@ version: 1.0.0
           isTrue,
         );
 
-        // Relocalization should have been done once at the end
         expect(
           logMessages.any(
             (m) => m.contains('Re-localized all repositories in ticket TXYZ'),
@@ -949,18 +919,15 @@ version: 1.0.0
     test(
       'logs when dependency graph building fails and continues',
       () async {
-        // Prepare a master repo that is already present
         const repoName = 'graphFailRepo';
         final repoDir = Directory(path.join(masterWorkspacePath, repoName))
           ..createSync(recursive: true);
         File(path.join(repoDir.path, 'file.txt')).writeAsStringSync('x');
 
-        // Create a ticket workspace to trigger ticket mode
         final ticketDir = Directory(
           path.join(tempDir.path, kidneyTicketFolder, 'T-DFG'),
         )..createSync(recursive: true);
 
-        // Mock graph to throw on get
         final mockGraph = MockGraph();
         when(
           () => mockGraph.get(
@@ -969,7 +936,6 @@ version: 1.0.0
           ),
         ).thenThrow(Exception('graph error'));
 
-        // Provide a harmless process runner for pub get/upgrade
         final mockProc = MockProcessRunner();
         when(
           () => mockProc(
@@ -1007,7 +973,6 @@ version: 1.0.0
     group('dart pub upgrade in relocalization', () {
       test('executes dart pub upgrade after localize and logs success',
           () async {
-        // Arrange master repo with pubspec
         const repoName = 'upgradeRepo';
         final repoDir = Directory(path.join(masterWorkspacePath, repoName))
           ..createSync(recursive: true);
@@ -1015,12 +980,10 @@ version: 1.0.0
           'name: $repoName',
         );
 
-        // Ticket setup
         final ticketDir = Directory(
           path.join(tempDir.path, kidneyTicketFolder, 'T-UPG'),
         )..createSync(recursive: true);
 
-        // Sorted list returns the ticket repo node
         final mockSorted = MockSortedProcessingList();
         when(
           () => mockSorted.get(
@@ -1037,7 +1000,6 @@ version: 1.0.0
           ],
         );
 
-        // Un/localize OK
         final mockUnloc = MockUnlocalizeRefs();
         final mockLoc = MockLocalizeRefs();
         when(
@@ -1053,7 +1015,6 @@ version: 1.0.0
           ),
         ).thenAnswer((_) async {});
 
-        // pub get for copy and pub upgrade for relocalization
         final mockProc = MockProcessRunner();
         when(
           () => mockProc(
@@ -1104,7 +1065,6 @@ version: 1.0.0
       test(
           'logs error and aborts when dart pub upgrade '
           'fails in relocalization', () async {
-        // Arrange master repo with pubspec
         const repoName = 'upgradeFailRepo';
         final repoDir = Directory(path.join(masterWorkspacePath, repoName))
           ..createSync(recursive: true);
@@ -1112,12 +1072,10 @@ version: 1.0.0
           'name: $repoName',
         );
 
-        // Ticket setup
         final ticketDir = Directory(
           path.join(tempDir.path, kidneyTicketFolder, 'T-UPG-FAIL'),
         )..createSync(recursive: true);
 
-        // Sorted list returns the ticket repo node
         final mockSorted = MockSortedProcessingList();
         when(
           () => mockSorted.get(
@@ -1134,7 +1092,6 @@ version: 1.0.0
           ],
         );
 
-        // Un/localize OK
         final mockUnloc = MockUnlocalizeRefs();
         final mockLoc = MockLocalizeRefs();
         when(
@@ -1150,7 +1107,6 @@ version: 1.0.0
           ),
         ).thenAnswer((_) async {});
 
-        // pub get for copy OK, pub upgrade fails
         final mockProc = MockProcessRunner();
         when(
           () => mockProc(
@@ -1165,7 +1121,9 @@ version: 1.0.0
             ['pub', 'upgrade'],
             workingDirectory: any(named: 'workingDirectory'),
           ),
-        ).thenAnswer((_) async => ProcessResult(1, 1, '', 'Upgrade error'));
+        ).thenAnswer(
+          (_) async => ProcessResult(1, 1, '', 'Upgrade error'),
+        );
 
         final mockDoCommit = MockGgDoCommit();
         when(
@@ -1193,12 +1151,244 @@ version: 1.0.0
         expect(
           logMessages.any(
             (m) => m.contains(
-              'Failed to execute dart pub upgrade in $repoName: Upgrade error',
+              'Failed to execute dart pub upgrade '
+              'in $repoName: Upgrade error',
             ),
           ),
           isTrue,
         );
       });
     });
+
+    test(
+      'unlocalizes when backup file exists in ticket repository',
+      () async {
+        const repoName = 'backupRepo';
+        final masterRepoDir = Directory(
+          path.join(masterWorkspacePath, repoName),
+        )..createSync(recursive: true);
+
+        File(path.join(masterRepoDir.path, 'pubspec.yaml'))
+            .writeAsStringSync('name: $repoName');
+
+        File(
+          path.join(
+            masterRepoDir.path,
+            '.gg_localize_refs_backup.json',
+          ),
+        ).writeAsStringSync('{}');
+
+        final ticketDir = Directory(
+          path.join(tempDir.path, kidneyTicketFolder, 'TICKET-BACKUP'),
+        )..createSync(recursive: true);
+
+        final mockSorted = MockSortedProcessingList();
+        final mockUnloc = MockUnlocalizeRefs();
+        final mockLoc = MockLocalizeRefs();
+        final mockDoCommit = MockGgDoCommit();
+        final mockProc = MockProcessRunner();
+
+        when(
+          () => mockDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            logType: any(named: 'logType'),
+            updateChangeLog: any(named: 'updateChangeLog'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockProc(
+            'dart',
+            ['pub', 'get'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+
+        when(
+          () => mockProc(
+            'dart',
+            ['pub', 'upgrade'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+
+        when(
+          () => mockSorted.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((invocation) async {
+          final dir = invocation.namedArguments[#directory] as Directory;
+          final ticketRepoDir = Directory(path.join(dir.path, repoName));
+          return [
+            Node(
+              name: repoName,
+              directory: ticketRepoDir,
+              pubspec: Pubspec(repoName),
+            ),
+          ];
+        });
+
+        when(
+          () => mockUnloc.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockLoc.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        createRunner(
+          executionPath: ticketDir.path,
+          processRunner: mockProc.call,
+          ggDoCommit: mockDoCommit,
+          sortedProcessingList: mockSorted,
+          unlocalizeRefs: mockUnloc,
+          localizeRefs: mockLoc,
+        );
+
+        await runner.run(['add', repoName]);
+
+        final ticketRepoBackup = File(
+          path.join(
+            ticketDir.path,
+            repoName,
+            '.gg_localize_refs_backup.json',
+          ),
+        );
+        expect(ticketRepoBackup.existsSync(), isTrue);
+
+        verify(
+          () => mockUnloc.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).called(1);
+      },
+    );
+
+    test(
+      'logs error and aborts when unlocalize fails '
+      'in relocalization pass',
+      () async {
+        const repoName = 'unlocFailRepo';
+        final masterRepoDir = Directory(
+          path.join(masterWorkspacePath, repoName),
+        )..createSync(recursive: true);
+
+        File(path.join(masterRepoDir.path, 'pubspec.yaml'))
+            .writeAsStringSync('name: $repoName');
+
+        File(
+          path.join(
+            masterRepoDir.path,
+            '.gg_localize_refs_backup.json',
+          ),
+        ).writeAsStringSync('{}');
+
+        final ticketDir = Directory(
+          path.join(
+            tempDir.path,
+            kidneyTicketFolder,
+            'TICKET-UNLOC-FAIL',
+          ),
+        )..createSync(recursive: true);
+
+        final mockSorted = MockSortedProcessingList();
+        final mockUnloc = MockUnlocalizeRefs();
+        final mockLoc = MockLocalizeRefs();
+        final mockDoCommit = MockGgDoCommit();
+        final mockProc = MockProcessRunner();
+
+        when(
+          () => mockDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            logType: any(named: 'logType'),
+            updateChangeLog: any(named: 'updateChangeLog'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockProc(
+            'dart',
+            ['pub', 'get'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+        when(
+          () => mockProc(
+            'dart',
+            ['pub', 'upgrade'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+
+        when(
+          () => mockSorted.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((invocation) async {
+          final dir = invocation.namedArguments[#directory] as Directory;
+          final ticketRepoDir = Directory(path.join(dir.path, repoName));
+          return [
+            Node(
+              name: repoName,
+              directory: ticketRepoDir,
+              pubspec: Pubspec(repoName),
+            ),
+          ];
+        });
+
+        when(
+          () => mockUnloc.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenThrow(Exception('unloc failed'));
+
+        when(
+          () => mockLoc.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        createRunner(
+          executionPath: ticketDir.path,
+          processRunner: mockProc.call,
+          ggDoCommit: mockDoCommit,
+          sortedProcessingList: mockSorted,
+          unlocalizeRefs: mockUnloc,
+          localizeRefs: mockLoc,
+        );
+
+        await expectLater(
+          () async => await runner.run(['add', repoName]),
+          throwsA(isA<Exception>()),
+        );
+
+        expect(
+          logMessages.any(
+            (m) => m.contains(
+              'Failed to unlocalize refs for $repoName: '
+              'Exception: unloc failed',
+            ),
+          ),
+          isTrue,
+        );
+      },
+    );
   });
 }
