@@ -917,6 +917,104 @@ version: 1.0.0
     );
 
     test(
+      'adds between nodes using existing ticket repos as endpoints',
+      () async {
+        final aDir = Directory(path.join(masterWorkspacePath, 'a'))
+          ..createSync(recursive: true);
+        final bDir = Directory(path.join(masterWorkspacePath, 'b'))
+          ..createSync(recursive: true);
+        final cDir = Directory(path.join(masterWorkspacePath, 'c'))
+          ..createSync(recursive: true);
+
+        File(path.join(aDir.path, 'pubspec.yaml')).writeAsStringSync('''
+name: a
+version: 1.0.0
+dependencies:
+  b: ^1.0.0
+''');
+        File(path.join(bDir.path, 'pubspec.yaml')).writeAsStringSync('''
+name: b
+version: 1.0.0
+dependencies:
+  c: ^1.0.0
+''');
+        File(path.join(cDir.path, 'pubspec.yaml')).writeAsStringSync('''
+name: c
+version: 1.0.0
+''');
+
+        final ticketDir = Directory(
+          path.join(tempDir.path, kidneyTicketFolder, 'TXYZ_EXISTING'),
+        )..createSync(recursive: true);
+
+        final existingC = Directory(path.join(ticketDir.path, 'c'))
+          ..createSync(recursive: true);
+        File(path.join(existingC.path, 'dummy.txt')).writeAsStringSync('x');
+
+        final mockRunner = MockProcessRunner();
+        when(
+          () => mockRunner(
+            'dart',
+            ['pub', 'get'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+        when(
+          () => mockRunner(
+            'dart',
+            ['pub', 'upgrade'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+
+        final mockDoCommit = MockGgDoCommit();
+        when(
+          () => mockDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            logType: any(named: 'logType'),
+            updateChangeLog: any(named: 'updateChangeLog'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        createRunner(
+          executionPath: ticketDir.path,
+          processRunner: mockRunner.call,
+          ggDoCommit: mockDoCommit,
+        );
+
+        await runner.run(['add', 'a']);
+
+        expect(Directory(path.join(ticketDir.path, 'a')).existsSync(), isTrue);
+        expect(Directory(path.join(ticketDir.path, 'b')).existsSync(), isTrue);
+        expect(Directory(path.join(ticketDir.path, 'c')).existsSync(), isTrue);
+
+        expect(
+          logMessages.any(
+            (m) => m == 'Added repository b to ticket workspace.',
+          ),
+          isTrue,
+        );
+        expect(
+          logMessages.any(
+            (m) => m == 'c already exists in ticket workspace.',
+          ),
+          isFalse,
+        );
+        expect(
+          logMessages.any(
+            (m) => m.contains(
+              'Re-localized all repositories in ticket TXYZ_EXISTING',
+            ),
+          ),
+          isTrue,
+        );
+      },
+    );
+
+    test(
       'logs when dependency graph building fails and continues',
       () async {
         const repoName = 'graphFailRepo';

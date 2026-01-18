@@ -41,6 +41,12 @@ typedef ProcessRunner = Future<ProcessResult> Function(
 ///    After localization, if a pubspec.yaml exists, "dart pub upgrade" is
 ///    executed and must succeed before committing.
 ///
+/// When running inside a ticket workspace, the dependency graph that is used
+/// for determining nodes *between* endpoints considers both endpoints that
+/// stem from the CLI arguments *and* endpoints of repositories that already
+/// exist in the ticket workspace. This allows adding the missing
+/// repositories between an already present repo and a newly added one.
+///
 /// Use the "--force" flag to overwrite an existing repository in the master
 /// workspace.
 class AddCommand extends Command<dynamic> {
@@ -169,6 +175,8 @@ class AddCommand extends Command<dynamic> {
       );
     }
 
+    final ticketDir = Directory(ticketPath);
+
     // Build the dependency graph of the master workspace and compute
     // all nodes between the provided endpoints.
     Map<String, Node> allNodes = const {};
@@ -184,16 +192,44 @@ class AddCommand extends Command<dynamic> {
       allNodes = const {};
     }
 
-    final endpoints = <Node>[];
+    // Determine endpoints for between-node calculation:
+    // 1) endpoints from CLI arguments
+    // 2) additional endpoints from repos already present in the ticket.
+    final endpointsByName = <String, Node>{};
+
+    // Endpoints based on requested repositories ------------------------------
     for (final name in requestedRepoNames) {
-      final node = findNode(nodes: allNodes, packageName: name);
+      final node = findNode(
+        packageName: name,
+        nodes: allNodes,
+      );
       if (node != null) {
-        endpoints.add(node);
+        endpointsByName.putIfAbsent(node.name, () => node);
       }
     }
 
+    // Additional endpoints from existing ticket repositories -----------------
+    final existingTicketRepos =
+        ticketDir.listSync(recursive: false).whereType<Directory>();
+
+    for (final repoDir in existingTicketRepos) {
+      final repoName = path.basename(repoDir.path);
+      final node = findNode(
+        packageName: repoName,
+        nodes: allNodes,
+      );
+      if (node != null) {
+        endpointsByName.putIfAbsent(node.name, () => node);
+      }
+    }
+
+    final endpoints = endpointsByName.values.toList();
+
     final betweenNodes = endpoints.length >= 2
-        ? _graph.getNodesBetween(allNodes, endpoints)
+        ? _graph.getNodesBetween(
+            allNodes,
+            endpoints,
+          )
         : <Node>[];
 
     final finalToCopy = <String>{
@@ -210,14 +246,14 @@ class AddCommand extends Command<dynamic> {
     }
 
     // Finally perform a single re-localization pass for the whole ticket.
-    await _relocalizeAllReposInTicket(Directory(ticketPath));
+    await _relocalizeAllReposInTicket(ticketDir);
   }
 
   // ---------------------------------------------------------------------------
   // Ticket support helpers ----------------------------------------------------
 
   // ...........................................................................
-  /// Find a node by package name in the dependency graph
+  /// Find a node by package name in the dependency graph.
   Node? findNode({
     required String packageName,
     required Map<String, Node> nodes,
@@ -229,8 +265,8 @@ class AddCommand extends Command<dynamic> {
     if (node != null) {
       return node;
     }
-    for (Node n in nodes.values) {
-      Node? foundNode = findNode(
+    for (final Node n in nodes.values) {
+      final Node? foundNode = findNode(
         packageName: packageName,
         nodes: n.dependencies,
       );
@@ -259,7 +295,7 @@ class AddCommand extends Command<dynamic> {
       return;
     }
 
-    // Copy from master into ticket --------------------------------------------
+    // Copy from master into ticket -------------------------------------------
     await copyDirectory(srcDir, destDir);
 
     final String ticketName = path.basename(ticketPath);
@@ -271,7 +307,7 @@ class AddCommand extends Command<dynamic> {
       ggLog(red('Failed to checkout branch $ticketName: $e'));
     }
 
-    // Run dart pub get in the repo --------------------------------------------
+    // Run dart pub get in the repo -------------------------------------------
     final result = await processRunner(
       'dart',
       ['pub', 'get'],
@@ -314,7 +350,8 @@ class AddCommand extends Command<dynamic> {
       final repoDir = node.directory;
       final repoName = path.basename(repoDir.path);
       try {
-        File backupFile = File('${repoDir.path}/.gg_localize_refs_backup.json');
+        final backupFile =
+            File('${repoDir.path}/.gg_localize_refs_backup.json');
         if (backupFile.existsSync()) {
           await _unlocalizeRefs.get(directory: repoDir, ggLog: ggLog);
         }
@@ -340,7 +377,7 @@ class AddCommand extends Command<dynamic> {
         throw Exception('Failed to relocalize ticket $ticketName');
       }
 
-      // Execute "dart pub upgrade" if pubspec.yaml exists --------------------
+      // Execute "dart pub upgrade" if pubspec.yaml exists -------------------
       final pubspec = File(path.join(repoDir.path, 'pubspec.yaml'));
       if (pubspec.existsSync()) {
         final upgrade = await processRunner(
