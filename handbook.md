@@ -16,6 +16,13 @@ Kidney ist ein Kommandozeilenwerkzeug für Multi Repo Projekte. Es hilft dir dab
 - pro Ticket eigene Arbeitskopien dieser Repositories anzulegen und
 - Abhängigkeiten zwischen Repositories konsistent zu halten.
 
+Wichtiger Unterschied zu **gg**:
+
+- **gg** arbeitet immer in genau einem Git-Repository (z. B. `gg can commit`, `gg do commit`, `gg do push`).
+- **kidney_core** baut darauf auf und führt dieselben Arten von Aktionen **repoübergreifend für alle Repositories eines Tickets** aus (z. B. `kidney_core can commit`, `kidney_core do commit`, `kidney_core do push`).
+
+Du verwendest also gg für die Feinarbeit in einem einzelnen Repo und Kidney, sobald du mehrere Repos gemeinsam für ein Ticket steuern möchtest.
+
 ### 1.2 Voraussetzungen
 
 Bevor du Kidney installierst, benötigst du
@@ -270,11 +277,70 @@ In der Praxis reicht häufig der einfache Aufruf `kidney_core code` aus dem Tick
 
 ---
 
-## 9. Review mit `kidney_core do review`
+## 9. Commits und Pushes mit `kidney_core can/do commit` und `kidney_core do push`
+
+Bevor du Reviews oder Publishes über alle Ticket-Repositories hinweg ausführst, ist es hilfreich, Commits und Pushes ebenfalls zentral über Kidney zu steuern.
+
+Typischerweise arbeitest du dabei im Ticketordner (z. B. `tickets/PROJ-123`).
+
+### 9.1 Prüfen, ob Commits möglich sind: `kidney_core can commit`
+
+Mit
+
+```bash
+cd tickets/PROJ-123
+kidney_core can commit
+```
+
+prüfst du, ob in **allen Repositories des Tickets** Commits möglich sind. Kidney
+
+- sucht alle Repositories des Tickets,
+- ruft für jedes Repo intern `gg can commit` auf und
+- bricht ab, sobald ein Repository nicht commitbar ist.
+
+Damit erkennst du früh, ob z. B. fehlende `pub get`, offene Merge-Konflikte, Test-Fails oder andere Probleme Commits verhindern.
+
+### 9.2 Änderungen committen: `kidney_core do commit`
+
+Mit
+
+```bash
+cd tickets/PROJ-123
+kidney_core do commit -m "Kurzbeschreibung der Änderung"
+```
+
+lässt du Kidney in **allen Ticket-Repositories** einen Commit ausführen.
+
+Was passiert dabei grob?
+
+- Kidney bestimmt alle Repositories im Ticket (in einer sinnvollen Reihenfolge).
+- Für jedes Repo wird intern `gg do commit` mit deiner Commit-Message aufgerufen.
+- Falls in einem Repository kein Commit möglich ist, oder keine Änderungen zum committen vorhanden sind, wird dieses Repo übersprungen bzw. ein Fehler protokolliert.
+
+So kannst du mit einem Befehl alle relevanten Repositories eines Tickets konsistent mit der gleichen commit-Message committen, statt in jedem Repo einzeln `gg do commit` auszuführen.
+
+### 9.3 Prüfen und ausführen von Pushes: `kidney_core can push` und `kidney_core do push`
+
+Analog zu `can/do commit` gibt es im Ticketkontext auch `can push` und `do push`:
+
+```bash
+cd tickets/PROJ-123
+kidney_core can push
+kidney_core do push
+```
+
+- `kidney_core can push` prüft für alle Ticket-Repos, ob ein Push möglich ist, und ruft dafür intern `gg can push` auf.
+- `kidney_core do push` führt anschließend über alle Repositories hinweg `gg do push` aus (optional mit `--force`), sodass alle Ticket-Branches konsistent zum Remote gepusht werden.
+
+Auf diese Weise steuerst du Commits und Pushes für ein komplettes Ticket zentral, während gg weiterhin für die Detailarbeit in einzelnen Repositories zuständig bleibt.
+
+---
+
+## 10. Review mit `kidney_core do review`
 
 Bevor Änderungen aus einem Ticket in zentrale Branches gemergt oder veröffentlicht werden, solltest du einen konsistenten technischen Zustand herstellen. Dafür dient `kidney_core do review`.
 
-### 9.1 Vorbereitung: `kidney_core can review`
+### 10.1 Vorbereitung: `kidney_core can review`
 
 Der Befehl `kidney_core do review` ruft intern zunächst `kidney_core can review` auf. Diese Prüfung stellt sicher, dass
 
@@ -283,7 +349,7 @@ Der Befehl `kidney_core do review` ruft intern zunächst `kidney_core can review
 
 Falls diese Vorbedingungen nicht erfüllt sind, bricht der Reviewprozess ab und du siehst entsprechende Hinweise in der Konsole.
 
-### 9.2 Ablauf von `kidney_core do review`
+### 10.2 Ablauf von `kidney_core do review`
 
 Führe den Befehl im Ticketordner aus:
 
@@ -315,11 +381,11 @@ Hinweis: Es gibt ergänzende Befehle wie `kidney_core can publish` und `kidney_c
 
 ---
 
-## 10. Empfohlener Minimal Workflow im Alltag
+## 11. Empfohlener Minimal Workflow im Alltag
 
 Zum Abschluss eine kompakte Übersicht über einen typischen Alltagseinsatz.
 
-### 10.1 Einmalig pro Projekt
+### 11.1 Einmalig pro Projekt
 
 1. Projektordner anlegen und Workspace initialisieren
 
@@ -335,7 +401,7 @@ Zum Abschluss eine kompakte Übersicht über einen typischen Alltagseinsatz.
    kidney_core add https://github.com/meine-org
    ```
 
-### 10.2 Für jedes neue Ticket
+### 11.2 Für jedes neue Ticket
 
 1. Ticket anlegen
 
