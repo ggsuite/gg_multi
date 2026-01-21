@@ -2,7 +2,7 @@
 
 Praktische Kurzbeschreibung für den täglichen Einsatz von Kidney in Dart- und Flutter-Projekten.
 
-Kidney unterstützt dich dabei, Multi Repo Projekte mit vielen Git Repositories konsistent zu verwalten. Der Fokus liegt aktuell klar auf Dart und Flutter.
+Kidney unterstützt dich dabei, Multi Repo Projekte mit vielen Git Repositories konsistent zu verwalten. Kidney unterstützt derzeit nur Dart / Flutter.
 
 ---
 
@@ -15,8 +15,6 @@ Kidney ist ein Kommandozeilenwerkzeug für Multi Repo Projekte. Es hilft dir dab
 - alle Repositories eines Projekts zentral zu verwalten,
 - pro Ticket eigene Arbeitskopien dieser Repositories anzulegen und
 - Abhängigkeiten zwischen Repositories konsistent zu halten.
-
-Kidney ist auf Dart und Flutter optimiert. Es arbeitet typischerweise mit Repositories, die eine `pubspec.yaml` enthalten.
 
 ### 1.2 Voraussetzungen
 
