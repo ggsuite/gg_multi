@@ -256,7 +256,6 @@ kidney_core code
 Was passiert?
 
 - Kidney erkennt automatisch, dass du dich in einem Ticket befindest.
-- Alle Repositories dieses Tickets werden in der richtigen Reihenfolge ermittelt.
 - Für jedes Repository wird `code <pfad>` aufgerufen.
 
 Voraussetzung ist, dass das VS Code Kommando `code` auf deinem System installiert und im `PATH` verfügbar ist.
