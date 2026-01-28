@@ -159,6 +159,7 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           git: any(named: 'git'),
+          gitRef: any(named: 'gitRef'),
         ),
       ).thenAnswer((_) async {});
 
@@ -291,6 +292,7 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           git: any(named: 'git'),
+          gitRef: any(named: 'gitRef'),
         ),
       ).thenAnswer((_) async {});
 
@@ -383,6 +385,7 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           git: any(named: 'git'),
+          gitRef: any(named: 'gitRef'),
         ),
       ).thenAnswer((_) async {});
 
@@ -487,6 +490,7 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           git: any(named: 'git'),
+          gitRef: any(named: 'gitRef'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -591,6 +595,7 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           git: any(named: 'git'),
+          gitRef: any(named: 'gitRef'),
         ),
       ).thenThrow(Exception('localize git failed'));
 
@@ -703,6 +708,7 @@ void main() {
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
             git: any(named: 'git'),
+            gitRef: any(named: 'gitRef'),
           ),
         ).thenAnswer((_) async {});
 
@@ -809,6 +815,7 @@ void main() {
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
             git: any(named: 'git'),
+            gitRef: any(named: 'gitRef'),
           ),
         ).thenAnswer((_) async {});
 

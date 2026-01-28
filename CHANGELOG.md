@@ -46,6 +46,7 @@
 - Write kidney\_status file
 - Abort directly if a command fails in do review
 - Execute gg do commit after localizing in kidney add
+- Pass gitRef param to \_localizeRefs.get in DoReviewCommand and tests
 
 ### Removed
 

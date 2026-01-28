@@ -153,7 +153,12 @@ class DoReviewCommand extends DirCommand<void> {
       }
 
       try {
-        await _localizeRefs.get(directory: repoDir, ggLog: ggLog, git: true);
+        await _localizeRefs.get(
+          directory: repoDir,
+          ggLog: ggLog,
+          git: true,
+          gitRef: ticketName,
+        );
         ggLog(green('Localized refs for $repoName'));
         StatusUtils.setStatus(
           repoDir,
@@ -161,7 +166,12 @@ class DoReviewCommand extends DirCommand<void> {
           ggLog: ggLog,
         );
       } catch (e) {
-        ggLog(red('Failed to localize refs with --git for $repoName: $e'));
+        ggLog(
+          red(
+            'Failed to localize refs with --git for '
+            '$repoName: $e',
+          ),
+        );
         throw Exception('Failed to review some '
             'repositories in ticket $ticketName');
       }
