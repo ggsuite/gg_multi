@@ -30,9 +30,7 @@ class CodeCommand extends Command<void> {
   })  : workspacePath = rootPath ?? WorkspaceUtils.defaultKidneyWorkspacePath(),
         _executionPath = executionPath ?? Directory.current.path,
         _dirFactory = directoryFactory ?? Directory.new,
-        _launcher = launcher ?? VSCodeLauncher(),
-        _sortedProcessingList =
-            sortedProcessingList ?? SortedProcessingList(ggLog: ggLog);
+        _launcher = launcher ?? VSCodeLauncher();
   // coverage:ignore-end
 
   /// The log function.
@@ -41,7 +39,7 @@ class CodeCommand extends Command<void> {
   /// Kidney workspace path.
   final String workspacePath;
 
-  /// The path from which the command is executed
+  /// The path from which the command is executed.
   final String _executionPath;
 
   /// Used for test injection.
@@ -49,9 +47,6 @@ class CodeCommand extends Command<void> {
 
   /// Responsible for launching VS Code.
   final VSCodeLauncher _launcher;
-
-  /// Sorted processing helper for determining repositories in a ticket
-  final SortedProcessingList _sortedProcessingList;
 
   String _rel(String absPath) => p.relative(absPath, from: _executionPath);
 
@@ -65,8 +60,9 @@ class CodeCommand extends Command<void> {
   @override
   Future<void> run() async {
     final args = argResults!.rest;
+
+    // No explicit target, try to detect ticket from execution path.
     if (args.isEmpty) {
-      // Detect ticket folder if possible
       final ticketPath = WorkspaceUtils.detectTicketPath(_executionPath);
       if (ticketPath == null) {
         throw UsageException(
@@ -74,11 +70,12 @@ class CodeCommand extends Command<void> {
           usage,
         );
       }
-      // If a ticket folder is detected, open all repos in it
+
       final ticketDir = Directory(ticketPath);
-      await _openAllReposInTicket(ticketDir);
+      await _openTicketWorkspace(ticketDir);
       return;
     }
+
     final target = args.first;
     final parts = target.split(RegExp(r'[\\/]'));
     if (parts.isEmpty || parts.length > 2) {
@@ -87,16 +84,20 @@ class CodeCommand extends Command<void> {
         usage,
       );
     }
+
     final ticketName = parts[0];
     final repoName = parts.length == 2 ? parts[1] : null;
+
     final ticketsDir = _dirFactory(
       path.join(workspacePath, kidneyTicketFolder),
     );
     final ticketDir = Directory(path.join(ticketsDir.path, ticketName));
+
     if (!ticketDir.existsSync()) {
       ggLog(red('Ticket $ticketName not found at ${_rel(ticketDir.path)}'));
       return;
     }
+
     if (repoName != null) {
       final repoDir = Directory(path.join(ticketDir.path, repoName));
       if (!repoDir.existsSync()) {
@@ -110,33 +111,29 @@ class CodeCommand extends Command<void> {
       }
       await _openInVSCode(repoDir);
     } else {
-      await _openAllReposInTicket(ticketDir);
+      await _openTicketWorkspace(ticketDir);
     }
   }
 
-  /// Opens all repo directories inside [ticketDir] in VS Code
-  Future<void> _openAllReposInTicket(Directory ticketDir) async {
-    // Use SortedProcessingList to determine repositories
-    final nodes = await _sortedProcessingList.get(
-      directory: ticketDir,
-      ggLog: ggLog,
+  /// Opens the VS Code workspace file `<ticket_name>.code-workspace` that
+  /// belongs to [ticketDir]. The file does not need to exist yet; VS Code
+  /// can create it on demand.
+  Future<void> _openTicketWorkspace(Directory ticketDir) async {
+    final ticketName = path.basename(ticketDir.path);
+    final workspacePath =
+        path.join(ticketDir.path, '$ticketName.code-workspace');
+
+    await _launcher.openPath(workspacePath);
+    ggLog(
+      green(
+        'Opened workspace $ticketName.code-workspace '
+        'at ${_rel(workspacePath)}',
+      ),
     );
-
-    if (nodes.isEmpty) {
-      ggLog(
-        red('No repositories found under ticket '
-            '${path.basename(ticketDir.path)}.'),
-      );
-      return;
-    }
-
-    for (final node in nodes) {
-      await _openInVSCode(node.directory);
-    }
   }
 
   Future<void> _openInVSCode(Directory dir) async {
-    await _launcher.open(dir);
+    await _launcher.openDirectory(dir);
     ggLog(green('Opened ${path.basename(dir.path)} at ${_rel(dir.path)}'));
   }
 }

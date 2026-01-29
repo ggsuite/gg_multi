@@ -13,16 +13,19 @@ typedef ProcessStarter = Future<void> Function(
   bool runInShell,
 });
 
-/// Provides logic to open a directory in VS Code via the command line.
+/// Provides logic to open a directory or workspace file in VS Code via
+/// the command line.
 ///
 /// Example:
 /// ```dart
 /// final launcher = VSCodeLauncher();
-/// await launcher.open(Directory('/some/path'));
+/// await launcher.openDirectory(Directory('/some/path'));
+/// await launcher.openPath('/some/path/my.code-workspace');
 /// ```
 class VSCodeLauncher {
   /// Constructs a VSCodeLauncher with optional [processStarter] injection.
-  /// The default starts VSCode using Process.start with runInShell: true.
+  /// The default starts VS Code using [Process.start] with
+  /// `runInShell: true`.
   VSCodeLauncher({
     ProcessStarter? processStarter,
   }) : _starter = processStarter ?? _defaultStarter;
@@ -30,9 +33,22 @@ class VSCodeLauncher {
   final ProcessStarter _starter;
 
   /// Opens the given [directory] in VS Code via CLI.
+  ///
+  /// This is kept for backwards compatibility and simply delegates to
+  /// [openDirectory].
+  Future<void> open(Directory directory) => openDirectory(directory);
+
+  /// Opens the given [directory] in VS Code via CLI.
   /// Throws any exception from process launching.
-  Future<void> open(Directory directory) {
+  Future<void> openDirectory(Directory directory) {
     return _starter('code', [directory.path], runInShell: true);
+  }
+
+  /// Opens an arbitrary VS Code target [path] (for example a
+  /// `<ticket>.code-workspace` file) via CLI.
+  /// Throws any exception from process launching.
+  Future<void> openPath(String path) {
+    return _starter('code', [path], runInShell: true);
   }
 
   // Real implementation for launching VS Code.

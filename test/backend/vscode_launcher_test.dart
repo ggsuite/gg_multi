@@ -10,14 +10,14 @@ import 'package:kidney_core/src/backend/vscode_launcher.dart';
 
 void main() {
   group('VSCodeLauncher', () {
-    test('launches VSCode with runInShell', () async {
+    test('launches VSCode with runInShell for directories', () async {
       final calls = <Map<String, Object?>>[];
       Future<void> fakeStarter(
         String exe,
         List<String> args, {
         bool runInShell = false,
       }) async {
-        calls.add({
+        calls.add(<String, Object?>{
           'exe': exe,
           'args': args,
           'runInShell': runInShell,
@@ -29,7 +29,30 @@ void main() {
       await launcher.open(dir);
       expect(calls.length, 1);
       expect(calls[0]['exe'], 'code');
-      expect(calls[0]['args'], [dir.path]);
+      expect(calls[0]['args'], <String>[dir.path]);
+      expect(calls[0]['runInShell'], isTrue);
+    });
+
+    test('launches VSCode with runInShell for arbitrary path', () async {
+      final calls = <Map<String, Object?>>[];
+      Future<void> fakeStarter(
+        String exe,
+        List<String> args, {
+        bool runInShell = false,
+      }) async {
+        calls.add(<String, Object?>{
+          'exe': exe,
+          'args': args,
+          'runInShell': runInShell,
+        });
+      }
+
+      final launcher = VSCodeLauncher(processStarter: fakeStarter);
+      const workspacePath = '/tmp/workspace.code-workspace';
+      await launcher.openPath(workspacePath);
+      expect(calls.length, 1);
+      expect(calls[0]['exe'], 'code');
+      expect(calls[0]['args'], <String>[workspacePath]);
       expect(calls[0]['runInShell'], isTrue);
     });
 
@@ -44,7 +67,7 @@ void main() {
 
       final launcher = VSCodeLauncher(processStarter: throwingStarter);
       expect(
-        () async => await launcher.open(Directory('/tmp/xyz')),
+        () async => launcher.open(Directory('/tmp/xyz')),
         throwsA(
           isA<ArgumentError>().having((e) => e.message, 'message', 'fail'),
         ),
