@@ -4,6 +4,7 @@
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
 
+import 'dart:convert';
 import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:gg/gg.dart' as gg;
@@ -104,7 +105,8 @@ class AddCommand extends Command<dynamic> {
   /// The path from which the command was executed.
   final String executionPath;
 
-  /// gg do commit instance used after localization with --git in ticket copies.
+  /// gg do commit instance used after localization with --git in ticket
+  /// copies.
   final gg.DoCommit _ggDoCommit;
 
   /// Sorted processing helper for ticket-wide iteration.
@@ -247,6 +249,10 @@ class AddCommand extends Command<dynamic> {
 
     // Finally perform a single re-localization pass for the whole ticket.
     await _relocalizeAllReposInTicket(ticketDir);
+
+    // Rewrite the VS Code workspace so that all ticket repositories are
+    // available as folders in a single workspace file.
+    await _rewriteCodeWorkspace(ticketDir);
   }
 
   // ---------------------------------------------------------------------------
@@ -318,7 +324,8 @@ class AddCommand extends Command<dynamic> {
     } else {
       ggLog(
         red(
-          'Failed to execute dart pub get in $repoName: ${result.stderr}',
+          'Failed to execute dart pub get in $repoName: '
+          '${result.stderr}',
         ),
       );
     }
@@ -411,5 +418,44 @@ class AddCommand extends Command<dynamic> {
     }
 
     ggLog(green('✅ Re-localized all repositories in ticket $ticketName.'));
+  }
+
+  /// Rewrites the VS Code `.code-workspace` file for the given [ticketDir].
+  ///
+  /// The workspace file contains one folder entry for each repository in the
+  /// ticket so that all repositories can be opened together in VS Code.
+  Future<void> _rewriteCodeWorkspace(Directory ticketDir) async {
+    final nodes = await _sortedProcessingList.get(
+      directory: ticketDir,
+      ggLog: ggLog,
+    );
+
+    final folderNames = <String>{};
+
+    for (final node in nodes) {
+      final repoDir = node.directory;
+      final name = path.basename(repoDir.path);
+      folderNames.add(name);
+    }
+
+    final folders = folderNames
+        .map<Map<String, String>>(
+          (name) => <String, String>{'path': name},
+        )
+        .toList();
+
+    final ticketName = path.basename(ticketDir.path);
+
+    final workspaceFile = File(
+      path.join(ticketDir.path, '$ticketName.code-workspace'),
+    );
+
+    final content = jsonEncode(
+      <String, Object?>{
+        'folders': folders,
+      },
+    );
+
+    await workspaceFile.writeAsString('$content\n');
   }
 }

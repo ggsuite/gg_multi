@@ -26,6 +26,7 @@
 - Add do execute command
 - add tests for kidney add
 - add tests for do publish
+- Add VS Code workspace file generation to kidney add command
 
 ### Changed
 

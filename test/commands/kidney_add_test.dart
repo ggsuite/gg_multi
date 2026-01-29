@@ -465,6 +465,70 @@ dev_dependencies:
       },
     );
 
+    test('creates .code-workspace for ticket with one repo', () async {
+      const repoName = 'workspaceRepo';
+      final repoDir = Directory(path.join(masterWorkspacePath, repoName))
+        ..createSync(recursive: true);
+      File(path.join(repoDir.path, 'pubspec.yaml')).writeAsStringSync('''
+name: $repoName
+version: 1.0.0
+''');
+
+      final ticketDir = Directory(
+        path.join(tempDir.path, kidneyTicketFolder, 'TICKET_WS'),
+      )..createSync(recursive: true);
+
+      final mockProc = MockProcessRunner();
+      when(
+        () => mockProc(
+          'dart',
+          ['pub', 'get'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer(
+        (_) async => ProcessResult(1, 0, 'ok', ''),
+      );
+      when(
+        () => mockProc(
+          'dart',
+          ['pub', 'upgrade'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer(
+        (_) async => ProcessResult(1, 0, 'ok', ''),
+      );
+
+      final mockDoCommit = MockGgDoCommit();
+      when(
+        () => mockDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          logType: any(named: 'logType'),
+          updateChangeLog: any(named: 'updateChangeLog'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+
+      createRunner(
+        executionPath: ticketDir.path,
+        processRunner: mockProc.call,
+        ggDoCommit: mockDoCommit,
+      );
+
+      await runner.run(['add', repoName]);
+
+      final wsFile =
+          File(path.join(ticketDir.path, 'TICKET_WS.code-workspace'));
+      expect(wsFile.existsSync(), isTrue);
+      final json =
+          jsonDecode(wsFile.readAsStringSync()) as Map<String, dynamic>;
+      final folders =
+          (json['folders'] as List<dynamic>).cast<Map<String, dynamic>>();
+      final paths = folders.map((f) => f['path'] as String).toSet();
+      expect(paths, equals(<String>{repoName}));
+    });
+
     test('logs error when repo not found in master workspace', () async {
       final ticketDir = Directory(
         path.join(tempDir.path, kidneyTicketFolder, 'TICKET-MISSING'),
@@ -912,6 +976,21 @@ version: 1.0.0
             (m) => m.contains('Re-localized all repositories in ticket TXYZ'),
           ),
           isTrue,
+        );
+
+        final workspaceFile = File(
+          path.join(ticketDir.path, 'TXYZ.code-workspace'),
+        );
+        expect(workspaceFile.existsSync(), isTrue);
+        final workspaceJson = jsonDecode(
+          workspaceFile.readAsStringSync(),
+        ) as Map<String, dynamic>;
+        final folders = (workspaceJson['folders'] as List<dynamic>)
+            .cast<Map<String, dynamic>>();
+        final folderPaths = folders.map((f) => f['path'] as String).toSet();
+        expect(
+          folderPaths,
+          equals(<String>{'a', 'b', 'c'}),
         );
       },
     );
