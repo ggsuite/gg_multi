@@ -411,6 +411,20 @@ dev_dependencies:
         final mockProc = MockProcessRunner();
         when(
           () => mockProc(
+            'git',
+            ['fetch'],
+            workingDirectory: repoDir.path,
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+        when(
+          () => mockProc(
+            'git',
+            ['pull'],
+            workingDirectory: repoDir.path,
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+        when(
+          () => mockProc(
             'dart',
             ['pub', 'get'],
             workingDirectory: any(named: 'workingDirectory'),
@@ -481,6 +495,20 @@ version: 1.0.0
       final mockProc = MockProcessRunner();
       when(
         () => mockProc(
+          'git',
+          ['fetch'],
+          workingDirectory: repoDir.path,
+        ),
+      ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+      when(
+        () => mockProc(
+          'git',
+          ['pull'],
+          workingDirectory: repoDir.path,
+        ),
+      ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+      when(
+        () => mockProc(
           'dart',
           ['pub', 'get'],
           workingDirectory: any(named: 'workingDirectory'),
@@ -527,6 +555,121 @@ version: 1.0.0
           (json['folders'] as List<dynamic>).cast<Map<String, dynamic>>();
       final paths = folders.map((f) => f['path'] as String).toSet();
       expect(paths, equals(<String>{repoName}));
+    });
+
+    test('logs error when git pull fails but still copies repo', () async {
+      const repoName = 'pullFailRepo';
+      final masterRepoDir = Directory(
+        path.join(masterWorkspacePath, repoName),
+      )..createSync(recursive: true);
+      File(path.join(masterRepoDir.path, 'file.txt')).writeAsStringSync('x');
+
+      final ticketDir = Directory(
+        path.join(tempDir.path, kidneyTicketFolder, 'TICKET_PULL_FAIL'),
+      )..createSync(recursive: true);
+
+      final mockProc = MockProcessRunner();
+      final mockSorted = MockSortedProcessingList();
+      final mockDoCommit = MockGgDoCommit();
+      final mockGraph = MockGraph();
+
+      when(
+        () => mockDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          logType: any(named: 'logType'),
+          updateChangeLog: any(named: 'updateChangeLog'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockGraph.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async => <String, Node>{});
+
+      when(
+        () => mockSorted.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async => <Node>[]);
+
+      when(
+        () => mockProc(
+          'git',
+          ['fetch'],
+          workingDirectory: masterRepoDir.path,
+        ),
+      ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+      when(
+        () => mockProc(
+          'git',
+          ['pull'],
+          workingDirectory: masterRepoDir.path,
+        ),
+      ).thenAnswer(
+        (_) async => ProcessResult(1, 1, '', 'pull error'),
+      );
+      when(
+        () => mockProc(
+          'dart',
+          ['pub', 'get'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+      when(
+        () => mockProc(
+          'dart',
+          ['pub', 'upgrade'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+
+      final localRunner = CommandRunner<void>('test', 'Add pull fail')
+        ..addCommand(
+          AddCommand(
+            ggLog: ggLog,
+            gitCloner: mockGitCloner,
+            processRunner: mockProc.call,
+            masterWorkspacePath: masterWorkspacePath,
+            executionPath: ticketDir.path,
+            ggDoCommit: mockDoCommit,
+            sortedProcessingList: mockSorted,
+            graph: mockGraph,
+          ),
+        );
+
+      await localRunner.run(['add', repoName]);
+
+      final copied = Directory(path.join(ticketDir.path, repoName));
+      expect(copied.existsSync(), isTrue);
+      expect(
+        logMessages.any(
+          (m) => m.contains(
+            'Failed to git pull in pullFailRepo in master workspace: '
+            'pull error',
+          ),
+        ),
+        isTrue,
+      );
+      verify(
+        () => mockProc(
+          'git',
+          ['fetch'],
+          workingDirectory: masterRepoDir.path,
+        ),
+      ).called(1);
+      verify(
+        () => mockProc(
+          'git',
+          ['pull'],
+          workingDirectory: masterRepoDir.path,
+        ),
+      ).called(1);
     });
 
     test('logs error when repo not found in master workspace', () async {
@@ -634,11 +777,31 @@ version: 1.0.0
             force: any(named: 'force'),
           ),
         ).thenAnswer((_) async {});
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['fetch'],
+            workingDirectory: repoDir.path,
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['pull'],
+            workingDirectory: repoDir.path,
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
         createRunner(
           executionPath: ticketDir.path,
           processRunner: mockProcessRunner.call,
           ggDoCommit: mockDoCommit,
         );
+      });
+
+      tearDown(() async {
+        if (ticketDir.existsSync()) {
+          ticketDir.deleteSync(recursive: true);
+        }
       });
 
       test('executes dart pub get if pubspec.yaml exists and logs success',
@@ -732,6 +895,20 @@ version: 1.0.0
       ).thenThrow(Exception('commit error'));
 
       final mockProc = MockProcessRunner();
+      when(
+        () => mockProc(
+          'git',
+          ['fetch'],
+          workingDirectory: repoDir.path,
+        ),
+      ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+      when(
+        () => mockProc(
+          'git',
+          ['pull'],
+          workingDirectory: repoDir.path,
+        ),
+      ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
       when(
         () => mockProc(
           'dart',
@@ -868,8 +1045,32 @@ version: 1.0.0
           ),
         ).thenThrow(Exception('localize failed'));
 
+        final mockRunner = MockProcessRunner();
+        when(
+          () => mockRunner(
+            'git',
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+        when(
+          () => mockRunner(
+            'dart',
+            ['pub', 'get'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+        when(
+          () => mockRunner(
+            'dart',
+            ['pub', 'upgrade'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+
         createRunner(
           executionPath: ticketDir.path,
+          processRunner: mockRunner.call,
           ggDoCommit: mockDoCommit,
           sortedProcessingList: mockSorted,
           unlocalizeRefs: mockUnloc,
@@ -925,6 +1126,13 @@ version: 1.0.0
         )..createSync(recursive: true);
 
         final mockRunner = MockProcessRunner();
+        when(
+          () => mockRunner(
+            'git',
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
         when(
           () => mockRunner(
             'dart',
@@ -1031,6 +1239,13 @@ version: 1.0.0
         File(path.join(existingC.path, 'dummy.txt')).writeAsStringSync('x');
 
         final mockRunner = MockProcessRunner();
+        when(
+          () => mockRunner(
+            'git',
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
         when(
           () => mockRunner(
             'dart',
@@ -1195,6 +1410,13 @@ version: 1.0.0
         final mockProc = MockProcessRunner();
         when(
           () => mockProc(
+            'git',
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+        when(
+          () => mockProc(
             'dart',
             ['pub', 'get'],
             workingDirectory: any(named: 'workingDirectory'),
@@ -1285,6 +1507,13 @@ version: 1.0.0
         ).thenAnswer((_) async {});
 
         final mockProc = MockProcessRunner();
+        when(
+          () => mockProc(
+            'git',
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
         when(
           () => mockProc(
             'dart',
@@ -1378,12 +1607,18 @@ version: 1.0.0
 
         when(
           () => mockProc(
+            'git',
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+        when(
+          () => mockProc(
             'dart',
             ['pub', 'get'],
             workingDirectory: any(named: 'workingDirectory'),
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
-
         when(
           () => mockProc(
             'dart',
@@ -1496,6 +1731,13 @@ version: 1.0.0
           ),
         ).thenAnswer((_) async {});
 
+        when(
+          () => mockProc(
+            'git',
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
         when(
           () => mockProc(
             'dart',

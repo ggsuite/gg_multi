@@ -301,12 +301,41 @@ class AddCommand extends Command<dynamic> {
       return;
     }
 
+    // Before copying, update the repository in the master workspace
+    final fetchResult = await processRunner(
+      'git',
+      ['fetch'],
+      workingDirectory: srcDir.path,
+    );
+    if (fetchResult.exitCode != 0) {
+      ggLog(
+        red(
+          'Failed to git fetch in $repoName in master workspace: '
+          '${fetchResult.stderr}',
+        ),
+      );
+    } else {
+      final pullResult = await processRunner(
+        'git',
+        ['pull'],
+        workingDirectory: srcDir.path,
+      );
+      if (pullResult.exitCode != 0) {
+        ggLog(
+          red(
+            'Failed to git pull in $repoName in master workspace: '
+            '${pullResult.stderr}',
+          ),
+        );
+      }
+    }
+
     // Copy from master into ticket -------------------------------------------
     await copyDirectory(srcDir, destDir);
 
     final String ticketName = path.basename(ticketPath);
 
-    // Checkout a branch named as the ticket -----------------------------------
+    // Checkout a branch named as the ticket ----------------------------------
     try {
       await gitCloner.checkoutBranch(ticketName, destDir.path);
     } catch (e) {
