@@ -51,6 +51,8 @@ void main() {
 
       await runner.run([
         'ticket',
+        '--input',
+        tempDir.path,
         issueId,
         '-m',
         description,
@@ -91,6 +93,41 @@ void main() {
       );
     });
 
+    test(
+        'creates relative paths based on execution directory when already '
+        'inside tickets folder', () async {
+      const issueId = 'INSIDE-1';
+      final ticketsDir = Directory(path.join(tempDir.path, 'tickets'))
+        ..createSync(recursive: true);
+
+      await runner.run(<String>[
+        'ticket',
+        '--input',
+        ticketsDir.path,
+        issueId,
+      ]);
+
+      final ticketDir = Directory(
+        path.join(
+          tempDir.path,
+          'tickets',
+          issueId,
+        ),
+      );
+      expect(ticketDir.existsSync(), isTrue);
+
+      expect(
+        messages,
+        contains('Created ticket $issueId at $issueId'),
+      );
+      expect(
+        messages,
+        contains(
+          'Execute "cd $issueId" to enter the ticket workspace.',
+        ),
+      );
+    });
+
     test('does not create ticket if it already exists', () async {
       const issueId = 'DUP-1';
       const description = 'duplicate ticket';
@@ -99,6 +136,8 @@ void main() {
       // First creation
       await runner.run([
         'ticket',
+        '--input',
+        tempDir.path,
         issueId,
         '-m',
         description,
@@ -122,6 +161,8 @@ void main() {
       messages.clear();
       await runner.run([
         'ticket',
+        '--input',
+        tempDir.path,
         issueId,
         '-m',
         description,
@@ -139,16 +180,28 @@ void main() {
 
     test('throws UsageException when missing issue id', () async {
       await expectLater(
-        runner.run(['ticket', '-m', 'desc']),
+        runner.run([
+          'ticket',
+          '--input',
+          tempDir.path,
+          '-m',
+          'desc',
+        ]),
         throwsA(isA<UsageException>()),
       );
     });
 
-    test('creates ticket with empty description when message is omitted',
-        () async {
+    test(
+        'creates ticket with empty '
+        'description when message is omitted', () async {
       const issueId = 'NO-DESC-1';
 
-      await runner.run(['ticket', issueId]);
+      await runner.run([
+        'ticket',
+        '--input',
+        tempDir.path,
+        issueId,
+      ]);
 
       final ticketDir = Directory(
         path.join(
