@@ -20,21 +20,8 @@ import 'package:path/path.dart' as p;
 typedef DirectoryFactory = Directory Function(String path);
 
 /// Command to create a ticket folder and save ticket data as JSON.
-///
-/// This is implemented as a [DirCommand] so that all paths that are printed
-/// to the console are relative to the directory where the command is
-/// executed (the `--input` argument or `Directory.current`), not to the
-/// workspace root.  As a consequence, when the command is invoked *inside*
-/// the `tickets` folder, the user is instructed to
-/// `cd <ticket_name>` instead of `cd tickets/<ticket_name>`.
 class TicketCommand extends DirCommand<void> {
   /// Constructor with optional workspace [rootPath] and [directoryFactory].
-  ///
-  /// * [rootPath] defines the Kidney workspace root that contains the
-  ///   `tickets` folder.  It defaults to
-  ///   [WorkspaceUtils.defaultKidneyWorkspacePath].
-  /// * [directoryFactory] is only used to create the ticket directory and is
-  ///   mainly meant for tests.
   TicketCommand({
     required super.ggLog,
     String? rootPath,
@@ -60,11 +47,6 @@ class TicketCommand extends DirCommand<void> {
 
   /// Factory to create Directory instances
   final DirectoryFactory directoryFactory;
-
-  /// Returns [absPath] relative to the directory where the command is
-  /// executed (the resolved `--input` directory).
-  String _rel(String absPath, Directory executionDir) =>
-      p.relative(absPath, from: executionDir.path);
 
   @override
   Future<void> exec({
@@ -100,11 +82,13 @@ class TicketCommand extends DirCommand<void> {
     final dir = directoryFactory(ticketsPath);
     final ticketFile = File(path.join(ticketsPath, '.ticket'));
 
+    final relPath = p.relative(ticketsPath, from: directory.path);
+
     if (dir.existsSync() && ticketFile.existsSync()) {
       ggLog(
         red(
           'Error: Ticket $issueId already exists at '
-          '${_rel(ticketsPath, directory)}',
+          '$relPath',
         ),
       );
       return;
@@ -120,8 +104,6 @@ class TicketCommand extends DirCommand<void> {
       'description': description,
     };
     ticketFile.writeAsStringSync(jsonEncode(data));
-
-    final relPath = _rel(ticketsPath, directory);
 
     ggLog(green('Created ticket $issueId at $relPath'));
     ggLog('Execute "${blue('cd $relPath')}" '
