@@ -49,6 +49,7 @@
 - Execute gg do commit after localizing in kidney add
 - Pass gitRef param to \_localizeRefs.get in DoReviewCommand and tests
 - open ticket as VSCode workspace file instead of individual repos
+- Switch gg\_localize\_refs dependency to use GitHub repo
 
 ### Removed
 
