@@ -33,6 +33,8 @@ class MockGgDoCommit extends Mock implements gg.DoCommit {}
 
 class MockGgDoPush extends Mock implements gg.DoPush {}
 
+class MockGgDoMerge extends Mock implements gg.DoMerge {}
+
 class FakeDirectory extends Fake implements Directory {}
 
 class MockProcessRunner extends Mock {
@@ -84,7 +86,7 @@ void main() {
           isA<Exception>().having(
             (e) => e.toString(),
             'message',
-            'Exception: kidney_core can review failed',
+            'Exception: Not inside a ticket folder',
           ),
         ),
       );
@@ -111,7 +113,7 @@ void main() {
     });
 
     test(
-        'performs full flow including commit and push successfully, '
+        'performs full flow including merge, commit and push successfully, '
         'sets status', () async {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
@@ -119,6 +121,8 @@ void main() {
       final mockCanReviewCommand = MockCanReviewCommand();
       final mockGgDoCommit = MockGgDoCommit();
       final mockGgDoPush = MockGgDoPush();
+      final mockGgDoMerge = MockGgDoMerge();
+      final mockProcessRunner = MockProcessRunner();
 
       when(
         () => mockCanReviewCommand.exec(
@@ -146,6 +150,14 @@ void main() {
           ),
         ],
       );
+
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['merge', 'origin/main'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
 
       when(
         () => mockUnlocalizeRefs.get(
@@ -182,6 +194,16 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
+      when(
+        () => mockGgDoMerge.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          automerge: any(named: 'automerge'),
+          local: any(named: 'local'),
+          message: any(named: 'message'),
+        ),
+      ).thenAnswer((_) async {});
+
       final runner = CommandRunner<void>('test', 'do review ticket')
         ..addCommand(
           DoReviewCommand(
@@ -192,6 +214,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
+            processRunner: mockProcessRunner.call,
           ),
         );
       await runner.run(['review', '--input', ticketDir.path]);
@@ -199,6 +222,23 @@ void main() {
         messages,
         contains('✅ All repositories in ticket TICKDR reviewed successfully.'),
       );
+
+      // Merge must have been called for both repositories.
+      verify(
+        () => mockProcessRunner(
+          'git',
+          ['merge', 'origin/main'],
+          workingDirectory: path.join(ticketDir.path, 'A'),
+        ),
+      ).called(1);
+      verify(
+        () => mockProcessRunner(
+          'git',
+          ['merge', 'origin/main'],
+          workingDirectory: path.join(ticketDir.path, 'B'),
+        ),
+      ).called(1);
+
       expect(
         messages.any((m) => m.contains('Unlocalized refs for A')),
         isTrue,
@@ -249,6 +289,87 @@ void main() {
       ).called(greaterThan(0));
     });
 
+    test('fails and logs when merge of main into feature fails', () async {
+      final mockSortedProcessingList = MockSortedProcessingList();
+      final mockUnlocalizeRefs = MockUnlocalizeRefs();
+      final mockLocalizeRefs = MockLocalizeRefs();
+      final mockCanReviewCommand = MockCanReviewCommand();
+      final mockGgDoCommit = MockGgDoCommit();
+      final mockGgDoPush = MockGgDoPush();
+      final mockProcessRunner = MockProcessRunner();
+
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: Directory(path.join(ticketDir.path, 'A')),
+            pubspec: Pubspec('A'),
+          ),
+        ],
+      );
+
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['merge', 'origin/main'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer(
+        (_) async => ProcessResult(1, 1, '', 'merge failed'),
+      );
+
+      final runner = CommandRunner<void>('test', 'do review ticket')
+        ..addCommand(
+          DoReviewCommand(
+            ggLog: ggLog,
+            canReviewCommand: mockCanReviewCommand,
+            unlocalizeRefs: mockUnlocalizeRefs,
+            localizeRefs: mockLocalizeRefs,
+            sortedProcessingList: mockSortedProcessingList,
+            ggDoCommit: mockGgDoCommit,
+            ggDoPush: mockGgDoPush,
+            processRunner: mockProcessRunner.call,
+          ),
+        );
+
+      await expectLater(
+        () async => runner.run(['review', '--input', ticketDir.path]),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains(
+              'Failed to merge main into some '
+              'repositories in ticket TICKDR',
+            ),
+          ),
+        ),
+      );
+
+      expect(
+        messages.any(
+          (m) => m.contains(
+            'Failed to merge main into A for ticket TICKDR: '
+            'Exception: merge failed',
+          ),
+        ),
+        isTrue,
+      );
+
+      // CanReview must never be called when merge fails.
+      verifyNever(
+        () => mockCanReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      );
+    });
+
     test('fails and logs when commit fails for a repo (stop immediately)',
         () async {
       final mockSortedProcessingList = MockSortedProcessingList();
@@ -257,6 +378,8 @@ void main() {
       final mockCanReviewCommand = MockCanReviewCommand();
       final mockGgDoCommit = MockGgDoCommit();
       final mockGgDoPush = MockGgDoPush();
+      final mockGgDoMerge = MockGgDoMerge();
+      final mockProcessRunner = MockProcessRunner();
 
       when(
         () => mockCanReviewCommand.exec(
@@ -279,6 +402,14 @@ void main() {
           ),
         ],
       );
+
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['merge', 'origin/main'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
 
       when(
         () => mockUnlocalizeRefs.get(
@@ -307,6 +438,24 @@ void main() {
         ),
       ).thenThrow(Exception('commit failed'));
 
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockGgDoMerge.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          automerge: any(named: 'automerge'),
+          local: any(named: 'local'),
+          message: any(named: 'message'),
+        ),
+      ).thenAnswer((_) async {});
+
       final runner = CommandRunner<void>('test', 'do review ticket')
         ..addCommand(
           DoReviewCommand(
@@ -317,6 +466,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
+            processRunner: mockProcessRunner.call,
           ),
         );
       await expectLater(
@@ -350,6 +500,8 @@ void main() {
       final mockCanReviewCommand = MockCanReviewCommand();
       final mockGgDoCommit = MockGgDoCommit();
       final mockGgDoPush = MockGgDoPush();
+      final mockGgDoMerge = MockGgDoMerge();
+      final mockProcessRunner = MockProcessRunner();
 
       when(
         () => mockCanReviewCommand.exec(
@@ -372,6 +524,14 @@ void main() {
           ),
         ],
       );
+
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['merge', 'origin/main'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
 
       when(
         () => mockUnlocalizeRefs.get(
@@ -408,6 +568,16 @@ void main() {
         ),
       ).thenThrow(Exception('push failed'));
 
+      when(
+        () => mockGgDoMerge.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          automerge: any(named: 'automerge'),
+          local: any(named: 'local'),
+          message: any(named: 'message'),
+        ),
+      ).thenAnswer((_) async {});
+
       final runner = CommandRunner<void>('test', 'do review ticket')
         ..addCommand(
           DoReviewCommand(
@@ -418,6 +588,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
+            processRunner: mockProcessRunner.call,
           ),
         );
       await expectLater(
@@ -453,6 +624,8 @@ void main() {
       final mockCanReviewCommand = MockCanReviewCommand();
       final mockGgDoCommit = MockGgDoCommit();
       final mockGgDoPush = MockGgDoPush();
+      final mockGgDoMerge = MockGgDoMerge();
+      final mockProcessRunner = MockProcessRunner();
 
       when(
         () => mockCanReviewCommand.exec(
@@ -475,6 +648,14 @@ void main() {
           ),
         ],
       );
+
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['merge', 'origin/main'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
 
       // Make unlocalize throw to exercise the catch block
       when(
@@ -510,6 +691,15 @@ void main() {
           force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoMerge.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          automerge: any(named: 'automerge'),
+          local: any(named: 'local'),
+          message: any(named: 'message'),
+        ),
+      ).thenAnswer((_) async {});
 
       final runner = CommandRunner<void>('test', 'do review ticket')
         ..addCommand(
@@ -521,6 +711,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
+            processRunner: mockProcessRunner.call,
           ),
         );
 
@@ -558,6 +749,8 @@ void main() {
       final mockCanReviewCommand = MockCanReviewCommand();
       final mockGgDoCommit = MockGgDoCommit();
       final mockGgDoPush = MockGgDoPush();
+      final mockGgDoMerge = MockGgDoMerge();
+      final mockProcessRunner = MockProcessRunner();
 
       when(
         () => mockCanReviewCommand.exec(
@@ -580,6 +773,14 @@ void main() {
           ),
         ],
       );
+
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['merge', 'origin/main'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
 
       // Unlocalize works
       when(
@@ -617,6 +818,15 @@ void main() {
           force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoMerge.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          automerge: any(named: 'automerge'),
+          local: any(named: 'local'),
+          message: any(named: 'message'),
+        ),
+      ).thenAnswer((_) async {});
 
       final runner = CommandRunner<void>('test', 'do review ticket')
         ..addCommand(
@@ -628,6 +838,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
+            processRunner: mockProcessRunner.call,
           ),
         );
 
@@ -667,6 +878,7 @@ void main() {
         final mockGgDoCommit = MockGgDoCommit();
         final mockGgDoPush = MockGgDoPush();
         final mockProcessRunner = MockProcessRunner();
+        final mockGgDoMerge = MockGgDoMerge();
 
         // Create pubspec to trigger upgrade
         final repoADir = Directory(path.join(ticketDir.path, 'A'));
@@ -695,6 +907,14 @@ void main() {
             ),
           ],
         );
+
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['merge', 'origin/main'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
 
         when(
           () => mockUnlocalizeRefs.get(
@@ -739,6 +959,16 @@ void main() {
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
 
+        when(
+          () => mockGgDoMerge.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            automerge: any(named: 'automerge'),
+            local: any(named: 'local'),
+            message: any(named: 'message'),
+          ),
+        ).thenAnswer((_) async {});
+
         final runner = CommandRunner<void>('test', 'do review ticket')
           ..addCommand(
             DoReviewCommand(
@@ -774,6 +1004,7 @@ void main() {
         final mockGgDoCommit = MockGgDoCommit();
         final mockGgDoPush = MockGgDoPush();
         final mockProcessRunner = MockProcessRunner();
+        final mockGgDoMerge = MockGgDoMerge();
 
         // Create pubspec to trigger upgrade
         final repoADir = Directory(path.join(ticketDir.path, 'A'));
@@ -802,6 +1033,14 @@ void main() {
             ),
           ],
         );
+
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['merge', 'origin/main'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
 
         when(
           () => mockUnlocalizeRefs.get(
@@ -845,6 +1084,16 @@ void main() {
             workingDirectory: path.join(ticketDir.path, 'A'),
           ),
         ).thenAnswer((_) async => ProcessResult(1, 1, '', 'upgrade error'));
+
+        when(
+          () => mockGgDoMerge.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            automerge: any(named: 'automerge'),
+            local: any(named: 'local'),
+            message: any(named: 'message'),
+          ),
+        ).thenAnswer((_) async {});
 
         final runner = CommandRunner<void>('test', 'do review ticket')
           ..addCommand(

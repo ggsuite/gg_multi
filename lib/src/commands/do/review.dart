@@ -82,7 +82,7 @@ class DoReviewCommand extends DirCommand<void> {
   final gg.DoPush _ggDoPush;
 
   /// The injected process runner used to execute system processes like
-  /// "dart pub upgrade" after localization.
+  /// `git merge` and `dart pub upgrade` after localization.
   final ProcessRunner _processRunner;
 
   @override
@@ -100,29 +100,19 @@ class DoReviewCommand extends DirCommand<void> {
     required Directory directory,
     required GgLog ggLog,
   }) async {
-    // Step 1: Run can review
-    try {
-      await _canReviewCommand.exec(directory: directory, ggLog: ggLog);
-    } catch (e) {
-      ggLog(red('kidney_core can review failed: $e'));
-      throw Exception('kidney_core can review failed');
-    }
-
-    // Step 2: Detect ticket folder
+    // Step 1: Detect ticket folder ------------------------------------------
     final String? ticketPath = WorkspaceUtils.detectTicketPath(
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      // coverage:ignore-start
       ggLog(red('This command must be executed inside a ticket folder.'));
       throw Exception('Not inside a ticket folder');
-      // coverage:ignore-end
     }
 
     final ticketDir = Directory(ticketPath);
     final ticketName = path.basename(ticketDir.path);
 
-    // Get sorted repos
+    // Step 2: Collect repos in processing order -----------------------------
     final subs = await _sortedProcessingList.get(
       directory: ticketDir,
       ggLog: ggLog,
@@ -133,7 +123,53 @@ class DoReviewCommand extends DirCommand<void> {
       return;
     }
 
-    // Step 3: Perform unlocalize and localize for each repo
+    // Step 3: Merge main into the current feature branch for each repo ------
+    for (final repo in subs) {
+      final repoDir = repo.directory;
+      final repoName = path.basename(repoDir.path);
+
+      try {
+        final result = await _processRunner(
+          'git',
+          <String>['merge', 'origin/main'],
+          workingDirectory: repoDir.path,
+        );
+
+        if (result.exitCode != 0) {
+          final stderrStr = result.stderr?.toString() ?? '';
+          final stdoutStr = result.stdout?.toString() ?? '';
+          final errMsg = stderrStr.isNotEmpty ? stderrStr : stdoutStr;
+          throw Exception(errMsg);
+        }
+
+        ggLog(
+          green(
+            'Merged main into $repoName for ticket $ticketName.',
+          ),
+        );
+      } catch (e) {
+        ggLog(
+          red(
+            'Failed to merge main into $repoName for ticket '
+            '$ticketName: $e',
+          ),
+        );
+        throw Exception(
+          'Failed to merge main into some repositories in ticket '
+          '$ticketName',
+        );
+      }
+    }
+
+    // Step 4: Run can review after merging main into the feature branch -----
+    try {
+      await _canReviewCommand.exec(directory: ticketDir, ggLog: ggLog);
+    } catch (e) {
+      ggLog(red('kidney_core can review failed: $e'));
+      throw Exception('kidney_core can review failed');
+    }
+
+    // Step 5: Perform unlocalize and localize for each repo -----------------
     for (final repo in subs) {
       final repoDir = repo.directory;
       final repoName = path.basename(repoDir.path);
@@ -148,8 +184,9 @@ class DoReviewCommand extends DirCommand<void> {
         );
       } catch (e) {
         ggLog(red('Failed to unlocalize refs for $repoName: $e'));
-        throw Exception('Failed to review some '
-            'repositories in ticket $ticketName');
+        throw Exception(
+          'Failed to review some repositories in ticket $ticketName',
+        );
       }
 
       try {
@@ -172,16 +209,17 @@ class DoReviewCommand extends DirCommand<void> {
             '$repoName: $e',
           ),
         );
-        throw Exception('Failed to review some '
-            'repositories in ticket $ticketName');
+        throw Exception(
+          'Failed to review some repositories in ticket $ticketName',
+        );
       }
 
-      // Run "dart pub upgrade" if a pubspec.yaml exists ---------------------
+      // Run "dart pub upgrade" if a pubspec.yaml exists -------------------
       final pubspec = File(path.join(repoDir.path, 'pubspec.yaml'));
       if (pubspec.existsSync()) {
         final result = await _processRunner(
           'dart',
-          ['pub', 'upgrade'],
+          <String>['pub', 'upgrade'],
           workingDirectory: repoDir.path,
         );
         if (result.exitCode == 0) {
@@ -193,12 +231,13 @@ class DoReviewCommand extends DirCommand<void> {
               '$repoName: ${result.stderr}',
             ),
           );
-          throw Exception('Failed to review some '
-              'repositories in ticket $ticketName');
+          throw Exception(
+            'Failed to review some repositories in ticket $ticketName',
+          );
         }
       }
 
-      // Commit
+      // Commit --------------------------------------------------------------
       try {
         await _ggDoCommit.exec(
           directory: repoDir,
@@ -209,18 +248,20 @@ class DoReviewCommand extends DirCommand<void> {
         ggLog(green('Committed $repoName'));
       } catch (e) {
         ggLog(red('Failed to commit $repoName: $e'));
-        throw Exception('Failed to review some '
-            'repositories in ticket $ticketName');
+        throw Exception(
+          'Failed to review some repositories in ticket $ticketName',
+        );
       }
 
-      // Push
+      // Push ----------------------------------------------------------------
       try {
         await _ggDoPush.exec(directory: repoDir, ggLog: ggLog);
         ggLog(green('Pushed $repoName'));
       } catch (e) {
         ggLog(red('Failed to push $repoName: $e'));
-        throw Exception('Failed to review some '
-            'repositories in ticket $ticketName');
+        throw Exception(
+          'Failed to review some repositories in ticket $ticketName',
+        );
       }
     }
 
