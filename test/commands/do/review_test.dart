@@ -370,6 +370,86 @@ void main() {
       );
     });
 
+    test(
+      'logs and throws when kidney_core can review fails',
+      () async {
+        final mockSortedProcessingList = MockSortedProcessingList();
+        final mockUnlocalizeRefs = MockUnlocalizeRefs();
+        final mockLocalizeRefs = MockLocalizeRefs();
+        final mockCanReviewCommand = MockCanReviewCommand();
+        final mockGgDoCommit = MockGgDoCommit();
+        final mockGgDoPush = MockGgDoPush();
+        final mockProcessRunner = MockProcessRunner();
+
+        when(
+          () => mockSortedProcessingList.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            Node(
+              name: 'A',
+              directory: Directory(path.join(ticketDir.path, 'A')),
+              pubspec: Pubspec('A'),
+            ),
+          ],
+        );
+
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['merge', 'origin/main'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer(
+          (_) async => ProcessResult(0, 0, 'ok', ''),
+        );
+
+        when(
+          () => mockCanReviewCommand.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenThrow(Exception('can review failed'));
+
+        final runner = CommandRunner<void>('test', 'do review ticket')
+          ..addCommand(
+            DoReviewCommand(
+              ggLog: ggLog,
+              canReviewCommand: mockCanReviewCommand,
+              unlocalizeRefs: mockUnlocalizeRefs,
+              localizeRefs: mockLocalizeRefs,
+              sortedProcessingList: mockSortedProcessingList,
+              ggDoCommit: mockGgDoCommit,
+              ggDoPush: mockGgDoPush,
+              processRunner: mockProcessRunner.call,
+            ),
+          );
+
+        await expectLater(
+          () async => runner.run(['review', '--input', ticketDir.path]),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              'Exception: kidney_core can review failed',
+            ),
+          ),
+        );
+
+        expect(
+          messages.any(
+            (m) => m.contains(
+              'kidney_core can review failed: '
+              'Exception: can review failed',
+            ),
+          ),
+          isTrue,
+        );
+      },
+    );
+
     test('fails and logs when commit fails for a repo (stop immediately)',
         () async {
       final mockSortedProcessingList = MockSortedProcessingList();

@@ -27,6 +27,7 @@
 - add tests for kidney add
 - add tests for do publish
 - Add VS Code workspace file generation to kidney add command
+- Add test for kidney\_core can review command failure handling
 
 ### Changed
 
