@@ -29,7 +29,11 @@ Future<void> copyDirectory(
   }
 
   await for (final entity in source.list(recursive: false)) {
-    final newPath = path.join(destination.path, path.basename(entity.path));
+    String newPath = path.join(destination.path, path.basename(entity.path));
+    // change .darta to .dart if the file is a .darta file
+    if (entity is File && path.extension(entity.path) == '.darta') {
+      newPath = '${path.withoutExtension(newPath)}.dart';
+    }
     if (entity is File) {
       await entity.copy(newPath);
     } else if (entity is Directory) {

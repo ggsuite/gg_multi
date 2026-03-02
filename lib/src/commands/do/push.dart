@@ -11,6 +11,7 @@ import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
 import '../../backend/workspace_utils.dart';
@@ -43,11 +44,13 @@ class DoPushCommand extends DirCommand<void> {
     required Directory directory,
     required GgLog ggLog,
     bool? force,
+    bool? verbose,
   }) =>
       get(
         directory: directory,
         ggLog: ggLog,
         force: force,
+        verbose: verbose,
       );
 
   @override
@@ -55,7 +58,11 @@ class DoPushCommand extends DirCommand<void> {
     required Directory directory,
     required GgLog ggLog,
     bool? force,
+    bool? verbose,
   }) async {
+    // Read verbose flag from CLI if not provided programmatically.
+    verbose ??= argResults?['verbose'] as bool? ?? false;
+
     // Detect if we are inside a ticket folder
     final String? ticketPath = WorkspaceUtils.detectTicketPath(
       path.absolute(directory.path),
@@ -80,12 +87,45 @@ class DoPushCommand extends DirCommand<void> {
       return;
     }
 
-    // Iterate over each repository and perform the push
+    // List repositories that will be pushed ---------------------------------
+    final repoNames =
+        nodes.map((node) => path.basename(node.directory.path)).toList();
+
+    final GgLog taskLog = verbose ? ggLog : <String>[].add;
+
+    ggLog(yellow('Pushing the following repos:'));
+    for (final name in repoNames) {
+      ggLog(yellow(' - $name'));
+    }
+
+    // Perform the push wrapped in a status printer --------------------------
+    await GgStatusPrinter<void>(
+      message: 'pushing repos',
+      ggLog: ggLog,
+    ).run(() async {
+      await _pushingRepos(
+        nodes: nodes,
+        ggLog: taskLog,
+        ticketName: ticketName,
+        force: force ?? false,
+      );
+    });
+  }
+
+  Future<void> _pushingRepos({
+    required List<Node> nodes,
+    required GgLog ggLog,
+    required String ticketName,
+    required bool force,
+  }) async {
     final failedRepos = <String>[];
+
     for (final node in nodes) {
       final repoDir = node.directory;
       final repoName = path.basename(repoDir.path);
+
       ggLog(yellow('Pushing $repoName in ticket $ticketName...'));
+
       try {
         await _ggDoPush.exec(
           directory: repoDir,
@@ -98,21 +138,27 @@ class DoPushCommand extends DirCommand<void> {
       }
     }
 
-    // Summarize the results
+    // Summarize the results ----------------------------------------------
     if (failedRepos.isEmpty) {
       ggLog(
-        green('✅ All repositories in ticket $ticketName pushed successfully.'),
+        green(
+          '✅ All repositories in ticket '
+          '$ticketName pushed successfully.',
+        ),
       );
     } else {
       ggLog(
         red(
-          '❌ Failed to push the following repositories in ticket $ticketName:',
+          '❌ Failed to push the following repositories in '
+          'ticket $ticketName:',
         ),
       );
       for (final repoName in failedRepos) {
         ggLog(red(' - $repoName'));
       }
-      throw Exception('Failed to push some repositories in ticket $ticketName');
+      throw Exception(
+        'Failed to push some repositories in ticket $ticketName',
+      );
     }
   }
 
@@ -122,6 +168,13 @@ class DoPushCommand extends DirCommand<void> {
       'force',
       abbr: 'f',
       help: 'Do a force push.',
+      defaultsTo: false,
+      negatable: true,
+    );
+    argParser.addFlag(
+      'verbose',
+      abbr: 'v',
+      help: 'Show detailed log output.',
       defaultsTo: false,
       negatable: true,
     );

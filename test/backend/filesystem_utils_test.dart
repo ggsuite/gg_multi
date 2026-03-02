@@ -52,6 +52,9 @@ void main() {
           final nestedFile = File(path.join(nestedDir.path, 'nested.txt'));
           await nestedFile.writeAsString('nested file');
 
+          final dartaFile = File(path.join(sourceDir.path, 'example.darta'));
+          await dartaFile.writeAsString('darta file');
+
           // Act.
           await copyDirectory(sourceDir, destinationDir);
 
@@ -60,11 +63,15 @@ void main() {
               File(path.join(destinationDir.path, 'root.txt'));
           final copiedNestedFile =
               File(path.join(destinationDir.path, 'nested', 'nested.txt'));
+          final copiedDartaFile =
+              File(path.join(destinationDir.path, 'example.dart'));
 
           expect(copiedRootFile.existsSync(), isTrue);
           expect(copiedNestedFile.existsSync(), isTrue);
+          expect(copiedDartaFile.existsSync(), isTrue);
           expect(copiedRootFile.readAsStringSync(), 'root file');
           expect(copiedNestedFile.readAsStringSync(), 'nested file');
+          expect(copiedDartaFile.readAsStringSync(), 'darta file');
         },
       );
 

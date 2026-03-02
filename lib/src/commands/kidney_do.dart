@@ -12,6 +12,7 @@ import 'do/push.dart';
 import 'do/publish.dart';
 import 'do/review.dart';
 import 'do/execute.dart';
+import 'do/install_git_hooks.dart';
 
 /// Command to perform actions such as committing
 /// and pushing across ticket repositories.
@@ -40,5 +41,6 @@ class Do extends Command<void> {
     addSubcommand(DoPublishCommand(ggLog: ggLog));
     addSubcommand(DoReviewCommand(ggLog: ggLog));
     addSubcommand(DoExecuteCommand(ggLog: ggLog));
+    addSubcommand(DoInstallGitHooksCommand(ggLog: ggLog));
   }
 }

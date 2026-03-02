@@ -12,10 +12,11 @@ import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
-import '../../backend/workspace_utils.dart';
 import '../../backend/status_utils.dart';
+import '../../backend/workspace_utils.dart';
 import '../../commands/can/review.dart';
 
 /// Typedef for running processes (for injection & tests).
@@ -61,7 +62,9 @@ class DoReviewCommand extends DirCommand<void> {
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
         _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
         _ggDoPush = ggDoPush ?? gg.DoPush(ggLog: ggLog),
-        _processRunner = processRunner ?? _defaultProcessRunner;
+        _processRunner = processRunner ?? _defaultProcessRunner {
+    _addArgs();
+  }
 
   /// Instance of CanReviewCommand
   final CanReviewCommand _canReviewCommand;
@@ -89,17 +92,22 @@ class DoReviewCommand extends DirCommand<void> {
   Future<void> exec({
     required Directory directory,
     required GgLog ggLog,
+    bool? verbose,
   }) =>
       get(
         directory: directory,
         ggLog: ggLog,
+        verbose: verbose,
       );
 
   @override
   Future<void> get({
     required Directory directory,
     required GgLog ggLog,
+    bool? verbose,
   }) async {
+    verbose ??= argResults?['verbose'] as bool? ?? false;
+
     // Step 1: Detect ticket folder ------------------------------------------
     final String? ticketPath = WorkspaceUtils.detectTicketPath(
       path.absolute(directory.path),
@@ -123,7 +131,61 @@ class DoReviewCommand extends DirCommand<void> {
       return;
     }
 
-    // Step 3: Merge main into the current feature branch for each repo ------
+    final GgLog taskLog = verbose ? ggLog : <String>[].add;
+
+    // Step 3: Merge origin/main into the current feature branch -------------
+    await GgStatusPrinter<void>(
+      message: 'merging origin/main into feature branches',
+      ggLog: ggLog,
+    ).run(
+      () async => _mergeMainIntoRepos(
+        ticketName: ticketName,
+        subs: subs,
+        ggLog: taskLog,
+      ),
+    );
+
+    // Step 4: Run can review after merging ----------------------------------
+    await GgStatusPrinter<void>(
+      message: 'kidney can review?',
+      ggLog: ggLog,
+    ).run(
+      () async => _runCanReview(
+        ticketDir: ticketDir,
+        ggLog: taskLog,
+      ),
+    );
+
+    // Step 5: Unlocalize, localize, upgrade, commit & push ------------------
+    await GgStatusPrinter<void>(
+      message: 'set dependencies to git, committing and pushing',
+      ggLog: ggLog,
+    ).run(
+      () async => _relocalizeAndCommitAll(
+        ticketName: ticketName,
+        subs: subs,
+        ggLog: taskLog,
+      ),
+    );
+  }
+
+  /// Adds command line arguments for this command.
+  void _addArgs() {
+    argParser.addFlag(
+      'verbose',
+      abbr: 'v',
+      help: 'Show detailed log output.',
+      defaultsTo: false,
+      negatable: true,
+    );
+  }
+
+  /// Merges `origin/main` into the current feature branch for all repos.
+  Future<void> _mergeMainIntoRepos({
+    required String ticketName,
+    required List<Node> subs,
+    required GgLog ggLog,
+  }) async {
     for (final repo in subs) {
       final repoDir = repo.directory;
       final repoName = path.basename(repoDir.path);
@@ -160,20 +222,33 @@ class DoReviewCommand extends DirCommand<void> {
         );
       }
     }
+  }
 
-    // Step 4: Run can review after merging main into the feature branch -----
+  /// Executes `kidney_core can review` for the given ticket directory.
+  Future<void> _runCanReview({
+    required Directory ticketDir,
+    required GgLog ggLog,
+  }) async {
     try {
       await _canReviewCommand.exec(directory: ticketDir, ggLog: ggLog);
     } catch (e) {
       ggLog(red('kidney_core can review failed: $e'));
       throw Exception('kidney_core can review failed');
     }
+  }
 
-    // Step 5: Perform unlocalize and localize for each repo -----------------
+  /// Performs unlocalize/localize, `dart pub upgrade`, commit and push
+  /// for every repository in the ticket.
+  Future<void> _relocalizeAndCommitAll({
+    required String ticketName,
+    required List<Node> subs,
+    required GgLog ggLog,
+  }) async {
     for (final repo in subs) {
       final repoDir = repo.directory;
       final repoName = path.basename(repoDir.path);
 
+      // Unlocalize -----------------------------------------------------------
       try {
         await _unlocalizeRefs.get(directory: repoDir, ggLog: ggLog);
         ggLog(green('Unlocalized refs for $repoName'));
@@ -189,6 +264,7 @@ class DoReviewCommand extends DirCommand<void> {
         );
       }
 
+      // Localize with --git --------------------------------------------------
       try {
         await _localizeRefs.get(
           directory: repoDir,
@@ -214,7 +290,7 @@ class DoReviewCommand extends DirCommand<void> {
         );
       }
 
-      // Run "dart pub upgrade" if a pubspec.yaml exists -------------------
+      // Run "dart pub upgrade" if pubspec.yaml exists ----------------------
       final pubspec = File(path.join(repoDir.path, 'pubspec.yaml'));
       if (pubspec.existsSync()) {
         final result = await _processRunner(
@@ -237,7 +313,7 @@ class DoReviewCommand extends DirCommand<void> {
         }
       }
 
-      // Commit --------------------------------------------------------------
+      // Commit ---------------------------------------------------------------
       try {
         await _ggDoCommit.exec(
           directory: repoDir,
@@ -253,7 +329,7 @@ class DoReviewCommand extends DirCommand<void> {
         );
       }
 
-      // Push ----------------------------------------------------------------
+      // Push -----------------------------------------------------------------
       try {
         await _ggDoPush.exec(directory: repoDir, ggLog: ggLog);
         ggLog(green('Pushed $repoName'));
@@ -264,11 +340,6 @@ class DoReviewCommand extends DirCommand<void> {
         );
       }
     }
-
-    // All successful
-    ggLog(
-      green('✅ All repositories in ticket $ticketName reviewed successfully.'),
-    );
   }
 }
 

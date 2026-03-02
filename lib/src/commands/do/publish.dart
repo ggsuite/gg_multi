@@ -16,7 +16,6 @@ import 'package:interact/interact.dart';
 import 'package:path/path.dart' as path;
 
 import '../../backend/workspace_utils.dart';
-import '../../backend/status_utils.dart';
 import '../../commands/can/publish.dart';
 
 /// Typedef for running processes (for injection & tests).
@@ -36,7 +35,6 @@ class DoPublishCommand extends DirCommand<void> {
     gg.DoCommit? ggDoCommit,
     UnlocalizeRefs? unlocalizeRefs,
     gg.DoPush? ggDoPush,
-    gg.DoMerge? ggDoMerge,
     gg.DoPublish? ggDoPublish,
     SortedProcessingList? sortedProcessingList,
     ProcessRunner? processRunner,
@@ -47,7 +45,6 @@ class DoPublishCommand extends DirCommand<void> {
   })  : _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
         _unlocalizeRefs = unlocalizeRefs ?? UnlocalizeRefs(ggLog: ggLog),
         _ggDoPush = ggDoPush ?? gg.DoPush(ggLog: ggLog),
-        _ggDoMerge = ggDoMerge ?? gg.DoMerge(ggLog: ggLog),
         _ggDoPublish = ggDoPublish ?? gg.DoPublish(ggLog: ggLog),
         _sortedProcessingList =
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
@@ -67,9 +64,6 @@ class DoPublishCommand extends DirCommand<void> {
 
   /// Instance of gg DoPush
   final gg.DoPush _ggDoPush;
-
-  /// Instance of gg DoMerge
-  final gg.DoMerge _ggDoMerge;
 
   /// Instance of gg DoPublish
   final gg.DoPublish _ggDoPublish;
@@ -95,12 +89,14 @@ class DoPublishCommand extends DirCommand<void> {
     required GgLog ggLog,
     bool? force,
     String? message,
+    bool? verbose,
   }) =>
       get(
         directory: directory,
         ggLog: ggLog,
         force: force,
         message: message,
+        verbose: verbose,
       );
 
   @override
@@ -109,9 +105,13 @@ class DoPublishCommand extends DirCommand<void> {
     required GgLog ggLog,
     bool? force,
     String? message,
+    bool? verbose,
   }) async {
     force ??= argResults?['force'] as bool? ?? false;
     message ??= argResults?['message'] as String?;
+    verbose ??= argResults?['verbose'] as bool? ?? false;
+
+    final GgLog taskLog = verbose ? ggLog : <String>[].add;
 
     // Step 1: Detect ticket folder
     final String? ticketPath = WorkspaceUtils.detectTicketPath(
@@ -145,27 +145,18 @@ class DoPublishCommand extends DirCommand<void> {
     // Map of reference name to version captured from repos processed so far.
     final refVersions = <String, String>{};
 
-    // Step 3-4: Iterate over each repository and perform merge and publish
+    // Step 3-4: Iterate over each repository and perform publish
     for (final repo in subs) {
       final repoDir = repo.directory;
       final repoName = path.basename(repoDir.path);
-
-      if (StatusUtils.readStatus(repoDir, ggLog: ggLog) ==
-          StatusUtils.statusMerged) {
-        ggLog(
-          yellow('Repository $repoName in ticket '
-              '$ticketName is already merged.'),
-        );
-        continue;
-      }
 
       // Skip confirmation when --force is set
       if (!force) {
         // coverage:ignore-start
         final answer = Confirm(
           prompt: 'Ready to publish $repoName in ticket $ticketName?',
-          defaultValue: false, // this is optional
-          waitForNewLine: true, // optional and will be false by default
+          defaultValue: false,
+          waitForNewLine: true,
         ).interact();
         if (answer == false) {
           return;
@@ -173,11 +164,11 @@ class DoPublishCommand extends DirCommand<void> {
         // coverage:ignore-end
       }
 
-      ggLog(yellow('Publishing $repoName in ticket $ticketName...'));
+      ggLog(yellow('Publishing $repoName ...'));
 
       try {
-        await _unlocalizeRefs.get(directory: repoDir, ggLog: ggLog);
-        ggLog(green('$repoName: unlocalized refs.'));
+        await _unlocalizeRefs.get(directory: repoDir, ggLog: taskLog);
+        taskLog(green('$repoName: unlocalized refs.'));
       } catch (e) {
         throw Exception('Failed to unlocalize refs for $repoName: $e');
       }
@@ -217,64 +208,45 @@ class DoPublishCommand extends DirCommand<void> {
       }
 
       // Commit
-      try {
-        await _ggDoCommit.exec(
-          directory: repoDir,
-          ggLog: ggLog,
-          message: 'kidney: changed references to pub.dev',
-          force: true,
-        );
-      } catch (e) {
-        throw Exception('Failed to commit $repoName: $e');
-      }
+      await _ggDoCommit.exec(
+        directory: repoDir,
+        ggLog: taskLog,
+        message: 'kidney: changed references to pub.dev',
+        force: true,
+      );
 
       // Push
-      await _ggDoPush.exec(directory: repoDir, ggLog: ggLog);
+      await _ggDoPush.exec(directory: repoDir, ggLog: taskLog);
 
-      ggLog(green('$repoName: updated with new references.'));
-
-      // Execute gg do merge
-      try {
-        await _ggDoMerge.exec(
-          directory: repoDir,
-          ggLog: ggLog,
-          local: true,
-          message: message,
-        );
-      } catch (e) {
-        throw Exception('Failed to merge $repoName: $e');
-      }
-      // Set status to merged
-      StatusUtils.setStatus(repoDir, StatusUtils.statusMerged, ggLog: ggLog);
-
-      // Commit
-      try {
-        await _ggDoCommit.exec(
-          directory: repoDir,
-          ggLog: ggLog,
-          message: 'kidney: set kidney status to merged',
-          force: true,
-        );
-      } catch (e) {
-        throw Exception('Failed to commit $repoName: $e');
-      }
-
-      // Push
-      await _ggDoPush.exec(directory: repoDir, ggLog: ggLog);
-
-      ggLog(green('$repoName: merged and pushed.'));
+      taskLog(green('$repoName: updated with new references.'));
 
       // Execute gg do publish
-      try {
-        await _ggDoPublish.exec(directory: repoDir, ggLog: ggLog);
-      } catch (e) {
-        throw Exception('Failed to publish $repoName: $e');
-      }
+      await _ggDoPublish.exec(directory: repoDir, ggLog: ggLog);
 
-      ggLog(green('$repoName: published successfully.'));
+      taskLog(green('$repoName: published successfully.'));
+
+      // delete the repository from the ticket
+      try {
+        if (repoDir.existsSync()) {
+          repoDir.deleteSync(recursive: true);
+          taskLog(
+            green(
+              'Deleted repository $repoName from ticket $ticketName after '
+              'successful publish.',
+            ),
+          );
+        }
+      } catch (e) {
+        ggLog(
+          red(
+            'Failed to delete repository $repoName from ticket $ticketName: '
+            '$e',
+          ),
+        );
+      }
     }
 
-    ggLog(
+    taskLog(
       green(
         '✅ All repositories in ticket $ticketName published successfully.',
       ),
@@ -294,6 +266,13 @@ class DoPublishCommand extends DirCommand<void> {
       'message',
       abbr: 'm',
       help: 'The merge commit message.',
+    );
+    argParser.addFlag(
+      'verbose',
+      abbr: 'v',
+      help: 'Show detailed log output.',
+      defaultsTo: false,
+      negatable: true,
     );
   }
 }

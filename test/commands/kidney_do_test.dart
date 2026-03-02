@@ -38,7 +38,13 @@ void main() {
       final (subCommands, errorMessage) = await missingSubCommands(
         directory: commandsDir,
         command: doCommand,
-        additionalSubCommands: ['commit', 'push', 'publish', 'review'],
+        additionalSubCommands: [
+          'commit',
+          'push',
+          'publish',
+          'review',
+          'install-git-hooks',
+        ],
       );
 
       expect(subCommands, isEmpty, reason: errorMessage);

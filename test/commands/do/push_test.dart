@@ -35,10 +35,13 @@ void main() {
 
   setUp(() {
     messages.clear();
-    tempDir = Directory.systemTemp.createTempSync('do_push_ticket_test_');
+    tempDir = Directory.systemTemp.createTempSync(
+      'do_push_ticket_test_',
+    );
     ticketsDir = Directory(path.join(tempDir.path, 'tickets'))..createSync();
     ticketDir = Directory(path.join(ticketsDir.path, 'TICKP'))..createSync();
-    // Create repositories with pubspec.yaml so SortedProcessingList finds them
+    // Create repositories with pubspec.yaml so SortedProcessingList finds
+    // them
     final aDir = Directory(path.join(ticketDir.path, 'A'))..createSync();
     File(path.join(aDir.path, 'pubspec.yaml')).writeAsStringSync('name: A');
     final bDir = Directory(path.join(ticketDir.path, 'B'))..createSync();
@@ -91,7 +94,7 @@ void main() {
       );
     });
 
-    test('pushes all repos successfully', () async {
+    test('pushes all repos successfully (verbose)', () async {
       final mockGgCanPush = MockGgCanPush();
       final mockGgDoPush = MockGgDoPush();
 
@@ -118,11 +121,25 @@ void main() {
             ggDoPush: mockGgDoPush,
           ),
         );
-      await runner.run(['push', '--input', ticketDir.path]);
+      await runner.run([
+        'push',
+        '--input',
+        ticketDir.path,
+        '--verbose',
+      ]);
+
+      // Status printer message
       expect(
-        messages,
-        contains('✅ All repositories in ticket TICKP pushed successfully.'),
+        messages.any((m) => m.contains('pushing repos')),
+        isTrue,
       );
+
+      // Pre-push list
+      expect(messages, contains('Pushing the following repos:'));
+      expect(messages, contains(' - A'));
+      expect(messages, contains(' - B'));
+
+      // Per-repo verbose logs
       expect(
         messages,
         contains('Pushing A in ticket TICKP...'),
@@ -130,6 +147,12 @@ void main() {
       expect(
         messages,
         contains('Pushing B in ticket TICKP...'),
+      );
+
+      // Summary
+      expect(
+        messages,
+        contains('✅ All repositories in ticket TICKP pushed successfully.'),
       );
     });
 
@@ -166,7 +189,12 @@ void main() {
           ),
         );
       await expectLater(
-        () async => await runner.run(['push', '--input', ticketDir.path]),
+        () async => await runner.run([
+          'push',
+          '--input',
+          ticketDir.path,
+          '--verbose',
+        ]),
         throwsA(isA<Exception>()),
       );
       expect(
@@ -180,6 +208,49 @@ void main() {
         ),
       );
       expect(messages.any((m) => m.contains(' - B')), isTrue);
+    });
+
+    test('uses quiet taskLog when verbose is false', () async {
+      final mockGgCanPush = MockGgCanPush();
+      final mockGgDoPush = MockGgDoPush();
+
+      when(
+        () => mockGgCanPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+
+      final localMessages = <String>[];
+      void localLog(String msg) => localMessages.add(rmConsoleColors(msg));
+
+      final command = DoPushCommand(
+        ggLog: localLog,
+        ggCanPush: mockGgCanPush,
+        ggDoPush: mockGgDoPush,
+      );
+
+      await command.get(
+        directory: ticketDir,
+        ggLog: localLog,
+        force: false,
+        verbose: false,
+      );
+
+      expect(
+        localMessages.last,
+        contains(
+          '✅ pushing repos',
+        ),
+      );
     });
   });
 }

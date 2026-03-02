@@ -28,6 +28,7 @@
 - add tests for do publish
 - Add VS Code workspace file generation to kidney add command
 - Add test for kidney\_core can review command failure handling
+- add tests for quiet taskLog behavior when verbose is false
 
 ### Changed
 
@@ -51,6 +52,10 @@
 - Pass gitRef param to \_localizeRefs.get in DoReviewCommand and tests
 - open ticket as VSCode workspace file instead of individual repos
 - Switch gg\_localize\_refs dependency to use GitHub repo
+- Update integration test and add sample folder metadata files
+- Update .gg.json with new canCommit success hash value
+- Refactor install\_git\_hooks to simplify error handling logic
+- Enforce pre-push commit checks only on main/master branches
 
 ### Removed
 

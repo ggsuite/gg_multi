@@ -444,7 +444,7 @@ dev_dependencies:
           processRunner: mockProc.call,
         );
 
-        await runner.run(['add', repoName]);
+        await runner.run(['add', '--verbose', repoName]);
 
         final copiedFileInTicket = File(
           path.join(ticketDir.path, repoName, 'target.txt'),
@@ -455,7 +455,7 @@ dev_dependencies:
           () => mockDoCommit.exec(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
-            message: 'kidney: changed references to git',
+            message: 'kidney: changed references to path',
             logType: any(named: 'logType'),
             updateChangeLog: any(named: 'updateChangeLog'),
             force: true,
@@ -643,7 +643,7 @@ version: 1.0.0
           ),
         );
 
-      await localRunner.run(['add', repoName]);
+      await localRunner.run(['add', '--verbose', repoName]);
 
       final copied = Directory(path.join(ticketDir.path, repoName));
       expect(copied.existsSync(), isTrue);
@@ -677,7 +677,7 @@ version: 1.0.0
         path.join(tempDir.path, kidneyTicketFolder, 'TICKET-MISSING'),
       )..createSync(recursive: true);
       createRunner(executionPath: ticketDir.path);
-      await runner.run(['add', 'nonexistent']);
+      await runner.run(['add', '--verbose', 'nonexistent']);
       expect(
         logMessages,
         contains('Repository nonexistent not found in master workspace.'),
@@ -700,7 +700,7 @@ version: 1.0.0
         destination.createSync(recursive: true);
         File(path.join(destination.path, 'foo.txt')).writeAsStringSync('hi');
 
-        await runner.run(['add', repoName]);
+        await runner.run(['add', '--verbose', repoName]);
 
         expect(
           logMessages,
@@ -823,7 +823,7 @@ version: 1.0.0
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
 
-        await runner.run(['add', repoName]);
+        await runner.run(['add', '--verbose', repoName]);
 
         verify(
           () => mockProcessRunner(
@@ -858,7 +858,7 @@ version: 1.0.0
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
 
-        await runner.run(['add', repoName]);
+        await runner.run(['add', '--verbose', repoName]);
 
         expect(
           logMessages.any(
@@ -930,7 +930,7 @@ version: 1.0.0
         processRunner: mockProc.call,
       );
 
-      await runner.run(['add', repoName]);
+      await runner.run(['add', '--verbose', repoName]);
 
       expect(
         logMessages.any(
@@ -1078,7 +1078,7 @@ version: 1.0.0
         );
 
         await expectLater(
-          () async => await runner.run(['add', repoName]),
+          () async => await runner.run(['add', '--verbose', repoName]),
           throwsA(isA<Exception>()),
         );
 
@@ -1166,7 +1166,7 @@ version: 1.0.0
           ggDoCommit: mockDoCommit,
         );
 
-        await runner.run(['add', 'a', 'c']);
+        await runner.run(['add', '--verbose', 'a', 'c']);
 
         expect(Directory(path.join(ticketDir.path, 'a')).existsSync(), isTrue);
         expect(Directory(path.join(ticketDir.path, 'b')).existsSync(), isTrue);
@@ -1279,7 +1279,7 @@ version: 1.0.0
           ggDoCommit: mockDoCommit,
         );
 
-        await runner.run(['add', 'a']);
+        await runner.run(['add', '--verbose', 'a']);
 
         expect(Directory(path.join(ticketDir.path, 'a')).existsSync(), isTrue);
         expect(Directory(path.join(ticketDir.path, 'b')).existsSync(), isTrue);
@@ -1451,7 +1451,7 @@ version: 1.0.0
           localizeRefs: mockLoc,
         );
 
-        await runner.run(['add', repoName]);
+        await runner.run(['add', '--verbose', repoName]);
 
         expect(
           logMessages.any(
@@ -1552,7 +1552,7 @@ version: 1.0.0
           localizeRefs: mockLoc,
         );
 
-        await runner.run(['add', repoName]);
+        await runner.run(['add', '--verbose', repoName]);
 
         expect(
           logMessages.any(
@@ -1794,7 +1794,7 @@ version: 1.0.0
         );
 
         await expectLater(
-          () async => await runner.run(['add', repoName]),
+          () async => await runner.run(['add', '--verbose', repoName]),
           throwsA(isA<Exception>()),
         );
 
@@ -1807,6 +1807,85 @@ version: 1.0.0
           ),
           isTrue,
         );
+      },
+    );
+
+    test(
+      'installs git hooks for repositories in ticket workspace after add',
+      () async {
+        const repoName = 'hooksRepo';
+
+        final masterRepoDir = Directory(
+          path.join(masterWorkspacePath, repoName),
+        )..createSync(recursive: true);
+        File(path.join(masterRepoDir.path, 'pubspec.yaml'))
+            .writeAsStringSync('name: $repoName');
+        Directory(path.join(masterRepoDir.path, '.git')).createSync();
+
+        final ticketDir = Directory(
+          path.join(tempDir.path, kidneyTicketFolder, 'TICKET-HOOKS'),
+        )..createSync(recursive: true);
+
+        final mockProc = MockProcessRunner();
+        when(
+          () => mockProc(
+            'git',
+            ['fetch'],
+            workingDirectory: masterRepoDir.path,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+        when(
+          () => mockProc(
+            'git',
+            ['pull'],
+            workingDirectory: masterRepoDir.path,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+        when(
+          () => mockProc(
+            'dart',
+            ['pub', 'get'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+        when(
+          () => mockProc(
+            'dart',
+            ['pub', 'upgrade'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+        final mockDoCommit = MockGgDoCommit();
+        when(
+          () => mockDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            logType: any(named: 'logType'),
+            updateChangeLog: any(named: 'updateChangeLog'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        createRunner(
+          executionPath: ticketDir.path,
+          processRunner: mockProc.call,
+          ggDoCommit: mockDoCommit,
+        );
+
+        await runner.run(['add', repoName]);
+
+        final ticketRepoDir = Directory(path.join(ticketDir.path, repoName));
+        final prePushHook = File(
+          path.join(ticketRepoDir.path, '.git', 'hooks', 'pre-push'),
+        );
+        final verifyPushScript = File(
+          path.join(ticketRepoDir.path, '.gg', 'verify_push.dart'),
+        );
+
+        expect(prePushHook.existsSync(), isTrue);
+        expect(verifyPushScript.existsSync(), isTrue);
       },
     );
   });

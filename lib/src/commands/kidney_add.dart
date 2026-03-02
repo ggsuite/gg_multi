@@ -12,6 +12,7 @@ import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
 import '../backend/git_handler.dart';
@@ -20,6 +21,7 @@ import '../backend/filesystem_utils.dart';
 import '../backend/git_platform.dart';
 import '../backend/workspace_utils.dart';
 import '../backend/status_utils.dart';
+import 'do/install_git_hooks.dart';
 
 /// Typedef for a process runner function.
 typedef ProcessRunner = Future<ProcessResult> Function(
@@ -85,6 +87,12 @@ class AddCommand extends Command<dynamic> {
       help: 'Overwrite existing repository in master workspace.',
       defaultsTo: false,
     );
+    argParser.addFlag(
+      'verbose',
+      abbr: 'v',
+      help: 'Enable verbose logging.',
+      defaultsTo: false,
+    );
   }
 
   /// The log function.
@@ -140,6 +148,7 @@ class AddCommand extends Command<dynamic> {
     final targets = argResults!.rest;
     final bool force = argResults!['force'] as bool;
     final String? ticketPath = WorkspaceUtils.detectTicketPath(executionPath);
+    final bool verbose = argResults!['verbose'] as bool? ?? false;
 
     // If not in a ticket workspace: keep original behaviour (no graph logic).
     if (ticketPath == null) {
@@ -239,20 +248,45 @@ class AddCommand extends Command<dynamic> {
       ...betweenNodes.map((n) => n.name),
     };
 
-    // Copy all required repositories into the ticket.
+    final GgLog taskLog = verbose ? ggLog : <String>[].add;
+
+    ggLog(yellow('Copying the following repos:'));
     for (final repoName in finalToCopy) {
-      await _copyRepoToTicket(
-        repoName: repoName,
-        ticketPath: ticketPath,
-      );
+      ggLog(yellow('- $repoName'));
     }
 
-    // Finally perform a single re-localization pass for the whole ticket.
-    await _relocalizeAllReposInTicket(ticketDir);
+    await GgStatusPrinter<void>(
+      message: 'copy repos to ticket',
+      ggLog: ggLog,
+    ).run(
+      () => _copyReposToTicket(
+        ticketPath: ticketPath,
+        repoNames: finalToCopy,
+        ggLog: taskLog,
+      ),
+    );
 
-    // Rewrite the VS Code workspace so that all ticket repositories are
-    // available as folders in a single workspace file.
-    await _rewriteCodeWorkspace(ticketDir);
+    // Finally perform a single re-localization pass for the whole ticket.
+    await GgStatusPrinter<void>(
+      message: 'set dependencies to path, committing',
+      ggLog: ggLog,
+    ).run(
+      () => _relocalizeAllReposInTicket(
+        ticketDir: ticketDir,
+        ggLog: taskLog,
+      ),
+    );
+
+    // Write project configuration files (workspace + git hooks).
+    await GgStatusPrinter<void>(
+      message: 'write project config files',
+      ggLog: ggLog,
+    ).run(
+      () => _writeProjectConfigFiles(
+        ticketDir: ticketDir,
+        ggLog: taskLog,
+      ),
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -283,11 +317,28 @@ class AddCommand extends Command<dynamic> {
     return null;
   }
 
+  /// Copies all given [repoNames] from the master workspace into the
+  /// ticket at [ticketPath].
+  Future<void> _copyReposToTicket({
+    required String ticketPath,
+    required Set<String> repoNames,
+    required GgLog ggLog,
+  }) async {
+    for (final repoName in repoNames) {
+      await _copyRepoToTicket(
+        repoName: repoName,
+        ticketPath: ticketPath,
+        ggLog: ggLog,
+      );
+    }
+  }
+
   /// Copies the repository from the master workspace to the [ticketPath] but
   /// does not trigger a ticket-wide relocalization.
   Future<void> _copyRepoToTicket({
     required String repoName,
     required String ticketPath,
+    required GgLog ggLog,
   }) async {
     final srcDir = Directory(path.join(masterWorkspacePath, repoName));
     if (!srcDir.existsSync()) {
@@ -367,7 +418,10 @@ class AddCommand extends Command<dynamic> {
   /// 1) Unlocalize
   /// 2) Localize with --git, set status to git-localized, commit
   ///    and execute "dart pub upgrade" if a pubspec.yaml exists.
-  Future<void> _relocalizeAllReposInTicket(Directory ticketDir) async {
+  Future<void> _relocalizeAllReposInTicket({
+    required Directory ticketDir,
+    required GgLog ggLog,
+  }) async {
     final ticketName = path.basename(ticketDir.path);
 
     // Collect repositories in processing order.
@@ -397,7 +451,7 @@ class AddCommand extends Command<dynamic> {
       }
     }
 
-    // Iteration 2: Localize with --git all ------------------------------------
+    // Iteration 2: Localize ---------------------------------------------------
     for (final node in nodes) {
       final repoDir = node.directory;
       final repoName = path.basename(repoDir.path);
@@ -438,7 +492,7 @@ class AddCommand extends Command<dynamic> {
         await _ggDoCommit.exec(
           directory: repoDir,
           ggLog: ggLog,
-          message: 'kidney: changed references to git',
+          message: 'kidney: changed references to path',
           force: true,
         );
       } catch (e) {
@@ -453,7 +507,10 @@ class AddCommand extends Command<dynamic> {
   ///
   /// The workspace file contains one folder entry for each repository in the
   /// ticket so that all repositories can be opened together in VS Code.
-  Future<void> _rewriteCodeWorkspace(Directory ticketDir) async {
+  Future<void> _rewriteCodeWorkspace({
+    required Directory ticketDir,
+    required GgLog ggLog,
+  }) async {
     final nodes = await _sortedProcessingList.get(
       directory: ticketDir,
       ggLog: ggLog,
@@ -486,5 +543,22 @@ class AddCommand extends Command<dynamic> {
     );
 
     await workspaceFile.writeAsString('$content\n');
+  }
+
+  /// Writes all project configuration files that depend on the set of
+  /// repositories in a ticket, such as the VS Code workspace and git hooks.
+  Future<void> _writeProjectConfigFiles({
+    required Directory ticketDir,
+    required GgLog ggLog,
+  }) async {
+    await _rewriteCodeWorkspace(ticketDir: ticketDir, ggLog: ggLog);
+
+    await DoInstallGitHooksCommand(
+      ggLog: ggLog,
+      sortedProcessingList: _sortedProcessingList,
+    ).exec(
+      directory: ticketDir,
+      ggLog: ggLog,
+    );
   }
 }

@@ -11,6 +11,7 @@ import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
 import '../../backend/workspace_utils.dart';
@@ -59,7 +60,9 @@ class CanPublishCommand extends DirCommand<void> {
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
         _processRunner = processRunner ?? _defaultProcessRunner,
         _canCommitCommand = canCommitCommand ?? CanCommitCommand(ggLog: ggLog),
-        _doPushCommand = doPushCommand ?? DoPushCommand(ggLog: ggLog);
+        _doPushCommand = doPushCommand ?? DoPushCommand(ggLog: ggLog) {
+    _addArgs();
+  }
 
   /// Instance of gg CanMerge
   final gg.CanMerge _ggCanMerge;
@@ -80,18 +83,23 @@ class CanPublishCommand extends DirCommand<void> {
   Future<void> exec({
     required Directory directory,
     required GgLog ggLog,
+    bool? verbose,
   }) =>
       get(
         directory: directory,
         ggLog: ggLog,
+        verbose: verbose,
       );
 
   @override
   Future<void> get({
     required Directory directory,
     required GgLog ggLog,
+    bool? verbose,
   }) async {
-    // Step 1: Detect ticket folder
+    verbose ??= argResults?['verbose'] as bool? ?? false;
+
+    // Step 1: Detect ticket folder -----------------------------------------
     final String? ticketPath = WorkspaceUtils.detectTicketPath(
       path.absolute(directory.path),
     );
@@ -103,7 +111,7 @@ class CanPublishCommand extends DirCommand<void> {
     final ticketDir = Directory(ticketPath);
     final ticketName = path.basename(ticketDir.path);
 
-    // Get sorted repos
+    // Get sorted repos ------------------------------------------------------
     final subs = await _sortedProcessingList.get(
       directory: ticketDir,
       ggLog: ggLog,
@@ -114,7 +122,76 @@ class CanPublishCommand extends DirCommand<void> {
       return;
     }
 
-    // Step 2: Check status for all repos
+    // Only show task logs when verbose is enabled ---------------------------
+    final GgLog taskLog = verbose ? ggLog : <String>[].add;
+
+    // Step 2: Check required status git-localized ---------------------------
+    await GgStatusPrinter<void>(
+      message: 'repo status == "git-localized"?',
+      ggLog: ggLog,
+    ).run(
+      () async => _checkStatuses(
+        subs: subs,
+        ggLog: taskLog,
+      ),
+    );
+
+    // Step 3: Check for uncommitted changes ---------------------------------
+    await GgStatusPrinter<void>(
+      message: 'uncommitted changes?',
+      ggLog: ggLog,
+    ).run(
+      () async => _checkUncommittedChanges(
+        subs: subs,
+        ggLog: taskLog,
+      ),
+    );
+
+    // Step 4: Run kidney_core can commit ------------------------------------
+    await GgStatusPrinter<void>(
+      message: 'can commit?',
+      ggLog: ggLog,
+    ).run(
+      () async => _runCanCommit(
+        ticketDir: ticketDir,
+        ggLog: taskLog,
+      ),
+    );
+
+    // Step 5: Run kidney_core do push ---------------------------------------
+    await GgStatusPrinter<void>(
+      message: 'running do push',
+      ggLog: ggLog,
+    ).run(
+      () async => _runDoPush(
+        ticketDir: ticketDir,
+        ggLog: taskLog,
+      ),
+    );
+
+    // Step 6: Run gg can merge per repo -------------------------------------
+    await GgStatusPrinter<void>(
+      message: 'can merge?',
+      ggLog: ggLog,
+    ).run(
+      () async => _checkCanMerge(
+        ticketName: ticketName,
+        subs: subs,
+        ggLog: taskLog,
+      ),
+    );
+
+    // All successful --------------------------------------------------------
+    taskLog(
+      green('✅ All repositories in ticket $ticketName can be published.'),
+    );
+  }
+
+  /// Checks that all repos have status git-localized.
+  Future<void> _checkStatuses({
+    required List<Node> subs,
+    required GgLog ggLog,
+  }) async {
     final wrongStatusRepos = <String>[];
     for (final repo in subs) {
       final repoDir = repo.directory;
@@ -126,8 +203,10 @@ class CanPublishCommand extends DirCommand<void> {
     }
     if (wrongStatusRepos.isNotEmpty) {
       ggLog(
-        red('The following repos do not have the '
-            'required status "git-localized":'),
+        red(
+          'The following repos do not have the '
+          'required status "git-localized":',
+        ),
       );
       for (final repoName in wrongStatusRepos) {
         ggLog(red(' - $repoName'));
@@ -135,8 +214,13 @@ class CanPublishCommand extends DirCommand<void> {
       ggLog(red('Please execute kidney_core review before merging'));
       throw Exception('Some repos do not have the required status');
     }
+  }
 
-    // Step 3: Check for uncommitted changes
+  /// Checks for uncommitted changes in all repos.
+  Future<void> _checkUncommittedChanges({
+    required List<Node> subs,
+    required GgLog ggLog,
+  }) async {
     final uncommitted = <String>[];
     for (final repo in subs) {
       final repoDir = repo.directory;
@@ -156,24 +240,40 @@ class CanPublishCommand extends DirCommand<void> {
       }
       throw Exception('Uncommitted changes found');
     }
+  }
 
-    // Step 4: Run kidney_core can commit
+  /// Executes kidney_core can commit for the ticket.
+  Future<void> _runCanCommit({
+    required Directory ticketDir,
+    required GgLog ggLog,
+  }) async {
     try {
       await _canCommitCommand.exec(directory: ticketDir, ggLog: ggLog);
     } catch (e) {
       ggLog(red('kidney_core can commit failed: $e'));
       throw Exception('kidney_core can commit failed');
     }
+  }
 
-    // Step 5: Run kidney_core do push
+  /// Executes kidney_core do push for the ticket.
+  Future<void> _runDoPush({
+    required Directory ticketDir,
+    required GgLog ggLog,
+  }) async {
     try {
       await _doPushCommand.exec(directory: ticketDir, ggLog: ggLog);
     } catch (e) {
       ggLog(red('kidney_core do push failed: $e'));
       throw Exception('kidney_core do push failed');
     }
+  }
 
-    // Step 6: Run gg can merge for each repo
+  /// Runs gg can merge for every repository in the ticket.
+  Future<void> _checkCanMerge({
+    required String ticketName,
+    required List<Node> subs,
+    required GgLog ggLog,
+  }) async {
     final failedMergeRepos = <String>[];
     for (final repo in subs) {
       final repoDir = repo.directory;
@@ -197,12 +297,22 @@ class CanPublishCommand extends DirCommand<void> {
       for (final repoName in failedMergeRepos) {
         ggLog(red(' - $repoName'));
       }
-      throw Exception('Failed to check merge for '
-          'some repositories in ticket $ticketName');
+      throw Exception(
+        'Failed to check merge for '
+        'some repositories in ticket $ticketName',
+      );
     }
+  }
 
-    // All successful
-    ggLog(green('✅ All repositories in ticket $ticketName can be published.'));
+  // Adds command line arguments
+  void _addArgs() {
+    argParser.addFlag(
+      'verbose',
+      abbr: 'v',
+      help: 'Show detailed log output.',
+      defaultsTo: false,
+      negatable: true,
+    );
   }
 }
 

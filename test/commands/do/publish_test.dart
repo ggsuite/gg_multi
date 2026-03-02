@@ -22,9 +22,6 @@ import 'package:kidney_core/src/backend/status_utils.dart';
 
 import '../../rm_console_colors_helper.dart';
 
-/// Mock for gg DoMerge
-class MockGgDoMerge extends Mock implements gg.DoMerge {}
-
 /// Mock for gg DoPublish
 class MockGgDoPublish extends Mock implements gg.DoPublish {}
 
@@ -51,6 +48,8 @@ class MockSetRefVersion extends Mock implements SetRefVersion {}
 class MockGetRefVersion extends Mock implements GetRefVersion {}
 
 class FakeDirectory extends Fake implements Directory {}
+
+class MockDirectory extends Mock implements Directory {}
 
 void main() {
   late Directory tempDir;
@@ -124,8 +123,8 @@ void main() {
       );
     });
 
-    test('publishes all repos successfully', () async {
-      final mockGgDoMerge = MockGgDoMerge();
+    test('publishes all repos successfully and deletes them from ticket',
+        () async {
       final mockGgDoPublish = MockGgDoPublish();
       final mockGgDoCommit = MockGgDoCommit();
       final mockGgDoPush = MockGgDoPush();
@@ -189,16 +188,6 @@ void main() {
       ).thenAnswer((_) async {});
 
       when(
-        () => mockGgDoMerge.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          automerge: any(named: 'automerge'),
-          local: any(named: 'local'),
-          message: any(named: 'message'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
         () => mockGgDoPublish.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
@@ -226,21 +215,10 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      // Set initial status to git-localized for each repo
-      for (final repoName in ['A', 'B']) {
-        final statusFile =
-            File(path.join(ticketDir.path, repoName, '.kidney_status'))
-              ..createSync(recursive: true);
-        statusFile.writeAsStringSync(
-          jsonEncode({'status': StatusUtils.statusGitLocalized}),
-        );
-      }
-
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
-            ggDoMerge: mockGgDoMerge,
             ggDoPublish: mockGgDoPublish,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -253,33 +231,41 @@ void main() {
             getRefVersionCommand: mockGetRefVersion,
           ),
         );
-      await runner.run(['publish', '--force', '--input', ticketDir.path]);
+      await runner.run([
+        'publish',
+        '--force',
+        '--input',
+        ticketDir.path,
+        '--verbose',
+      ]);
+
       expect(
         messages,
-        contains('✅ All repositories in ticket TICKPB published '
-            'successfully.'),
+        contains(
+          '✅ All repositories in ticket TICKPB published successfully.',
+        ),
       );
       expect(
-        messages.any((m) => m.contains('Publishing A in ticket TICKPB...')),
+        messages.any((m) => m.contains('Publishing A')),
         isTrue,
       );
       expect(
-        messages.any((m) => m.contains('Publishing B in ticket TICKPB...')),
+        messages.any((m) => m.contains('Publishing B')),
         isTrue,
       );
 
-      // Verify status files updated to merged
-      for (final repoName in ['A', 'B']) {
-        final statusFile =
-            File(path.join(ticketDir.path, repoName, '.kidney_status'));
-        final content =
-            jsonDecode(statusFile.readAsStringSync()) as Map<String, dynamic>;
-        expect(content['status'], StatusUtils.statusMerged);
-      }
+      // Repositories must be deleted from ticket workspace after publish.
+      expect(
+        Directory(path.join(ticketDir.path, 'A')).existsSync(),
+        isFalse,
+      );
+      expect(
+        Directory(path.join(ticketDir.path, 'B')).existsSync(),
+        isFalse,
+      );
     });
 
     test('aborts if can publish fails', () async {
-      final mockGgDoMerge = MockGgDoMerge();
       final mockGgDoPublish = MockGgDoPublish();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
@@ -318,7 +304,6 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
-            ggDoMerge: mockGgDoMerge,
             ggDoPublish: mockGgDoPublish,
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
@@ -341,8 +326,8 @@ void main() {
       );
     });
 
-    test('aborts on gg do merge failure for specific repos', () async {
-      final mockGgDoMerge = MockGgDoMerge();
+    test('aborts on gg do publish failure for specific repo and keeps folder',
+        () async {
       final mockGgDoPublish = MockGgDoPublish();
       final mockGgDoCommit = MockGgDoCommit();
       final mockGgDoPush = MockGgDoPush();
@@ -402,180 +387,6 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           force: any(named: 'force'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockGgDoMerge.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          automerge: any(named: 'automerge'),
-          local: any(named: 'local'),
-          message: any(named: 'message'),
-        ),
-      ).thenAnswer((invocation) {
-        final repoDir = invocation.namedArguments[#directory] as Directory;
-        if (path.basename(repoDir.path) == 'B') {
-          throw Exception('Merge failed for B');
-        }
-        return Future.value();
-      });
-
-      when(
-        () => mockGgDoPublish.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockGetVersion.get(
-          directory: any(named: 'directory'),
-        ),
-      ).thenAnswer((_) async => '1.0.0');
-      when(
-        () => mockGetRefVersion.get(
-          directory: any(named: 'directory'),
-          ref: any(named: 'ref'),
-        ),
-      ).thenAnswer((_) async => null);
-      when(
-        () => mockSetRefVersion.get(
-          directory: any(named: 'directory'),
-          ref: any(named: 'ref'),
-          version: any(named: 'version'),
-        ),
-      ).thenAnswer((_) async {});
-
-      // Set initial status to git-localized for each repo
-      for (final repoName in ['A', 'B']) {
-        final statusFile =
-            File(path.join(ticketDir.path, repoName, '.kidney_status'))
-              ..createSync(recursive: true);
-        statusFile.writeAsStringSync(
-          jsonEncode({'status': StatusUtils.statusGitLocalized}),
-        );
-      }
-
-      final runner = CommandRunner<void>('test', 'do publish ticket')
-        ..addCommand(
-          DoPublishCommand(
-            ggLog: ggLog,
-            ggDoMerge: mockGgDoMerge,
-            ggDoPublish: mockGgDoPublish,
-            ggDoCommit: mockGgDoCommit,
-            ggDoPush: mockGgDoPush,
-            unlocalizeRefs: mockUnlocalizeRefs,
-            sortedProcessingList: mockSortedProcessingList,
-            processRunner: mockProcessRunner.call,
-            canPublishCommand: mockCanPublishCommand,
-            getVersionCommand: mockGetVersion,
-            setRefVersionCommand: mockSetRefVersion,
-            getRefVersionCommand: mockGetRefVersion,
-          ),
-        );
-      await expectLater(
-        () async => await runner.run([
-          'publish',
-          '--force',
-          '--input',
-          ticketDir.path,
-        ]),
-        throwsA(
-          isA<Exception>().having(
-            (e) => e.toString(),
-            'message',
-            contains('Exception: Failed to merge B: Exception: Merge '
-                'failed for B'),
-          ),
-        ),
-      );
-
-      // Verify status for A was updated to merged, but not for B
-      final statusFileA =
-          File(path.join(ticketDir.path, 'A', '.kidney_status'));
-      final contentA =
-          jsonDecode(statusFileA.readAsStringSync()) as Map<String, dynamic>;
-      expect(contentA['status'], StatusUtils.statusMerged);
-
-      final statusFileB =
-          File(path.join(ticketDir.path, 'B', '.kidney_status'));
-      final contentB =
-          jsonDecode(statusFileB.readAsStringSync()) as Map<String, dynamic>;
-      expect(contentB['status'], StatusUtils.statusGitLocalized);
-    });
-
-    test('aborts on do publish failure for specific repos', () async {
-      final mockGgDoMerge = MockGgDoMerge();
-      final mockGgDoPublish = MockGgDoPublish();
-      final mockGgDoCommit = MockGgDoCommit();
-      final mockGgDoPush = MockGgDoPush();
-      final mockUnlocalizeRefs = MockUnlocalizeRefs();
-      final mockSortedProcessingList = MockSortedProcessingList();
-      final mockProcessRunner = MockProcessRunner();
-      final mockCanPublishCommand = MockCanPublishCommand();
-      final mockGetVersion = MockGetVersion();
-      final mockSetRefVersion = MockSetRefVersion();
-      final mockGetRefVersion = MockGetRefVersion();
-
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockSortedProcessingList.get(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer(
-        (_) async => [
-          Node(
-            name: 'A',
-            directory: Directory(path.join(ticketDir.path, 'A')),
-            pubspec: Pubspec('A'),
-          ),
-          Node(
-            name: 'B',
-            directory: Directory(path.join(ticketDir.path, 'B')),
-            pubspec: Pubspec('B'),
-          ),
-        ],
-      );
-
-      when(
-        () => mockUnlocalizeRefs.get(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockGgDoCommit.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          message: any(named: 'message'),
-          force: any(named: 'force'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockGgDoPush.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          force: any(named: 'force'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockGgDoMerge.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          automerge: any(named: 'automerge'),
-          local: any(named: 'local'),
-          message: any(named: 'message'),
         ),
       ).thenAnswer((_) async {});
 
@@ -611,7 +422,8 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      // Set initial status to git-localized for each repo
+      // Set initial status to git-localized for each repo so we can see
+      // the transition to merged for A.
       for (final repoName in ['A', 'B']) {
         final statusFile =
             File(path.join(ticketDir.path, repoName, '.kidney_status'))
@@ -625,7 +437,6 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
-            ggDoMerge: mockGgDoMerge,
             ggDoPublish: mockGgDoPublish,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -649,32 +460,24 @@ void main() {
           isA<Exception>().having(
             (e) => e.toString(),
             'message',
-            contains('Exception: Failed to publish B: Exception: '
-                'Publish failed for B'),
+            contains('Exception: Publish failed for B'),
           ),
         ),
       );
 
-      // Verify status for A was updated to merged,
-      // for B also since merge succeeded but publish failed
-      final statusFileA =
-          File(path.join(ticketDir.path, 'A', '.kidney_status'));
-      final contentA =
-          jsonDecode(statusFileA.readAsStringSync()) as Map<String, dynamic>;
-      expect(contentA['status'], StatusUtils.statusMerged);
-
-      final statusFileB =
-          File(path.join(ticketDir.path, 'B', '.kidney_status'));
-      final contentB =
-          jsonDecode(statusFileB.readAsStringSync()) as Map<String, dynamic>;
+      // Repository A should have been deleted after successful publish.
       expect(
-        contentB['status'],
-        StatusUtils.statusMerged,
+        Directory(path.join(ticketDir.path, 'A')).existsSync(),
+        isFalse,
+      );
+      // Repository B should still exist because its publish failed.
+      expect(
+        Directory(path.join(ticketDir.path, 'B')).existsSync(),
+        isTrue,
       );
     });
 
     test('aborts on unlocalize refs failure for specific repos', () async {
-      final mockGgDoMerge = MockGgDoMerge();
       final mockGgDoPublish = MockGgDoPublish();
       final mockGgDoCommit = MockGgDoCommit();
       final mockGgDoPush = MockGgDoPush();
@@ -744,16 +547,6 @@ void main() {
       ).thenAnswer((_) async {});
 
       when(
-        () => mockGgDoMerge.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          automerge: any(named: 'automerge'),
-          local: any(named: 'local'),
-          message: any(named: 'message'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
         () => mockGgDoPublish.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
@@ -779,7 +572,8 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      // Set initial status to git-localized for each repo
+      // Set initial status to git-localized for each repo so we can see
+      // the transition to merged for A.
       for (final repoName in ['A', 'B']) {
         final statusFile =
             File(path.join(ticketDir.path, repoName, '.kidney_status'))
@@ -793,7 +587,6 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
-            ggDoMerge: mockGgDoMerge,
             ggDoPublish: mockGgDoPublish,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -817,510 +610,14 @@ void main() {
           isA<Exception>().having(
             (e) => e.toString(),
             'message',
-            contains('Exception: Failed to unlocalize refs for B: Exception: '
-                'Unlocalize failed for B'),
+            contains('Failed to unlocalize refs for B: '
+                'Exception: Unlocalize failed for B'),
           ),
         ),
-      );
-
-      // Verify status for A was updated to merged, but not for B
-      final statusFileA =
-          File(path.join(ticketDir.path, 'A', '.kidney_status'));
-      final contentA =
-          jsonDecode(statusFileA.readAsStringSync()) as Map<String, dynamic>;
-      expect(contentA['status'], StatusUtils.statusMerged);
-
-      final statusFileB =
-          File(path.join(ticketDir.path, 'B', '.kidney_status'));
-      final contentB =
-          jsonDecode(statusFileB.readAsStringSync()) as Map<String, dynamic>;
-      expect(contentB['status'], StatusUtils.statusGitLocalized);
-    });
-
-    test('aborts on do commit failure for specific repos', () async {
-      final mockGgDoMerge = MockGgDoMerge();
-      final mockGgDoPublish = MockGgDoPublish();
-      final mockGgDoCommit = MockGgDoCommit();
-      final mockGgDoPush = MockGgDoPush();
-      final mockUnlocalizeRefs = MockUnlocalizeRefs();
-      final mockSortedProcessingList = MockSortedProcessingList();
-      final mockProcessRunner = MockProcessRunner();
-      final mockCanPublishCommand = MockCanPublishCommand();
-      final mockGetVersion = MockGetVersion();
-      final mockSetRefVersion = MockSetRefVersion();
-      final mockGetRefVersion = MockGetRefVersion();
-
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockSortedProcessingList.get(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer(
-        (_) async => [
-          Node(
-            name: 'A',
-            directory: Directory(path.join(ticketDir.path, 'A')),
-            pubspec: Pubspec('A'),
-          ),
-          Node(
-            name: 'B',
-            directory: Directory(path.join(ticketDir.path, 'B')),
-            pubspec: Pubspec('B'),
-          ),
-        ],
-      );
-
-      when(
-        () => mockUnlocalizeRefs.get(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockGgDoCommit.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          message: any(named: 'message'),
-          force: any(named: 'force'),
-        ),
-      ).thenAnswer((invocation) {
-        final repoDir = invocation.namedArguments[#directory] as Directory;
-        if (path.basename(repoDir.path) == 'B') {
-          throw Exception('Commit failed for B');
-        }
-        return Future.value();
-      });
-
-      when(
-        () => mockGgDoPush.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          force: any(named: 'force'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockGgDoMerge.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          automerge: any(named: 'automerge'),
-          local: any(named: 'local'),
-          message: any(named: 'message'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockGgDoPublish.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockGetVersion.get(
-          directory: any(named: 'directory'),
-        ),
-      ).thenAnswer((_) async => '1.0.0');
-      when(
-        () => mockGetRefVersion.get(
-          directory: any(named: 'directory'),
-          ref: any(named: 'ref'),
-        ),
-      ).thenAnswer((_) async => null);
-      when(
-        () => mockSetRefVersion.get(
-          directory: any(named: 'directory'),
-          ref: any(named: 'ref'),
-          version: any(named: 'version'),
-        ),
-      ).thenAnswer((_) async {});
-
-      // Set initial status to git-localized for each repo
-      for (final repoName in ['A', 'B']) {
-        final statusFile =
-            File(path.join(ticketDir.path, repoName, '.kidney_status'))
-              ..createSync(recursive: true);
-        statusFile.writeAsStringSync(
-          jsonEncode({'status': StatusUtils.statusGitLocalized}),
-        );
-      }
-
-      final runner = CommandRunner<void>('test', 'do publish ticket')
-        ..addCommand(
-          DoPublishCommand(
-            ggLog: ggLog,
-            ggDoMerge: mockGgDoMerge,
-            ggDoPublish: mockGgDoPublish,
-            ggDoCommit: mockGgDoCommit,
-            ggDoPush: mockGgDoPush,
-            unlocalizeRefs: mockUnlocalizeRefs,
-            sortedProcessingList: mockSortedProcessingList,
-            processRunner: mockProcessRunner.call,
-            canPublishCommand: mockCanPublishCommand,
-            getVersionCommand: mockGetVersion,
-            setRefVersionCommand: mockSetRefVersion,
-            getRefVersionCommand: mockGetRefVersion,
-          ),
-        );
-      await expectLater(
-        () async => await runner.run([
-          'publish',
-          '--force',
-          '--input',
-          ticketDir.path,
-        ]),
-        throwsA(
-          isA<Exception>().having(
-            (e) => e.toString(),
-            'message',
-            contains('Exception: Failed to commit B: Exception: '
-                'Commit failed for B'),
-          ),
-        ),
-      );
-
-      // Verify status for A was updated to merged, but not for B
-      final statusFileA =
-          File(path.join(ticketDir.path, 'A', '.kidney_status'));
-      final contentA =
-          jsonDecode(statusFileA.readAsStringSync()) as Map<String, dynamic>;
-      expect(contentA['status'], StatusUtils.statusMerged);
-
-      final statusFileB =
-          File(path.join(ticketDir.path, 'B', '.kidney_status'));
-      final contentB =
-          jsonDecode(statusFileB.readAsStringSync()) as Map<String, dynamic>;
-      expect(contentB['status'], StatusUtils.statusGitLocalized);
-    });
-
-    // NEW: covers the catch branch for the second commit (after merge)
-    test(
-      'aborts when committing merged status fails (second commit)',
-      () async {
-        final mockGgDoMerge = MockGgDoMerge();
-        final mockGgDoPublish = MockGgDoPublish();
-        final mockGgDoCommit = MockGgDoCommit();
-        final mockGgDoPush = MockGgDoPush();
-        final mockUnlocalizeRefs = MockUnlocalizeRefs();
-        final mockSortedProcessingList = MockSortedProcessingList();
-        final mockProcessRunner = MockProcessRunner();
-        final mockCanPublishCommand = MockCanPublishCommand();
-        final mockGetVersion = MockGetVersion();
-        final mockSetRefVersion = MockSetRefVersion();
-        final mockGetRefVersion = MockGetRefVersion();
-
-        when(
-          () => mockCanPublishCommand.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-          ),
-        ).thenAnswer((_) async {});
-
-        when(
-          () => mockSortedProcessingList.get(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-          ),
-        ).thenAnswer(
-          (_) async => [
-            Node(
-              name: 'A',
-              directory: Directory(path.join(ticketDir.path, 'A')),
-              pubspec: Pubspec('A'),
-            ),
-            Node(
-              name: 'B',
-              directory: Directory(path.join(ticketDir.path, 'B')),
-              pubspec: Pubspec('B'),
-            ),
-          ],
-        );
-
-        when(
-          () => mockUnlocalizeRefs.get(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-          ),
-        ).thenAnswer((_) async {});
-
-        // First commit succeeds, second commit fails for repo B.
-        when(
-          () => mockGgDoCommit.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-            message: any(named: 'message'),
-            force: any(named: 'force'),
-          ),
-        ).thenAnswer((invocation) {
-          final dir = invocation.namedArguments[#directory] as Directory;
-          final msg = invocation.namedArguments[#message] as String?;
-          final name = path.basename(dir.path);
-          if (msg == 'kidney: set kidney status to merged' && name == 'B') {
-            throw Exception('Commit merged status failed for B');
-          }
-          return Future.value();
-        });
-
-        when(
-          () => mockGgDoPush.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-            force: any(named: 'force'),
-          ),
-        ).thenAnswer((_) async {});
-
-        when(
-          () => mockGgDoMerge.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-            automerge: any(named: 'automerge'),
-            local: any(named: 'local'),
-            message: any(named: 'message'),
-          ),
-        ).thenAnswer((_) async {});
-
-        when(
-          () => mockGgDoPublish.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-          ),
-        ).thenAnswer((_) async {});
-
-        when(
-          () => mockGetVersion.get(
-            directory: any(named: 'directory'),
-          ),
-        ).thenAnswer((_) async => '1.0.0');
-        when(
-          () => mockGetRefVersion.get(
-            directory: any(named: 'directory'),
-            ref: any(named: 'ref'),
-          ),
-        ).thenAnswer((_) async => null);
-        when(
-          () => mockSetRefVersion.get(
-            directory: any(named: 'directory'),
-            ref: any(named: 'ref'),
-            version: any(named: 'version'),
-          ),
-        ).thenAnswer((_) async {});
-
-        for (final repoName in ['A', 'B']) {
-          final statusFile =
-              File(path.join(ticketDir.path, repoName, '.kidney_status'))
-                ..createSync(recursive: true);
-          statusFile.writeAsStringSync(
-            jsonEncode({'status': StatusUtils.statusGitLocalized}),
-          );
-        }
-
-        final runner = CommandRunner<void>('test', 'do publish ticket')
-          ..addCommand(
-            DoPublishCommand(
-              ggLog: ggLog,
-              ggDoMerge: mockGgDoMerge,
-              ggDoPublish: mockGgDoPublish,
-              ggDoCommit: mockGgDoCommit,
-              ggDoPush: mockGgDoPush,
-              unlocalizeRefs: mockUnlocalizeRefs,
-              sortedProcessingList: mockSortedProcessingList,
-              processRunner: mockProcessRunner.call,
-              canPublishCommand: mockCanPublishCommand,
-              getVersionCommand: mockGetVersion,
-              setRefVersionCommand: mockSetRefVersion,
-              getRefVersionCommand: mockGetRefVersion,
-            ),
-          );
-
-        await expectLater(
-          () async => await runner.run([
-            'publish',
-            '--force',
-            '--input',
-            ticketDir.path,
-          ]),
-          throwsA(
-            isA<Exception>().having(
-              (e) => e.toString(),
-              'message',
-              contains('Exception: Failed to commit B: Exception: '
-                  'Commit merged status failed for B'),
-            ),
-          ),
-        );
-
-        // Status for B was set to merged before the failing commit.
-        final statusFileB =
-            File(path.join(ticketDir.path, 'B', '.kidney_status'));
-        final contentB =
-            jsonDecode(statusFileB.readAsStringSync()) as Map<String, dynamic>;
-        expect(contentB['status'], StatusUtils.statusMerged);
-      },
-    );
-
-    test('skips repo already merged', () async {
-      final mockGgDoMerge = MockGgDoMerge();
-      final mockGgDoPublish = MockGgDoPublish();
-      final mockGgDoCommit = MockGgDoCommit();
-      final mockGgDoPush = MockGgDoPush();
-      final mockUnlocalizeRefs = MockUnlocalizeRefs();
-      final mockSortedProcessingList = MockSortedProcessingList();
-      final mockProcessRunner = MockProcessRunner();
-      final mockCanPublishCommand = MockCanPublishCommand();
-      final mockGetVersion = MockGetVersion();
-      final mockSetRefVersion = MockSetRefVersion();
-      final mockGetRefVersion = MockGetRefVersion();
-
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockSortedProcessingList.get(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer(
-        (_) async => [
-          Node(
-            name: 'A',
-            directory: Directory(path.join(ticketDir.path, 'A')),
-            pubspec: Pubspec('A'),
-          ),
-          Node(
-            name: 'B',
-            directory: Directory(path.join(ticketDir.path, 'B')),
-            pubspec: Pubspec('B'),
-          ),
-        ],
-      );
-
-      when(
-        () => mockUnlocalizeRefs.get(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-      when(
-        () => mockGgDoCommit.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          message: any(named: 'message'),
-          force: any(named: 'force'),
-        ),
-      ).thenAnswer((_) async {});
-      when(
-        () => mockGgDoPush.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          force: any(named: 'force'),
-        ),
-      ).thenAnswer((_) async {});
-      when(
-        () => mockGgDoMerge.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          automerge: any(named: 'automerge'),
-          local: any(named: 'local'),
-          message: any(named: 'message'),
-        ),
-      ).thenAnswer((_) async {});
-      when(
-        () => mockGgDoPublish.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-
-      // Set A to merged, B to git-localized
-      final statusFileA = File(path.join(ticketDir.path, 'A', '.kidney_status'))
-        ..createSync(recursive: true);
-      statusFileA.writeAsStringSync(
-        jsonEncode({'status': StatusUtils.statusMerged}),
-      );
-      final statusFileB = File(path.join(ticketDir.path, 'B', '.kidney_status'))
-        ..createSync(recursive: true);
-      statusFileB.writeAsStringSync(
-        jsonEncode({'status': StatusUtils.statusGitLocalized}),
-      );
-
-      when(
-        () => mockGetVersion.get(
-          directory: any(named: 'directory'),
-        ),
-      ).thenAnswer((_) async => '1.0.0');
-      when(
-        () => mockGetRefVersion.get(
-          directory: any(named: 'directory'),
-          ref: any(named: 'ref'),
-        ),
-      ).thenAnswer((_) async => null);
-      when(
-        () => mockSetRefVersion.get(
-          directory: any(named: 'directory'),
-          ref: any(named: 'ref'),
-          version: any(named: 'version'),
-        ),
-      ).thenAnswer((_) async {});
-
-      final runner = CommandRunner<void>('test', 'do publish ticket')
-        ..addCommand(
-          DoPublishCommand(
-            ggLog: ggLog,
-            ggDoMerge: mockGgDoMerge,
-            ggDoPublish: mockGgDoPublish,
-            ggDoCommit: mockGgDoCommit,
-            ggDoPush: mockGgDoPush,
-            unlocalizeRefs: mockUnlocalizeRefs,
-            sortedProcessingList: mockSortedProcessingList,
-            processRunner: mockProcessRunner.call,
-            canPublishCommand: mockCanPublishCommand,
-            getVersionCommand: mockGetVersion,
-            setRefVersionCommand: mockSetRefVersion,
-            getRefVersionCommand: mockGetRefVersion,
-          ),
-        );
-
-      await runner.run(['publish', '--force', '--input', ticketDir.path]);
-
-      // A must be skipped with an info message
-      expect(
-        messages.any(
-          (m) => m.contains(
-            'Repository A in ticket TICKPB is already merged.',
-          ),
-        ),
-        isTrue,
-      );
-      // No publish log for A
-      expect(
-        messages.any(
-          (m) => m.contains('Publishing A in ticket TICKPB...'),
-        ),
-        isFalse,
-      );
-      // B still processed
-      expect(
-        messages.any(
-          (m) => m.contains('Publishing B in ticket TICKPB...'),
-        ),
-        isTrue,
       );
     });
 
     test('aborts when GetVersion throws', () async {
-      final mockGgDoMerge = MockGgDoMerge();
       final mockGgDoPublish = MockGgDoPublish();
       final mockGgDoCommit = MockGgDoCommit();
       final mockGgDoPush = MockGgDoPush();
@@ -1361,14 +658,12 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      // Make GetVersion throw to hit the catch branch
       when(
         () => mockGetVersion.get(
           directory: any(named: 'directory'),
         ),
       ).thenThrow(Exception('version read failed'));
 
-      // Provide harmless stubs for the rest
       when(
         () => mockGetRefVersion.get(
           directory: any(named: 'directory'),
@@ -1398,22 +693,12 @@ void main() {
         ),
       ).thenAnswer((_) async {});
       when(
-        () => mockGgDoMerge.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          automerge: any(named: 'automerge'),
-          local: any(named: 'local'),
-          message: any(named: 'message'),
-        ),
-      ).thenAnswer((_) async {});
-      when(
         () => mockGgDoPublish.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
         ),
       ).thenAnswer((_) async {});
 
-      // Ensure initial status is correct
       final statusFileA = File(path.join(ticketDir.path, 'A', '.kidney_status'))
         ..createSync(recursive: true);
       statusFileA.writeAsStringSync(
@@ -1424,7 +709,6 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
-            ggDoMerge: mockGgDoMerge,
             ggDoPublish: mockGgDoPublish,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -1459,7 +743,6 @@ void main() {
     test(
       'updates dependency ref versions when a known ref is used later',
       () async {
-        final mockGgDoMerge = MockGgDoMerge();
         final mockGgDoPublish = MockGgDoPublish();
         final mockGgDoCommit = MockGgDoCommit();
         final mockGgDoPush = MockGgDoPush();
@@ -1471,7 +754,6 @@ void main() {
         final mockSetRefVersion = MockSetRefVersion();
         final mockGetRefVersion = MockGetRefVersion();
 
-        // can publish ok
         when(
           () => mockCanPublishCommand.exec(
             directory: any(named: 'directory'),
@@ -1479,7 +761,6 @@ void main() {
           ),
         ).thenAnswer((_) async {});
 
-        // processing order A, then B
         final aDir = Directory(path.join(ticketDir.path, 'A'));
         final bDir = Directory(path.join(ticketDir.path, 'B'));
         when(
@@ -1494,7 +775,6 @@ void main() {
           ],
         );
 
-        // unlocalize ok
         when(
           () => mockUnlocalizeRefs.get(
             directory: any(named: 'directory'),
@@ -1502,15 +782,14 @@ void main() {
           ),
         ).thenAnswer((_) async {});
 
-        // version of A known
-        when(
-          () => mockGetVersion.get(directory: aDir),
-        ).thenAnswer((_) async => '1.2.3');
-        when(
-          () => mockGetVersion.get(directory: bDir),
-        ).thenAnswer((_) async => '0.0.1');
+        when(() => mockGetVersion.get(directory: aDir))
+            .thenAnswer((_) async => '1.2.3');
+        when(() => mockGetVersion.get(directory: bDir))
+            .thenAnswer((_) async => '0.0.1');
 
-        // General stub first (mocktail: last stub wins)
+        // General stub must be registered before the specific one so that
+        // the specific stub for (bDir, 'A') wins. Mocktail uses the
+        // last registered matching stub.
         when(
           () => mockGetRefVersion.get(
             directory: any(named: 'directory'),
@@ -1518,7 +797,6 @@ void main() {
           ),
         ).thenAnswer((_) async => null);
 
-        // B depends on A -> return non-null spec for B/A
         when(
           () => mockGetRefVersion.get(
             directory: bDir,
@@ -1526,7 +804,6 @@ void main() {
           ),
         ).thenAnswer((_) async => '^any');
 
-        // setRefVersion stub
         when(
           () => mockSetRefVersion.get(
             directory: any(named: 'directory'),
@@ -1535,7 +812,6 @@ void main() {
           ),
         ).thenAnswer((_) async {});
 
-        // commit/push/merge/publish ok
         when(
           () => mockGgDoCommit.exec(
             directory: any(named: 'directory'),
@@ -1552,22 +828,12 @@ void main() {
           ),
         ).thenAnswer((_) async {});
         when(
-          () => mockGgDoMerge.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-            automerge: any(named: 'automerge'),
-            local: any(named: 'local'),
-            message: any(named: 'message'),
-          ),
-        ).thenAnswer((_) async {});
-        when(
           () => mockGgDoPublish.exec(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
           ),
         ).thenAnswer((_) async {});
 
-        // initial status
         for (final repo in ['A', 'B']) {
           final f = File(path.join(ticketDir.path, repo, '.kidney_status'))
             ..createSync(recursive: true);
@@ -1580,7 +846,6 @@ void main() {
           ..addCommand(
             DoPublishCommand(
               ggLog: ggLog,
-              ggDoMerge: mockGgDoMerge,
               ggDoPublish: mockGgDoPublish,
               ggDoCommit: mockGgDoCommit,
               ggDoPush: mockGgDoPush,
@@ -1601,7 +866,6 @@ void main() {
           ticketDir.path,
         ]);
 
-        // Verify setRefVersion was called for B with ref A and ^1.2.3
         verify(
           () => mockSetRefVersion.get(
             directory: bDir,
@@ -1615,7 +879,6 @@ void main() {
     test(
       'aborts when updating dependent ref version fails',
       () async {
-        final mockGgDoMerge = MockGgDoMerge();
         final mockGgDoPublish = MockGgDoPublish();
         final mockGgDoCommit = MockGgDoCommit();
         final mockGgDoPush = MockGgDoPush();
@@ -1655,7 +918,6 @@ void main() {
           ),
         ).thenAnswer((_) async {});
 
-        // A has version 2.0.0, B depends on A
         when(() => mockGetVersion.get(directory: aDir))
             .thenAnswer((_) async => '2.0.0');
         when(() => mockGetVersion.get(directory: bDir))
@@ -1674,7 +936,6 @@ void main() {
           ),
         ).thenAnswer((_) async => '^any');
 
-        // setRefVersion throws -> should be caught and rethrown
         when(
           () => mockSetRefVersion.get(
             directory: bDir,
@@ -1683,7 +944,6 @@ void main() {
           ),
         ).thenThrow(Exception('update failed'));
 
-        // Harmless stubs for the rest
         when(
           () => mockGgDoCommit.exec(
             directory: any(named: 'directory'),
@@ -1697,15 +957,6 @@ void main() {
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
             force: any(named: 'force'),
-          ),
-        ).thenAnswer((_) async {});
-        when(
-          () => mockGgDoMerge.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-            automerge: any(named: 'automerge'),
-            local: any(named: 'local'),
-            message: any(named: 'message'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -1727,7 +978,6 @@ void main() {
           ..addCommand(
             DoPublishCommand(
               ggLog: ggLog,
-              ggDoMerge: mockGgDoMerge,
               ggDoPublish: mockGgDoPublish,
               ggDoCommit: mockGgDoCommit,
               ggDoPush: mockGgDoPush,
@@ -1756,6 +1006,145 @@ void main() {
                   'Exception: update failed'),
             ),
           ),
+        );
+      },
+    );
+
+    test(
+      'logs error when deleting repository directory from ticket fails',
+      () async {
+        final mockGgDoPublish = MockGgDoPublish();
+        final mockGgDoCommit = MockGgDoCommit();
+        final mockGgDoPush = MockGgDoPush();
+        final mockUnlocalizeRefs = MockUnlocalizeRefs();
+        final mockSortedProcessingList = MockSortedProcessingList();
+        final mockProcessRunner = MockProcessRunner();
+        final mockCanPublishCommand = MockCanPublishCommand();
+        final mockGetVersion = MockGetVersion();
+        final mockSetRefVersion = MockSetRefVersion();
+        final mockGetRefVersion = MockGetRefVersion();
+        final mockDirB = MockDirectory();
+
+        when(
+          () => mockCanPublishCommand.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        final dirA = Directory(path.join(ticketDir.path, 'A'));
+        when(
+          () => mockSortedProcessingList.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            Node(
+              name: 'A',
+              directory: dirA,
+              pubspec: Pubspec('A'),
+            ),
+            Node(
+              name: 'B',
+              directory: mockDirB,
+              pubspec: Pubspec('B'),
+            ),
+          ],
+        );
+
+        when(
+          () => mockUnlocalizeRefs.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockGetVersion.get(
+            directory: any(named: 'directory'),
+          ),
+        ).thenAnswer((_) async => '1.0.0');
+
+        when(
+          () => mockGetRefVersion.get(
+            directory: any(named: 'directory'),
+            ref: any(named: 'ref'),
+          ),
+        ).thenAnswer((_) async => null);
+
+        when(
+          () => mockSetRefVersion.get(
+            directory: any(named: 'directory'),
+            ref: any(named: 'ref'),
+            version: any(named: 'version'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockGgDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockGgDoPush.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockGgDoPublish.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(() => mockDirB.path).thenReturn(
+          path.join(ticketDir.path, 'B'),
+        );
+        when(() => mockDirB.existsSync()).thenReturn(true);
+        when(
+          () => mockDirB.deleteSync(recursive: true),
+        ).thenThrow(Exception('delete failed'));
+
+        final runner = CommandRunner<void>('test', 'do publish ticket')
+          ..addCommand(
+            DoPublishCommand(
+              ggLog: ggLog,
+              ggDoPublish: mockGgDoPublish,
+              ggDoCommit: mockGgDoCommit,
+              ggDoPush: mockGgDoPush,
+              unlocalizeRefs: mockUnlocalizeRefs,
+              sortedProcessingList: mockSortedProcessingList,
+              processRunner: mockProcessRunner.call,
+              canPublishCommand: mockCanPublishCommand,
+              getVersionCommand: mockGetVersion,
+              setRefVersionCommand: mockSetRefVersion,
+              getRefVersionCommand: mockGetRefVersion,
+            ),
+          );
+
+        await runner.run([
+          'publish',
+          '--force',
+          '--input',
+          ticketDir.path,
+        ]);
+
+        expect(
+          messages.any(
+            (m) => m.contains(
+              'Failed to delete repository B from ticket TICKPB: '
+              'Exception: delete failed',
+            ),
+          ),
+          isTrue,
         );
       },
     );

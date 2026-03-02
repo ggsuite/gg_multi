@@ -47,7 +47,9 @@ void main() {
 
   setUp(() {
     messages.clear();
-    tempDir = Directory.systemTemp.createTempSync('can_publish_ticket_test_');
+    tempDir = Directory.systemTemp.createTempSync(
+      'can_publish_ticket_test_',
+    );
     ticketsDir = Directory(path.join(tempDir.path, 'tickets'))..createSync();
     ticketDir = Directory(path.join(ticketsDir.path, 'TICKPB'))..createSync();
     Directory(path.join(ticketDir.path, 'A')).createSync();
@@ -102,12 +104,14 @@ void main() {
 
     test('checks status correctly and fails if not git-localized', () async {
       // Set status for A to wrong
-      final statusFileA = File(path.join(ticketDir.path, 'A', '.kidney_status'))
-        ..createSync(recursive: true);
+      final statusFileA = File(
+        path.join(ticketDir.path, 'A', '.kidney_status'),
+      )..createSync(recursive: true);
       statusFileA.writeAsStringSync(jsonEncode({'status': 'wrong'}));
       // Set status for B to git-localized
-      final statusFileB = File(path.join(ticketDir.path, 'B', '.kidney_status'))
-        ..createSync(recursive: true);
+      final statusFileB = File(
+        path.join(ticketDir.path, 'B', '.kidney_status'),
+      )..createSync(recursive: true);
       statusFileB.writeAsStringSync(
         jsonEncode({'status': StatusUtils.statusGitLocalized}),
       );
@@ -152,7 +156,12 @@ void main() {
           ),
         );
       await expectLater(
-        () async => await runner.run(['publish', '--input', ticketDir.path]),
+        () async => await runner.run([
+          'publish',
+          '--verbose',
+          '--input',
+          ticketDir.path,
+        ]),
         throwsA(isA<Exception>()),
       );
       expect(
@@ -167,7 +176,9 @@ void main() {
       expect(messages.any((m) => m.contains(' - A')), isTrue);
       expect(
         messages.any(
-          (m) => m.contains('Please execute kidney_core review before merging'),
+          (m) => m.contains(
+            'Please execute kidney_core review before merging',
+          ),
         ),
         isTrue,
       );
@@ -176,9 +187,9 @@ void main() {
     test('checks uncommitted changes and fails if found', () async {
       // Set status for all repos to git-localized
       for (final repoName in ['A', 'B']) {
-        final statusFile =
-            File(path.join(ticketDir.path, repoName, '.kidney_status'))
-              ..createSync(recursive: true);
+        final statusFile = File(
+          path.join(ticketDir.path, repoName, '.kidney_status'),
+        )..createSync(recursive: true);
         statusFile.writeAsStringSync(
           jsonEncode({'status': StatusUtils.statusGitLocalized}),
         );
@@ -240,13 +251,19 @@ void main() {
           ),
         );
       await expectLater(
-        () async => await runner.run(['publish', '--input', ticketDir.path]),
+        () async => await runner.run([
+          'publish',
+          '--verbose',
+          '--input',
+          ticketDir.path,
+        ]),
         throwsA(isA<Exception>()),
       );
       expect(
         messages.any(
-          (m) =>
-              m.contains('Uncommitted changes found in the following repos:'),
+          (m) => m.contains(
+            'Uncommitted changes found in the following repos:',
+          ),
         ),
         isTrue,
       );
@@ -256,9 +273,9 @@ void main() {
     test('executes can commit, do push, and can merge successfully', () async {
       // Set status for all repos to git-localized
       for (final repoName in ['A', 'B']) {
-        final statusFile =
-            File(path.join(ticketDir.path, repoName, '.kidney_status'))
-              ..createSync(recursive: true);
+        final statusFile = File(
+          path.join(ticketDir.path, repoName, '.kidney_status'),
+        )..createSync(recursive: true);
         statusFile.writeAsStringSync(
           jsonEncode({'status': StatusUtils.statusGitLocalized}),
         );
@@ -332,20 +349,29 @@ void main() {
             doPushCommand: mockDoPushCommand,
           ),
         );
-      await runner.run(['publish', '--input', ticketDir.path]);
+      await runner.run([
+        'publish',
+        '--verbose',
+        '--input',
+        ticketDir.path,
+      ]);
       expect(
         messages,
         contains('✅ All repositories in ticket TICKPB can be published.'),
       );
       expect(
         messages.any(
-          (m) => m.contains('Checking if A in ticket TICKPB can be merged...'),
+          (m) => m.contains(
+            'Checking if A in ticket TICKPB can be merged...',
+          ),
         ),
         isTrue,
       );
       expect(
         messages.any(
-          (m) => m.contains('Checking if B in ticket TICKPB can be merged...'),
+          (m) => m.contains(
+            'Checking if B in ticket TICKPB can be merged...',
+          ),
         ),
         isTrue,
       );
@@ -354,9 +380,9 @@ void main() {
     test('fails on can merge check for specific repos', () async {
       // Set status for all repos to git-localized
       for (final repoName in ['A', 'B']) {
-        final statusFile =
-            File(path.join(ticketDir.path, repoName, '.kidney_status'))
-              ..createSync(recursive: true);
+        final statusFile = File(
+          path.join(ticketDir.path, repoName, '.kidney_status'),
+        )..createSync(recursive: true);
         statusFile.writeAsStringSync(
           jsonEncode({'status': StatusUtils.statusGitLocalized}),
         );
@@ -437,7 +463,12 @@ void main() {
           ),
         );
       await expectLater(
-        () async => await runner.run(['publish', '--input', ticketDir.path]),
+        () async => await runner.run([
+          'publish',
+          '--verbose',
+          '--input',
+          ticketDir.path,
+        ]),
         throwsA(isA<Exception>()),
       );
       expect(
@@ -463,9 +494,9 @@ void main() {
     test('fails when can commit throws exception', () async {
       // Set status for all repos to git-localized
       for (final repoName in ['A', 'B']) {
-        final statusFile =
-            File(path.join(ticketDir.path, repoName, '.kidney_status'))
-              ..createSync(recursive: true);
+        final statusFile = File(
+          path.join(ticketDir.path, repoName, '.kidney_status'),
+        )..createSync(recursive: true);
         statusFile.writeAsStringSync(
           jsonEncode({'status': StatusUtils.statusGitLocalized}),
         );
@@ -540,7 +571,12 @@ void main() {
           ),
         );
       await expectLater(
-        () async => await runner.run(['publish', '--input', ticketDir.path]),
+        () async => await runner.run([
+          'publish',
+          '--verbose',
+          '--input',
+          ticketDir.path,
+        ]),
         throwsA(isA<Exception>()),
       );
       expect(
@@ -556,9 +592,9 @@ void main() {
     test('fails when do push throws exception', () async {
       // Set status for all repos to git-localized
       for (final repoName in ['A', 'B']) {
-        final statusFile =
-            File(path.join(ticketDir.path, repoName, '.kidney_status'))
-              ..createSync(recursive: true);
+        final statusFile = File(
+          path.join(ticketDir.path, repoName, '.kidney_status'),
+        )..createSync(recursive: true);
         statusFile.writeAsStringSync(
           jsonEncode({'status': StatusUtils.statusGitLocalized}),
         );
@@ -633,7 +669,12 @@ void main() {
           ),
         );
       await expectLater(
-        () async => await runner.run(['publish', '--input', ticketDir.path]),
+        () async => await runner.run([
+          'publish',
+          '--verbose',
+          '--input',
+          ticketDir.path,
+        ]),
         throwsA(isA<Exception>()),
       );
       expect(
@@ -652,6 +693,113 @@ void main() {
         ),
       );
     });
+
+    test(
+      'uses quiet taskLog when verbose is false',
+      () async {
+        // Prepare git-localized status
+        for (final name in ['A', 'B']) {
+          final statusFile = File(
+            path.join(ticketDir.path, name, '.kidney_status'),
+          )..createSync(recursive: true);
+          statusFile.writeAsStringSync(
+            jsonEncode(
+              {
+                'status': StatusUtils.statusGitLocalized,
+              },
+            ),
+          );
+        }
+
+        final mockGgCanCommit = MockGgCanCommit();
+        final mockGgCanMerge = MockGgCanMerge();
+        final mockSortedProcessingList = MockSortedProcessingList();
+        final mockProcessRunner = MockProcessRunner();
+        final mockCanCommitCommand = MockCanCommitCommand();
+        final mockDoPushCommand = MockDoPushCommand();
+
+        when(
+          () => mockSortedProcessingList.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            Node(
+              name: 'A',
+              directory: Directory(
+                path.join(ticketDir.path, 'A'),
+              ),
+              pubspec: Pubspec('A'),
+            ),
+            Node(
+              name: 'B',
+              directory: Directory(
+                path.join(ticketDir.path, 'B'),
+              ),
+              pubspec: Pubspec('B'),
+            ),
+          ],
+        );
+
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['status', '--porcelain'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer(
+          (_) async => ProcessResult(1, 0, '', ''),
+        );
+
+        when(
+          () => mockCanCommitCommand.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockDoPushCommand.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockGgCanMerge.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        final localMessages = <String>[];
+        void localLog(String msg) => localMessages.add(rmConsoleColors(msg));
+
+        final command = CanPublishCommand(
+          ggLog: localLog,
+          ggCanCommit: mockGgCanCommit,
+          ggCanMerge: mockGgCanMerge,
+          sortedProcessingList: mockSortedProcessingList,
+          processRunner: mockProcessRunner.call,
+          canCommitCommand: mockCanCommitCommand,
+          doPushCommand: mockDoPushCommand,
+        );
+
+        await command.get(
+          directory: ticketDir,
+          ggLog: localLog,
+          verbose: false,
+        );
+
+        expect(
+          localMessages.last,
+          contains(
+            '✅ can merge?',
+          ),
+        );
+      },
+    );
   });
 }
 

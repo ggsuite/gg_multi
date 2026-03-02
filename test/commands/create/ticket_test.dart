@@ -81,15 +81,17 @@ void main() {
       expect(data['description'], equals(description));
 
       expect(
-        messages,
-        contains(
-          'Created ticket $issueId at $ticketRelPath',
+        messages.any(
+          (m) => m.contains('Created ticket $issueId'),
         ),
+        isTrue,
       );
       expect(
         messages,
-        contains('Execute "cd $ticketRelPath" '
-            'to enter the ticket workspace.'),
+        contains(
+          'Execute "cd $ticketRelPath" '
+          'to enter the ticket workspace.',
+        ),
       );
     });
 
@@ -117,8 +119,10 @@ void main() {
       expect(ticketDir.existsSync(), isTrue);
 
       expect(
-        messages,
-        contains('Created ticket $issueId at $issueId'),
+        messages.any(
+          (m) => m.contains('Created ticket $issueId'),
+        ),
+        isTrue,
       );
       expect(
         messages,

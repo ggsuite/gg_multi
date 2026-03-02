@@ -105,7 +105,7 @@ class TicketCommand extends DirCommand<void> {
     };
     ticketFile.writeAsStringSync(jsonEncode(data));
 
-    ggLog(green('Created ticket $issueId at $relPath'));
+    ggLog('✅ Created ticket $issueId');
     ggLog('Execute "${blue('cd $relPath')}" '
         'to enter the ticket workspace.');
   }
