@@ -56,6 +56,7 @@
 - Update .gg.json with new canCommit success hash value
 - Refactor install\_git\_hooks to simplify error handling logic
 - Enforce pre-push commit checks only on main/master branches
+- log git and pub commands with darkGray instead of green
 
 ### Removed
 

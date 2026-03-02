@@ -366,6 +366,7 @@ class AddCommand extends Command<dynamic> {
         ),
       );
     } else {
+      ggLog(darkGray('Executed git fetch in $repoName in master workspace.'));
       final pullResult = await processRunner(
         'git',
         ['pull'],
@@ -378,6 +379,8 @@ class AddCommand extends Command<dynamic> {
             '${pullResult.stderr}',
           ),
         );
+      } else {
+        ggLog(darkGray('Executed git pull in $repoName in master workspace.'));
       }
     }
 
@@ -400,7 +403,7 @@ class AddCommand extends Command<dynamic> {
       workingDirectory: destDir.path,
     );
     if (result.exitCode == 0) {
-      ggLog(green('Executed dart pub get in $repoName.'));
+      ggLog(darkGray('Executed dart pub get in $repoName.'));
     } else {
       ggLog(
         red(
@@ -476,7 +479,7 @@ class AddCommand extends Command<dynamic> {
           workingDirectory: repoDir.path,
         );
         if (upgrade.exitCode == 0) {
-          ggLog(green('Executed dart pub upgrade in $repoName.'));
+          ggLog(darkGray('Executed dart pub upgrade in $repoName.'));
         } else {
           ggLog(
             red(
