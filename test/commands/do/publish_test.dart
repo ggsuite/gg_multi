@@ -153,12 +153,12 @@ void main() {
           Node(
             name: 'A',
             directory: Directory(path.join(ticketDir.path, 'A')),
-            pubspec: Pubspec('A'),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
           ),
           Node(
             name: 'B',
             directory: Directory(path.join(ticketDir.path, 'B')),
-            pubspec: Pubspec('B'),
+            manifest: DartPackageManifest(pubspec: Pubspec('B')),
           ),
         ],
       );
@@ -356,12 +356,12 @@ void main() {
           Node(
             name: 'A',
             directory: Directory(path.join(ticketDir.path, 'A')),
-            pubspec: Pubspec('A'),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
           ),
           Node(
             name: 'B',
             directory: Directory(path.join(ticketDir.path, 'B')),
-            pubspec: Pubspec('B'),
+            manifest: DartPackageManifest(pubspec: Pubspec('B')),
           ),
         ],
       );
@@ -506,12 +506,12 @@ void main() {
           Node(
             name: 'A',
             directory: Directory(path.join(ticketDir.path, 'A')),
-            pubspec: Pubspec('A'),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
           ),
           Node(
             name: 'B',
             directory: Directory(path.join(ticketDir.path, 'B')),
-            pubspec: Pubspec('B'),
+            manifest: DartPackageManifest(pubspec: Pubspec('B')),
           ),
         ],
       );
@@ -646,7 +646,7 @@ void main() {
           Node(
             name: 'A',
             directory: Directory(path.join(ticketDir.path, 'A')),
-            pubspec: Pubspec('A'),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
           ),
         ],
       );
@@ -770,8 +770,16 @@ void main() {
           ),
         ).thenAnswer(
           (_) async => [
-            Node(name: 'A', directory: aDir, pubspec: Pubspec('A')),
-            Node(name: 'B', directory: bDir, pubspec: Pubspec('B')),
+            Node(
+              name: 'A',
+              directory: aDir,
+              manifest: DartPackageManifest(pubspec: Pubspec('A')),
+            ),
+            Node(
+              name: 'B',
+              directory: bDir,
+              manifest: DartPackageManifest(pubspec: Pubspec('B')),
+            ),
           ],
         );
 
@@ -906,8 +914,16 @@ void main() {
           ),
         ).thenAnswer(
           (_) async => [
-            Node(name: 'A', directory: aDir, pubspec: Pubspec('A')),
-            Node(name: 'B', directory: bDir, pubspec: Pubspec('B')),
+            Node(
+              name: 'A',
+              directory: aDir,
+              manifest: DartPackageManifest(pubspec: Pubspec('A')),
+            ),
+            Node(
+              name: 'B',
+              directory: bDir,
+              manifest: DartPackageManifest(pubspec: Pubspec('B')),
+            ),
           ],
         );
 
@@ -1043,12 +1059,12 @@ void main() {
             Node(
               name: 'A',
               directory: dirA,
-              pubspec: Pubspec('A'),
+              manifest: DartPackageManifest(pubspec: Pubspec('A')),
             ),
             Node(
               name: 'B',
               directory: mockDirB,
-              pubspec: Pubspec('B'),
+              manifest: DartPackageManifest(pubspec: Pubspec('B')),
             ),
           ],
         );

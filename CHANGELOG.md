@@ -57,6 +57,7 @@
 - Refactor install\_git\_hooks to simplify error handling logic
 - Enforce pre-push commit checks only on main/master branches
 - log git and pub commands with darkGray instead of green
+- Refactor Node to use manifest field instead of pubspec in tests
 
 ### Removed
 

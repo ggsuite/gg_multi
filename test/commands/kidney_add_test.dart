@@ -1021,7 +1021,7 @@ version: 1.0.0
                 directory: Directory(
                   path.join(ticketDir.path, repoName),
                 ),
-                pubspec: Pubspec(repoName),
+                manifest: DartPackageManifest(pubspec: Pubspec(repoName)),
               ),
             ];
 
@@ -1387,7 +1387,7 @@ version: 1.0.0
             Node(
               name: repoName,
               directory: Directory(path.join(ticketDir.path, repoName)),
-              pubspec: Pubspec(repoName),
+              manifest: DartPackageManifest(pubspec: Pubspec(repoName)),
             ),
           ],
         );
@@ -1486,7 +1486,7 @@ version: 1.0.0
             Node(
               name: repoName,
               directory: Directory(path.join(ticketDir.path, repoName)),
-              pubspec: Pubspec(repoName),
+              manifest: DartPackageManifest(pubspec: Pubspec(repoName)),
             ),
           ],
         );
@@ -1639,7 +1639,7 @@ version: 1.0.0
             Node(
               name: repoName,
               directory: ticketRepoDir,
-              pubspec: Pubspec(repoName),
+              manifest: DartPackageManifest(pubspec: Pubspec(repoName)),
             ),
           ];
         });
@@ -1765,7 +1765,7 @@ version: 1.0.0
             Node(
               name: repoName,
               directory: ticketRepoDir,
-              pubspec: Pubspec(repoName),
+              manifest: DartPackageManifest(pubspec: Pubspec(repoName)),
             ),
           ];
         });

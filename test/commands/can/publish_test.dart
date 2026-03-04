@@ -133,12 +133,12 @@ void main() {
           Node(
             name: 'A',
             directory: Directory(path.join(ticketDir.path, 'A')),
-            pubspec: Pubspec('A'),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
           ),
           Node(
             name: 'B',
             directory: Directory(path.join(ticketDir.path, 'B')),
-            pubspec: Pubspec('B'),
+            manifest: DartPackageManifest(pubspec: Pubspec('B')),
           ),
         ],
       );
@@ -212,12 +212,12 @@ void main() {
           Node(
             name: 'A',
             directory: Directory(path.join(ticketDir.path, 'A')),
-            pubspec: Pubspec('A'),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
           ),
           Node(
             name: 'B',
             directory: Directory(path.join(ticketDir.path, 'B')),
-            pubspec: Pubspec('B'),
+            manifest: DartPackageManifest(pubspec: Pubspec('B')),
           ),
         ],
       );
@@ -298,12 +298,12 @@ void main() {
           Node(
             name: 'A',
             directory: Directory(path.join(ticketDir.path, 'A')),
-            pubspec: Pubspec('A'),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
           ),
           Node(
             name: 'B',
             directory: Directory(path.join(ticketDir.path, 'B')),
-            pubspec: Pubspec('B'),
+            manifest: DartPackageManifest(pubspec: Pubspec('B')),
           ),
         ],
       );
@@ -405,12 +405,12 @@ void main() {
           Node(
             name: 'A',
             directory: Directory(path.join(ticketDir.path, 'A')),
-            pubspec: Pubspec('A'),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
           ),
           Node(
             name: 'B',
             directory: Directory(path.join(ticketDir.path, 'B')),
-            pubspec: Pubspec('B'),
+            manifest: DartPackageManifest(pubspec: Pubspec('B')),
           ),
         ],
       );
@@ -519,12 +519,12 @@ void main() {
           Node(
             name: 'A',
             directory: Directory(path.join(ticketDir.path, 'A')),
-            pubspec: Pubspec('A'),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
           ),
           Node(
             name: 'B',
             directory: Directory(path.join(ticketDir.path, 'B')),
-            pubspec: Pubspec('B'),
+            manifest: DartPackageManifest(pubspec: Pubspec('B')),
           ),
         ],
       );
@@ -617,12 +617,12 @@ void main() {
           Node(
             name: 'A',
             directory: Directory(path.join(ticketDir.path, 'A')),
-            pubspec: Pubspec('A'),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
           ),
           Node(
             name: 'B',
             directory: Directory(path.join(ticketDir.path, 'B')),
-            pubspec: Pubspec('B'),
+            manifest: DartPackageManifest(pubspec: Pubspec('B')),
           ),
         ],
       );
@@ -730,14 +730,14 @@ void main() {
               directory: Directory(
                 path.join(ticketDir.path, 'A'),
               ),
-              pubspec: Pubspec('A'),
+              manifest: DartPackageManifest(pubspec: Pubspec('A')),
             ),
             Node(
               name: 'B',
               directory: Directory(
                 path.join(ticketDir.path, 'B'),
               ),
-              pubspec: Pubspec('B'),
+              manifest: DartPackageManifest(pubspec: Pubspec('B')),
             ),
           ],
         );

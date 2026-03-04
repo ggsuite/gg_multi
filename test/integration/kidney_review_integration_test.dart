@@ -183,7 +183,7 @@ void main() {
               ),
             );
 
-          await addRunner.run(<String>['add', 'a', 'b']);
+          await addRunner.run(<String>['add', 'b', 'a', '--verbose']);
 
           // -------------------------------------------------------------------
           // 4.1) Add a file change --------------------------------------------
@@ -247,6 +247,7 @@ void main() {
             'push',
             '--input',
             ticketDir.path,
+            '--verbose',
           ]);
 
           // -------------------------------------------------------------------
@@ -291,6 +292,7 @@ void main() {
             'review',
             '--input',
             ticketDir.path,
+            '--verbose',
           ]);
 
           // -------------------------------------------------------------------
@@ -398,6 +400,7 @@ void main() {
             '--input',
             ticketDir.path,
             '--force',
+            '--verbose',
           ]);
 
           // 10.1)
