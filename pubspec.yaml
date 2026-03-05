@@ -27,9 +27,8 @@ dependencies:
   interact: ^2.2.0
   recase: ^4.1.0
   gg_localize_refs:
-    path: ../gg_localize_refs
-    #git: 
-    #  url: git@github.com:ggsuite/gg_localize_refs.git
+    git: 
+      url: git@github.com:ggsuite/gg_localize_refs.git
   gg_local_package_dependencies:
     git: 
       url: git@github.com:ggsuite/gg_local_package_dependencies.git
