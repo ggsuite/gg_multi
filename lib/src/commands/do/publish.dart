@@ -173,18 +173,6 @@ class DoPublishCommand extends DirCommand<void> {
         throw Exception('Failed to unlocalize refs for $repoName: $e');
       }
 
-      // Capture current repo version and propagate known versions
-      try {
-        final version = await _getVersion.get(
-          directory: repoDir,
-        );
-        if (version != null && version.isNotEmpty) {
-          refVersions[repoName] = version;
-        }
-      } catch (e) {
-        throw Exception('Failed to get version of $repoName: $e');
-      }
-
       // Apply all known reference versions to this repo if it depends on them
       for (final entry in refVersions.entries) {
         final refName = entry.key;
@@ -223,7 +211,24 @@ class DoPublishCommand extends DirCommand<void> {
       // Execute gg do publish
       await _ggDoPublish.exec(directory: repoDir, ggLog: ggLog);
 
+      // Capture current repo version and propagate known versions
+      try {
+        final version = await _getVersion.get(
+          directory: repoDir,
+        );
+        if (version != null && version.isNotEmpty) {
+          refVersions[repoName] = version;
+        }
+      } catch (e) {
+        throw Exception('Failed to get version of $repoName: $e');
+      }
+
       taskLog(green('$repoName: published successfully.'));
+    }
+
+    for (final repo in subs) {
+      final repoDir = repo.directory;
+      final repoName = path.basename(repoDir.path);
 
       // delete the repository from the ticket
       try {

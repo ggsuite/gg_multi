@@ -465,12 +465,12 @@ void main() {
         ),
       );
 
-      // Repository A should have been deleted after successful publish.
+      // Repositories should still exist in
+      // ticket workspace after failed publish attempt.
       expect(
         Directory(path.join(ticketDir.path, 'A')).existsSync(),
-        isFalse,
+        isTrue,
       );
-      // Repository B should still exist because its publish failed.
       expect(
         Directory(path.join(ticketDir.path, 'B')).existsSync(),
         isTrue,

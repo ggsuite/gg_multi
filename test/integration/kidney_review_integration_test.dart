@@ -326,6 +326,8 @@ void main() {
 
           // The YAML should contain a git: block for b as well.
           expect(aPubspecContent, contains('git:'));
+          expect(aPubspecContent, contains('url:'));
+          expect(aPubspecContent, contains('ref: KIDNEY_TEST'));
 
           // 9.3) Both ticket repositories are on branch KIDNEY_TEST -----------
           for (final repoName in <String>['a', 'b']) {
