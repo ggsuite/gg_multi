@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## [1.0.0] - 2026-03-24
 
 ### Added
 
@@ -71,3 +71,5 @@
 - Remove redundant code in appendOrganization
 - Remove prints
 - Remove gh pr create from review
+
+[1.0.0]: https://github.com/ggsuite/kidney_core/tag/%tag
