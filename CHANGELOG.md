@@ -62,6 +62,7 @@
 - Update gg\_publish to version 3.2.0 in pubspec.yaml
 - Update gg and related deps to latest pub versions in pubspec.yaml
 - Update version and repository URL in pubspec.yaml
+- Update canCheckout hash in .gg.json to match other actions
 
 ### Removed
 
