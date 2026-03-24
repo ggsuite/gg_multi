@@ -60,6 +60,8 @@
 - Refactor Node to use manifest field instead of pubspec in tests
 - Switch gg\_localize\_refs dependency from path to git URL
 - Update gg\_publish to version 3.2.0 in pubspec.yaml
+- Update gg and related deps to latest pub versions in pubspec.yaml
+- Update version and repository URL in pubspec.yaml
 
 ### Removed
 
