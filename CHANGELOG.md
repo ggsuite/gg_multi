@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.0.0] - 2026-03-26
+
+### Changed
+
+- Upgraded gg to 6.0.1
+
 ## [1.1.0] - 2026-03-26
 
 ### Removed
@@ -78,5 +84,6 @@
 - Remove prints
 - Remove gh pr create from review
 
+[2.0.0]: https://github.com/ggsuite/kidney_core/compare/1.1.0...2.0.0
 [1.1.0]: https://github.com/ggsuite/kidney_core/compare/1.0.0...1.1.0
 [1.0.0]: https://github.com/ggsuite/kidney_core/tag/%tag
