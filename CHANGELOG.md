@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.1] - 2026-03-26
+
+### Changed
+
+- kidney: changed references to path
+- kidney: changed references to git
+
+### Fixed
+
+- small fixes in tests and version upgrades
+
 ## [2.0.0] - 2026-03-26
 
 ### Changed
@@ -84,6 +95,7 @@
 - Remove prints
 - Remove gh pr create from review
 
+[2.0.1]: https://github.com/ggsuite/kidney_core/compare/2.0.0...2.0.1
 [2.0.0]: https://github.com/ggsuite/kidney_core/compare/1.1.0...2.0.0
 [1.1.0]: https://github.com/ggsuite/kidney_core/compare/1.0.0...1.1.0
 [1.0.0]: https://github.com/ggsuite/kidney_core/tag/%tag

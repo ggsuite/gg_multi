@@ -70,6 +70,7 @@ void main() {
       LocalizeRefs? localizeRefs,
       Graph? graph,
     }) {
+      final execPath = Directory.systemTemp.createTempSync('exec_path_').path;
       runner = CommandRunner<void>('test', 'Test for AddCommand');
       runner.addCommand(
         AddCommand(
@@ -77,7 +78,7 @@ void main() {
           gitCloner: mockGitCloner,
           processRunner: processRunner,
           masterWorkspacePath: masterWorkspacePath,
-          executionPath: executionPath ?? Directory.current.path,
+          executionPath: executionPath ?? execPath,
           ggDoCommit: ggDoCommit,
           sortedProcessingList: sortedProcessingList,
           unlocalizeRefs: unlocalizeRefs,

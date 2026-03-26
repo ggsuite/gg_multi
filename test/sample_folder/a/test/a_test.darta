@@ -1,4 +1,4 @@
-import 'package:a/src/a.dart';
+import 'package:a/src/a.darta';
 import 'package:test/test.dart';
 
 void main() {

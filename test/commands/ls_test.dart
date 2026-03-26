@@ -12,7 +12,7 @@ import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:kidney_core/src/backend/constants.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-import 'package:kidney_core/src/commands/kidney_list.dart';
+import 'package:kidney_core/src/commands/ls.dart';
 
 void main() {
   group('ListCommand', () {

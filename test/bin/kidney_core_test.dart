@@ -17,7 +17,7 @@ void main() {
       // Execute bin/kidney_core.dart and check if it prints help
       final result = await Process.run(
         'dart',
-        ['./bin/kidney_core.dart', 'add'],
+        ['./bin/kidney_core.dart', 'do', 'add'],
         stdoutEncoding: utf8,
         stderrEncoding: utf8,
         runInShell: true,
