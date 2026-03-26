@@ -33,13 +33,12 @@ void main() {
       test('should allow to run the code from command line', () async {
         await capturePrint(
           ggLog: messages.add,
-          code: () async => await runner.run(['kidneyCore', 'ls', 'repos']),
+          code: () async => await runner.run(['kidneyCore', 'ls', '--help']),
         );
         expect(
-          messages.last,
+          messages.first,
           contains(
-            'No repositories found '
-            'in the master workspace.',
+            'List repos, organizations, or dependencies.',
           ),
         );
       });

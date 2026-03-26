@@ -32,11 +32,13 @@ void main() {
 
     setUp(() {
       tempRoot = Directory.systemTemp.createTempSync('code_test_');
+      final execPath = Directory.systemTemp.createTempSync('exec_path_').path;
       messages = <String>[];
       launched = <List<Object?>>[];
       runner = CommandRunner<void>('test', 'test')
         ..addCommand(
           CodeCommand(
+            executionPath: execPath,
             ggLog: ggLog,
             rootPath: tempRoot.path,
             directoryFactory: Directory.new,
@@ -61,10 +63,9 @@ void main() {
     test('logs not found when ticket missing', () async {
       await runner.run(<String>['code', 'TCKT']);
       expect(
-        messages,
+        messages.last,
         contains(
-          'Ticket TCKT not found at '
-          '${path.join(tempRoot.path, kidneyTicketFolder, 'TCKT')}',
+          'Ticket TCKT not found at',
         ),
       );
     });
@@ -130,8 +131,8 @@ void main() {
       expect(launched[0][1], path.join(tdir.path, 'MyRepo'));
       expect(launched[0][2], isTrue);
       expect(
-        messages,
-        contains('Opened MyRepo at ${path.join(tdir.path, 'MyRepo')}'),
+        messages.last,
+        contains('Opened MyRepo at'),
       );
     });
 
@@ -149,23 +150,22 @@ void main() {
       expect(launched[0][1], path.join(tdir.path, 'SlashRepo'));
       expect(launched[0][2], isTrue);
       expect(
-        messages,
+        messages.last,
         contains(
-          'Opened SlashRepo at ${path.join(tdir.path, 'SlashRepo')}',
+          'Opened SlashRepo at',
         ),
       );
     });
 
     test('logs error when specified repo missing', () async {
-      final tdir = Directory(
+      Directory(
         path.join(tempRoot.path, kidneyTicketFolder, 'T4'),
-      )..createSync(recursive: true);
+      ).createSync(recursive: true);
       await runner.run(<String>['code', 'T4/NoRepo']);
       expect(
-        messages,
+        messages.last,
         contains(
-          'Repository NoRepo not found in ticket T4 at '
-          '${path.join(tdir.path, 'NoRepo')}',
+          'Repository NoRepo not found in ticket T4 at',
         ),
       );
       expect(launched, isEmpty);

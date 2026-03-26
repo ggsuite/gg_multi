@@ -10,10 +10,10 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:test/test.dart';
-import 'package:kidney_core/src/commands/create/ticket.dart';
+import 'package:kidney_core/src/commands/do/create/ticket.dart';
 import 'package:path/path.dart' as path;
 
-import '../../rm_console_colors_helper.dart';
+import '../../../rm_console_colors_helper.dart';
 
 void main() {
   group('TicketCommand', () {

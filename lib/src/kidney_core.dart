@@ -6,13 +6,7 @@
 
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
-import 'commands/do/add.dart';
-import 'commands/do/add_deps.dart';
-import './commands/kidney_list.dart';
-import 'commands/do/rm.dart';
-import 'commands/do/init.dart';
-import 'commands/do/create.dart';
-import 'commands/do/code.dart';
+import 'commands/ls.dart';
 import './commands/kidney_can.dart';
 import './commands/kidney_do.dart';
 
@@ -20,13 +14,7 @@ import './commands/kidney_do.dart';
 class KidneyCore extends Command<dynamic> {
   /// Constructor
   KidneyCore({required this.ggLog}) {
-    addSubcommand(AddCommand(ggLog: ggLog));
     addSubcommand(ListCommand(ggLog: ggLog));
-    addSubcommand(AddDepsCommand(ggLog: ggLog));
-    addSubcommand(RemoveCommand(ggLog: ggLog));
-    addSubcommand(InitCommand(ggLog: ggLog));
-    addSubcommand(CreateCommand(ggLog: ggLog));
-    addSubcommand(CodeCommand(ggLog: ggLog));
     addSubcommand(Can(ggLog: ggLog));
     addSubcommand(Do(ggLog: ggLog));
   }

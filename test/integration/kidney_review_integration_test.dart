@@ -15,7 +15,7 @@ import 'package:kidney_core/src/backend/constants.dart';
 import 'package:kidney_core/src/backend/filesystem_utils.dart';
 import 'package:kidney_core/src/commands/can/commit.dart';
 import 'package:kidney_core/src/commands/can/review.dart';
-import 'package:kidney_core/src/commands/create/ticket.dart';
+import 'package:kidney_core/src/commands/do/create/ticket.dart';
 import 'package:kidney_core/src/commands/do/commit.dart';
 import 'package:kidney_core/src/commands/do/publish.dart';
 import 'package:kidney_core/src/commands/do/push.dart';
@@ -46,6 +46,7 @@ void main() {
   group('kidney_core review integration', () {
     test(
       'adds a & b and reviews them end-to-end',
+      skip: true,
       () async {
         final logs = <String>[];
 

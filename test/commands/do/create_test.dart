@@ -20,7 +20,7 @@ void main() {
       final createCommand = CreateCommand(ggLog: messages.add);
       final commandsDir = Directory(
         'lib${Platform.pathSeparator}src${Platform.pathSeparator}'
-        'commands${Platform.pathSeparator}create',
+        'commands${Platform.pathSeparator}do${Platform.pathSeparator}create',
       );
       final (subCommands, errorMessage) = await missingSubCommands(
         directory: commandsDir,
