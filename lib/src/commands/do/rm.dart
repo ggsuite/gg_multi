@@ -9,8 +9,8 @@ import 'package:args/command_runner.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
-import '../backend/add_repository_helper.dart';
-import '../backend/constants.dart';
+import '../../backend/add_repository_helper.dart';
+import '../../backend/constants.dart';
 import 'package:path/path.dart' as p;
 
 /// Typedef for creating Directory instances,
@@ -50,7 +50,7 @@ class RemoveCommand extends Command<void> {
   String _rel(String absPath) => p.relative(absPath, from: rootPath);
 
   @override
-  String get name => 'remove';
+  String get name => 'rm';
 
   @override
   String get description =>

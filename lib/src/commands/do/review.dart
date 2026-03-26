@@ -135,7 +135,7 @@ class DoReviewCommand extends DirCommand<void> {
 
     // Step 3: Merge origin/main into the current feature branch -------------
     await GgStatusPrinter<void>(
-      message: 'merging origin/main into feature branches',
+      message: 'Merging origin/main into feature branches',
       ggLog: ggLog,
     ).run(
       () async => _mergeMainIntoRepos(
@@ -147,7 +147,7 @@ class DoReviewCommand extends DirCommand<void> {
 
     // Step 4: Run can review after merging ----------------------------------
     await GgStatusPrinter<void>(
-      message: 'kidney can review?',
+      message: 'Kidney can review?',
       ggLog: ggLog,
     ).run(
       () async => _runCanReview(
@@ -158,7 +158,7 @@ class DoReviewCommand extends DirCommand<void> {
 
     // Step 5: Unlocalize, localize, upgrade, commit & push ------------------
     await GgStatusPrinter<void>(
-      message: 'set dependencies to git, committing and pushing',
+      message: 'Setting dependencies to git, committing and pushing',
       ggLog: ggLog,
     ).run(
       () async => _relocalizeAndCommitAll(

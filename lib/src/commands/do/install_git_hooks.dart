@@ -257,17 +257,13 @@ bool _isProtectedBranch(String branchName) {
       await verifyTarget.writeAsString(verifyPushTemplate);
 
       ggLog(
-        green(
-          'Installed git hooks for $repoName in ticket $ticketName.',
-        ),
+        'Installed git hooks for $repoName in ticket $ticketName.',
       );
     }
 
     ggLog(
-      green(
-        '✅ Installed git hooks for all repositories in ticket '
-        '$ticketName.',
-      ),
+      '✅ Installed git hooks for all repositories in ticket '
+      '$ticketName.',
     );
   }
 }

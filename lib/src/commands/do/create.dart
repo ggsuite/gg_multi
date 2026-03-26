@@ -7,7 +7,7 @@
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
 
-import 'create/ticket.dart';
+import '../create/ticket.dart';
 
 /// Command to create resources such as tickets.
 class CreateCommand extends Command<void> {

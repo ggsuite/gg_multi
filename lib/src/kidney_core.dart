@@ -6,13 +6,13 @@
 
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
-import './commands/kidney_add.dart';
-import './commands/kidney_add_deps.dart';
+import 'commands/do/add.dart';
+import 'commands/do/add_deps.dart';
 import './commands/kidney_list.dart';
-import './commands/kidney_remove.dart';
-import './commands/kidney_init.dart';
-import './commands/kidney_create.dart';
-import './commands/kidney_code.dart';
+import 'commands/do/rm.dart';
+import 'commands/do/init.dart';
+import 'commands/do/create.dart';
+import 'commands/do/code.dart';
 import './commands/kidney_can.dart';
 import './commands/kidney_do.dart';
 

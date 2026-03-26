@@ -100,7 +100,7 @@ class DoPushCommand extends DirCommand<void> {
 
     // Perform the push wrapped in a status printer --------------------------
     await GgStatusPrinter<void>(
-      message: 'pushing repos',
+      message: 'Pushing repos',
       ggLog: ggLog,
     ).run(() async {
       await _pushingRepos(
@@ -141,10 +141,8 @@ class DoPushCommand extends DirCommand<void> {
     // Summarize the results ----------------------------------------------
     if (failedRepos.isEmpty) {
       ggLog(
-        green(
-          '✅ All repositories in ticket '
-          '$ticketName pushed successfully.',
-        ),
+        '✅ All repositories in ticket '
+        '$ticketName pushed successfully.',
       );
     } else {
       ggLog(

@@ -13,10 +13,10 @@ import 'package:gg_log/gg_log.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 
-import '../backend/constants.dart';
-import '../backend/git_handler.dart';
-import '../backend/add_repository_helper.dart';
-import '../backend/git_platform.dart';
+import '../../backend/constants.dart';
+import '../../backend/git_handler.dart';
+import '../../backend/add_repository_helper.dart';
+import '../../backend/git_platform.dart';
 
 /// Command to add dependencies of a project from the master workspace.
 /// It iterates over dependencies in pubspec.yaml and adds each one using

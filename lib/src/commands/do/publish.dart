@@ -199,7 +199,7 @@ class DoPublishCommand extends DirCommand<void> {
       await _ggDoCommit.exec(
         directory: repoDir,
         ggLog: taskLog,
-        message: 'kidney: changed references to pub.dev',
+        message: 'Kidney: changed references to pub.dev',
         force: true,
       );
 
@@ -252,9 +252,7 @@ class DoPublishCommand extends DirCommand<void> {
     }
 
     taskLog(
-      green(
-        '✅ All repositories in ticket $ticketName published successfully.',
-      ),
+      '✅ All repositories in ticket $ticketName published successfully.',
     );
   }
 

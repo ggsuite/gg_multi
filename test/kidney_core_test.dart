@@ -33,7 +33,7 @@ void main() {
       test('should allow to run the code from command line', () async {
         await capturePrint(
           ggLog: messages.add,
-          code: () async => await runner.run(['kidneyCore', 'list', 'repos']),
+          code: () async => await runner.run(['kidneyCore', 'ls', 'repos']),
         );
         expect(
           messages.last,

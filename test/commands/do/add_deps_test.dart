@@ -11,13 +11,13 @@ import 'package:args/command_runner.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:kidney_core/src/backend/constants.dart';
 import 'package:kidney_core/src/backend/git_handler.dart';
-import 'package:kidney_core/src/commands/kidney_add_deps.dart';
+import 'package:kidney_core/src/commands/do/add_deps.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 
-import '../rm_console_colors_helper.dart';
+import '../../rm_console_colors_helper.dart';
 
 class MockGitCloner extends Mock implements GitHandler {}
 

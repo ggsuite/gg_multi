@@ -232,21 +232,21 @@ void main() {
         expect(
           messages.any(
             (m) => m.contains(
-              'merging origin/main into feature branches',
+              'Merging origin/main into feature branches',
             ),
           ),
           isTrue,
         );
         expect(
           messages.any(
-            (m) => m.contains('kidney can review?'),
+            (m) => m.contains('Kidney can review?'),
           ),
           isTrue,
         );
         expect(
           messages.any(
             (m) => m.contains(
-              'set dependencies to git, committing and pushing',
+              'Setting dependencies to git, committing and pushing',
             ),
           ),
           isTrue,
@@ -1364,7 +1364,7 @@ void main() {
         expect(
           localMessages.any(
             (m) => m.contains(
-              'merging origin/main into feature branches',
+              'Merging origin/main into feature branches',
             ),
           ),
           isTrue,

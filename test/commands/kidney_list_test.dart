@@ -64,7 +64,7 @@ void main() {
       );
       final output = await capturePrint(
         code: () async {
-          await runner.run(['list', '--help']);
+          await runner.run(['ls', '--help']);
         },
       );
       expect(

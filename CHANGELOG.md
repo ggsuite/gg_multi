@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased
+## [1.1.0] - 2026-03-26
+
+### Removed
+
+- Move add, remove, code, create, init, add\_deps to do/ directory and update imports
+
+## [1.0.0] - 2026-03-24
 
 ### Added
 
@@ -62,6 +68,7 @@
 - Update gg\_publish to version 3.2.0 in pubspec.yaml
 - Update gg and related deps to latest pub versions in pubspec.yaml
 - Update version and repository URL in pubspec.yaml
+- Update canCheckout hash in .gg.json to match other actions
 
 ### Removed
 
@@ -70,3 +77,6 @@
 - Remove redundant code in appendOrganization
 - Remove prints
 - Remove gh pr create from review
+
+[1.1.0]: https://github.com/ggsuite/kidney_core/compare/1.0.0...1.1.0
+[1.0.0]: https://github.com/ggsuite/kidney_core/tag/%tag

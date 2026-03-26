@@ -15,13 +15,13 @@ import 'package:gg_log/gg_log.dart';
 import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
-import '../backend/git_handler.dart';
-import '../backend/add_repository_helper.dart';
-import '../backend/filesystem_utils.dart';
-import '../backend/git_platform.dart';
-import '../backend/workspace_utils.dart';
-import '../backend/status_utils.dart';
-import 'do/install_git_hooks.dart';
+import '../../backend/git_handler.dart';
+import '../../backend/add_repository_helper.dart';
+import '../../backend/filesystem_utils.dart';
+import '../../backend/git_platform.dart';
+import '../../backend/workspace_utils.dart';
+import '../../backend/status_utils.dart';
+import 'install_git_hooks.dart';
 
 /// Typedef for a process runner function.
 typedef ProcessRunner = Future<ProcessResult> Function(
@@ -256,7 +256,7 @@ class AddCommand extends Command<dynamic> {
     }
 
     await GgStatusPrinter<void>(
-      message: 'copy repos to ticket',
+      message: 'Copying repos to ticket',
       ggLog: ggLog,
     ).run(
       () => _copyReposToTicket(
@@ -268,7 +268,7 @@ class AddCommand extends Command<dynamic> {
 
     // Finally perform a single re-localization pass for the whole ticket.
     await GgStatusPrinter<void>(
-      message: 'set dependencies to path, committing',
+      message: 'Set dependencies to path, committing',
       ggLog: ggLog,
     ).run(
       () => _relocalizeAllReposInTicket(
@@ -279,7 +279,7 @@ class AddCommand extends Command<dynamic> {
 
     // Write project configuration files (workspace + git hooks).
     await GgStatusPrinter<void>(
-      message: 'write project config files',
+      message: 'Writing project config files',
       ggLog: ggLog,
     ).run(
       () => _writeProjectConfigFiles(
@@ -503,7 +503,7 @@ class AddCommand extends Command<dynamic> {
       }
     }
 
-    ggLog(green('✅ Re-localized all repositories in ticket $ticketName.'));
+    ggLog('✅ Re-localized all repositories in ticket $ticketName.');
   }
 
   /// Rewrites the VS Code `.code-workspace` file for the given [ticketDir].

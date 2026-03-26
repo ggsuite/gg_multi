@@ -130,7 +130,7 @@ void main() {
 
       // Status printer message
       expect(
-        messages.any((m) => m.contains('pushing repos')),
+        messages.any((m) => m.contains('Pushing repos')),
         isTrue,
       );
 
@@ -248,7 +248,7 @@ void main() {
       expect(
         localMessages.last,
         contains(
-          '✅ pushing repos',
+          '✅ Pushing repos',
         ),
       );
     });

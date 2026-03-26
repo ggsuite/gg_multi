@@ -91,7 +91,7 @@ class CanCommitCommand extends DirCommand<void> {
     }
 
     // All successful
-    ggLog(green('✅ All repositories in ticket $ticketName can be committed.'));
+    ggLog('✅ All repositories in ticket $ticketName can be committed.');
   }
 }
 

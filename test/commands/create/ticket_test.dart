@@ -89,8 +89,13 @@ void main() {
       expect(
         messages,
         contains(
-          'Execute "cd $ticketRelPath" '
-          'to enter the ticket workspace.',
+          'Execute the following command to enter the ticket workspace:',
+        ),
+      );
+      expect(
+        messages,
+        contains(
+          'cd $ticketRelPath',
         ),
       );
     });
@@ -127,7 +132,13 @@ void main() {
       expect(
         messages,
         contains(
-          'Execute "cd $issueId" to enter the ticket workspace.',
+          'Execute the following command to enter the ticket workspace:',
+        ),
+      );
+      expect(
+        messages,
+        contains(
+          'cd $issueId',
         ),
       );
     });

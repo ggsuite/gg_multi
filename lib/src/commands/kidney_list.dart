@@ -38,7 +38,7 @@ class ListCommand extends Command<dynamic> {
   final GgLog ggLog;
 
   @override
-  String get name => 'list';
+  String get name => 'ls';
 
   @override
   String get description => 'List repos, organizations, or dependencies.';

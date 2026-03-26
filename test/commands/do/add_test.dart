@@ -17,14 +17,14 @@ import 'package:kidney_core/src/backend/status_utils.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-import 'package:kidney_core/src/commands/kidney_add.dart';
+import 'package:kidney_core/src/commands/do/add.dart';
 import 'package:kidney_core/src/backend/git_handler.dart' hide ProcessRunner;
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:kidney_core/src/backend/repository.dart';
 
-import '../rm_console_colors_helper.dart';
+import '../../rm_console_colors_helper.dart';
 
 class MockGitCloner extends Mock implements GitHandler {}
 

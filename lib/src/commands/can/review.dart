@@ -13,7 +13,6 @@ import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 
 import '../../backend/workspace_utils.dart';
-import '../../backend/status_utils.dart';
 
 /// Typedef for running processes (for injection & tests).
 typedef ProcessRunner = Future<ProcessResult> Function(
@@ -95,27 +94,6 @@ class CanReviewCommand extends DirCommand<void> {
       return;
     }
 
-    // Step 2: Check status for all repos
-    final wrongStatusRepos = <String>[];
-    for (final repo in subs) {
-      final repoDir = repo.directory;
-      final repoName = path.basename(repoDir.path);
-      final status = StatusUtils.readStatus(repoDir, ggLog: ggLog);
-      if (status != StatusUtils.statusLocalized) {
-        wrongStatusRepos.add(repoName);
-      }
-    }
-    if (wrongStatusRepos.isNotEmpty) {
-      ggLog(
-        red('The following repos do not have the '
-            'required status "localized":'),
-      );
-      for (final repoName in wrongStatusRepos) {
-        ggLog(red(' - $repoName'));
-      }
-      throw Exception('Some repos do not have the required status');
-    }
-
     // Step 3: Check for uncommitted changes
     final uncommitted = <String>[];
     for (final repo in subs) {
@@ -138,7 +116,7 @@ class CanReviewCommand extends DirCommand<void> {
     }
 
     // All successful
-    ggLog(green('✅ All repositories in ticket $ticketName can be reviewed.'));
+    ggLog('✅ All repositories in ticket $ticketName can be reviewed.');
   }
 }
 

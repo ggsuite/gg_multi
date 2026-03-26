@@ -7,11 +7,11 @@
 import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:kidney_core/src/backend/constants.dart';
-import 'package:kidney_core/src/commands/kidney_init.dart';
+import 'package:kidney_core/src/commands/do/init.dart';
 import 'package:test/test.dart';
 import 'package:path/path.dart' as path;
 
-import '../rm_console_colors_helper.dart';
+import '../../rm_console_colors_helper.dart';
 
 void main() {
   group('InitCommand', () {

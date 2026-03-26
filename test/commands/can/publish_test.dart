@@ -102,88 +102,6 @@ void main() {
       );
     });
 
-    test('checks status correctly and fails if not git-localized', () async {
-      // Set status for A to wrong
-      final statusFileA = File(
-        path.join(ticketDir.path, 'A', '.kidney_status'),
-      )..createSync(recursive: true);
-      statusFileA.writeAsStringSync(jsonEncode({'status': 'wrong'}));
-      // Set status for B to git-localized
-      final statusFileB = File(
-        path.join(ticketDir.path, 'B', '.kidney_status'),
-      )..createSync(recursive: true);
-      statusFileB.writeAsStringSync(
-        jsonEncode({'status': StatusUtils.statusGitLocalized}),
-      );
-
-      final mockGgCanCommit = MockGgCanCommit();
-      final mockGgCanMerge = MockGgCanMerge();
-      final mockSortedProcessingList = MockSortedProcessingList();
-      final mockProcessRunner = MockProcessRunner();
-      final mockCanCommitCommand = MockCanCommitCommand();
-      final mockDoPushCommand = MockDoPushCommand();
-
-      when(
-        () => mockSortedProcessingList.get(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer(
-        (_) async => [
-          Node(
-            name: 'A',
-            directory: Directory(path.join(ticketDir.path, 'A')),
-            manifest: DartPackageManifest(pubspec: Pubspec('A')),
-          ),
-          Node(
-            name: 'B',
-            directory: Directory(path.join(ticketDir.path, 'B')),
-            manifest: DartPackageManifest(pubspec: Pubspec('B')),
-          ),
-        ],
-      );
-
-      final runner = CommandRunner<void>('test', 'can publish ticket')
-        ..addCommand(
-          CanPublishCommand(
-            ggLog: ggLog,
-            ggCanCommit: mockGgCanCommit,
-            ggCanMerge: mockGgCanMerge,
-            sortedProcessingList: mockSortedProcessingList,
-            processRunner: mockProcessRunner.call,
-            canCommitCommand: mockCanCommitCommand,
-            doPushCommand: mockDoPushCommand,
-          ),
-        );
-      await expectLater(
-        () async => await runner.run([
-          'publish',
-          '--verbose',
-          '--input',
-          ticketDir.path,
-        ]),
-        throwsA(isA<Exception>()),
-      );
-      expect(
-        messages.any(
-          (m) => m.contains(
-            'The following repos do not have '
-            'the required status "git-localized":',
-          ),
-        ),
-        isTrue,
-      );
-      expect(messages.any((m) => m.contains(' - A')), isTrue);
-      expect(
-        messages.any(
-          (m) => m.contains(
-            'Please execute kidney_core review before merging',
-          ),
-        ),
-        isTrue,
-      );
-    });
-
     test('checks uncommitted changes and fails if found', () async {
       // Set status for all repos to git-localized
       for (final repoName in ['A', 'B']) {
@@ -795,7 +713,7 @@ void main() {
         expect(
           localMessages.last,
           contains(
-            '✅ can merge?',
+            '✅ Can merge?',
           ),
         );
       },

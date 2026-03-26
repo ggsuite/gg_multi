@@ -114,9 +114,7 @@ class DoCommitCommand extends DirCommand<void> {
     // Summarize the results
     if (failedRepos.isEmpty) {
       ggLog(
-        green(
-          '✅ All repositories in ticket $ticketName committed successfully.',
-        ),
+        '✅ All repositories in ticket $ticketName committed successfully.',
       );
     } else {
       ggLog(

@@ -91,7 +91,7 @@ class CanPushCommand extends DirCommand<void> {
     }
 
     // All successful
-    ggLog(green('✅ All repositories in ticket $ticketName can be pushed.'));
+    ggLog('✅ All repositories in ticket $ticketName can be pushed.');
   }
 }
 

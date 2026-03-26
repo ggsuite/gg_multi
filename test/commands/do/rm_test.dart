@@ -10,9 +10,9 @@ import 'package:kidney_core/src/backend/constants.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-import 'package:kidney_core/src/commands/kidney_remove.dart';
+import 'package:kidney_core/src/commands/do/rm.dart';
 
-import '../rm_console_colors_helper.dart';
+import '../../rm_console_colors_helper.dart';
 
 // A fake Directory class for testing
 // purposes that always reports non-existence.
@@ -70,7 +70,7 @@ void main() {
       )..createSync(recursive: true);
 
       // Act
-      await runner.run(['remove', 'project']);
+      await runner.run(['rm', 'project']);
 
       // Assert
       expect(repoDir.existsSync(), isFalse);
@@ -94,7 +94,7 @@ void main() {
           .createSync(recursive: true);
 
       // Act
-      await runner.run(['remove', 'featProj']);
+      await runner.run(['rm', 'featProj']);
 
       // Assert: not deleted
       expect(
@@ -111,7 +111,7 @@ void main() {
 
     test('notifies when repo not found', () async {
       // Act
-      await runner.run(['remove', 'noRepo']);
+      await runner.run(['rm', 'noRepo']);
 
       // Assert
       expect(
@@ -123,7 +123,7 @@ void main() {
     test('throws UsageException when missing argument', () async {
       // Act & Assert
       expect(
-        () => runner.run(['remove']),
+        () => runner.run(['rm']),
         throwsA(isA<UsageException>()),
       );
     });
@@ -137,7 +137,7 @@ void main() {
         );
 
       // Act
-      await localRunner.run(['remove', 'anyRepo']);
+      await localRunner.run(['rm', 'anyRepo']);
 
       // Assert
       expect(messages, contains('Root path not found: .'));
@@ -168,7 +168,7 @@ void main() {
             );
 
       // Act
-      await runnerWithFake.run(['remove', 'missingRepo']);
+      await runnerWithFake.run(['rm', 'missingRepo']);
 
       // Assert
       expect(
@@ -186,7 +186,7 @@ void main() {
       File(path.join(ticketDir.path, 'dummy.txt')).writeAsStringSync('data');
 
       // Act
-      await runner.run(['remove', 'ticket1']);
+      await runner.run(['rm', 'ticket1']);
 
       // Assert: folder is removed and log is correct
       expect(ticketDir.existsSync(), isFalse);

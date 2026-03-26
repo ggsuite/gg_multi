@@ -10,8 +10,8 @@ import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:path/path.dart' as path;
 import 'package:gg_log/gg_log.dart';
 
-import '../backend/constants.dart';
-import '../backend/workspace_utils.dart';
+import '../../backend/constants.dart';
+import '../../backend/workspace_utils.dart';
 import 'package:path/path.dart' as p;
 
 /// Command to initialize the master workspace

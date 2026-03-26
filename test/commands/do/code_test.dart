@@ -9,9 +9,9 @@ import 'package:args/command_runner.dart';
 import 'package:kidney_core/src/backend/constants.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-import 'package:kidney_core/src/commands/kidney_code.dart';
+import 'package:kidney_core/src/commands/do/code.dart';
 import 'package:kidney_core/src/backend/vscode_launcher.dart';
-import '../rm_console_colors_helper.dart';
+import '../../rm_console_colors_helper.dart';
 
 void main() {
   group('CodeCommand', () {

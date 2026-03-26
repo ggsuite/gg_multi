@@ -15,7 +15,6 @@ import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
 import '../../backend/workspace_utils.dart';
-import '../../backend/status_utils.dart';
 import '../../commands/can/commit.dart';
 import '../../commands/do/push.dart';
 
@@ -125,20 +124,9 @@ class CanPublishCommand extends DirCommand<void> {
     // Only show task logs when verbose is enabled ---------------------------
     final GgLog taskLog = verbose ? ggLog : <String>[].add;
 
-    // Step 2: Check required status git-localized ---------------------------
+    // Step 2: Check for uncommitted changes ---------------------------------
     await GgStatusPrinter<void>(
-      message: 'repo status == "git-localized"?',
-      ggLog: ggLog,
-    ).run(
-      () async => _checkStatuses(
-        subs: subs,
-        ggLog: taskLog,
-      ),
-    );
-
-    // Step 3: Check for uncommitted changes ---------------------------------
-    await GgStatusPrinter<void>(
-      message: 'uncommitted changes?',
+      message: 'Uncommitted changes?',
       ggLog: ggLog,
     ).run(
       () async => _checkUncommittedChanges(
@@ -147,9 +135,9 @@ class CanPublishCommand extends DirCommand<void> {
       ),
     );
 
-    // Step 4: Run kidney_core can commit ------------------------------------
+    // Step 3: Run kidney_core can commit ------------------------------------
     await GgStatusPrinter<void>(
-      message: 'can commit?',
+      message: 'Can commit?',
       ggLog: ggLog,
     ).run(
       () async => _runCanCommit(
@@ -158,9 +146,9 @@ class CanPublishCommand extends DirCommand<void> {
       ),
     );
 
-    // Step 5: Run kidney_core do push ---------------------------------------
+    // Step 4: Run kidney_core do push ---------------------------------------
     await GgStatusPrinter<void>(
-      message: 'running do push',
+      message: 'Running do push',
       ggLog: ggLog,
     ).run(
       () async => _runDoPush(
@@ -169,9 +157,9 @@ class CanPublishCommand extends DirCommand<void> {
       ),
     );
 
-    // Step 6: Run gg can merge per repo -------------------------------------
+    // Step 5: Run gg can merge per repo -------------------------------------
     await GgStatusPrinter<void>(
-      message: 'can merge?',
+      message: 'Can merge?',
       ggLog: ggLog,
     ).run(
       () async => _checkCanMerge(
@@ -183,37 +171,8 @@ class CanPublishCommand extends DirCommand<void> {
 
     // All successful --------------------------------------------------------
     taskLog(
-      green('✅ All repositories in ticket $ticketName can be published.'),
+      '✅ All repositories in ticket $ticketName can be published.',
     );
-  }
-
-  /// Checks that all repos have status git-localized.
-  Future<void> _checkStatuses({
-    required List<Node> subs,
-    required GgLog ggLog,
-  }) async {
-    final wrongStatusRepos = <String>[];
-    for (final repo in subs) {
-      final repoDir = repo.directory;
-      final repoName = path.basename(repoDir.path);
-      final status = StatusUtils.readStatus(repoDir, ggLog: ggLog);
-      if (status != StatusUtils.statusGitLocalized) {
-        wrongStatusRepos.add(repoName);
-      }
-    }
-    if (wrongStatusRepos.isNotEmpty) {
-      ggLog(
-        red(
-          'The following repos do not have the '
-          'required status "git-localized":',
-        ),
-      );
-      for (final repoName in wrongStatusRepos) {
-        ggLog(red(' - $repoName'));
-      }
-      ggLog(red('Please execute kidney_core review before merging'));
-      throw Exception('Some repos do not have the required status');
-    }
   }
 
   /// Checks for uncommitted changes in all repos.
