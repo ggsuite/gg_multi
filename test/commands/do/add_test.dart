@@ -413,17 +413,31 @@ dev_dependencies:
         when(
           () => mockProc(
             'git',
-            ['fetch'],
+            ['reset', '--hard', 'origin/main'],
             workingDirectory: repoDir.path,
           ),
-        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
         when(
           () => mockProc(
             'git',
-            ['pull'],
+            ['tag', '-l', '|', 'xargs', 'git', 'tag', '-d'],
             workingDirectory: repoDir.path,
           ),
-        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+        when(
+          () => mockProc(
+            'git',
+            ['fetch', '--tags'],
+            workingDirectory: repoDir.path,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+        when(
+          () => mockProc(
+            'git',
+            ['fetch', '--prune', '--tags'],
+            workingDirectory: repoDir.path,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
         when(
           () => mockProc(
             'dart',
@@ -497,17 +511,31 @@ version: 1.0.0
       when(
         () => mockProc(
           'git',
-          ['fetch'],
+          ['reset', '--hard', 'origin/main'],
           workingDirectory: repoDir.path,
         ),
-      ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
       when(
         () => mockProc(
           'git',
-          ['pull'],
+          ['tag', '-l', '|', 'xargs', 'git', 'tag', '-d'],
           workingDirectory: repoDir.path,
         ),
-      ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+      when(
+        () => mockProc(
+          'git',
+          ['fetch', '--tags'],
+          workingDirectory: repoDir.path,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+      when(
+        () => mockProc(
+          'git',
+          ['fetch', '--prune', '--tags'],
+          workingDirectory: repoDir.path,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
       when(
         () => mockProc(
           'dart',
@@ -558,7 +586,7 @@ version: 1.0.0
       expect(paths, equals(<String>{repoName}));
     });
 
-    test('logs error when git pull fails but still copies repo', () async {
+    test('logs error when git reset fails but still copies repo', () async {
       const repoName = 'pullFailRepo';
       final masterRepoDir = Directory(
         path.join(masterWorkspacePath, repoName),
@@ -602,19 +630,33 @@ version: 1.0.0
       when(
         () => mockProc(
           'git',
-          ['fetch'],
-          workingDirectory: masterRepoDir.path,
-        ),
-      ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
-      when(
-        () => mockProc(
-          'git',
-          ['pull'],
+          ['reset', '--hard', 'origin/main'],
           workingDirectory: masterRepoDir.path,
         ),
       ).thenAnswer(
-        (_) async => ProcessResult(1, 1, '', 'pull error'),
+        (_) async => ProcessResult(1, 1, '', 'reset error'),
       );
+      when(
+        () => mockProc(
+          'git',
+          ['tag', '-l', '|', 'xargs', 'git', 'tag', '-d'],
+          workingDirectory: masterRepoDir.path,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+      when(
+        () => mockProc(
+          'git',
+          ['fetch', '--tags'],
+          workingDirectory: masterRepoDir.path,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+      when(
+        () => mockProc(
+          'git',
+          ['fetch', '--prune', '--tags'],
+          workingDirectory: masterRepoDir.path,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
       when(
         () => mockProc(
           'dart',
@@ -651,8 +693,8 @@ version: 1.0.0
       expect(
         logMessages.any(
           (m) => m.contains(
-            'Failed to git pull in pullFailRepo in master workspace: '
-            'pull error',
+            'Failed to execute git reset --hard origin/main in '
+            'pullFailRepo in master workspace: reset error',
           ),
         ),
         isTrue,
@@ -660,14 +702,28 @@ version: 1.0.0
       verify(
         () => mockProc(
           'git',
-          ['fetch'],
+          ['reset', '--hard', 'origin/main'],
           workingDirectory: masterRepoDir.path,
         ),
       ).called(1);
       verify(
         () => mockProc(
           'git',
-          ['pull'],
+          ['tag', '-l', '|', 'xargs', 'git', 'tag', '-d'],
+          workingDirectory: masterRepoDir.path,
+        ),
+      ).called(1);
+      verify(
+        () => mockProc(
+          'git',
+          ['fetch', '--tags'],
+          workingDirectory: masterRepoDir.path,
+        ),
+      ).called(1);
+      verify(
+        () => mockProc(
+          'git',
+          ['fetch', '--prune', '--tags'],
           workingDirectory: masterRepoDir.path,
         ),
       ).called(1);
@@ -781,17 +837,31 @@ version: 1.0.0
         when(
           () => mockProcessRunner(
             'git',
-            ['fetch'],
+            ['reset', '--hard', 'origin/main'],
             workingDirectory: repoDir.path,
           ),
-        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
         when(
           () => mockProcessRunner(
             'git',
-            ['pull'],
+            ['tag', '-l', '|', 'xargs', 'git', 'tag', '-d'],
             workingDirectory: repoDir.path,
           ),
-        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['fetch', '--tags'],
+            workingDirectory: repoDir.path,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['fetch', '--prune', '--tags'],
+            workingDirectory: repoDir.path,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
         createRunner(
           executionPath: ticketDir.path,
           processRunner: mockProcessRunner.call,
@@ -899,17 +969,31 @@ version: 1.0.0
       when(
         () => mockProc(
           'git',
-          ['fetch'],
+          ['reset', '--hard', 'origin/main'],
           workingDirectory: repoDir.path,
         ),
-      ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
       when(
         () => mockProc(
           'git',
-          ['pull'],
+          ['tag', '-l', '|', 'xargs', 'git', 'tag', '-d'],
           workingDirectory: repoDir.path,
         ),
-      ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+      when(
+        () => mockProc(
+          'git',
+          ['fetch', '--tags'],
+          workingDirectory: repoDir.path,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+      when(
+        () => mockProc(
+          'git',
+          ['fetch', '--prune', '--tags'],
+          workingDirectory: repoDir.path,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
       when(
         () => mockProc(
           'dart',
@@ -1831,14 +1915,28 @@ version: 1.0.0
         when(
           () => mockProc(
             'git',
-            ['fetch'],
+            ['reset', '--hard', 'origin/main'],
             workingDirectory: masterRepoDir.path,
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
         when(
           () => mockProc(
             'git',
-            ['pull'],
+            ['tag', '-l', '|', 'xargs', 'git', 'tag', '-d'],
+            workingDirectory: masterRepoDir.path,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+        when(
+          () => mockProc(
+            'git',
+            ['fetch', '--tags'],
+            workingDirectory: masterRepoDir.path,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+        when(
+          () => mockProc(
+            'git',
+            ['fetch', '--prune', '--tags'],
             workingDirectory: masterRepoDir.path,
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));

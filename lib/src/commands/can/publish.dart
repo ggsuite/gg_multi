@@ -15,7 +15,7 @@ import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
 import '../../backend/workspace_utils.dart';
-import '../../commands/can/commit.dart';
+import '../../commands/did/commit.dart';
 import '../../commands/do/push.dart';
 
 /// Typedef for running processes (for injection & tests).
@@ -52,13 +52,13 @@ class CanPublishCommand extends DirCommand<void> {
     gg.CanMerge? ggCanMerge,
     SortedProcessingList? sortedProcessingList,
     ProcessRunner? processRunner,
-    CanCommitCommand? canCommitCommand,
+    DidCommitCommand? didCommitCommand,
     DoPushCommand? doPushCommand,
   })  : _ggCanMerge = ggCanMerge ?? gg.CanMerge(ggLog: ggLog),
         _sortedProcessingList =
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
         _processRunner = processRunner ?? _defaultProcessRunner,
-        _canCommitCommand = canCommitCommand ?? CanCommitCommand(ggLog: ggLog),
+        _didCommitCommand = didCommitCommand ?? DidCommitCommand(ggLog: ggLog),
         _doPushCommand = doPushCommand ?? DoPushCommand(ggLog: ggLog) {
     _addArgs();
   }
@@ -72,8 +72,8 @@ class CanPublishCommand extends DirCommand<void> {
   /// The process runner
   final ProcessRunner _processRunner;
 
-  /// Instance of CanCommitCommand
-  final CanCommitCommand _canCommitCommand;
+  /// Instance of DidCommitCommand
+  final DidCommitCommand _didCommitCommand;
 
   /// Instance of DoPushCommand
   final DoPushCommand _doPushCommand;
@@ -135,12 +135,12 @@ class CanPublishCommand extends DirCommand<void> {
       ),
     );
 
-    // Step 3: Run kidney_core can commit ------------------------------------
+    // Step 3: Run kidney_core did commit ------------------------------------
     await GgStatusPrinter<void>(
-      message: 'Can commit?',
+      message: 'Did commit?',
       ggLog: ggLog,
     ).run(
-      () async => _runCanCommit(
+      () async => _runDidCommit(
         ticketDir: ticketDir,
         ggLog: taskLog,
       ),
@@ -201,16 +201,16 @@ class CanPublishCommand extends DirCommand<void> {
     }
   }
 
-  /// Executes kidney_core can commit for the ticket.
-  Future<void> _runCanCommit({
+  /// Executes kidney_core did commit for the ticket.
+  Future<void> _runDidCommit({
     required Directory ticketDir,
     required GgLog ggLog,
   }) async {
     try {
-      await _canCommitCommand.exec(directory: ticketDir, ggLog: ggLog);
+      await _didCommitCommand.exec(directory: ticketDir, ggLog: ggLog);
     } catch (e) {
-      ggLog(red('kidney_core can commit failed: $e'));
-      throw Exception('kidney_core can commit failed');
+      ggLog(red('kidney_core did commit failed: $e'));
+      throw Exception('kidney_core did commit failed');
     }
   }
 

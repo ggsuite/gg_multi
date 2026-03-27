@@ -52,6 +52,7 @@ void main() {
         final (subCommands, errorMessage) = await missingSubCommands(
           directory: commandsDir,
           command: kidneyCore,
+          additionalSubCommands: ['did'],
         );
 
         expect(subCommands, isEmpty, reason: errorMessage);
