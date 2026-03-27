@@ -23,6 +23,36 @@
 - Run git and dart commands in shell for add command and tests
 - Kidney: changed references to pub.dev
 
+<<<<<<< HEAD
+## \[Unreleased\]
+
+### Changed
+
+- Upgrade gg\_localize\_refs version
+
+### Removed
+
+- remove unlocalize step from do review command and tests
+
+## \[2.1.1\] - 2026-03-27
+=======
+## [2.1.1] - 2026-03-27
+>>>>>>> a35066224c170de14ac964f11b6b2d960c8ab91b
+
+### Changed
+
+- Run git commands always in shell
+
+<<<<<<< HEAD
+## [2.2.0] - 2026-03-27
+
+### Changed
+
+- Run git and dart commands in shell for add command and tests
+- Kidney: changed references to pub.dev
+
+=======
+>>>>>>> a35066224c170de14ac964f11b6b2d960c8ab91b
 ## [2.1.0] - 2026-03-27
 
 ### Added
