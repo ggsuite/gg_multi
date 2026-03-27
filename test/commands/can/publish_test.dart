@@ -15,7 +15,7 @@ import 'package:path/path.dart' as path;
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/can/publish.dart';
-import 'package:kidney_core/src/commands/can/commit.dart';
+import 'package:kidney_core/src/commands/did/commit.dart';
 import 'package:kidney_core/src/commands/do/push.dart';
 import 'package:kidney_core/src/backend/status_utils.dart';
 
@@ -27,7 +27,7 @@ class MockGgCanMerge extends Mock implements gg.CanMerge {}
 
 class MockSortedProcessingList extends Mock implements SortedProcessingList {}
 
-class MockCanCommitCommand extends Mock implements CanCommitCommand {}
+class MockDidCommitCommand extends Mock implements DidCommitCommand {}
 
 class MockDoPushCommand extends Mock implements DoPushCommand {}
 
@@ -117,7 +117,7 @@ void main() {
       final mockGgCanMerge = MockGgCanMerge();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
-      final mockCanCommitCommand = MockCanCommitCommand();
+      final mockDidCommitCommand = MockDidCommitCommand();
       final mockDoPushCommand = MockDoPushCommand();
 
       when(
@@ -164,7 +164,7 @@ void main() {
             ggCanMerge: mockGgCanMerge,
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
-            canCommitCommand: mockCanCommitCommand,
+            didCommitCommand: mockDidCommitCommand,
             doPushCommand: mockDoPushCommand,
           ),
         );
@@ -188,7 +188,7 @@ void main() {
       expect(messages.any((m) => m.contains(' - A')), isTrue);
     });
 
-    test('executes can commit, do push, and can merge successfully', () async {
+    test('executes did commit, do push, and can merge successfully', () async {
       // Set status for all repos to git-localized
       for (final repoName in ['A', 'B']) {
         final statusFile = File(
@@ -203,7 +203,7 @@ void main() {
       final mockGgCanMerge = MockGgCanMerge();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
-      final mockCanCommitCommand = MockCanCommitCommand();
+      final mockDidCommitCommand = MockDidCommitCommand();
       final mockDoPushCommand = MockDoPushCommand();
 
       when(
@@ -235,7 +235,7 @@ void main() {
       ).thenAnswer((_) async => ProcessResult(1, 0, '', ''));
 
       when(
-        () => mockCanCommitCommand.exec(
+        () => mockDidCommitCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
         ),
@@ -263,7 +263,7 @@ void main() {
             ggCanMerge: mockGgCanMerge,
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
-            canCommitCommand: mockCanCommitCommand,
+            didCommitCommand: mockDidCommitCommand,
             doPushCommand: mockDoPushCommand,
           ),
         );
@@ -310,7 +310,7 @@ void main() {
       final mockGgCanMerge = MockGgCanMerge();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
-      final mockCanCommitCommand = MockCanCommitCommand();
+      final mockDidCommitCommand = MockDidCommitCommand();
       final mockDoPushCommand = MockDoPushCommand();
 
       when(
@@ -342,7 +342,7 @@ void main() {
       ).thenAnswer((_) async => ProcessResult(1, 0, '', ''));
 
       when(
-        () => mockCanCommitCommand.exec(
+        () => mockDidCommitCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
         ),
@@ -376,7 +376,7 @@ void main() {
             ggCanMerge: mockGgCanMerge,
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
-            canCommitCommand: mockCanCommitCommand,
+            didCommitCommand: mockDidCommitCommand,
             doPushCommand: mockDoPushCommand,
           ),
         );
@@ -409,7 +409,7 @@ void main() {
       expect(messages.any((m) => m.contains(' - B')), isTrue);
     });
 
-    test('fails when can commit throws exception', () async {
+    test('fails when did commit throws exception', () async {
       // Set status for all repos to git-localized
       for (final repoName in ['A', 'B']) {
         final statusFile = File(
@@ -424,7 +424,7 @@ void main() {
       final mockGgCanMerge = MockGgCanMerge();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
-      final mockCanCommitCommand = MockCanCommitCommand();
+      final mockDidCommitCommand = MockDidCommitCommand();
       final mockDoPushCommand = MockDoPushCommand();
 
       when(
@@ -456,11 +456,11 @@ void main() {
       ).thenAnswer((_) async => ProcessResult(1, 0, '', ''));
 
       when(
-        () => mockCanCommitCommand.exec(
+        () => mockDidCommitCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
         ),
-      ).thenThrow(Exception('Can commit failed'));
+      ).thenThrow(Exception('Did commit failed'));
 
       when(
         () => mockDoPushCommand.exec(
@@ -484,7 +484,7 @@ void main() {
             ggCanMerge: mockGgCanMerge,
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
-            canCommitCommand: mockCanCommitCommand,
+            didCommitCommand: mockDidCommitCommand,
             doPushCommand: mockDoPushCommand,
           ),
         );
@@ -500,7 +500,7 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            'kidney_core can commit failed: Exception: Can commit failed',
+            'kidney_core did commit failed: Exception: Did commit failed',
           ),
         ),
         isTrue,
@@ -522,7 +522,7 @@ void main() {
       final mockGgCanMerge = MockGgCanMerge();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
-      final mockCanCommitCommand = MockCanCommitCommand();
+      final mockDidCommitCommand = MockDidCommitCommand();
       final mockDoPushCommand = MockDoPushCommand();
 
       when(
@@ -554,7 +554,7 @@ void main() {
       ).thenAnswer((_) async => ProcessResult(1, 0, '', ''));
 
       when(
-        () => mockCanCommitCommand.exec(
+        () => mockDidCommitCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
         ),
@@ -582,7 +582,7 @@ void main() {
             ggCanMerge: mockGgCanMerge,
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
-            canCommitCommand: mockCanCommitCommand,
+            didCommitCommand: mockDidCommitCommand,
             doPushCommand: mockDoPushCommand,
           ),
         );
@@ -633,7 +633,7 @@ void main() {
         final mockGgCanMerge = MockGgCanMerge();
         final mockSortedProcessingList = MockSortedProcessingList();
         final mockProcessRunner = MockProcessRunner();
-        final mockCanCommitCommand = MockCanCommitCommand();
+        final mockDidCommitCommand = MockDidCommitCommand();
         final mockDoPushCommand = MockDoPushCommand();
 
         when(
@@ -671,7 +671,7 @@ void main() {
         );
 
         when(
-          () => mockCanCommitCommand.exec(
+          () => mockDidCommitCommand.exec(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
           ),
@@ -700,7 +700,7 @@ void main() {
           ggCanMerge: mockGgCanMerge,
           sortedProcessingList: mockSortedProcessingList,
           processRunner: mockProcessRunner.call,
-          canCommitCommand: mockCanCommitCommand,
+          didCommitCommand: mockDidCommitCommand,
           doPushCommand: mockDoPushCommand,
         );
 

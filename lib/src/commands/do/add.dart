@@ -352,37 +352,11 @@ class AddCommand extends Command<dynamic> {
       return;
     }
 
-    // Before copying, update the repository in the master workspace
-    final fetchResult = await processRunner(
-      'git',
-      ['fetch'],
-      workingDirectory: srcDir.path,
+    await _prepareMasterRepositoryForCopy(
+      repoDir: srcDir,
+      repoName: repoName,
+      ggLog: ggLog,
     );
-    if (fetchResult.exitCode != 0) {
-      ggLog(
-        red(
-          'Failed to git fetch in $repoName in master workspace: '
-          '${fetchResult.stderr}',
-        ),
-      );
-    } else {
-      ggLog(darkGray('Executed git fetch in $repoName in master workspace.'));
-      final pullResult = await processRunner(
-        'git',
-        ['pull'],
-        workingDirectory: srcDir.path,
-      );
-      if (pullResult.exitCode != 0) {
-        ggLog(
-          red(
-            'Failed to git pull in $repoName in master workspace: '
-            '${pullResult.stderr}',
-          ),
-        );
-      } else {
-        ggLog(darkGray('Executed git pull in $repoName in master workspace.'));
-      }
-    }
 
     // Copy from master into ticket -------------------------------------------
     await copyDirectory(srcDir, destDir);
@@ -414,6 +388,66 @@ class AddCommand extends Command<dynamic> {
     }
 
     ggLog(green('Added repository $repoName to ticket workspace.'));
+  }
+
+  /// Prepares the master repository state before copying it into a ticket.
+  Future<void> _prepareMasterRepositoryForCopy({
+    required Directory repoDir,
+    required String repoName,
+    required GgLog ggLog,
+  }) async {
+    final commands = <({
+      List<String> arguments,
+      String successMessage,
+      String failureLabel,
+    })>[
+      (
+        arguments: <String>['reset', '--hard', 'origin/main'],
+        successMessage:
+            'Executed git reset --hard origin/main in $repoName in master workspace.',
+        failureLabel:
+            'git reset --hard origin/main in $repoName in master workspace',
+      ),
+      (
+        arguments: <String>['tag', '-l', '|', 'xargs', 'git', 'tag', '-d'],
+        successMessage: 'Executed git tag -l | xargs git tag -d '
+            'in $repoName in master workspace.',
+        failureLabel:
+            'git tag -l | xargs git tag -d in $repoName in master workspace',
+      ),
+      (
+        arguments: <String>['fetch', '--tags'],
+        successMessage:
+            'Executed git fetch --tags in $repoName in master workspace.',
+        failureLabel: 'git fetch --tags in $repoName in master workspace',
+      ),
+      (
+        arguments: <String>['fetch', '--prune', '--tags'],
+        successMessage: 'Executed git fetch --prune --tags in '
+            '$repoName in master workspace.',
+        failureLabel:
+            'git fetch --prune --tags in $repoName in master workspace',
+      ),
+    ];
+
+    for (final command in commands) {
+      final result = await processRunner(
+        'git',
+        command.arguments,
+        workingDirectory: repoDir.path,
+      );
+
+      if (result.exitCode != 0) {
+        ggLog(
+          red(
+            'Failed to execute ${command.failureLabel}: '
+            '${result.stderr}',
+          ),
+        );
+      } else {
+        ggLog(darkGray(command.successMessage));
+      }
+    }
   }
 
   /// Performs two iterations over all repositories in the ticket in

@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.1.0] - 2026-03-27
+
+### Added
+
+- Add did commit and did push
+
+### Changed
+
+- run git reset when adding repo to ticket
+- Run did commit in can publish
+
 ## [2.0.1] - 2026-03-26
 
 ### Changed
@@ -95,6 +106,7 @@
 - Remove prints
 - Remove gh pr create from review
 
+[2.1.0]: https://github.com/ggsuite/kidney_core/compare/2.0.1...2.1.0
 [2.0.1]: https://github.com/ggsuite/kidney_core/compare/2.0.0...2.0.1
 [2.0.0]: https://github.com/ggsuite/kidney_core/compare/1.1.0...2.0.0
 [1.1.0]: https://github.com/ggsuite/kidney_core/compare/1.0.0...1.1.0

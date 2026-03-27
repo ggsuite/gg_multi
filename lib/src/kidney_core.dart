@@ -6,9 +6,11 @@
 
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
-import 'commands/ls.dart';
+
 import './commands/kidney_can.dart';
+import './commands/kidney_did.dart';
 import './commands/kidney_do.dart';
+import 'commands/ls.dart';
 
 /// The command line interface for KidneyCore
 class KidneyCore extends Command<dynamic> {
@@ -16,6 +18,7 @@ class KidneyCore extends Command<dynamic> {
   KidneyCore({required this.ggLog}) {
     addSubcommand(ListCommand(ggLog: ggLog));
     addSubcommand(Can(ggLog: ggLog));
+    addSubcommand(Did(ggLog: ggLog));
     addSubcommand(Do(ggLog: ggLog));
   }
 
