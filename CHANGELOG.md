@@ -10,28 +10,24 @@
 
 - remove unlocalize step from do review command and tests
 
+## [2.2.1] - 2026-03-27
+
+### Changed
+
+- increase gg version
+
 ## [2.2.0] - 2026-03-27
 
 ### Changed
 
 - Run git and dart commands in shell for add command and tests
 - Kidney: changed references to pub.dev
-
-## \[Unreleased\]
-
-### Changed
-
 - Upgrade gg\_localize\_refs version
+- Run git commands always in shell
 
 ### Removed
 
 - remove unlocalize step from do review command and tests
-
-## \[2.1.1\] - 2026-03-27
-
-### Changed
-
-- Run git commands always in shell
 
 ## [2.1.0] - 2026-03-27
 
@@ -139,6 +135,7 @@
 - Remove prints
 - Remove gh pr create from review
 
+[2.2.1]: https://github.com/ggsuite/kidney_core/compare/2.2.0...2.2.1
 [2.2.0]: https://github.com/ggsuite/kidney_core/compare/2.1.0...2.2.0
 [2.1.0]: https://github.com/ggsuite/kidney_core/compare/2.0.1...2.1.0
 [2.0.1]: https://github.com/ggsuite/kidney_core/compare/2.0.0...2.0.1
