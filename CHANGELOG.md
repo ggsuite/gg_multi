@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.1.1] - 2026-03-27
+
+### Changed
+
+- Run git commands always in shell
+
 ## [2.1.0] - 2026-03-27
 
 ### Added
@@ -106,6 +112,7 @@
 - Remove prints
 - Remove gh pr create from review
 
+[2.1.1]: https://github.com/ggsuite/kidney_core/compare/2.1.0...2.1.1
 [2.1.0]: https://github.com/ggsuite/kidney_core/compare/2.0.1...2.1.0
 [2.0.1]: https://github.com/ggsuite/kidney_core/compare/2.0.0...2.0.1
 [2.0.0]: https://github.com/ggsuite/kidney_core/compare/1.1.0...2.0.0

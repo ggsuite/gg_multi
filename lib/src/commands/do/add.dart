@@ -28,6 +28,7 @@ typedef ProcessRunner = Future<ProcessResult> Function(
   String,
   List<String>, {
   String? workingDirectory,
+  bool runInShell,
 });
 
 /// Command to add a repository or all repositories from an organization.
@@ -375,6 +376,7 @@ class AddCommand extends Command<dynamic> {
       'dart',
       ['pub', 'get'],
       workingDirectory: destDir.path,
+      runInShell: true,
     );
     if (result.exitCode == 0) {
       ggLog(darkGray('Executed dart pub get in $repoName.'));
@@ -435,6 +437,7 @@ class AddCommand extends Command<dynamic> {
         'git',
         command.arguments,
         workingDirectory: repoDir.path,
+        runInShell: true,
       );
 
       if (result.exitCode != 0) {
@@ -511,6 +514,7 @@ class AddCommand extends Command<dynamic> {
           'dart',
           ['pub', 'upgrade'],
           workingDirectory: repoDir.path,
+          runInShell: true,
         );
         if (upgrade.exitCode == 0) {
           ggLog(darkGray('Executed dart pub upgrade in $repoName.'));
