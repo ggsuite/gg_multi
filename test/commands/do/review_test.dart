@@ -23,9 +23,10 @@ import '../../rm_console_colors_helper.dart';
 
 class MockSortedProcessingList extends Mock implements SortedProcessingList {}
 
-class MockUnlocalizeRefs extends Mock implements UnlocalizeRefs {}
+class MockUnlocalizeRefs extends Mock implements ChangeRefsToPubDev {}
 
-class MockLocalizeRefs extends Mock implements LocalizeRefs {}
+class MockLocalizeRefsToGit extends Mock
+    implements ChangeRefsToGitFeatureBranch {}
 
 class MockCanReviewCommand extends Mock implements CanReviewCommand {}
 
@@ -124,7 +125,7 @@ void main() {
       () async {
         final mockSortedProcessingList = MockSortedProcessingList();
         final mockUnlocalizeRefs = MockUnlocalizeRefs();
-        final mockLocalizeRefs = MockLocalizeRefs();
+        final mockLocalizeRefsToGit = MockLocalizeRefsToGit();
         final mockCanReviewCommand = MockCanReviewCommand();
         final mockGgDoCommit = MockGgDoCommit();
         final mockGgDoPush = MockGgDoPush();
@@ -167,17 +168,9 @@ void main() {
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
 
         when(
-          () => mockUnlocalizeRefs.get(
+          () => mockLocalizeRefsToGit.get(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
-          ),
-        ).thenAnswer((_) async {});
-
-        when(
-          () => mockLocalizeRefs.get(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-            git: any(named: 'git'),
             gitRef: any(named: 'gitRef'),
           ),
         ).thenAnswer((_) async {});
@@ -214,7 +207,7 @@ void main() {
               ggLog: ggLog,
               canReviewCommand: mockCanReviewCommand,
               unlocalizeRefs: mockUnlocalizeRefs,
-              localizeRefs: mockLocalizeRefs,
+              localizeRefsToGit: mockLocalizeRefsToGit,
               sortedProcessingList: mockSortedProcessingList,
               ggDoCommit: mockGgDoCommit,
               ggDoPush: mockGgDoPush,
@@ -228,7 +221,6 @@ void main() {
           ticketDir.path,
         ]);
 
-        // Status printer messages
         expect(
           messages.any(
             (m) => m.contains(
@@ -252,7 +244,6 @@ void main() {
           isTrue,
         );
 
-        // Merge must have been called for both repositories.
         verify(
           () => mockProcessRunner(
             'git',
@@ -268,10 +259,13 @@ void main() {
           ),
         ).called(1);
 
-        expect(
-          messages.any((m) => m.contains('Unlocalized refs for A')),
-          isTrue,
+        verifyNever(
+          () => mockUnlocalizeRefs.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
         );
+
         expect(
           messages.any((m) => m.contains('Localized refs for A')),
           isTrue,
@@ -285,7 +279,6 @@ void main() {
           isTrue,
         );
 
-        // Verify status files updated to git-localized
         for (final repoName in ['A', 'B']) {
           final statusFile = File(
             path.join(ticketDir.path, repoName, '.kidney_status'),
@@ -298,7 +291,6 @@ void main() {
           }
         }
 
-        // Verify commit called with the required message at least once
         verify(
           () => mockGgDoCommit.exec(
             directory: any(named: 'directory'),
@@ -308,7 +300,6 @@ void main() {
           ),
         ).called(greaterThan(0));
 
-        // Verify push called
         verify(
           () => mockGgDoPush.exec(
             directory: any(named: 'directory'),
@@ -321,7 +312,7 @@ void main() {
     test('fails and logs when merge of main into feature fails', () async {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
-      final mockLocalizeRefs = MockLocalizeRefs();
+      final mockLocalizeRefsToGit = MockLocalizeRefsToGit();
       final mockCanReviewCommand = MockCanReviewCommand();
       final mockGgDoCommit = MockGgDoCommit();
       final mockGgDoPush = MockGgDoPush();
@@ -358,7 +349,7 @@ void main() {
             ggLog: ggLog,
             canReviewCommand: mockCanReviewCommand,
             unlocalizeRefs: mockUnlocalizeRefs,
-            localizeRefs: mockLocalizeRefs,
+            localizeRefsToGit: mockLocalizeRefsToGit,
             sortedProcessingList: mockSortedProcessingList,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -395,7 +386,6 @@ void main() {
         isTrue,
       );
 
-      // CanReview must never be called when merge fails.
       verifyNever(
         () => mockCanReviewCommand.exec(
           directory: any(named: 'directory'),
@@ -409,7 +399,7 @@ void main() {
       () async {
         final mockSortedProcessingList = MockSortedProcessingList();
         final mockUnlocalizeRefs = MockUnlocalizeRefs();
-        final mockLocalizeRefs = MockLocalizeRefs();
+        final mockLocalizeRefsToGit = MockLocalizeRefsToGit();
         final mockCanReviewCommand = MockCanReviewCommand();
         final mockGgDoCommit = MockGgDoCommit();
         final mockGgDoPush = MockGgDoPush();
@@ -453,7 +443,7 @@ void main() {
               ggLog: ggLog,
               canReviewCommand: mockCanReviewCommand,
               unlocalizeRefs: mockUnlocalizeRefs,
-              localizeRefs: mockLocalizeRefs,
+              localizeRefsToGit: mockLocalizeRefsToGit,
               sortedProcessingList: mockSortedProcessingList,
               ggDoCommit: mockGgDoCommit,
               ggDoPush: mockGgDoPush,
@@ -493,7 +483,7 @@ void main() {
         () async {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
-      final mockLocalizeRefs = MockLocalizeRefs();
+      final mockLocalizeRefsToGit = MockLocalizeRefsToGit();
       final mockCanReviewCommand = MockCanReviewCommand();
       final mockGgDoCommit = MockGgDoCommit();
       final mockGgDoPush = MockGgDoPush();
@@ -531,17 +521,9 @@ void main() {
       ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
 
       when(
-        () => mockUnlocalizeRefs.get(
+        () => mockLocalizeRefsToGit.get(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockLocalizeRefs.get(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          git: any(named: 'git'),
           gitRef: any(named: 'gitRef'),
         ),
       ).thenAnswer((_) async {});
@@ -578,7 +560,7 @@ void main() {
             ggLog: ggLog,
             canReviewCommand: mockCanReviewCommand,
             unlocalizeRefs: mockUnlocalizeRefs,
-            localizeRefs: mockLocalizeRefs,
+            localizeRefsToGit: mockLocalizeRefsToGit,
             sortedProcessingList: mockSortedProcessingList,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -601,8 +583,6 @@ void main() {
         ),
         isTrue,
       );
-      // Since the command should stop immediately,
-      // there must be no summary list
       expect(
         messages.any(
           (m) => m.contains(
@@ -617,7 +597,7 @@ void main() {
         () async {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
-      final mockLocalizeRefs = MockLocalizeRefs();
+      final mockLocalizeRefsToGit = MockLocalizeRefsToGit();
       final mockCanReviewCommand = MockCanReviewCommand();
       final mockGgDoCommit = MockGgDoCommit();
       final mockGgDoPush = MockGgDoPush();
@@ -655,17 +635,9 @@ void main() {
       ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
 
       when(
-        () => mockUnlocalizeRefs.get(
+        () => mockLocalizeRefsToGit.get(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockLocalizeRefs.get(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          git: any(named: 'git'),
           gitRef: any(named: 'gitRef'),
         ),
       ).thenAnswer((_) async {});
@@ -702,7 +674,7 @@ void main() {
             ggLog: ggLog,
             canReviewCommand: mockCanReviewCommand,
             unlocalizeRefs: mockUnlocalizeRefs,
-            localizeRefs: mockLocalizeRefs,
+            localizeRefsToGit: mockLocalizeRefsToGit,
             sortedProcessingList: mockSortedProcessingList,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -725,133 +697,6 @@ void main() {
         ),
         isTrue,
       );
-      // No summary list expected because we stop immediately
-      expect(
-        messages.any(
-          (m) => m.contains(
-            '❌ Failed to review the following repositories in ticket',
-          ),
-        ),
-        isFalse,
-      );
-    });
-
-    test('logs when unlocalize fails for a repo (covers catch branch)',
-        () async {
-      final mockSortedProcessingList = MockSortedProcessingList();
-      final mockUnlocalizeRefs = MockUnlocalizeRefs();
-      final mockLocalizeRefs = MockLocalizeRefs();
-      final mockCanReviewCommand = MockCanReviewCommand();
-      final mockGgDoCommit = MockGgDoCommit();
-      final mockGgDoPush = MockGgDoPush();
-      final mockGgDoMerge = MockGgDoMerge();
-      final mockProcessRunner = MockProcessRunner();
-
-      when(
-        () => mockCanReviewCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockSortedProcessingList.get(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer(
-        (_) async => [
-          Node(
-            name: 'A',
-            directory: Directory(path.join(ticketDir.path, 'A')),
-            manifest: DartPackageManifest(pubspec: Pubspec('A')),
-          ),
-        ],
-      );
-
-      when(
-        () => mockProcessRunner(
-          'git',
-          ['merge', 'origin/main'],
-          workingDirectory: any(named: 'workingDirectory'),
-        ),
-      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
-
-      // Make unlocalize throw to exercise the catch block
-      when(
-        () => mockUnlocalizeRefs.get(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenThrow(Exception('boom'));
-
-      // The rest should never be called, but set up harmless stubs
-      when(
-        () => mockLocalizeRefs.get(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          git: any(named: 'git'),
-          gitRef: any(named: 'gitRef'),
-        ),
-      ).thenAnswer((_) async {});
-      when(
-        () => mockGgDoCommit.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          message: any(named: 'message'),
-          force: any(named: 'force'),
-        ),
-      ).thenAnswer((_) async {});
-      when(
-        () => mockGgDoPush.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-      when(
-        () => mockGgDoMerge.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          automerge: any(named: 'automerge'),
-          local: any(named: 'local'),
-          message: any(named: 'message'),
-        ),
-      ).thenAnswer((_) async {});
-
-      final runner = CommandRunner<void>('test', 'do review ticket')
-        ..addCommand(
-          DoReviewCommand(
-            ggLog: ggLog,
-            canReviewCommand: mockCanReviewCommand,
-            unlocalizeRefs: mockUnlocalizeRefs,
-            localizeRefs: mockLocalizeRefs,
-            sortedProcessingList: mockSortedProcessingList,
-            ggDoCommit: mockGgDoCommit,
-            ggDoPush: mockGgDoPush,
-            processRunner: mockProcessRunner.call,
-          ),
-        );
-
-      await expectLater(
-        () async => await runner.run([
-          'review',
-          '--verbose',
-          '--input',
-          ticketDir.path,
-        ]),
-        throwsA(isA<Exception>()),
-      );
-
-      // Assert that the specific unlocalize error log was written
-      expect(
-        messages.any(
-          (m) => m.contains(
-            'Failed to unlocalize refs for A: Exception: boom',
-          ),
-        ),
-        isTrue,
-      );
-      // No summary list should be printed when stopping immediately
       expect(
         messages.any(
           (m) => m.contains(
@@ -863,14 +708,12 @@ void main() {
     });
 
     test(
-      'covers catch branch for localize --git failure (stop immediately)',
+      'covers catch branch for localize to git feature branch failure '
+      '(stop immediately)',
       () async {
-        // New test to explicitly cover the branch at
-        // lib/src/commands/do/review.dart around failure to localize
-        // with --git and ensure immediate abort.
         final mockSortedProcessingList = MockSortedProcessingList();
         final mockUnlocalizeRefs = MockUnlocalizeRefs();
-        final mockLocalizeRefs = MockLocalizeRefs();
+        final mockLocalizeRefsToGit = MockLocalizeRefsToGit();
         final mockCanReviewCommand = MockCanReviewCommand();
         final mockGgDoCommit = MockGgDoCommit();
         final mockGgDoPush = MockGgDoPush();
@@ -907,25 +750,14 @@ void main() {
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
 
-        // Unlocalize works
         when(
-          () => mockUnlocalizeRefs.get(
+          () => mockLocalizeRefsToGit.get(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
-          ),
-        ).thenAnswer((_) async {});
-
-        // Localize with --git fails -> should log the specific error branch
-        when(
-          () => mockLocalizeRefs.get(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-            git: any(named: 'git'),
             gitRef: any(named: 'gitRef'),
           ),
         ).thenThrow(Exception('localize git failed'));
 
-        // Remaining stubs
         when(
           () => mockGgDoCommit.exec(
             directory: any(named: 'directory'),
@@ -956,7 +788,7 @@ void main() {
               ggLog: ggLog,
               canReviewCommand: mockCanReviewCommand,
               unlocalizeRefs: mockUnlocalizeRefs,
-              localizeRefs: mockLocalizeRefs,
+              localizeRefsToGit: mockLocalizeRefsToGit,
               sortedProcessingList: mockSortedProcessingList,
               ggDoCommit: mockGgDoCommit,
               ggDoPush: mockGgDoPush,
@@ -977,13 +809,12 @@ void main() {
         expect(
           messages.any(
             (m) => m.contains(
-              'Failed to localize refs with --git for A: '
+              'Failed to localize refs to git feature branch for A: '
               'Exception: localize git failed',
             ),
           ),
           isTrue,
         );
-        // No summary list should be printed when stopping immediately
         expect(
           messages.any(
             (m) => m.contains(
@@ -1001,14 +832,13 @@ void main() {
       () async {
         final mockSortedProcessingList = MockSortedProcessingList();
         final mockUnlocalizeRefs = MockUnlocalizeRefs();
-        final mockLocalizeRefs = MockLocalizeRefs();
+        final mockLocalizeRefsToGit = MockLocalizeRefsToGit();
         final mockCanReviewCommand = MockCanReviewCommand();
         final mockGgDoCommit = MockGgDoCommit();
         final mockGgDoPush = MockGgDoPush();
         final mockProcessRunner = MockProcessRunner();
         final mockGgDoMerge = MockGgDoMerge();
 
-        // Create pubspec to trigger upgrade
         final repoADir = Directory(path.join(ticketDir.path, 'A'));
         File(path.join(repoADir.path, 'pubspec.yaml')).writeAsStringSync(
           'name: A',
@@ -1045,17 +875,9 @@ void main() {
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
 
         when(
-          () => mockUnlocalizeRefs.get(
+          () => mockLocalizeRefsToGit.get(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
-          ),
-        ).thenAnswer((_) async {});
-
-        when(
-          () => mockLocalizeRefs.get(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-            git: any(named: 'git'),
             gitRef: any(named: 'gitRef'),
           ),
         ).thenAnswer((_) async {});
@@ -1100,7 +922,7 @@ void main() {
               ggLog: ggLog,
               canReviewCommand: mockCanReviewCommand,
               unlocalizeRefs: mockUnlocalizeRefs,
-              localizeRefs: mockLocalizeRefs,
+              localizeRefsToGit: mockLocalizeRefsToGit,
               sortedProcessingList: mockSortedProcessingList,
               ggDoCommit: mockGgDoCommit,
               ggDoPush: mockGgDoPush,
@@ -1129,14 +951,13 @@ void main() {
       () async {
         final mockSortedProcessingList = MockSortedProcessingList();
         final mockUnlocalizeRefs = MockUnlocalizeRefs();
-        final mockLocalizeRefs = MockLocalizeRefs();
+        final mockLocalizeRefsToGit = MockLocalizeRefsToGit();
         final mockCanReviewCommand = MockCanReviewCommand();
         final mockGgDoCommit = MockGgDoCommit();
         final mockGgDoPush = MockGgDoPush();
         final mockProcessRunner = MockProcessRunner();
         final mockGgDoMerge = MockGgDoMerge();
 
-        // Create pubspec to trigger upgrade
         final repoADir = Directory(path.join(ticketDir.path, 'A'));
         File(path.join(repoADir.path, 'pubspec.yaml')).writeAsStringSync(
           'name: A',
@@ -1173,17 +994,9 @@ void main() {
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
 
         when(
-          () => mockUnlocalizeRefs.get(
+          () => mockLocalizeRefsToGit.get(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
-          ),
-        ).thenAnswer((_) async {});
-
-        when(
-          () => mockLocalizeRefs.get(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-            git: any(named: 'git'),
             gitRef: any(named: 'gitRef'),
           ),
         ).thenAnswer((_) async {});
@@ -1230,7 +1043,7 @@ void main() {
               ggLog: ggLog,
               canReviewCommand: mockCanReviewCommand,
               unlocalizeRefs: mockUnlocalizeRefs,
-              localizeRefs: mockLocalizeRefs,
+              localizeRefsToGit: mockLocalizeRefsToGit,
               sortedProcessingList: mockSortedProcessingList,
               ggDoCommit: mockGgDoCommit,
               ggDoPush: mockGgDoPush,
@@ -1256,7 +1069,6 @@ void main() {
           ),
           isTrue,
         );
-        // No summary list should be printed when stopping immediately
         expect(
           messages.any(
             (m) => m.contains(
@@ -1273,7 +1085,7 @@ void main() {
       () async {
         final mockSortedProcessingList = MockSortedProcessingList();
         final mockUnlocalizeRefs = MockUnlocalizeRefs();
-        final mockLocalizeRefs = MockLocalizeRefs();
+        final mockLocalizeRefsToGit = MockLocalizeRefsToGit();
         final mockCanReviewCommand = MockCanReviewCommand();
         final mockGgDoCommit = MockGgDoCommit();
         final mockGgDoPush = MockGgDoPush();
@@ -1310,17 +1122,9 @@ void main() {
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
 
         when(
-          () => mockUnlocalizeRefs.get(
+          () => mockLocalizeRefsToGit.get(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
-          ),
-        ).thenAnswer((_) async {});
-
-        when(
-          () => mockLocalizeRefs.get(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-            git: any(named: 'git'),
             gitRef: any(named: 'gitRef'),
           ),
         ).thenAnswer((_) async {});
@@ -1348,7 +1152,7 @@ void main() {
           ggLog: localLog,
           canReviewCommand: mockCanReviewCommand,
           unlocalizeRefs: mockUnlocalizeRefs,
-          localizeRefs: mockLocalizeRefs,
+          localizeRefsToGit: mockLocalizeRefsToGit,
           sortedProcessingList: mockSortedProcessingList,
           ggDoCommit: mockGgDoCommit,
           ggDoPush: mockGgDoPush,

@@ -33,7 +33,7 @@ class DoPublishCommand extends DirCommand<void> {
     super.name = 'publish',
     super.description = 'Publishes all repositories in the current ticket.',
     gg.DoCommit? ggDoCommit,
-    UnlocalizeRefs? unlocalizeRefs,
+    ChangeRefsToPubDev? unlocalizeRefs,
     gg.DoPush? ggDoPush,
     gg.DoPublish? ggDoPublish,
     SortedProcessingList? sortedProcessingList,
@@ -43,7 +43,7 @@ class DoPublishCommand extends DirCommand<void> {
     SetRefVersion? setRefVersionCommand,
     GetRefVersion? getRefVersionCommand,
   })  : _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
-        _unlocalizeRefs = unlocalizeRefs ?? UnlocalizeRefs(ggLog: ggLog),
+        _unlocalizeRefs = unlocalizeRefs ?? ChangeRefsToPubDev(ggLog: ggLog),
         _ggDoPush = ggDoPush ?? gg.DoPush(ggLog: ggLog),
         _ggDoPublish = ggDoPublish ?? gg.DoPublish(ggLog: ggLog),
         _sortedProcessingList =
@@ -60,7 +60,7 @@ class DoPublishCommand extends DirCommand<void> {
   final gg.DoCommit _ggDoCommit;
 
   /// Instance of UnlocalizeRefs
-  final UnlocalizeRefs _unlocalizeRefs;
+  final ChangeRefsToPubDev _unlocalizeRefs;
 
   /// Instance of gg DoPush
   final gg.DoPush _ggDoPush;

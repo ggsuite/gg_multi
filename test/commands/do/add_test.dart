@@ -30,13 +30,14 @@ class MockGitCloner extends Mock implements GitHandler {}
 
 class MockGitHubPlatform extends Mock implements GitHubPlatform {}
 
-class MockLocalizeRefs extends Mock implements LocalizeRefs {}
+class MockLocalizeRefs extends Mock implements ChangeRefsToLocal {}
 
 class MockProcessRunner extends Mock {
   Future<ProcessResult> call(
     String executable,
     List<String> arguments, {
     String? workingDirectory,
+    bool runInShell,
   });
 }
 
@@ -44,7 +45,7 @@ class MockGgDoCommit extends Mock implements gg.DoCommit {}
 
 class MockSortedProcessingList extends Mock implements SortedProcessingList {}
 
-class MockUnlocalizeRefs extends Mock implements UnlocalizeRefs {}
+class MockUnlocalizeRefs extends Mock implements ChangeRefsToPubDev {}
 
 class MockGraph extends Mock implements Graph {}
 
@@ -66,8 +67,8 @@ void main() {
       ProcessRunner? processRunner,
       gg.DoCommit? ggDoCommit,
       SortedProcessingList? sortedProcessingList,
-      UnlocalizeRefs? unlocalizeRefs,
-      LocalizeRefs? localizeRefs,
+      ChangeRefsToPubDev? unlocalizeRefs,
+      ChangeRefsToLocal? localizeRefs,
       Graph? graph,
     }) {
       final execPath = Directory.systemTemp.createTempSync('exec_path_').path;
@@ -415,6 +416,7 @@ dev_dependencies:
             'git',
             ['reset', '--hard', 'origin/main'],
             workingDirectory: repoDir.path,
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
         when(
@@ -422,6 +424,7 @@ dev_dependencies:
             'git',
             ['tag', '-l', '|', 'xargs', 'git', 'tag', '-d'],
             workingDirectory: repoDir.path,
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
         when(
@@ -429,6 +432,7 @@ dev_dependencies:
             'git',
             ['fetch', '--tags'],
             workingDirectory: repoDir.path,
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
         when(
@@ -436,6 +440,7 @@ dev_dependencies:
             'git',
             ['fetch', '--prune', '--tags'],
             workingDirectory: repoDir.path,
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
         when(
@@ -443,6 +448,7 @@ dev_dependencies:
             'dart',
             ['pub', 'get'],
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
         when(
@@ -450,6 +456,7 @@ dev_dependencies:
             'dart',
             ['pub', 'upgrade'],
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
 
@@ -513,6 +520,7 @@ version: 1.0.0
           'git',
           ['reset', '--hard', 'origin/main'],
           workingDirectory: repoDir.path,
+          runInShell: true,
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
       when(
@@ -520,6 +528,7 @@ version: 1.0.0
           'git',
           ['tag', '-l', '|', 'xargs', 'git', 'tag', '-d'],
           workingDirectory: repoDir.path,
+          runInShell: true,
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
       when(
@@ -527,6 +536,7 @@ version: 1.0.0
           'git',
           ['fetch', '--tags'],
           workingDirectory: repoDir.path,
+          runInShell: true,
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
       when(
@@ -534,6 +544,7 @@ version: 1.0.0
           'git',
           ['fetch', '--prune', '--tags'],
           workingDirectory: repoDir.path,
+          runInShell: true,
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
       when(
@@ -541,6 +552,7 @@ version: 1.0.0
           'dart',
           ['pub', 'get'],
           workingDirectory: any(named: 'workingDirectory'),
+          runInShell: true,
         ),
       ).thenAnswer(
         (_) async => ProcessResult(1, 0, 'ok', ''),
@@ -550,6 +562,7 @@ version: 1.0.0
           'dart',
           ['pub', 'upgrade'],
           workingDirectory: any(named: 'workingDirectory'),
+          runInShell: true,
         ),
       ).thenAnswer(
         (_) async => ProcessResult(1, 0, 'ok', ''),
@@ -632,6 +645,7 @@ version: 1.0.0
           'git',
           ['reset', '--hard', 'origin/main'],
           workingDirectory: masterRepoDir.path,
+          runInShell: true,
         ),
       ).thenAnswer(
         (_) async => ProcessResult(1, 1, '', 'reset error'),
@@ -641,6 +655,7 @@ version: 1.0.0
           'git',
           ['tag', '-l', '|', 'xargs', 'git', 'tag', '-d'],
           workingDirectory: masterRepoDir.path,
+          runInShell: true,
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
       when(
@@ -648,6 +663,7 @@ version: 1.0.0
           'git',
           ['fetch', '--tags'],
           workingDirectory: masterRepoDir.path,
+          runInShell: true,
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
       when(
@@ -655,6 +671,7 @@ version: 1.0.0
           'git',
           ['fetch', '--prune', '--tags'],
           workingDirectory: masterRepoDir.path,
+          runInShell: true,
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
       when(
@@ -662,6 +679,7 @@ version: 1.0.0
           'dart',
           ['pub', 'get'],
           workingDirectory: any(named: 'workingDirectory'),
+          runInShell: true,
         ),
       ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
       when(
@@ -669,6 +687,7 @@ version: 1.0.0
           'dart',
           ['pub', 'upgrade'],
           workingDirectory: any(named: 'workingDirectory'),
+          runInShell: true,
         ),
       ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
 
@@ -704,6 +723,7 @@ version: 1.0.0
           'git',
           ['reset', '--hard', 'origin/main'],
           workingDirectory: masterRepoDir.path,
+          runInShell: true,
         ),
       ).called(1);
       verify(
@@ -711,6 +731,7 @@ version: 1.0.0
           'git',
           ['tag', '-l', '|', 'xargs', 'git', 'tag', '-d'],
           workingDirectory: masterRepoDir.path,
+          runInShell: true,
         ),
       ).called(1);
       verify(
@@ -718,6 +739,7 @@ version: 1.0.0
           'git',
           ['fetch', '--tags'],
           workingDirectory: masterRepoDir.path,
+          runInShell: true,
         ),
       ).called(1);
       verify(
@@ -725,6 +747,7 @@ version: 1.0.0
           'git',
           ['fetch', '--prune', '--tags'],
           workingDirectory: masterRepoDir.path,
+          runInShell: true,
         ),
       ).called(1);
     });
@@ -839,6 +862,7 @@ version: 1.0.0
             'git',
             ['reset', '--hard', 'origin/main'],
             workingDirectory: repoDir.path,
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
         when(
@@ -846,6 +870,7 @@ version: 1.0.0
             'git',
             ['tag', '-l', '|', 'xargs', 'git', 'tag', '-d'],
             workingDirectory: repoDir.path,
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
         when(
@@ -853,6 +878,7 @@ version: 1.0.0
             'git',
             ['fetch', '--tags'],
             workingDirectory: repoDir.path,
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
         when(
@@ -860,6 +886,7 @@ version: 1.0.0
             'git',
             ['fetch', '--prune', '--tags'],
             workingDirectory: repoDir.path,
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
         createRunner(
@@ -884,6 +911,7 @@ version: 1.0.0
             'dart',
             ['pub', 'get'],
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'Pub get success', ''));
         when(
@@ -891,6 +919,7 @@ version: 1.0.0
             'dart',
             ['pub', 'upgrade'],
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
 
@@ -901,6 +930,7 @@ version: 1.0.0
             'dart',
             ['pub', 'get'],
             workingDirectory: path.join(ticketDir.path, repoName),
+            runInShell: true,
           ),
         ).called(1);
         expect(
@@ -917,6 +947,7 @@ version: 1.0.0
             'dart',
             ['pub', 'get'],
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer(
           (_) async => ProcessResult(2, 1, '', 'Pub get error'),
@@ -926,6 +957,7 @@ version: 1.0.0
             'dart',
             ['pub', 'upgrade'],
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
 
@@ -971,6 +1003,7 @@ version: 1.0.0
           'git',
           ['reset', '--hard', 'origin/main'],
           workingDirectory: repoDir.path,
+          runInShell: true,
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
       when(
@@ -978,6 +1011,7 @@ version: 1.0.0
           'git',
           ['tag', '-l', '|', 'xargs', 'git', 'tag', '-d'],
           workingDirectory: repoDir.path,
+          runInShell: true,
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
       when(
@@ -985,6 +1019,7 @@ version: 1.0.0
           'git',
           ['fetch', '--tags'],
           workingDirectory: repoDir.path,
+          runInShell: true,
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
       when(
@@ -992,6 +1027,7 @@ version: 1.0.0
           'git',
           ['fetch', '--prune', '--tags'],
           workingDirectory: repoDir.path,
+          runInShell: true,
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
       when(
@@ -999,6 +1035,7 @@ version: 1.0.0
           'dart',
           ['pub', 'get'],
           workingDirectory: any(named: 'workingDirectory'),
+          runInShell: true,
         ),
       ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
       when(
@@ -1006,6 +1043,7 @@ version: 1.0.0
           'dart',
           ['pub', 'upgrade'],
           workingDirectory: any(named: 'workingDirectory'),
+          runInShell: true,
         ),
       ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
 
@@ -1136,6 +1174,7 @@ version: 1.0.0
             'git',
             any(),
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
         when(
@@ -1143,6 +1182,7 @@ version: 1.0.0
             'dart',
             ['pub', 'get'],
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
         when(
@@ -1150,6 +1190,7 @@ version: 1.0.0
             'dart',
             ['pub', 'upgrade'],
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
 
@@ -1216,6 +1257,7 @@ version: 1.0.0
             'git',
             any(),
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
         when(
@@ -1223,6 +1265,7 @@ version: 1.0.0
             'dart',
             ['pub', 'get'],
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
         when(
@@ -1230,6 +1273,7 @@ version: 1.0.0
             'dart',
             ['pub', 'upgrade'],
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
 
@@ -1329,6 +1373,7 @@ version: 1.0.0
             'git',
             any(),
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
         when(
@@ -1336,6 +1381,7 @@ version: 1.0.0
             'dart',
             ['pub', 'get'],
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
         when(
@@ -1343,6 +1389,7 @@ version: 1.0.0
             'dart',
             ['pub', 'upgrade'],
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
 
@@ -1419,6 +1466,7 @@ version: 1.0.0
             any(),
             any(),
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, '', ''));
 
@@ -1498,6 +1546,7 @@ version: 1.0.0
             'git',
             any(),
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
         when(
@@ -1505,6 +1554,7 @@ version: 1.0.0
             'dart',
             ['pub', 'get'],
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
         when(
@@ -1512,6 +1562,7 @@ version: 1.0.0
             'dart',
             ['pub', 'upgrade'],
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
 
@@ -1597,6 +1648,7 @@ version: 1.0.0
             'git',
             any(),
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
         when(
@@ -1604,6 +1656,7 @@ version: 1.0.0
             'dart',
             ['pub', 'get'],
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
         when(
@@ -1611,6 +1664,7 @@ version: 1.0.0
             'dart',
             ['pub', 'upgrade'],
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer(
           (_) async => ProcessResult(1, 1, '', 'Upgrade error'),
@@ -1695,6 +1749,7 @@ version: 1.0.0
             'git',
             any(),
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
         when(
@@ -1702,6 +1757,7 @@ version: 1.0.0
             'dart',
             ['pub', 'get'],
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
         when(
@@ -1709,6 +1765,7 @@ version: 1.0.0
             'dart',
             ['pub', 'upgrade'],
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
 
@@ -1821,6 +1878,7 @@ version: 1.0.0
             'git',
             any(),
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
         when(
@@ -1828,6 +1886,7 @@ version: 1.0.0
             'dart',
             ['pub', 'get'],
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
         when(
@@ -1835,6 +1894,7 @@ version: 1.0.0
             'dart',
             ['pub', 'upgrade'],
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
 
@@ -1917,6 +1977,7 @@ version: 1.0.0
             'git',
             ['reset', '--hard', 'origin/main'],
             workingDirectory: masterRepoDir.path,
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
         when(
@@ -1924,6 +1985,7 @@ version: 1.0.0
             'git',
             ['tag', '-l', '|', 'xargs', 'git', 'tag', '-d'],
             workingDirectory: masterRepoDir.path,
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
         when(
@@ -1931,6 +1993,7 @@ version: 1.0.0
             'git',
             ['fetch', '--tags'],
             workingDirectory: masterRepoDir.path,
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
         when(
@@ -1938,6 +2001,7 @@ version: 1.0.0
             'git',
             ['fetch', '--prune', '--tags'],
             workingDirectory: masterRepoDir.path,
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
         when(
@@ -1945,6 +2009,7 @@ version: 1.0.0
             'dart',
             ['pub', 'get'],
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
         when(
@@ -1952,6 +2017,7 @@ version: 1.0.0
             'dart',
             ['pub', 'upgrade'],
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
 

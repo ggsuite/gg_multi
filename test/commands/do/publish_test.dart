@@ -38,7 +38,7 @@ class MockSortedProcessingList extends Mock implements SortedProcessingList {}
 class MockCanPublishCommand extends Mock implements CanPublishCommand {}
 
 /// Mock for UnlocalizeRefs
-class MockUnlocalizeRefs extends Mock implements UnlocalizeRefs {}
+class MockUnlocalizeRefs extends Mock implements ChangeRefsToPubDev {}
 
 /// Mocks for version/ref helpers
 class MockGetVersion extends Mock implements GetVersion {}

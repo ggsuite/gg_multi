@@ -28,6 +28,7 @@ typedef ProcessRunner = Future<ProcessResult> Function(
   String,
   List<String>, {
   String? workingDirectory,
+  bool runInShell,
 });
 
 /// Command to add a repository or all repositories from an organization.
@@ -63,8 +64,8 @@ class AddCommand extends Command<dynamic> {
     String? executionPath,
     gg.DoCommit? ggDoCommit,
     SortedProcessingList? sortedProcessingList,
-    UnlocalizeRefs? unlocalizeRefs,
-    LocalizeRefs? localizeRefs,
+    ChangeRefsToPubDev? unlocalizeRefs,
+    ChangeRefsToLocal? localizeRefs,
     Graph? graph,
     // coverage:ignore-start
   })  : gitCloner = gitCloner ?? GitHandler(),
@@ -76,8 +77,8 @@ class AddCommand extends Command<dynamic> {
         _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
         _sortedProcessingList =
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
-        _unlocalizeRefs = unlocalizeRefs ?? UnlocalizeRefs(ggLog: ggLog),
-        _localizeRefs = localizeRefs ?? LocalizeRefs(ggLog: ggLog),
+        _unlocalizeRefs = unlocalizeRefs ?? ChangeRefsToPubDev(ggLog: ggLog),
+        _localizeRefs = localizeRefs ?? ChangeRefsToLocal(ggLog: ggLog),
         _graph = graph ?? Graph(ggLog: ggLog)
   // coverage:ignore-end
   {
@@ -121,10 +122,10 @@ class AddCommand extends Command<dynamic> {
   final SortedProcessingList _sortedProcessingList;
 
   /// Unlocalize refs helper.
-  final UnlocalizeRefs _unlocalizeRefs;
+  final ChangeRefsToPubDev _unlocalizeRefs;
 
   /// Localize refs helper.
-  final LocalizeRefs _localizeRefs;
+  final ChangeRefsToLocal _localizeRefs;
 
   /// Graph helper for determining nodes between endpoints.
   final Graph _graph;
@@ -375,6 +376,7 @@ class AddCommand extends Command<dynamic> {
       'dart',
       ['pub', 'get'],
       workingDirectory: destDir.path,
+      runInShell: true,
     );
     if (result.exitCode == 0) {
       ggLog(darkGray('Executed dart pub get in $repoName.'));
@@ -435,6 +437,7 @@ class AddCommand extends Command<dynamic> {
         'git',
         command.arguments,
         workingDirectory: repoDir.path,
+        runInShell: true,
       );
 
       if (result.exitCode != 0) {
@@ -511,6 +514,7 @@ class AddCommand extends Command<dynamic> {
           'dart',
           ['pub', 'upgrade'],
           workingDirectory: repoDir.path,
+          runInShell: true,
         );
         if (upgrade.exitCode == 0) {
           ggLog(darkGray('Executed dart pub upgrade in $repoName.'));

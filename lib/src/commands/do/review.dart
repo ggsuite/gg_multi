@@ -49,15 +49,15 @@ class DoReviewCommand extends DirCommand<void> {
     super.name = 'review',
     super.description = 'Reviews all repositories in the current ticket.',
     CanReviewCommand? canReviewCommand,
-    UnlocalizeRefs? unlocalizeRefs,
-    LocalizeRefs? localizeRefs,
+    ChangeRefsToPubDev? unlocalizeRefs,
+    ChangeRefsToGitFeatureBranch? localizeRefsToGit,
     SortedProcessingList? sortedProcessingList,
     gg.DoCommit? ggDoCommit,
     gg.DoPush? ggDoPush,
     ProcessRunner? processRunner,
   })  : _canReviewCommand = canReviewCommand ?? CanReviewCommand(ggLog: ggLog),
-        _unlocalizeRefs = unlocalizeRefs ?? UnlocalizeRefs(ggLog: ggLog),
-        _localizeRefs = localizeRefs ?? LocalizeRefs(ggLog: ggLog),
+        _localizeRefsToGit =
+            localizeRefsToGit ?? ChangeRefsToGitFeatureBranch(ggLog: ggLog),
         _sortedProcessingList =
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
         _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
@@ -69,11 +69,8 @@ class DoReviewCommand extends DirCommand<void> {
   /// Instance of CanReviewCommand
   final CanReviewCommand _canReviewCommand;
 
-  /// Instance of UnlocalizeRefs
-  final UnlocalizeRefs _unlocalizeRefs;
-
-  /// Instance of LocalizeRefs
-  final LocalizeRefs _localizeRefs;
+  /// Instance of ChangeRefsToGitFeatureBranch
+  final ChangeRefsToGitFeatureBranch _localizeRefsToGit;
 
   /// Instance of SortedProcessingList
   final SortedProcessingList _sortedProcessingList;
@@ -156,12 +153,12 @@ class DoReviewCommand extends DirCommand<void> {
       ),
     );
 
-    // Step 5: Unlocalize, localize, upgrade, commit & push ------------------
+    // Step 5: Localize, upgrade, commit & push ------------------------------
     await GgStatusPrinter<void>(
       message: 'Setting dependencies to git, committing and pushing',
       ggLog: ggLog,
     ).run(
-      () async => _relocalizeAndCommitAll(
+      () async => _localizeAndCommitAll(
         ticketName: ticketName,
         subs: subs,
         ggLog: taskLog,
@@ -237,9 +234,9 @@ class DoReviewCommand extends DirCommand<void> {
     }
   }
 
-  /// Performs unlocalize/localize, `dart pub upgrade`, commit and push
-  /// for every repository in the ticket.
-  Future<void> _relocalizeAndCommitAll({
+  /// Performs localization, `dart pub upgrade`, commit
+  /// and push for every repository in the ticket.
+  Future<void> _localizeAndCommitAll({
     required String ticketName,
     required List<Node> subs,
     required GgLog ggLog,
@@ -248,28 +245,11 @@ class DoReviewCommand extends DirCommand<void> {
       final repoDir = repo.directory;
       final repoName = path.basename(repoDir.path);
 
-      // Unlocalize -----------------------------------------------------------
+      // Localize with git feature branch ------------------------------------
       try {
-        await _unlocalizeRefs.get(directory: repoDir, ggLog: ggLog);
-        ggLog(green('Unlocalized refs for $repoName'));
-        StatusUtils.setStatus(
-          repoDir,
-          StatusUtils.statusUnlocalized,
-          ggLog: ggLog,
-        );
-      } catch (e) {
-        ggLog(red('Failed to unlocalize refs for $repoName: $e'));
-        throw Exception(
-          'Failed to review some repositories in ticket $ticketName',
-        );
-      }
-
-      // Localize with --git --------------------------------------------------
-      try {
-        await _localizeRefs.get(
+        await _localizeRefsToGit.get(
           directory: repoDir,
           ggLog: ggLog,
-          git: true,
           gitRef: ticketName,
         );
         ggLog(green('Localized refs for $repoName'));
@@ -281,7 +261,7 @@ class DoReviewCommand extends DirCommand<void> {
       } catch (e) {
         ggLog(
           red(
-            'Failed to localize refs with --git for '
+            'Failed to localize refs to git feature branch for '
             '$repoName: $e',
           ),
         );
