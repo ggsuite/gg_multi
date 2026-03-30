@@ -404,6 +404,11 @@ class AddCommand extends Command<dynamic> {
       String failureLabel,
     })>[
       (
+        arguments: <String>['fetch'],
+        successMessage: 'Executed git fetch in $repoName in master workspace.',
+        failureLabel: 'git fetch in $repoName in master workspace',
+      ),
+      (
         arguments: <String>['reset', '--hard', 'origin/main'],
         successMessage:
             'Executed git reset --hard origin/main in $repoName in master workspace.',

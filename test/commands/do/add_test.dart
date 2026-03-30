@@ -414,6 +414,14 @@ dev_dependencies:
         when(
           () => mockProc(
             'git',
+            ['fetch'],
+            workingDirectory: repoDir.path,
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+        when(
+          () => mockProc(
+            'git',
             ['reset', '--hard', 'origin/main'],
             workingDirectory: repoDir.path,
             runInShell: true,
@@ -515,6 +523,14 @@ version: 1.0.0
       )..createSync(recursive: true);
 
       final mockProc = MockProcessRunner();
+      when(
+        () => mockProc(
+          'git',
+          ['fetch'],
+          workingDirectory: repoDir.path,
+          runInShell: true,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
       when(
         () => mockProc(
           'git',
@@ -643,6 +659,14 @@ version: 1.0.0
       when(
         () => mockProc(
           'git',
+          ['fetch'],
+          workingDirectory: masterRepoDir.path,
+          runInShell: true,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+      when(
+        () => mockProc(
+          'git',
           ['reset', '--hard', 'origin/main'],
           workingDirectory: masterRepoDir.path,
           runInShell: true,
@@ -718,6 +742,14 @@ version: 1.0.0
         ),
         isTrue,
       );
+      verify(
+        () => mockProc(
+          'git',
+          ['fetch'],
+          workingDirectory: masterRepoDir.path,
+          runInShell: true,
+        ),
+      ).called(1);
       verify(
         () => mockProc(
           'git',
@@ -860,6 +892,14 @@ version: 1.0.0
         when(
           () => mockProcessRunner(
             'git',
+            ['fetch'],
+            workingDirectory: repoDir.path,
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+        when(
+          () => mockProcessRunner(
+            'git',
             ['reset', '--hard', 'origin/main'],
             workingDirectory: repoDir.path,
             runInShell: true,
@@ -998,6 +1038,14 @@ version: 1.0.0
       ).thenThrow(Exception('commit error'));
 
       final mockProc = MockProcessRunner();
+      when(
+        () => mockProc(
+          'git',
+          ['fetch'],
+          workingDirectory: repoDir.path,
+          runInShell: true,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
       when(
         () => mockProc(
           'git',
@@ -1972,6 +2020,14 @@ version: 1.0.0
         )..createSync(recursive: true);
 
         final mockProc = MockProcessRunner();
+        when(
+          () => mockProc(
+            'git',
+            ['fetch'],
+            workingDirectory: masterRepoDir.path,
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
         when(
           () => mockProc(
             'git',

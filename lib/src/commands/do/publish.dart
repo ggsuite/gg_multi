@@ -12,9 +12,11 @@ import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:interact/interact.dart';
 import 'package:path/path.dart' as path;
 
+import '../../backend/pub_dev_checker.dart';
 import '../../backend/workspace_utils.dart';
 import '../../commands/can/publish.dart';
 
@@ -42,6 +44,7 @@ class DoPublishCommand extends DirCommand<void> {
     GetVersion? getVersionCommand,
     SetRefVersion? setRefVersionCommand,
     GetRefVersion? getRefVersionCommand,
+    PubDevChecker? pubDevChecker,
   })  : _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
         _unlocalizeRefs = unlocalizeRefs ?? ChangeRefsToPubDev(ggLog: ggLog),
         _ggDoPush = ggDoPush ?? gg.DoPush(ggLog: ggLog),
@@ -52,7 +55,8 @@ class DoPublishCommand extends DirCommand<void> {
             canPublishCommand ?? CanPublishCommand(ggLog: ggLog),
         _getVersion = getVersionCommand ?? GetVersion(ggLog: ggLog),
         _setRefVersion = setRefVersionCommand ?? SetRefVersion(ggLog: ggLog),
-        _getRefVersion = getRefVersionCommand ?? GetRefVersion(ggLog: ggLog) {
+        _getRefVersion = getRefVersionCommand ?? GetRefVersion(ggLog: ggLog),
+        _pubDevChecker = pubDevChecker ?? PubDevChecker() {
     _addArgs();
   }
 
@@ -82,6 +86,9 @@ class DoPublishCommand extends DirCommand<void> {
 
   /// Reads the version/spec of a dependency from pubspec.yaml
   final GetRefVersion _getRefVersion;
+
+  /// Checks whether versions are visible on pub.dev.
+  final PubDevChecker _pubDevChecker;
 
   @override
   Future<void> exec({
@@ -142,6 +149,9 @@ class DoPublishCommand extends DirCommand<void> {
       return;
     }
 
+    final publishedPackages = <String, _PublishedPackageState>{};
+    final confirmedPubDevVersions = <String>{};
+
     // Map of reference name to version captured from repos processed so far.
     final refVersions = <String, String>{};
 
@@ -149,6 +159,13 @@ class DoPublishCommand extends DirCommand<void> {
     for (final repo in subs) {
       final repoDir = repo.directory;
       final repoName = path.basename(repoDir.path);
+
+      await _waitForPublishedDependenciesIfNeeded(
+        currentRepo: repo,
+        publishedPackages: publishedPackages,
+        confirmedPubDevVersions: confirmedPubDevVersions,
+        ggLog: ggLog,
+      );
 
       // Skip confirmation when --force is set
       if (!force) {
@@ -218,6 +235,15 @@ class DoPublishCommand extends DirCommand<void> {
         );
         if (version != null && version.isNotEmpty) {
           refVersions[repoName] = version;
+
+          final publishInfo = await _pubDevChecker.getPackagePublishInfo(
+            packageName: repoName,
+          );
+          publishedPackages[repoName] = _PublishedPackageState(
+            packageName: repoName,
+            version: version,
+            waitsForPubDev: publishInfo.waitsForPubDev,
+          );
         }
       } catch (e) {
         throw Exception('Failed to get version of $repoName: $e');
@@ -256,6 +282,42 @@ class DoPublishCommand extends DirCommand<void> {
     );
   }
 
+  /// Waits for already published dependencies of [currentRepo] on pub.dev.
+  Future<void> _waitForPublishedDependenciesIfNeeded({
+    required Node currentRepo,
+    required Map<String, _PublishedPackageState> publishedPackages,
+    required Set<String> confirmedPubDevVersions,
+    required GgLog ggLog,
+  }) async {
+    if (publishedPackages.isEmpty) {
+      return;
+    }
+
+    final waitingStates =
+        publishedPackages.values.where((state) => state.waitsForPubDev);
+
+    for (final state in waitingStates) {
+      final cacheKey = '${state.packageName}@${state.version}';
+      if (confirmedPubDevVersions.contains(cacheKey)) {
+        continue;
+      }
+
+      await GgStatusPrinter<void>(
+        message: 'Waiting for ${state.packageName} '
+            '^${state.version} to appear on pub.dev',
+        ggLog: ggLog,
+      ).run(
+        () async => _pubDevChecker.waitUntilVersionAvailable(
+          packageName: state.packageName,
+          version: state.version,
+          ggLog: ggLog,
+        ),
+      );
+
+      confirmedPubDevVersions.add(cacheKey);
+    }
+  }
+
   // Adds command line arguments
   void _addArgs() {
     argParser.addFlag(
@@ -278,6 +340,25 @@ class DoPublishCommand extends DirCommand<void> {
       negatable: true,
     );
   }
+}
+
+/// Stores publish state for already processed repositories.
+class _PublishedPackageState {
+  /// Creates a new published package state.
+  const _PublishedPackageState({
+    required this.packageName,
+    required this.version,
+    required this.waitsForPubDev,
+  });
+
+  /// The public package name.
+  final String packageName;
+
+  /// The published version.
+  final String version;
+
+  /// Whether the next packages must wait for pub.dev visibility.
+  final bool waitsForPubDev;
 }
 
 /// Mock for [DoPublishCommand]

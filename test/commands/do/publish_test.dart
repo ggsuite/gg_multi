@@ -12,8 +12,10 @@ import 'package:args/command_runner.dart';
 import 'package:gg/gg.dart' as gg;
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
+import 'package:kidney_core/src/backend/pub_dev_checker.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
+import 'package:pub_semver/pub_semver.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:test/test.dart';
 import 'package:kidney_core/src/commands/do/publish.dart';
@@ -46,6 +48,8 @@ class MockGetVersion extends Mock implements GetVersion {}
 class MockSetRefVersion extends Mock implements SetRefVersion {}
 
 class MockGetRefVersion extends Mock implements GetRefVersion {}
+
+class MockPubDevChecker extends Mock implements PubDevChecker {}
 
 class FakeDirectory extends Fake implements Directory {}
 
@@ -135,6 +139,7 @@ void main() {
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
+      final mockPubDevChecker = MockPubDevChecker();
 
       when(
         () => mockCanPublishCommand.exec(
@@ -158,7 +163,16 @@ void main() {
           Node(
             name: 'B',
             directory: Directory(path.join(ticketDir.path, 'B')),
-            manifest: DartPackageManifest(pubspec: Pubspec('B')),
+            manifest: DartPackageManifest(
+              pubspec: Pubspec(
+                'B',
+                dependencies: <String, Dependency>{
+                  'A': HostedDependency(
+                    version: VersionConstraint.parse('^1.0.0'),
+                  ),
+                },
+              ),
+            ),
           ),
         ],
       );
@@ -215,6 +229,28 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
+      when(
+        () => mockPubDevChecker.getPackagePublishInfo(
+          packageName: any(named: 'packageName'),
+        ),
+      ).thenAnswer(
+        (invocation) async {
+          final packageName = invocation.namedArguments[#packageName] as String;
+          return PackagePublishInfo(
+            packageName: packageName,
+            waitsForPubDev: true,
+          );
+        },
+      );
+
+      when(
+        () => mockPubDevChecker.waitUntilVersionAvailable(
+          packageName: any(named: 'packageName'),
+          version: any(named: 'version'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
           DoPublishCommand(
@@ -229,6 +265,7 @@ void main() {
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
+            pubDevChecker: mockPubDevChecker,
           ),
         );
       await runner.run([
@@ -265,6 +302,155 @@ void main() {
       );
     });
 
+    test('does not wait for dependency with publish_to none', () async {
+      final mockGgDoPublish = MockGgDoPublish();
+      final mockGgDoCommit = MockGgDoCommit();
+      final mockGgDoPush = MockGgDoPush();
+      final mockUnlocalizeRefs = MockUnlocalizeRefs();
+      final mockSortedProcessingList = MockSortedProcessingList();
+      final mockProcessRunner = MockProcessRunner();
+      final mockCanPublishCommand = MockCanPublishCommand();
+      final mockGetVersion = MockGetVersion();
+      final mockSetRefVersion = MockSetRefVersion();
+      final mockGetRefVersion = MockGetRefVersion();
+      final mockPubDevChecker = MockPubDevChecker();
+
+      final aDir = Directory(path.join(ticketDir.path, 'A'));
+      final bDir = Directory(path.join(ticketDir.path, 'B'));
+
+      when(
+        () => mockCanPublishCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: aDir,
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
+          ),
+          Node(
+            name: 'B',
+            directory: bDir,
+            manifest: DartPackageManifest(
+              pubspec: Pubspec(
+                'B',
+                dependencies: <String, Dependency>{
+                  'A': HostedDependency(
+                    version: VersionConstraint.parse('^1.0.0'),
+                  ),
+                },
+              ),
+            ),
+          ),
+        ],
+      );
+
+      when(
+        () => mockUnlocalizeRefs.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGetVersion.get(
+          directory: any(named: 'directory'),
+        ),
+      ).thenAnswer((_) async => '1.0.0');
+      when(
+        () => mockGetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => mockSetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+          version: any(named: 'version'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockPubDevChecker.getPackagePublishInfo(packageName: 'A'),
+      ).thenAnswer(
+        (_) async => const PackagePublishInfo(
+          packageName: 'A',
+          waitsForPubDev: false,
+        ),
+      );
+      when(
+        () => mockPubDevChecker.getPackagePublishInfo(packageName: 'B'),
+      ).thenAnswer(
+        (_) async => const PackagePublishInfo(
+          packageName: 'B',
+          waitsForPubDev: true,
+        ),
+      );
+
+      final runner = CommandRunner<void>('test', 'do publish ticket')
+        ..addCommand(
+          DoPublishCommand(
+            ggLog: ggLog,
+            ggDoPublish: mockGgDoPublish,
+            ggDoCommit: mockGgDoCommit,
+            ggDoPush: mockGgDoPush,
+            unlocalizeRefs: mockUnlocalizeRefs,
+            sortedProcessingList: mockSortedProcessingList,
+            processRunner: mockProcessRunner.call,
+            canPublishCommand: mockCanPublishCommand,
+            getVersionCommand: mockGetVersion,
+            setRefVersionCommand: mockSetRefVersion,
+            getRefVersionCommand: mockGetRefVersion,
+            pubDevChecker: mockPubDevChecker,
+          ),
+        );
+
+      await runner.run([
+        'publish',
+        '--force',
+        '--input',
+        ticketDir.path,
+      ]);
+
+      verifyNever(
+        () => mockPubDevChecker.waitUntilVersionAvailable(
+          packageName: any(named: 'packageName'),
+          version: any(named: 'version'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      );
+    });
+
     test('aborts if can publish fails', () async {
       final mockGgDoPublish = MockGgDoPublish();
       final mockSortedProcessingList = MockSortedProcessingList();
@@ -273,6 +459,7 @@ void main() {
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
+      final mockPubDevChecker = MockPubDevChecker();
 
       when(
         () => mockCanPublishCommand.exec(
@@ -311,6 +498,7 @@ void main() {
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
+            pubDevChecker: mockPubDevChecker,
           ),
         );
       await expectLater(
@@ -338,6 +526,7 @@ void main() {
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
+      final mockPubDevChecker = MockPubDevChecker();
 
       when(
         () => mockCanPublishCommand.exec(
@@ -421,6 +610,26 @@ void main() {
           version: any(named: 'version'),
         ),
       ).thenAnswer((_) async {});
+      when(
+        () => mockPubDevChecker.getPackagePublishInfo(
+          packageName: any(named: 'packageName'),
+        ),
+      ).thenAnswer(
+        (invocation) async {
+          final packageName = invocation.namedArguments[#packageName] as String;
+          return PackagePublishInfo(
+            packageName: packageName,
+            waitsForPubDev: true,
+          );
+        },
+      );
+      when(
+        () => mockPubDevChecker.waitUntilVersionAvailable(
+          packageName: any(named: 'packageName'),
+          version: any(named: 'version'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
 
       // Set initial status to git-localized for each repo so we can see
       // the transition to merged for A.
@@ -447,6 +656,7 @@ void main() {
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
+            pubDevChecker: mockPubDevChecker,
           ),
         );
       await expectLater(
@@ -488,6 +698,7 @@ void main() {
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
+      final mockPubDevChecker = MockPubDevChecker();
 
       when(
         () => mockCanPublishCommand.exec(
@@ -571,6 +782,26 @@ void main() {
           version: any(named: 'version'),
         ),
       ).thenAnswer((_) async {});
+      when(
+        () => mockPubDevChecker.getPackagePublishInfo(
+          packageName: any(named: 'packageName'),
+        ),
+      ).thenAnswer(
+        (invocation) async {
+          final packageName = invocation.namedArguments[#packageName] as String;
+          return PackagePublishInfo(
+            packageName: packageName,
+            waitsForPubDev: true,
+          );
+        },
+      );
+      when(
+        () => mockPubDevChecker.waitUntilVersionAvailable(
+          packageName: any(named: 'packageName'),
+          version: any(named: 'version'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
 
       // Set initial status to git-localized for each repo so we can see
       // the transition to merged for A.
@@ -597,6 +828,7 @@ void main() {
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
+            pubDevChecker: mockPubDevChecker,
           ),
         );
       await expectLater(
@@ -628,6 +860,7 @@ void main() {
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
+      final mockPubDevChecker = MockPubDevChecker();
 
       when(
         () => mockCanPublishCommand.exec(
@@ -698,6 +931,19 @@ void main() {
           ggLog: any(named: 'ggLog'),
         ),
       ).thenAnswer((_) async {});
+      when(
+        () => mockPubDevChecker.getPackagePublishInfo(
+          packageName: any(named: 'packageName'),
+        ),
+      ).thenAnswer(
+        (invocation) async {
+          final packageName = invocation.namedArguments[#packageName] as String;
+          return PackagePublishInfo(
+            packageName: packageName,
+            waitsForPubDev: true,
+          );
+        },
+      );
 
       final statusFileA = File(path.join(ticketDir.path, 'A', '.kidney_status'))
         ..createSync(recursive: true);
@@ -719,6 +965,7 @@ void main() {
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
+            pubDevChecker: mockPubDevChecker,
           ),
         );
 
@@ -753,6 +1000,7 @@ void main() {
         final mockGetVersion = MockGetVersion();
         final mockSetRefVersion = MockSetRefVersion();
         final mockGetRefVersion = MockGetRefVersion();
+        final mockPubDevChecker = MockPubDevChecker();
 
         when(
           () => mockCanPublishCommand.exec(
@@ -841,6 +1089,27 @@ void main() {
             ggLog: any(named: 'ggLog'),
           ),
         ).thenAnswer((_) async {});
+        when(
+          () => mockPubDevChecker.getPackagePublishInfo(
+            packageName: any(named: 'packageName'),
+          ),
+        ).thenAnswer(
+          (invocation) async {
+            final packageName =
+                invocation.namedArguments[#packageName] as String;
+            return PackagePublishInfo(
+              packageName: packageName,
+              waitsForPubDev: true,
+            );
+          },
+        );
+        when(
+          () => mockPubDevChecker.waitUntilVersionAvailable(
+            packageName: any(named: 'packageName'),
+            version: any(named: 'version'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
 
         for (final repo in ['A', 'B']) {
           final f = File(path.join(ticketDir.path, repo, '.kidney_status'))
@@ -864,6 +1133,7 @@ void main() {
               getVersionCommand: mockGetVersion,
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
+              pubDevChecker: mockPubDevChecker,
             ),
           );
 
@@ -897,6 +1167,7 @@ void main() {
         final mockGetVersion = MockGetVersion();
         final mockSetRefVersion = MockSetRefVersion();
         final mockGetRefVersion = MockGetRefVersion();
+        final mockPubDevChecker = MockPubDevChecker();
 
         when(
           () => mockCanPublishCommand.exec(
@@ -981,6 +1252,27 @@ void main() {
             ggLog: any(named: 'ggLog'),
           ),
         ).thenAnswer((_) async {});
+        when(
+          () => mockPubDevChecker.getPackagePublishInfo(
+            packageName: any(named: 'packageName'),
+          ),
+        ).thenAnswer(
+          (invocation) async {
+            final packageName =
+                invocation.namedArguments[#packageName] as String;
+            return PackagePublishInfo(
+              packageName: packageName,
+              waitsForPubDev: true,
+            );
+          },
+        );
+        when(
+          () => mockPubDevChecker.waitUntilVersionAvailable(
+            packageName: any(named: 'packageName'),
+            version: any(named: 'version'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
 
         for (final repo in ['A', 'B']) {
           final f = File(path.join(ticketDir.path, repo, '.kidney_status'))
@@ -1004,6 +1296,7 @@ void main() {
               getVersionCommand: mockGetVersion,
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
+              pubDevChecker: mockPubDevChecker,
             ),
           );
 
@@ -1039,6 +1332,7 @@ void main() {
         final mockGetVersion = MockGetVersion();
         final mockSetRefVersion = MockSetRefVersion();
         final mockGetRefVersion = MockGetRefVersion();
+        final mockPubDevChecker = MockPubDevChecker();
         final mockDirB = MockDirectory();
 
         when(
@@ -1120,6 +1414,27 @@ void main() {
             ggLog: any(named: 'ggLog'),
           ),
         ).thenAnswer((_) async {});
+        when(
+          () => mockPubDevChecker.getPackagePublishInfo(
+            packageName: any(named: 'packageName'),
+          ),
+        ).thenAnswer(
+          (invocation) async {
+            final packageName =
+                invocation.namedArguments[#packageName] as String;
+            return PackagePublishInfo(
+              packageName: packageName,
+              waitsForPubDev: true,
+            );
+          },
+        );
+        when(
+          () => mockPubDevChecker.waitUntilVersionAvailable(
+            packageName: any(named: 'packageName'),
+            version: any(named: 'version'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
 
         when(() => mockDirB.path).thenReturn(
           path.join(ticketDir.path, 'B'),
@@ -1143,6 +1458,7 @@ void main() {
               getVersionCommand: mockGetVersion,
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
+              pubDevChecker: mockPubDevChecker,
             ),
           );
 
