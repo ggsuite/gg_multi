@@ -4,6 +4,7 @@
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:gg/gg.dart' as gg;
@@ -27,6 +28,9 @@ typedef ProcessRunner = Future<ProcessResult> Function(
   String? workingDirectory,
 });
 
+/// Typedef for launching an interactive editor.
+typedef EditMessage = Future<String?> Function(String initialMessage);
+
 /// Command to publish all repos in the ticket.
 class DoPublishCommand extends DirCommand<void> {
   /// Constructor
@@ -45,6 +49,7 @@ class DoPublishCommand extends DirCommand<void> {
     SetRefVersion? setRefVersionCommand,
     GetRefVersion? getRefVersionCommand,
     PubDevChecker? pubDevChecker,
+    EditMessage? editMessage,
   })  : _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
         _unlocalizeRefs = unlocalizeRefs ?? ChangeRefsToPubDev(ggLog: ggLog),
         _ggDoPush = ggDoPush ?? gg.DoPush(ggLog: ggLog),
@@ -56,7 +61,8 @@ class DoPublishCommand extends DirCommand<void> {
         _getVersion = getVersionCommand ?? GetVersion(ggLog: ggLog),
         _setRefVersion = setRefVersionCommand ?? SetRefVersion(ggLog: ggLog),
         _getRefVersion = getRefVersionCommand ?? GetRefVersion(ggLog: ggLog),
-        _pubDevChecker = pubDevChecker ?? PubDevChecker() {
+        _pubDevChecker = pubDevChecker ?? PubDevChecker(),
+        _editMessage = editMessage ?? _defaultEditMessage {
     _addArgs();
   }
 
@@ -89,6 +95,9 @@ class DoPublishCommand extends DirCommand<void> {
 
   /// Checks whether versions are visible on pub.dev.
   final PubDevChecker _pubDevChecker;
+
+  /// Opens an interactive editor for the publish message.
+  final EditMessage _editMessage;
 
   @override
   Future<void> exec({
@@ -130,6 +139,7 @@ class DoPublishCommand extends DirCommand<void> {
 
     final ticketDir = Directory(ticketPath);
     final ticketName = path.basename(ticketDir.path);
+    final ticketDescription = _readTicketDescription(ticketDir);
 
     // Step 2: Run kidney_core can publish
     try {
@@ -225,8 +235,15 @@ class DoPublishCommand extends DirCommand<void> {
 
       taskLog(green('$repoName: updated with new references.'));
 
+      final initialPublishMessage = message ?? ticketDescription;
+      final publishMessage = await _editMessage(initialPublishMessage ?? '');
+
       // Execute gg do publish
-      await _ggDoPublish.exec(directory: repoDir, ggLog: ggLog);
+      await _ggDoPublish.exec(
+        directory: repoDir,
+        ggLog: ggLog,
+        message: publishMessage,
+      );
 
       // Capture current repo version and propagate known versions
       try {
@@ -317,6 +334,37 @@ class DoPublishCommand extends DirCommand<void> {
       confirmedPubDevVersions.add(cacheKey);
     }
   }
+
+  /// Reads the optional description from the ticket configuration file.
+  String? _readTicketDescription(Directory ticketDir) {
+    final ticketFile = File(path.join(ticketDir.path, '.ticket'));
+    if (!ticketFile.existsSync()) {
+      return null;
+    }
+
+    final decoded = jsonDecode(ticketFile.readAsStringSync());
+    if (decoded is! Map<String, dynamic>) {
+      return null;
+    }
+
+    final description = decoded['description']?.toString().trim();
+    if (description == null || description.isEmpty) {
+      return null;
+    }
+
+    return description;
+  }
+
+  /// Opens the default editor with [initialMessage] and returns the result.
+  // coverage:ignore-start
+  static Future<String?> _defaultEditMessage(String initialMessage) async {
+    return Input(
+      prompt: 'Edit merge message',
+      defaultValue: initialMessage,
+      initialText: initialMessage,
+    ).interact();
+  }
+  // coverage:ignore-end
 
   // Adds command line arguments
   void _addArgs() {

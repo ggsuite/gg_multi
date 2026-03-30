@@ -109,6 +109,8 @@ void main() {
 
       await runner.run(<String>[
         'ticket',
+        '-m',
+        'message',
         '--input',
         ticketsDir.path,
         issueId,
@@ -204,41 +206,6 @@ void main() {
         ]),
         throwsA(isA<UsageException>()),
       );
-    });
-
-    test(
-        'creates ticket with empty '
-        'description when message is omitted', () async {
-      const issueId = 'NO-DESC-1';
-
-      await runner.run([
-        'ticket',
-        '--input',
-        tempDir.path,
-        issueId,
-      ]);
-
-      final ticketDir = Directory(
-        path.join(
-          tempDir.path,
-          'tickets',
-          issueId,
-        ),
-      );
-      expect(ticketDir.existsSync(), isTrue);
-
-      final ticketFile = File(
-        path.join(
-          ticketDir.path,
-          '.ticket',
-        ),
-      );
-      expect(ticketFile.existsSync(), isTrue);
-
-      final content = ticketFile.readAsStringSync();
-      final data = jsonDecode(content) as Map<String, dynamic>;
-      expect(data['issue_id'], equals(issueId));
-      expect(data['description'], equals(''));
     });
 
     test('prints help when --help is passed', () async {

@@ -205,6 +205,7 @@ void main() {
         () => mockGgDoPublish.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
         ),
       ).thenAnswer((_) async {});
 
@@ -266,6 +267,7 @@ void main() {
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
+            editMessage: (initialMessage) async => initialMessage,
           ),
         );
       await runner.run([
@@ -300,6 +302,283 @@ void main() {
         Directory(path.join(ticketDir.path, 'B')).existsSync(),
         isFalse,
       );
+    });
+
+    test('uses explicit get message as initial value for interactive edit',
+        () async {
+      final mockGgDoPublish = MockGgDoPublish();
+      final mockGgDoCommit = MockGgDoCommit();
+      final mockGgDoPush = MockGgDoPush();
+      final mockUnlocalizeRefs = MockUnlocalizeRefs();
+      final mockSortedProcessingList = MockSortedProcessingList();
+      final mockProcessRunner = MockProcessRunner();
+      final mockCanPublishCommand = MockCanPublishCommand();
+      final mockGetVersion = MockGetVersion();
+      final mockSetRefVersion = MockSetRefVersion();
+      final mockGetRefVersion = MockGetRefVersion();
+      final mockPubDevChecker = MockPubDevChecker();
+      final editedMessages = <String>[];
+
+      when(
+        () => mockCanPublishCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: Directory(path.join(ticketDir.path, 'A')),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
+          ),
+        ],
+      );
+
+      when(
+        () => mockUnlocalizeRefs.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGetVersion.get(
+          directory: any(named: 'directory'),
+        ),
+      ).thenAnswer((_) async => '1.0.0');
+      when(
+        () => mockGetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => mockSetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+          version: any(named: 'version'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockPubDevChecker.getPackagePublishInfo(
+          packageName: any(named: 'packageName'),
+        ),
+      ).thenAnswer(
+        (_) async => const PackagePublishInfo(
+          packageName: 'A',
+          waitsForPubDev: false,
+        ),
+      );
+
+      final runner = CommandRunner<void>('test', 'do publish ticket')
+        ..addCommand(
+          DoPublishCommand(
+            ggLog: ggLog,
+            ggDoPublish: mockGgDoPublish,
+            ggDoCommit: mockGgDoCommit,
+            ggDoPush: mockGgDoPush,
+            unlocalizeRefs: mockUnlocalizeRefs,
+            sortedProcessingList: mockSortedProcessingList,
+            processRunner: mockProcessRunner.call,
+            canPublishCommand: mockCanPublishCommand,
+            getVersionCommand: mockGetVersion,
+            setRefVersionCommand: mockSetRefVersion,
+            getRefVersionCommand: mockGetRefVersion,
+            pubDevChecker: mockPubDevChecker,
+            editMessage: (initialMessage) async {
+              editedMessages.add(initialMessage);
+              return 'edited explicit message';
+            },
+          ),
+        );
+
+      await runner.run([
+        'publish',
+        '--force',
+        '--input',
+        ticketDir.path,
+        '--message',
+        'explicit message',
+      ]);
+
+      expect(editedMessages, equals(<String>['explicit message']));
+      verify(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: 'edited explicit message',
+        ),
+      ).called(1);
+    });
+
+    test('uses ticket description as initial value when message is null',
+        () async {
+      File(path.join(ticketDir.path, '.ticket')).writeAsStringSync(
+        jsonEncode(
+          <String, String>{
+            'issue_id': 'TICKPB',
+            'description': 'ticket description',
+          },
+        ),
+      );
+
+      final mockGgDoPublish = MockGgDoPublish();
+      final mockGgDoCommit = MockGgDoCommit();
+      final mockGgDoPush = MockGgDoPush();
+      final mockUnlocalizeRefs = MockUnlocalizeRefs();
+      final mockSortedProcessingList = MockSortedProcessingList();
+      final mockProcessRunner = MockProcessRunner();
+      final mockCanPublishCommand = MockCanPublishCommand();
+      final mockGetVersion = MockGetVersion();
+      final mockSetRefVersion = MockSetRefVersion();
+      final mockGetRefVersion = MockGetRefVersion();
+      final mockPubDevChecker = MockPubDevChecker();
+      final editedMessages = <String>[];
+
+      when(
+        () => mockCanPublishCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: Directory(path.join(ticketDir.path, 'A')),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
+          ),
+        ],
+      );
+
+      when(
+        () => mockUnlocalizeRefs.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGetVersion.get(
+          directory: any(named: 'directory'),
+        ),
+      ).thenAnswer((_) async => '1.0.0');
+      when(
+        () => mockGetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => mockSetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+          version: any(named: 'version'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockPubDevChecker.getPackagePublishInfo(
+          packageName: any(named: 'packageName'),
+        ),
+      ).thenAnswer(
+        (_) async => const PackagePublishInfo(
+          packageName: 'A',
+          waitsForPubDev: false,
+        ),
+      );
+
+      final runner = CommandRunner<void>('test', 'do publish ticket')
+        ..addCommand(
+          DoPublishCommand(
+            ggLog: ggLog,
+            ggDoPublish: mockGgDoPublish,
+            ggDoCommit: mockGgDoCommit,
+            ggDoPush: mockGgDoPush,
+            unlocalizeRefs: mockUnlocalizeRefs,
+            sortedProcessingList: mockSortedProcessingList,
+            processRunner: mockProcessRunner.call,
+            canPublishCommand: mockCanPublishCommand,
+            getVersionCommand: mockGetVersion,
+            setRefVersionCommand: mockSetRefVersion,
+            getRefVersionCommand: mockGetRefVersion,
+            pubDevChecker: mockPubDevChecker,
+            editMessage: (initialMessage) async {
+              editedMessages.add(initialMessage);
+              return 'edited ticket message';
+            },
+          ),
+        );
+
+      await runner.run([
+        'publish',
+        '--force',
+        '--input',
+        ticketDir.path,
+      ]);
+
+      expect(editedMessages, equals(<String>['ticket description']));
+      verify(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: 'edited ticket message',
+        ),
+      ).called(1);
     });
 
     test('does not wait for dependency with publish_to none', () async {
@@ -379,6 +658,7 @@ void main() {
         () => mockGgDoPublish.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -432,6 +712,7 @@ void main() {
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
+            editMessage: (initialMessage) async => initialMessage,
           ),
         );
 
@@ -499,6 +780,7 @@ void main() {
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
+            editMessage: (initialMessage) async => initialMessage,
           ),
         );
       await expectLater(
@@ -583,6 +865,7 @@ void main() {
         () => mockGgDoPublish.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
         ),
       ).thenAnswer((invocation) {
         final repoDir = invocation.namedArguments[#directory] as Directory;
@@ -657,6 +940,7 @@ void main() {
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
+            editMessage: (initialMessage) async => initialMessage,
           ),
         );
       await expectLater(
@@ -761,6 +1045,7 @@ void main() {
         () => mockGgDoPublish.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
         ),
       ).thenAnswer((_) async {});
 
@@ -829,6 +1114,7 @@ void main() {
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
+            editMessage: (initialMessage) async => initialMessage,
           ),
         );
       await expectLater(
@@ -929,6 +1215,7 @@ void main() {
         () => mockGgDoPublish.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -966,6 +1253,7 @@ void main() {
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
+            editMessage: (initialMessage) async => initialMessage,
           ),
         );
 
@@ -1087,6 +1375,7 @@ void main() {
           () => mockGgDoPublish.exec(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -1134,6 +1423,7 @@ void main() {
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
               pubDevChecker: mockPubDevChecker,
+              editMessage: (initialMessage) async => initialMessage,
             ),
           );
 
@@ -1250,6 +1540,7 @@ void main() {
           () => mockGgDoPublish.exec(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -1297,6 +1588,7 @@ void main() {
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
               pubDevChecker: mockPubDevChecker,
+              editMessage: (initialMessage) async => initialMessage,
             ),
           );
 
@@ -1412,6 +1704,7 @@ void main() {
           () => mockGgDoPublish.exec(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -1459,6 +1752,7 @@ void main() {
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
               pubDevChecker: mockPubDevChecker,
+              editMessage: (initialMessage) async => initialMessage,
             ),
           );
 

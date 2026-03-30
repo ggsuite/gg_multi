@@ -33,12 +33,12 @@ class TicketCommand extends DirCommand<void> {
         directoryFactory = directoryFactory ?? Directory.new
   // coverage:ignore-end
   {
-    // The ticket message is optional. A ticket might only consist of an ID.
+    // The ticket message
     argParser.addOption(
       'message',
       abbr: 'm',
-      help: 'Ticket description (optional).',
-      mandatory: false,
+      help: 'Ticket description.',
+      mandatory: true,
     );
   }
 
