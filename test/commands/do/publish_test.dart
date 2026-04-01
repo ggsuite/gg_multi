@@ -118,6 +118,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            confirmDeleteTicket: (_) => false,
           ),
         );
       await runner.run(['publish', '--force', '--input', emptyTicket.path]);
@@ -252,6 +253,14 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['push', 'origin', '--delete', 'TICKPB'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
           DoPublishCommand(
@@ -268,6 +277,7 @@ void main() {
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
             editMessage: (initialMessage) async => initialMessage,
+            confirmDeleteTicket: (_) => true,
           ),
         );
       await runner.run([
@@ -417,6 +427,7 @@ void main() {
               editedMessages.add(initialMessage);
               return 'edited explicit message';
             },
+            confirmDeleteTicket: (_) => false,
           ),
         );
 
@@ -561,6 +572,7 @@ void main() {
               editedMessages.add(initialMessage);
               return 'edited ticket message';
             },
+            confirmDeleteTicket: (_) => false,
           ),
         );
 
@@ -713,6 +725,7 @@ void main() {
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
             editMessage: (initialMessage) async => initialMessage,
+            confirmDeleteTicket: (_) => false,
           ),
         );
 
@@ -781,6 +794,7 @@ void main() {
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
             editMessage: (initialMessage) async => initialMessage,
+            confirmDeleteTicket: (_) => false,
           ),
         );
       await expectLater(
@@ -941,6 +955,7 @@ void main() {
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
             editMessage: (initialMessage) async => initialMessage,
+            confirmDeleteTicket: (_) => true,
           ),
         );
       await expectLater(
@@ -1115,6 +1130,7 @@ void main() {
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
             editMessage: (initialMessage) async => initialMessage,
+            confirmDeleteTicket: (_) => true,
           ),
         );
       await expectLater(
@@ -1254,6 +1270,7 @@ void main() {
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
             editMessage: (initialMessage) async => initialMessage,
+            confirmDeleteTicket: (_) => true,
           ),
         );
 
@@ -1424,6 +1441,7 @@ void main() {
               getRefVersionCommand: mockGetRefVersion,
               pubDevChecker: mockPubDevChecker,
               editMessage: (initialMessage) async => initialMessage,
+              confirmDeleteTicket: (_) => false,
             ),
           );
 
@@ -1589,6 +1607,7 @@ void main() {
               getRefVersionCommand: mockGetRefVersion,
               pubDevChecker: mockPubDevChecker,
               editMessage: (initialMessage) async => initialMessage,
+              confirmDeleteTicket: (_) => false,
             ),
           );
 
@@ -1736,6 +1755,13 @@ void main() {
         when(
           () => mockDirB.deleteSync(recursive: true),
         ).thenThrow(Exception('delete failed'));
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['push', 'origin', '--delete', 'TICKPB'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
 
         final runner = CommandRunner<void>('test', 'do publish ticket')
           ..addCommand(
@@ -1753,6 +1779,7 @@ void main() {
               getRefVersionCommand: mockGetRefVersion,
               pubDevChecker: mockPubDevChecker,
               editMessage: (initialMessage) async => initialMessage,
+              confirmDeleteTicket: (_) => true,
             ),
           );
 
@@ -1774,6 +1801,143 @@ void main() {
         );
       },
     );
+
+    test('logs error when remote branch deletion fails', () async {
+      final mockGgDoPublish = MockGgDoPublish();
+      final mockGgDoCommit = MockGgDoCommit();
+      final mockGgDoPush = MockGgDoPush();
+      final mockUnlocalizeRefs = MockUnlocalizeRefs();
+      final mockSortedProcessingList = MockSortedProcessingList();
+      final mockProcessRunner = MockProcessRunner();
+      final mockCanPublishCommand = MockCanPublishCommand();
+      final mockGetVersion = MockGetVersion();
+      final mockSetRefVersion = MockSetRefVersion();
+      final mockGetRefVersion = MockGetRefVersion();
+      final mockPubDevChecker = MockPubDevChecker();
+
+      when(
+        () => mockCanPublishCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: Directory(path.join(ticketDir.path, 'A')),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
+          ),
+        ],
+      );
+      when(
+        () => mockUnlocalizeRefs.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGetVersion.get(
+          directory: any(named: 'directory'),
+        ),
+      ).thenAnswer((_) async => '1.0.0');
+      when(
+        () => mockGetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => mockSetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+          version: any(named: 'version'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockPubDevChecker.getPackagePublishInfo(
+          packageName: any(named: 'packageName'),
+        ),
+      ).thenAnswer(
+        (_) async => const PackagePublishInfo(
+          packageName: 'A',
+          waitsForPubDev: false,
+        ),
+      );
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['push', 'origin', '--delete', 'TICKPB'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(1, 1, '', 'branch delete fail'));
+
+      final runner = CommandRunner<void>('test', 'do publish ticket')
+        ..addCommand(
+          DoPublishCommand(
+            ggLog: ggLog,
+            ggDoPublish: mockGgDoPublish,
+            ggDoCommit: mockGgDoCommit,
+            ggDoPush: mockGgDoPush,
+            unlocalizeRefs: mockUnlocalizeRefs,
+            sortedProcessingList: mockSortedProcessingList,
+            processRunner: mockProcessRunner.call,
+            canPublishCommand: mockCanPublishCommand,
+            getVersionCommand: mockGetVersion,
+            setRefVersionCommand: mockSetRefVersion,
+            getRefVersionCommand: mockGetRefVersion,
+            pubDevChecker: mockPubDevChecker,
+            editMessage: (initialMessage) async => initialMessage,
+            confirmDeleteTicket: (_) => true,
+          ),
+        );
+
+      await runner.run([
+        'publish',
+        '--force',
+        '--input',
+        ticketDir.path,
+      ]);
+
+      expect(
+        messages.any(
+          (m) => m.contains(
+            'Failed to delete repository A from ticket TICKPB: '
+            'Exception: Failed to delete remote branch TICKPB '
+            'for A: branch delete fail',
+          ),
+        ),
+        isTrue,
+      );
+      expect(Directory(path.join(ticketDir.path, 'A')).existsSync(), isTrue);
+    });
   });
 }
 

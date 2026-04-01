@@ -31,6 +31,9 @@ typedef ProcessRunner = Future<ProcessResult> Function(
 /// Typedef for launching an interactive editor.
 typedef EditMessage = Future<String?> Function(String initialMessage);
 
+/// Typedef for asking the user whether the ticket should be deleted.
+typedef ConfirmDeleteTicket = bool Function(String ticketName);
+
 /// Command to publish all repos in the ticket.
 class DoPublishCommand extends DirCommand<void> {
   /// Constructor
@@ -50,6 +53,7 @@ class DoPublishCommand extends DirCommand<void> {
     GetRefVersion? getRefVersionCommand,
     PubDevChecker? pubDevChecker,
     EditMessage? editMessage,
+    ConfirmDeleteTicket? confirmDeleteTicket,
   })  : _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
         _unlocalizeRefs = unlocalizeRefs ?? ChangeRefsToPubDev(ggLog: ggLog),
         _ggDoPush = ggDoPush ?? gg.DoPush(ggLog: ggLog),
@@ -62,7 +66,10 @@ class DoPublishCommand extends DirCommand<void> {
         _setRefVersion = setRefVersionCommand ?? SetRefVersion(ggLog: ggLog),
         _getRefVersion = getRefVersionCommand ?? GetRefVersion(ggLog: ggLog),
         _pubDevChecker = pubDevChecker ?? PubDevChecker(),
-        _editMessage = editMessage ?? _defaultEditMessage {
+        _editMessage = editMessage ?? _defaultEditMessage,
+        _processRunner = processRunner ?? _defaultProcessRunner,
+        _confirmDeleteTicket =
+            confirmDeleteTicket ?? _defaultConfirmDeleteTicket {
     _addArgs();
   }
 
@@ -98,6 +105,12 @@ class DoPublishCommand extends DirCommand<void> {
 
   /// Opens an interactive editor for the publish message.
   final EditMessage _editMessage;
+
+  /// Runs shell commands such as branch deletion.
+  final ProcessRunner _processRunner;
+
+  /// Asks the user whether the ticket should be deleted.
+  final ConfirmDeleteTicket _confirmDeleteTicket;
 
   @override
   Future<void> exec({
@@ -269,12 +282,30 @@ class DoPublishCommand extends DirCommand<void> {
       taskLog(green('$repoName: published successfully.'));
     }
 
+    final shouldDeleteTicket = _confirmDeleteTicket(ticketName);
+    if (!shouldDeleteTicket) {
+      taskLog(
+        yellow(
+          'Skipped deleting repositories in ticket $ticketName.',
+        ),
+      );
+      taskLog(
+        '✅ All repositories in ticket $ticketName published successfully.',
+      );
+      return;
+    }
+
     for (final repo in subs) {
       final repoDir = repo.directory;
       final repoName = path.basename(repoDir.path);
 
-      // delete the repository from the ticket
       try {
+        await _deleteRemoteBranch(
+          repoDir: repoDir,
+          branchName: ticketName,
+          ggLog: taskLog,
+        );
+
         if (repoDir.existsSync()) {
           repoDir.deleteSync(recursive: true);
           taskLog(
@@ -335,6 +366,33 @@ class DoPublishCommand extends DirCommand<void> {
     }
   }
 
+  /// Deletes the remote feature branch [branchName] for [repoDir].
+  Future<void> _deleteRemoteBranch({
+    required Directory repoDir,
+    required String branchName,
+    required GgLog ggLog,
+  }) async {
+    final repoName = path.basename(repoDir.path);
+    final result = await _processRunner(
+      'git',
+      <String>['push', 'origin', '--delete', branchName],
+      workingDirectory: repoDir.path,
+    );
+
+    if (result.exitCode != 0) {
+      throw Exception(
+        'Failed to delete remote branch $branchName for $repoName: '
+        '${result.stderr}',
+      );
+    }
+
+    ggLog(
+      green(
+        'Deleted remote branch $branchName for $repoName.',
+      ),
+    );
+  }
+
   /// Reads the optional description from the ticket configuration file.
   String? _readTicketDescription(Directory ticketDir) {
     final ticketFile = File(path.join(ticketDir.path, '.ticket'));
@@ -362,6 +420,29 @@ class DoPublishCommand extends DirCommand<void> {
       prompt: 'Edit merge message',
       defaultValue: initialMessage,
       initialText: initialMessage,
+    ).interact();
+  }
+
+  /// Runs system processes with shell support.
+  static Future<ProcessResult> _defaultProcessRunner(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+  }) {
+    return Process.run(
+      executable,
+      arguments,
+      workingDirectory: workingDirectory,
+      runInShell: true,
+    );
+  }
+
+  /// Asks the user whether the ticket repositories should be deleted.
+  static bool _defaultConfirmDeleteTicket(String ticketName) {
+    return Confirm(
+      prompt: 'Delete ticket $ticketName and remove remote feature branches?',
+      defaultValue: false,
+      waitForNewLine: true,
     ).interact();
   }
   // coverage:ignore-end
