@@ -10,6 +10,12 @@
 
 - remove unlocalize step from do review command and tests
 
+## [2.6.0] - 2026-04-07
+
+### Added
+
+- Add gg merge main into feat step to can publish command
+
 ## [2.5.0] - 2026-04-01
 
 ## [2.4.2] - 2026-03-31
@@ -167,6 +173,7 @@
 - Remove prints
 - Remove gh pr create from review
 
+[2.6.0]: https://github.com/ggsuite/kidney_core/compare/2.5.0...2.6.0
 [2.5.0]: https://github.com/ggsuite/kidney_core/compare/2.4.2...2.5.0
 [2.4.2]: https://github.com/ggsuite/kidney_core/compare/2.4.1...2.4.2
 [2.4.1]: https://github.com/ggsuite/kidney_core/compare/2.4.0...2.4.1

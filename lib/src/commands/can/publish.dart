@@ -7,6 +7,7 @@
 import 'dart:io';
 
 import 'package:gg/gg.dart' as gg;
+import 'package:gg_publish/gg_publish.dart' as gg_publish;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
@@ -50,11 +51,14 @@ class CanPublishCommand extends DirCommand<void> {
         'Checks if all repositories in the current ticket can be published.',
     gg.CanCommit? ggCanCommit,
     gg.CanMerge? ggCanMerge,
+    gg_publish.MergeMainIntoFeat? ggMergeMainIntoFeat,
     SortedProcessingList? sortedProcessingList,
     ProcessRunner? processRunner,
     DidCommitCommand? didCommitCommand,
     DoPushCommand? doPushCommand,
   })  : _ggCanMerge = ggCanMerge ?? gg.CanMerge(ggLog: ggLog),
+        _ggMergeMainIntoFeat =
+            ggMergeMainIntoFeat ?? gg_publish.MergeMainIntoFeat(ggLog: ggLog),
         _sortedProcessingList =
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
         _processRunner = processRunner ?? _defaultProcessRunner,
@@ -65,6 +69,9 @@ class CanPublishCommand extends DirCommand<void> {
 
   /// Instance of gg CanMerge
   final gg.CanMerge _ggCanMerge;
+
+  /// Instance of gg MergeMainIntoFeat
+  final gg_publish.MergeMainIntoFeat _ggMergeMainIntoFeat;
 
   /// Instance of SortedProcessingList
   final SortedProcessingList _sortedProcessingList;
@@ -146,7 +153,18 @@ class CanPublishCommand extends DirCommand<void> {
       ),
     );
 
-    // Step 4: Run kidney_core do push ---------------------------------------
+    // Step 4: Run gg merge main into feat -----------------------------------
+    await GgStatusPrinter<void>(
+      message: 'Merge main into feat?',
+      ggLog: ggLog,
+    ).run(
+      () async => _runMergeMainIntoFeat(
+        ticketDir: ticketDir,
+        ggLog: taskLog,
+      ),
+    );
+
+    // Step 5: Run kidney_core do push ---------------------------------------
     await GgStatusPrinter<void>(
       message: 'Running do push',
       ggLog: ggLog,
@@ -157,7 +175,7 @@ class CanPublishCommand extends DirCommand<void> {
       ),
     );
 
-    // Step 5: Run gg can merge per repo -------------------------------------
+    // Step 6: Run gg can merge per repo -------------------------------------
     await GgStatusPrinter<void>(
       message: 'Can merge?',
       ggLog: ggLog,
@@ -211,6 +229,19 @@ class CanPublishCommand extends DirCommand<void> {
     } catch (e) {
       ggLog(red('kidney_core did commit failed: $e'));
       throw Exception('kidney_core did commit failed');
+    }
+  }
+
+  /// Executes gg merge main into feat for the ticket.
+  Future<void> _runMergeMainIntoFeat({
+    required Directory ticketDir,
+    required GgLog ggLog,
+  }) async {
+    try {
+      await _ggMergeMainIntoFeat.exec(directory: ticketDir, ggLog: ggLog);
+    } catch (e) {
+      ggLog(red('gg merge main into feat failed: $e'));
+      throw Exception('gg merge main into feat failed');
     }
   }
 
