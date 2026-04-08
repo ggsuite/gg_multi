@@ -159,23 +159,13 @@ class CanPublishCommand extends DirCommand<void> {
       ggLog: ggLog,
     ).run(
       () async => _runMergeMainIntoFeat(
-        ticketDir: ticketDir,
+        ticketName: ticketName,
+        subs: subs,
         ggLog: taskLog,
       ),
     );
 
-    // Step 5: Run kidney_core do push ---------------------------------------
-    await GgStatusPrinter<void>(
-      message: 'Running do push',
-      ggLog: ggLog,
-    ).run(
-      () async => _runDoPush(
-        ticketDir: ticketDir,
-        ggLog: taskLog,
-      ),
-    );
-
-    // Step 6: Run gg can merge per repo -------------------------------------
+    // Step 5: Run gg can merge per repo -------------------------------------
     await GgStatusPrinter<void>(
       message: 'Can merge?',
       ggLog: ggLog,
@@ -183,6 +173,17 @@ class CanPublishCommand extends DirCommand<void> {
       () async => _checkCanMerge(
         ticketName: ticketName,
         subs: subs,
+        ggLog: taskLog,
+      ),
+    );
+
+    // Step 6: Run kidney_core do push ---------------------------------------
+    await GgStatusPrinter<void>(
+      message: 'Running do push',
+      ggLog: ggLog,
+    ).run(
+      () async => _runDoPush(
+        ticketDir: ticketDir,
         ggLog: taskLog,
       ),
     );
@@ -232,16 +233,27 @@ class CanPublishCommand extends DirCommand<void> {
     }
   }
 
-  /// Executes gg merge main into feat for the ticket.
+  /// Executes gg merge main into feat for every repository in the ticket.
   Future<void> _runMergeMainIntoFeat({
-    required Directory ticketDir,
+    required String ticketName,
+    required List<Node> subs,
     required GgLog ggLog,
   }) async {
-    try {
-      await _ggMergeMainIntoFeat.exec(directory: ticketDir, ggLog: ggLog);
-    } catch (e) {
-      ggLog(red('gg merge main into feat failed: $e'));
-      throw Exception('gg merge main into feat failed');
+    for (final repo in subs) {
+      final repoDir = repo.directory;
+      final repoName = path.basename(repoDir.path);
+
+      try {
+        await _ggMergeMainIntoFeat.exec(directory: repoDir, ggLog: ggLog);
+      } catch (e) {
+        ggLog(
+          red(
+            'gg merge main into feat failed for $repoName in ticket '
+            '$ticketName: $e',
+          ),
+        );
+        throw Exception('gg merge main into feat failed: $e');
+      }
     }
   }
 

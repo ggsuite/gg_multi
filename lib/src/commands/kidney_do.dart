@@ -8,6 +8,7 @@ import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:kidney_core/src/commands/do/add.dart';
 import 'package:kidney_core/src/commands/do/add_deps.dart';
+import 'package:kidney_core/src/commands/do/cancel_review.dart';
 import 'package:kidney_core/src/commands/do/code.dart';
 import 'package:kidney_core/src/commands/do/create.dart';
 import 'package:kidney_core/src/commands/do/init.dart';
@@ -46,6 +47,7 @@ class Do extends Command<void> {
     addSubcommand(DoPushCommand(ggLog: ggLog));
     addSubcommand(DoPublishCommand(ggLog: ggLog));
     addSubcommand(DoReviewCommand(ggLog: ggLog));
+    addSubcommand(DoCancelReviewCommand(ggLog: ggLog));
     addSubcommand(DoExecuteCommand(ggLog: ggLog));
     addSubcommand(DoInstallGitHooksCommand(ggLog: ggLog));
     addSubcommand(AddDepsCommand(ggLog: ggLog));

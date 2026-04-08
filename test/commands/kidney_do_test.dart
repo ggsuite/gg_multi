@@ -44,6 +44,7 @@ void main() {
           'publish',
           'review',
           'install-git-hooks',
+          'cancel-review',
         ],
       );
 

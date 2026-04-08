@@ -10,6 +10,18 @@
 
 - remove unlocalize step from do review command and tests
 
+## [2.7.0] - 2026-04-08
+
+### Added
+
+- Add test for quiet taskLog behavior when verbose is false
+
+### Changed
+
+- kidney: changed references to local
+- Run merge main into feat for all repos in ticket during publish
+- Swap order of can merge and do push in can publish flow
+
 ## [2.6.0] - 2026-04-07
 
 ### Added
@@ -173,6 +185,7 @@
 - Remove prints
 - Remove gh pr create from review
 
+[2.7.0]: https://github.com/ggsuite/kidney_core/compare/2.6.0...2.7.0
 [2.6.0]: https://github.com/ggsuite/kidney_core/compare/2.5.0...2.6.0
 [2.5.0]: https://github.com/ggsuite/kidney_core/compare/2.4.2...2.5.0
 [2.4.2]: https://github.com/ggsuite/kidney_core/compare/2.4.1...2.4.2

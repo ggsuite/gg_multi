@@ -9,11 +9,10 @@
       "type": "dart",
       "request": "launch",
       "program": "${workspaceFolder}/bin/kidney_core.dart",
-      "cwd": "P:\\workspace_grace_cloud\\tickets\\feat-new-gg-version-11",
+      "cwd": "P:\\workspace_grace_cloud\\tickets\\feat-cancel-review",
       "args": [
-        "do",
-        "publish",
-        "--force"
+        "can",
+        "publish"
       ],
       "console": "debugConsole"
     },

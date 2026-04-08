@@ -301,7 +301,7 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
         ),
-      ).called(1);
+      ).called(2);
       expect(
         messages.any(
           (m) => m.contains(
@@ -604,7 +604,13 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
         ),
-      ).thenThrow(Exception('Merge main into feat failed'));
+      ).thenAnswer((invocation) {
+        final repoDir = invocation.namedArguments[#directory] as Directory;
+        if (path.basename(repoDir.path) == 'B') {
+          throw Exception('Merge main into feat failed');
+        }
+        return Future.value();
+      });
 
       when(
         () => mockDoPushCommand.exec(
@@ -645,8 +651,8 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            'gg merge main into feat failed: '
-            'Exception: Merge main into feat failed',
+            'gg merge main into feat failed for B in ticket '
+            'TICKPB: Exception: Merge main into feat failed',
           ),
         ),
         isTrue,
@@ -766,13 +772,6 @@ void main() {
         ),
         isTrue,
       );
-      // Ensure can merge is not called
-      verifyNever(
-        () => mockGgCanMerge.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      );
     });
 
     test(
@@ -887,7 +886,7 @@ void main() {
         expect(
           localMessages.last,
           contains(
-            '✅ Can merge?',
+            '✅ Running do push',
           ),
         );
       },
