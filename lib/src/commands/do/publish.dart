@@ -20,6 +20,7 @@ import 'package:path/path.dart' as path;
 import '../../backend/pub_dev_checker.dart';
 import '../../backend/workspace_utils.dart';
 import '../../commands/can/publish.dart';
+import 'review.dart';
 
 /// Typedef for running processes (for injection & tests).
 typedef ProcessRunner = Future<ProcessResult> Function(
@@ -48,6 +49,7 @@ class DoPublishCommand extends DirCommand<void> {
     SortedProcessingList? sortedProcessingList,
     ProcessRunner? processRunner,
     CanPublishCommand? canPublishCommand,
+    DoReviewCommand? doReviewCommand,
     GetVersion? getVersionCommand,
     SetRefVersion? setRefVersionCommand,
     GetRefVersion? getRefVersionCommand,
@@ -62,6 +64,7 @@ class DoPublishCommand extends DirCommand<void> {
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
         _canPublishCommand =
             canPublishCommand ?? CanPublishCommand(ggLog: ggLog),
+        _doReviewCommand = doReviewCommand ?? DoReviewCommand(ggLog: ggLog),
         _getVersion = getVersionCommand ?? GetVersion(ggLog: ggLog),
         _setRefVersion = setRefVersionCommand ?? SetRefVersion(ggLog: ggLog),
         _getRefVersion = getRefVersionCommand ?? GetRefVersion(ggLog: ggLog),
@@ -90,6 +93,9 @@ class DoPublishCommand extends DirCommand<void> {
 
   /// Instance of CanPublishCommand
   final CanPublishCommand _canPublishCommand;
+
+  /// Reviews all repositories in the ticket before validation starts.
+  final DoReviewCommand _doReviewCommand;
 
   /// Reads the current package version from pubspec.yaml
   final GetVersion _getVersion;
@@ -154,7 +160,18 @@ class DoPublishCommand extends DirCommand<void> {
     final ticketName = path.basename(ticketDir.path);
     final ticketDescription = _readTicketDescription(ticketDir);
 
-    // Step 2: Run kidney_core can publish
+    // Step 2: Run kidney_core do review
+    try {
+      await _doReviewCommand.exec(
+        directory: ticketDir,
+        ggLog: ggLog,
+        verbose: verbose,
+      );
+    } catch (e) {
+      throw Exception('kidney_core do review failed: $e');
+    }
+
+    // Step 3: Run kidney_core can publish
     try {
       await _canPublishCommand.exec(directory: ticketDir, ggLog: ggLog);
     } catch (e) {

@@ -10,6 +10,12 @@
 
 - remove unlocalize step from do review command and tests
 
+## [2.7.1] - 2026-04-08
+
+### Changed
+
+- Run do push before can publish in DoPublishCommand workflow
+
 ## [2.7.0] - 2026-04-08
 
 ### Added
@@ -185,6 +191,7 @@
 - Remove prints
 - Remove gh pr create from review
 
+[2.7.1]: https://github.com/ggsuite/kidney_core/compare/2.7.0...2.7.1
 [2.7.0]: https://github.com/ggsuite/kidney_core/compare/2.6.0...2.7.0
 [2.6.0]: https://github.com/ggsuite/kidney_core/compare/2.5.0...2.6.0
 [2.5.0]: https://github.com/ggsuite/kidney_core/compare/2.4.2...2.5.0
