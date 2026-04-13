@@ -10,6 +10,8 @@
 
 - remove unlocalize step from do review command and tests
 
+## [2.7.2] - 2026-04-13
+
 ## [2.7.1] - 2026-04-08
 
 ### Changed
@@ -191,6 +193,7 @@
 - Remove prints
 - Remove gh pr create from review
 
+[2.7.2]: https://github.com/ggsuite/kidney_core/compare/2.7.1...2.7.2
 [2.7.1]: https://github.com/ggsuite/kidney_core/compare/2.7.0...2.7.1
 [2.7.0]: https://github.com/ggsuite/kidney_core/compare/2.6.0...2.7.0
 [2.6.0]: https://github.com/ggsuite/kidney_core/compare/2.5.0...2.6.0
