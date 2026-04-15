@@ -273,6 +273,7 @@ class DoPublishCommand extends DirCommand<void> {
         directory: repoDir,
         ggLog: ggLog,
         message: publishMessage,
+        deleteFeatureBranch: false,
       );
 
       // Capture current repo version and propagate known versions

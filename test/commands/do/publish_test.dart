@@ -357,6 +357,7 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
         ),
       ).thenAnswer((_) async {});
 
@@ -537,6 +538,7 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -607,6 +609,7 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           message: 'edited explicit message',
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
         ),
       ).called(1);
     });
@@ -692,6 +695,7 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -760,6 +764,7 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           message: 'edited ticket message',
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
         ),
       ).called(1);
     });
@@ -851,6 +856,7 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -1080,6 +1086,7 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
         ),
       ).thenAnswer((invocation) {
         final repoDir = invocation.namedArguments[#directory] as Directory;
@@ -1271,6 +1278,7 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
         ),
       ).thenAnswer((_) async {});
 
@@ -1452,6 +1460,7 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -1623,6 +1632,7 @@ void main() {
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
             message: any(named: 'message'),
+            deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -1799,6 +1809,7 @@ void main() {
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
             message: any(named: 'message'),
+            deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -1974,6 +1985,7 @@ void main() {
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
             message: any(named: 'message'),
+            deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -2120,6 +2132,7 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
         ),
       ).thenAnswer((_) async {});
       when(
