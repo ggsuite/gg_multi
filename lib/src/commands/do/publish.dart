@@ -122,14 +122,12 @@ class DoPublishCommand extends DirCommand<void> {
   Future<void> exec({
     required Directory directory,
     required GgLog ggLog,
-    bool? force,
     String? message,
     bool? verbose,
   }) =>
       get(
         directory: directory,
         ggLog: ggLog,
-        force: force,
         message: message,
         verbose: verbose,
       );
@@ -138,11 +136,9 @@ class DoPublishCommand extends DirCommand<void> {
   Future<void> get({
     required Directory directory,
     required GgLog ggLog,
-    bool? force,
     String? message,
     bool? verbose,
   }) async {
-    force ??= argResults?['force'] as bool? ?? false;
     message ??= argResults?['message'] as String?;
     verbose ??= argResults?['verbose'] as bool? ?? false;
 
@@ -206,20 +202,6 @@ class DoPublishCommand extends DirCommand<void> {
         confirmedPubDevVersions: confirmedPubDevVersions,
         ggLog: ggLog,
       );
-
-      // Skip confirmation when --force is set
-      if (!force) {
-        // coverage:ignore-start
-        final selected = Select(
-          prompt: 'Ready to publish $repoName in ticket $ticketName?',
-          options: ['No', 'Yes'],
-          initialIndex: 0,
-        ).interact();
-        if (selected == 0) {
-          return;
-        }
-        // coverage:ignore-end
-      }
 
       ggLog(yellow('Publishing $repoName ...'));
 
@@ -468,13 +450,6 @@ class DoPublishCommand extends DirCommand<void> {
 
   // Adds command line arguments
   void _addArgs() {
-    argParser.addFlag(
-      'force',
-      abbr: 'f',
-      help: 'Skip confirmation prompts and continue without asking.',
-      defaultsTo: false,
-      negatable: true,
-    );
     argParser.addOption(
       'message',
       abbr: 'm',

@@ -16,6 +16,10 @@
 
 - Change Confirm dialogs to Select dialogs
 
+### Removed
+
+- Remove --force option in do publish
+
 ## [2.8.1] - 2026-04-15
 
 ## [2.8.0] - 2026-04-14

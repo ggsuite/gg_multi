@@ -103,7 +103,6 @@ void main() {
         () async => await runner.run(
           [
             'publish',
-            '--force',
             '--input',
             tempDir.path,
           ],
@@ -158,7 +157,7 @@ void main() {
             confirmDeleteTicket: (_) => false,
           ),
         );
-      await runner.run(['publish', '--force', '--input', emptyTicket.path]);
+      await runner.run(['publish', '--input', emptyTicket.path]);
       expect(
         messages,
         contains('⚠️ No repositories found in ticket EMPTY.'),
@@ -205,7 +204,6 @@ void main() {
 
       await runner.run([
         'publish',
-        '--force',
         '--input',
         ticketDir.path,
       ]);
@@ -248,7 +246,6 @@ void main() {
       await expectLater(
         () async => await runner.run([
           'publish',
-          '--force',
           '--input',
           ticketDir.path,
         ]),
@@ -434,7 +431,6 @@ void main() {
         );
       await runner.run([
         'publish',
-        '--force',
         '--input',
         ticketDir.path,
         '--verbose',
@@ -596,7 +592,6 @@ void main() {
 
       await runner.run([
         'publish',
-        '--force',
         '--input',
         ticketDir.path,
         '--message',
@@ -753,7 +748,6 @@ void main() {
 
       await runner.run([
         'publish',
-        '--force',
         '--input',
         ticketDir.path,
       ]);
@@ -918,7 +912,6 @@ void main() {
 
       await runner.run([
         'publish',
-        '--force',
         '--input',
         ticketDir.path,
       ]);
@@ -995,8 +988,7 @@ void main() {
           ),
         );
       await expectLater(
-        () async =>
-            await runner.run(['publish', '--force', '--input', ticketDir.path]),
+        () async => await runner.run(['publish', '--input', ticketDir.path]),
         throwsA(
           isA<Exception>().having(
             (e) => e.toString(),
@@ -1169,7 +1161,6 @@ void main() {
       await expectLater(
         () async => await runner.run([
           'publish',
-          '--force',
           '--input',
           ticketDir.path,
         ]),
@@ -1355,7 +1346,6 @@ void main() {
       await expectLater(
         () async => await runner.run([
           'publish',
-          '--force',
           '--input',
           ticketDir.path,
         ]),
@@ -1507,7 +1497,6 @@ void main() {
       await expectLater(
         () async => await runner.run([
           'publish',
-          '--force',
           '--input',
           ticketDir.path,
         ]),
@@ -1688,7 +1677,6 @@ void main() {
 
         await runner.run([
           'publish',
-          '--force',
           '--input',
           ticketDir.path,
         ]);
@@ -1866,7 +1854,6 @@ void main() {
         await expectLater(
           () async => await runner.run([
             'publish',
-            '--force',
             '--input',
             ticketDir.path,
           ]),
@@ -2048,7 +2035,6 @@ void main() {
 
         await runner.run([
           'publish',
-          '--force',
           '--input',
           ticketDir.path,
         ]);
@@ -2194,7 +2180,6 @@ void main() {
 
       await runner.run([
         'publish',
-        '--force',
         '--input',
         ticketDir.path,
       ]);
