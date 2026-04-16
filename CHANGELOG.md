@@ -10,6 +10,12 @@
 
 - remove unlocalize step from do review command and tests
 
+## [Unreleased]
+
+### Changed
+
+- Change Confirm dialogs to Select dialogs
+
 ## [2.8.1] - 2026-04-15
 
 ## [2.8.0] - 2026-04-14
@@ -201,6 +207,7 @@
 - Remove prints
 - Remove gh pr create from review
 
+[Unreleased]: https://github.com/ggsuite/kidney_core/compare/2.8.1...HEAD
 [2.8.1]: https://github.com/ggsuite/kidney_core/compare/2.8.0...2.8.1
 [2.8.0]: https://github.com/ggsuite/kidney_core/compare/2.7.2...2.8.0
 [2.7.2]: https://github.com/ggsuite/kidney_core/compare/2.7.1...2.7.2

@@ -20,7 +20,7 @@ class PubDevChecker {
     Duration? timeout,
   })  : _httpClient = httpClient ?? http.Client(),
         _delay = delay ?? Future<void>.delayed,
-        pollInterval = pollInterval ?? const Duration(seconds: 5),
+        pollInterval = pollInterval ?? const Duration(seconds: 15),
         timeout = timeout ?? const Duration(minutes: 2);
 
   final http.Client _httpClient;

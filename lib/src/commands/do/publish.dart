@@ -210,12 +210,12 @@ class DoPublishCommand extends DirCommand<void> {
       // Skip confirmation when --force is set
       if (!force) {
         // coverage:ignore-start
-        final answer = Confirm(
+        final selected = Select(
           prompt: 'Ready to publish $repoName in ticket $ticketName?',
-          defaultValue: false,
-          waitForNewLine: true,
+          options: ['No', 'Yes'],
+          initialIndex: 0,
         ).interact();
-        if (answer == false) {
+        if (selected == 0) {
           return;
         }
         // coverage:ignore-end
@@ -457,11 +457,12 @@ class DoPublishCommand extends DirCommand<void> {
 
   /// Asks the user whether the ticket repositories should be deleted.
   static bool _defaultConfirmDeleteTicket(String ticketName) {
-    return Confirm(
+    final selected = Select(
       prompt: 'Delete ticket $ticketName and remove remote feature branches?',
-      defaultValue: false,
-      waitForNewLine: true,
+      options: ['No', 'Yes'],
+      initialIndex: 0,
     ).interact();
+    return selected == 1;
   }
   // coverage:ignore-end
 

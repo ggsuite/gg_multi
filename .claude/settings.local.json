@@ -4,7 +4,8 @@
       "Bash(dart test *)",
       "Bash(dart pub *)",
       "Bash(python3 -c \"import sys,json; deps=json.load\\(sys.stdin\\); [print\\(p['name'],p.get\\('source'\\),p.get\\('description',{}\\).get\\('path',''\\)\\) for p in deps.get\\('packages',[]\\)]\")",
-      "Bash(python3 -c \"import sys,json; cfg=json.load\\(sys.stdin\\); [print\\(p['name'],p.get\\('rootUri',''\\)\\) for p in cfg.get\\('packages',[]\\) if p['name']=='gg']\")"
+      "Bash(python3 -c \"import sys,json; cfg=json.load\\(sys.stdin\\); [print\\(p['name'],p.get\\('rootUri',''\\)\\) for p in cfg.get\\('packages',[]\\) if p['name']=='gg']\")",
+      "Bash(dart analyze *)"
     ]
   }
 }
