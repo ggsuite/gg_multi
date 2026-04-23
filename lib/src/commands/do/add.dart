@@ -22,6 +22,7 @@ import '../../backend/git_platform.dart';
 import '../../backend/workspace_utils.dart';
 import '../../backend/status_utils.dart';
 import 'install_git_hooks.dart';
+import 'install_gitattributes.dart';
 
 /// Typedef for a process runner function.
 typedef ProcessRunner = Future<ProcessResult> Function(
@@ -267,23 +268,26 @@ class AddCommand extends Command<dynamic> {
       ),
     );
 
+    // Write project configuration files (workspace + git hooks +
+    // .gitattributes). Must run before the relocalize/commit step, because
+    // gg requires ".gitattributes" with "* text=auto eol=lf" to be present
+    // before any "gg do commit" call.
+    await GgStatusPrinter<void>(
+      message: 'Writing project config files',
+      ggLog: ggLog,
+    ).run(
+      () => _writeProjectConfigFiles(
+        ticketDir: ticketDir,
+        ggLog: taskLog,
+      ),
+    );
+
     // Finally perform a single re-localization pass for the whole ticket.
     await GgStatusPrinter<void>(
       message: 'Set dependencies to path, committing',
       ggLog: ggLog,
     ).run(
       () => _relocalizeAllReposInTicket(
-        ticketDir: ticketDir,
-        ggLog: taskLog,
-      ),
-    );
-
-    // Write project configuration files (workspace + git hooks).
-    await GgStatusPrinter<void>(
-      message: 'Writing project config files',
-      ggLog: ggLog,
-    ).run(
-      () => _writeProjectConfigFiles(
         ticketDir: ticketDir,
         ggLog: taskLog,
       ),
@@ -534,12 +538,18 @@ class AddCommand extends Command<dynamic> {
       }
 
       // Commit changes per repository -----------------------------------------
+      //
+      // Pass `updateChangeLog: false` to avoid gg_changelog, which
+      // unconditionally reads pubspec.yaml and therefore fails in
+      // TypeScript repositories. This is a purely mechanical
+      // "reference rewrite" commit and does not belong in the changelog.
       try {
         await _ggDoCommit.exec(
           directory: repoDir,
           ggLog: ggLog,
           message: 'kidney: changed references to path',
           force: true,
+          updateChangeLog: false,
         );
       } catch (e) {
         ggLog(red('Failed to commit $repoName: $e'));
@@ -600,6 +610,14 @@ class AddCommand extends Command<dynamic> {
     await _rewriteCodeWorkspace(ticketDir: ticketDir, ggLog: ggLog);
 
     await DoInstallGitHooksCommand(
+      ggLog: ggLog,
+      sortedProcessingList: _sortedProcessingList,
+    ).exec(
+      directory: ticketDir,
+      ggLog: ggLog,
+    );
+
+    await DoInstallGitattributesCommand(
       ggLog: ggLog,
       sortedProcessingList: _sortedProcessingList,
     ).exec(
