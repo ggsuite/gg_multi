@@ -32,6 +32,8 @@ class MockGitHubPlatform extends Mock implements GitHubPlatform {}
 
 class MockLocalizeRefs extends Mock implements ChangeRefsToLocal {}
 
+class MockBackupPublishTo extends Mock implements BackupPublishTo {}
+
 class MockProcessRunner extends Mock {
   Future<ProcessResult> call(
     String executable,
@@ -69,6 +71,7 @@ void main() {
       SortedProcessingList? sortedProcessingList,
       ChangeRefsToPubDev? unlocalizeRefs,
       ChangeRefsToLocal? localizeRefs,
+      BackupPublishTo? backupPublishTo,
       Graph? graph,
     }) {
       final execPath = Directory.systemTemp.createTempSync('exec_path_').path;
@@ -84,6 +87,7 @@ void main() {
           sortedProcessingList: sortedProcessingList,
           unlocalizeRefs: unlocalizeRefs,
           localizeRefs: localizeRefs,
+          backupPublishTo: backupPublishTo,
           graph: graph,
         ),
       );
@@ -2107,6 +2111,102 @@ version: 1.0.0
 
         expect(prePushHook.existsSync(), isTrue);
         expect(verifyPushScript.existsSync(), isTrue);
+      },
+    );
+
+    test(
+      'invokes BackupPublishTo before localize for each repo',
+      () async {
+        const repoName = 'backupRepo';
+        final repoDir = Directory(path.join(masterWorkspacePath, repoName))
+          ..createSync(recursive: true);
+        File(
+          path.join(repoDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync('name: $repoName');
+
+        final ticketDir = Directory(
+          path.join(tempDir.path, kidneyTicketFolder, 'T-BACKUP'),
+        )..createSync(recursive: true);
+
+        final mockSorted = MockSortedProcessingList();
+        when(
+          () => mockSorted.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            Node(
+              name: repoName,
+              directory: Directory(path.join(ticketDir.path, repoName)),
+              manifest: DartPackageManifest(pubspec: Pubspec(repoName)),
+            ),
+          ],
+        );
+
+        final mockUnloc = MockUnlocalizeRefs();
+        final mockLoc = MockLocalizeRefs();
+        final mockBackup = MockBackupPublishTo();
+
+        final order = <String>[];
+        when(
+          () => mockUnloc.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => mockBackup.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {
+          order.add('backup');
+        });
+        when(
+          () => mockLoc.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {
+          order.add('localize');
+        });
+
+        final mockProc = MockProcessRunner();
+        when(
+          () => mockProc(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+        final mockDoCommit = MockGgDoCommit();
+        when(
+          () => mockDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            logType: any(named: 'logType'),
+            updateChangeLog: any(named: 'updateChangeLog'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        createRunner(
+          executionPath: ticketDir.path,
+          processRunner: mockProc.call,
+          ggDoCommit: mockDoCommit,
+          sortedProcessingList: mockSorted,
+          unlocalizeRefs: mockUnloc,
+          localizeRefs: mockLoc,
+          backupPublishTo: mockBackup,
+        );
+
+        await runner.run(['add', repoName]);
+
+        expect(order, ['backup', 'localize']);
       },
     );
   });

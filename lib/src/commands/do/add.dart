@@ -67,6 +67,7 @@ class AddCommand extends Command<dynamic> {
     SortedProcessingList? sortedProcessingList,
     ChangeRefsToPubDev? unlocalizeRefs,
     ChangeRefsToLocal? localizeRefs,
+    BackupPublishTo? backupPublishTo,
     Graph? graph,
     // coverage:ignore-start
   })  : gitCloner = gitCloner ?? GitHandler(),
@@ -80,6 +81,7 @@ class AddCommand extends Command<dynamic> {
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
         _unlocalizeRefs = unlocalizeRefs ?? ChangeRefsToPubDev(ggLog: ggLog),
         _localizeRefs = localizeRefs ?? ChangeRefsToLocal(ggLog: ggLog),
+        _backupPublishTo = backupPublishTo ?? BackupPublishTo(ggLog: ggLog),
         _graph = graph ?? Graph(ggLog: ggLog)
   // coverage:ignore-end
   {
@@ -127,6 +129,10 @@ class AddCommand extends Command<dynamic> {
 
   /// Localize refs helper.
   final ChangeRefsToLocal _localizeRefs;
+
+  /// Captures the original `publish_to` value so it can be restored on
+  /// publish.
+  final BackupPublishTo _backupPublishTo;
 
   /// Graph helper for determining nodes between endpoints.
   final Graph _graph;
@@ -505,6 +511,7 @@ class AddCommand extends Command<dynamic> {
       final repoDir = node.directory;
       final repoName = path.basename(repoDir.path);
       try {
+        await _backupPublishTo.exec(directory: repoDir, ggLog: ggLog);
         await _localizeRefs.get(directory: repoDir, ggLog: ggLog);
         StatusUtils.setStatus(
           repoDir,

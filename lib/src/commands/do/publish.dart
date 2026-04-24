@@ -44,6 +44,7 @@ class DoPublishCommand extends DirCommand<void> {
     super.description = 'Publishes all repositories in the current ticket.',
     gg.DoCommit? ggDoCommit,
     ChangeRefsToPubDev? unlocalizeRefs,
+    RestorePublishTo? restorePublishTo,
     gg.DoPush? ggDoPush,
     gg.DoPublish? ggDoPublish,
     SortedProcessingList? sortedProcessingList,
@@ -58,6 +59,7 @@ class DoPublishCommand extends DirCommand<void> {
     ConfirmDeleteTicket? confirmDeleteTicket,
   })  : _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
         _unlocalizeRefs = unlocalizeRefs ?? ChangeRefsToPubDev(ggLog: ggLog),
+        _restorePublishTo = restorePublishTo ?? RestorePublishTo(ggLog: ggLog),
         _ggDoPush = ggDoPush ?? gg.DoPush(ggLog: ggLog),
         _ggDoPublish = ggDoPublish ?? gg.DoPublish(ggLog: ggLog),
         _sortedProcessingList =
@@ -81,6 +83,9 @@ class DoPublishCommand extends DirCommand<void> {
 
   /// Instance of UnlocalizeRefs
   final ChangeRefsToPubDev _unlocalizeRefs;
+
+  /// Restores the original `publish_to` value captured by `do add`.
+  final RestorePublishTo _restorePublishTo;
 
   /// Instance of gg DoPush
   final gg.DoPush _ggDoPush;
@@ -210,6 +215,12 @@ class DoPublishCommand extends DirCommand<void> {
         taskLog(green('$repoName: unlocalized refs.'));
       } catch (e) {
         throw Exception('Failed to unlocalize refs for $repoName: $e');
+      }
+
+      try {
+        await _restorePublishTo.exec(directory: repoDir, ggLog: taskLog);
+      } catch (e) {
+        throw Exception('Failed to restore publish_to for $repoName: $e');
       }
 
       // Apply all known reference versions to this repo if it depends on them
