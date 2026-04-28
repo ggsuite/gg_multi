@@ -434,11 +434,11 @@ dev_dependencies:
         when(
           () => mockProc(
             'git',
-            ['tag', '-l', '|', 'xargs', 'git', 'tag', '-d'],
+            ['tag', '-l'],
             workingDirectory: repoDir.path,
             runInShell: true,
           ),
-        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
         when(
           () => mockProc(
             'git',
@@ -546,11 +546,11 @@ version: 1.0.0
       when(
         () => mockProc(
           'git',
-          ['tag', '-l', '|', 'xargs', 'git', 'tag', '-d'],
+          ['tag', '-l'],
           workingDirectory: repoDir.path,
           runInShell: true,
         ),
-      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
       when(
         () => mockProc(
           'git',
@@ -681,11 +681,11 @@ version: 1.0.0
       when(
         () => mockProc(
           'git',
-          ['tag', '-l', '|', 'xargs', 'git', 'tag', '-d'],
+          ['tag', '-l'],
           workingDirectory: masterRepoDir.path,
           runInShell: true,
         ),
-      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
       when(
         () => mockProc(
           'git',
@@ -765,7 +765,7 @@ version: 1.0.0
       verify(
         () => mockProc(
           'git',
-          ['tag', '-l', '|', 'xargs', 'git', 'tag', '-d'],
+          ['tag', '-l'],
           workingDirectory: masterRepoDir.path,
           runInShell: true,
         ),
@@ -912,11 +912,11 @@ version: 1.0.0
         when(
           () => mockProcessRunner(
             'git',
-            ['tag', '-l', '|', 'xargs', 'git', 'tag', '-d'],
+            ['tag', '-l'],
             workingDirectory: repoDir.path,
             runInShell: true,
           ),
-        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
         when(
           () => mockProcessRunner(
             'git',
@@ -1061,11 +1061,11 @@ version: 1.0.0
       when(
         () => mockProc(
           'git',
-          ['tag', '-l', '|', 'xargs', 'git', 'tag', '-d'],
+          ['tag', '-l'],
           workingDirectory: repoDir.path,
           runInShell: true,
         ),
-      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
       when(
         () => mockProc(
           'git',
@@ -2043,11 +2043,11 @@ version: 1.0.0
         when(
           () => mockProc(
             'git',
-            ['tag', '-l', '|', 'xargs', 'git', 'tag', '-d'],
+            ['tag', '-l'],
             workingDirectory: masterRepoDir.path,
             runInShell: true,
           ),
-        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
         when(
           () => mockProc(
             'git',

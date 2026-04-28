@@ -408,64 +408,159 @@ class AddCommand extends Command<dynamic> {
     required String repoName,
     required GgLog ggLog,
   }) async {
-    final commands = <({
-      List<String> arguments,
-      String successMessage,
-      String failureLabel,
-    })>[
-      (
-        arguments: <String>['fetch'],
-        successMessage: 'Executed git fetch in $repoName in master workspace.',
-        failureLabel: 'git fetch in $repoName in master workspace',
-      ),
-      (
-        arguments: <String>['reset', '--hard', 'origin/main'],
-        successMessage:
-            'Executed git reset --hard origin/main in $repoName in master workspace.',
-        failureLabel:
-            'git reset --hard origin/main in $repoName in master workspace',
-      ),
-      (
-        arguments: <String>['tag', '-l', '|', 'xargs', 'git', 'tag', '-d'],
-        successMessage: 'Executed git tag -l | xargs git tag -d '
-            'in $repoName in master workspace.',
-        failureLabel:
-            'git tag -l | xargs git tag -d in $repoName in master workspace',
-      ),
-      (
-        arguments: <String>['fetch', '--tags'],
-        successMessage:
-            'Executed git fetch --tags in $repoName in master workspace.',
-        failureLabel: 'git fetch --tags in $repoName in master workspace',
-      ),
-      (
-        arguments: <String>['fetch', '--prune', '--tags'],
-        successMessage: 'Executed git fetch --prune --tags in '
-            '$repoName in master workspace.',
-        failureLabel:
-            'git fetch --prune --tags in $repoName in master workspace',
-      ),
-    ];
+    await _gitFetch(repoDir: repoDir, repoName: repoName, ggLog: ggLog);
+    await _gitResetHardToOriginMain(
+      repoDir: repoDir,
+      repoName: repoName,
+      ggLog: ggLog,
+    );
+    await _gitDeleteAllLocalTags(
+      repoDir: repoDir,
+      repoName: repoName,
+      ggLog: ggLog,
+    );
+    await _gitFetchTags(repoDir: repoDir, repoName: repoName, ggLog: ggLog);
+    await _gitFetchPruneTags(
+      repoDir: repoDir,
+      repoName: repoName,
+      ggLog: ggLog,
+    );
+  }
 
-    for (final command in commands) {
-      final result = await processRunner(
-        'git',
-        command.arguments,
-        workingDirectory: repoDir.path,
-        runInShell: true,
-      );
+  /// Runs a single git command in [repoDir] and logs success/failure.
+  Future<ProcessResult> _runGit({
+    required Directory repoDir,
+    required List<String> arguments,
+    required String successMessage,
+    required String failureLabel,
+    required GgLog ggLog,
+  }) async {
+    final result = await processRunner(
+      'git',
+      arguments,
+      workingDirectory: repoDir.path,
+      runInShell: true,
+    );
 
-      if (result.exitCode != 0) {
-        ggLog(
-          red(
-            'Failed to execute ${command.failureLabel}: '
-            '${result.stderr}',
-          ),
-        );
-      } else {
-        ggLog(darkGray(command.successMessage));
-      }
+    if (result.exitCode != 0) {
+      ggLog(red('Failed to execute $failureLabel: ${result.stderr}'));
+    } else {
+      ggLog(darkGray(successMessage));
     }
+    return result;
+  }
+
+  /// Runs `git fetch` in [repoDir].
+  Future<void> _gitFetch({
+    required Directory repoDir,
+    required String repoName,
+    required GgLog ggLog,
+  }) async {
+    await _runGit(
+      repoDir: repoDir,
+      arguments: <String>['fetch'],
+      successMessage: 'Executed git fetch in $repoName in master workspace.',
+      failureLabel: 'git fetch in $repoName in master workspace',
+      ggLog: ggLog,
+    );
+  }
+
+  /// Runs `git reset --hard origin/main` in [repoDir].
+  Future<void> _gitResetHardToOriginMain({
+    required Directory repoDir,
+    required String repoName,
+    required GgLog ggLog,
+  }) async {
+    await _runGit(
+      repoDir: repoDir,
+      arguments: <String>['reset', '--hard', 'origin/main'],
+      successMessage: 'Executed git reset --hard origin/main in '
+          '$repoName in master workspace.',
+      failureLabel:
+          'git reset --hard origin/main in $repoName in master workspace',
+      ggLog: ggLog,
+    );
+  }
+
+  /// Deletes all local tags in [repoDir] in a portable way (no shell pipe).
+  ///
+  /// Uses `git tag -l` to list tags, then `git tag -d <tag1> <tag2> …` to
+  /// delete them in a single call. The previous implementation relied on
+  /// `git tag -l | xargs git tag -d`, which does not work on macOS because
+  /// the pipe is not interpreted as a real shell pipe by Process.run.
+  Future<void> _gitDeleteAllLocalTags({
+    required Directory repoDir,
+    required String repoName,
+    required GgLog ggLog,
+  }) async {
+    final list = await _runGit(
+      repoDir: repoDir,
+      arguments: <String>['tag', '-l'],
+      successMessage: 'Listed local tags in $repoName in master workspace.',
+      failureLabel: 'git tag -l in $repoName in master workspace',
+      ggLog: ggLog,
+    );
+
+    if (list.exitCode != 0) {
+      return;
+    }
+
+    final tags = (list.stdout as String)
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+
+    if (tags.isEmpty) {
+      ggLog(
+        darkGray(
+          'No local tags to delete in $repoName in master workspace.',
+        ),
+      );
+      return;
+    }
+
+    await _runGit(
+      repoDir: repoDir,
+      arguments: <String>['tag', '-d', ...tags],
+      successMessage:
+          'Deleted ${tags.length} local tag(s) in $repoName in master '
+          'workspace.',
+      failureLabel: 'git tag -d <tags> in $repoName in master workspace',
+      ggLog: ggLog,
+    );
+  }
+
+  /// Runs `git fetch --tags` in [repoDir].
+  Future<void> _gitFetchTags({
+    required Directory repoDir,
+    required String repoName,
+    required GgLog ggLog,
+  }) async {
+    await _runGit(
+      repoDir: repoDir,
+      arguments: <String>['fetch', '--tags'],
+      successMessage:
+          'Executed git fetch --tags in $repoName in master workspace.',
+      failureLabel: 'git fetch --tags in $repoName in master workspace',
+      ggLog: ggLog,
+    );
+  }
+
+  /// Runs `git fetch --prune --tags` in [repoDir].
+  Future<void> _gitFetchPruneTags({
+    required Directory repoDir,
+    required String repoName,
+    required GgLog ggLog,
+  }) async {
+    await _runGit(
+      repoDir: repoDir,
+      arguments: <String>['fetch', '--prune', '--tags'],
+      successMessage: 'Executed git fetch --prune --tags in '
+          '$repoName in master workspace.',
+      failureLabel: 'git fetch --prune --tags in $repoName in master workspace',
+      ggLog: ggLog,
+    );
   }
 
   /// Performs two iterations over all repositories in the ticket in
