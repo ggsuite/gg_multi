@@ -11,7 +11,9 @@ dependencies:
   path: ^1.9.1
   args: ^2.7.0
   gg:
-    path: ../gg # ^7.0.4
+    git:
+      url: git@github.com:ggsuite/gg.git
+      ref: feat_test
   gg_console_colors: ^2.1.5
   gg_process: ^1.1.6
   gg_args: ^2.0.4
