@@ -1,7 +1,6 @@
 name: kidney_core
 description: Das Herzstück der Kidney Suite. Fungiert als Backend und CMD-Line Tool.
 version: 3.0.2
-publish_to: none
 repository: https://github.com/ggsuite/kidney_core.git
 
 environment:
@@ -10,10 +9,7 @@ environment:
 dependencies:
   path: ^1.9.1
   args: ^2.7.0
-  gg:
-    git:
-      url: git@github.com:ggsuite/gg.git
-      ref: feat_test
+  gg: ^7.0.4
   gg_console_colors: ^2.1.5
   gg_process: ^1.1.6
   gg_args: ^2.0.4
