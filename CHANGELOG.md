@@ -10,6 +10,13 @@
 
 - remove unlocalize step from do review command and tests
 
+## [3.0.2] - 2026-04-28
+
+### Changed
+
+- check in kidney\_core can review, dass kein repo im main branch ist
+- Execute dart pub get after changing of pubspec.yaml in kidney\_core do publish
+
 ## [3.0.1] - 2026-04-24
 
 ## [3.0.0] - 2026-04-23
@@ -213,6 +220,7 @@
 - Remove prints
 - Remove gh pr create from review
 
+[3.0.2]: https://github.com/ggsuite/kidney_core/compare/3.0.1...3.0.2
 [3.0.1]: https://github.com/ggsuite/kidney_core/compare/3.0.0...3.0.1
 [3.0.0]: https://github.com/ggsuite/kidney_core/compare/2.8.1...3.0.0
 [2.8.1]: https://github.com/ggsuite/kidney_core/compare/2.8.0...2.8.1

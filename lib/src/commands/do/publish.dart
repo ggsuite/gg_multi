@@ -245,6 +245,25 @@ class DoPublishCommand extends DirCommand<void> {
         }
       }
 
+      // Run dart pub get to refresh the package config after the
+      // pubspec.yaml changes above (unlocalize refs, restore publish_to,
+      // updated dependency versions).
+      try {
+        final result = await _processRunner(
+          'dart',
+          <String>['pub', 'get'],
+          workingDirectory: repoDir.path,
+        );
+        if (result.exitCode != 0) {
+          throw Exception(
+            'dart pub get failed for $repoName: ${result.stderr}',
+          );
+        }
+        taskLog(green('$repoName: dart pub get succeeded.'));
+      } catch (e) {
+        throw Exception('Failed to run dart pub get for $repoName: $e');
+      }
+
       // Commit
       await _ggDoCommit.exec(
         directory: repoDir,

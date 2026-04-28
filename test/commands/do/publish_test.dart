@@ -277,6 +277,7 @@ void main() {
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
+      _stubPubGet(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -473,6 +474,7 @@ void main() {
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
+      _stubPubGet(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -629,6 +631,7 @@ void main() {
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
+      _stubPubGet(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -773,6 +776,7 @@ void main() {
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
+      _stubPubGet(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -932,6 +936,7 @@ void main() {
       final mockGgDoPublish = MockGgDoPublish();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
+      _stubPubGet(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -1010,6 +1015,7 @@ void main() {
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
+      _stubPubGet(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -1195,6 +1201,7 @@ void main() {
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
+      _stubPubGet(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -1370,6 +1377,7 @@ void main() {
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
+      _stubPubGet(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -1523,6 +1531,7 @@ void main() {
         final mockUnlocalizeRefs = MockUnlocalizeRefs();
         final mockSortedProcessingList = MockSortedProcessingList();
         final mockProcessRunner = MockProcessRunner();
+        _stubPubGet(mockProcessRunner);
         final mockCanPublishCommand = MockCanPublishCommand();
         final mockDoReviewCommand = MockDoReviewCommand();
         final mockGetVersion = MockGetVersion();
@@ -1703,6 +1712,7 @@ void main() {
         final mockUnlocalizeRefs = MockUnlocalizeRefs();
         final mockSortedProcessingList = MockSortedProcessingList();
         final mockProcessRunner = MockProcessRunner();
+        _stubPubGet(mockProcessRunner);
         final mockCanPublishCommand = MockCanPublishCommand();
         final mockDoReviewCommand = MockDoReviewCommand();
         final mockGetVersion = MockGetVersion();
@@ -1881,6 +1891,7 @@ void main() {
         final mockUnlocalizeRefs = MockUnlocalizeRefs();
         final mockSortedProcessingList = MockSortedProcessingList();
         final mockProcessRunner = MockProcessRunner();
+        _stubPubGet(mockProcessRunner);
         final mockCanPublishCommand = MockCanPublishCommand();
         final mockDoReviewCommand = MockDoReviewCommand();
         final mockGetVersion = MockGetVersion();
@@ -2061,6 +2072,7 @@ void main() {
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
+      _stubPubGet(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -2208,6 +2220,7 @@ void main() {
       final mockRestorePublishTo = MockRestorePublishTo();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
+      _stubPubGet(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -2353,6 +2366,7 @@ void main() {
       final mockRestorePublishTo = MockRestorePublishTo();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
+      _stubPubGet(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
 
@@ -2429,6 +2443,111 @@ void main() {
         ),
       );
     });
+
+    test('aborts when dart pub get fails for a repo', () async {
+      final mockGgDoPublish = MockGgDoPublish();
+      final mockGgDoCommit = MockGgDoCommit();
+      final mockGgDoPush = MockGgDoPush();
+      final mockUnlocalizeRefs = MockUnlocalizeRefs();
+      final mockRestorePublishTo = MockRestorePublishTo();
+      final mockSortedProcessingList = MockSortedProcessingList();
+      final mockProcessRunner = MockProcessRunner();
+      final mockCanPublishCommand = MockCanPublishCommand();
+      final mockDoReviewCommand = MockDoReviewCommand();
+
+      when(
+        () => mockDoReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          verbose: any(named: 'verbose'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockCanPublishCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: Directory(path.join(ticketDir.path, 'A')),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
+          ),
+        ],
+      );
+      when(
+        () => mockUnlocalizeRefs.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockRestorePublishTo.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      // Stub `dart pub get` so it fails with non-zero exit code.
+      when(
+        () => mockProcessRunner(
+          'dart',
+          ['pub', 'get'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer(
+        (_) async => ProcessResult(0, 1, '', 'pub get exploded'),
+      );
+
+      final runner = CommandRunner<void>('test', 'do publish ticket')
+        ..addCommand(
+          DoPublishCommand(
+            ggLog: ggLog,
+            ggDoPublish: mockGgDoPublish,
+            ggDoCommit: mockGgDoCommit,
+            ggDoPush: mockGgDoPush,
+            unlocalizeRefs: mockUnlocalizeRefs,
+            restorePublishTo: mockRestorePublishTo,
+            sortedProcessingList: mockSortedProcessingList,
+            processRunner: mockProcessRunner.call,
+            canPublishCommand: mockCanPublishCommand,
+            doReviewCommand: mockDoReviewCommand,
+            editMessage: (initialMessage) async => initialMessage,
+            confirmDeleteTicket: (_) => false,
+          ),
+        );
+
+      await expectLater(
+        () async => await runner.run([
+          'publish',
+          '--input',
+          ticketDir.path,
+        ]),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Failed to run dart pub get for A'),
+          ),
+        ),
+      );
+
+      verifyNever(
+        () => mockGgDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          force: any(named: 'force'),
+        ),
+      );
+    });
   });
 }
 
@@ -2439,4 +2558,15 @@ class MockProcessRunner extends Mock {
     List<String> arguments, {
     String? workingDirectory,
   });
+}
+
+/// Stubs `dart pub get` on [runner] so it succeeds for any working directory.
+void _stubPubGet(MockProcessRunner runner) {
+  when(
+    () => runner(
+      'dart',
+      ['pub', 'get'],
+      workingDirectory: any(named: 'workingDirectory'),
+    ),
+  ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
 }
