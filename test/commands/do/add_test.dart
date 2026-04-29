@@ -2080,6 +2080,14 @@ version: 1.0.0
             runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+        when(
+          () => mockProc(
+            'git',
+            ['config', 'merge.ours.driver', 'true'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
 
         final mockDoCommit = MockGgDoCommit();
         when(

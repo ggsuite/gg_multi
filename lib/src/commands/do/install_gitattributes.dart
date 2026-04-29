@@ -15,38 +15,69 @@ import 'package:path/path.dart' as path;
 
 import '../../backend/workspace_utils.dart';
 
-/// The line `gg` requires in `.gitattributes` to enable automatic EOL
-/// conversion to LF.
-const String gitattributesEolLine = '* text=auto eol=lf';
+/// Function used to spawn child processes (e.g. `git`). Injected for tests.
+///
+/// Signature matches the `ProcessRunner` typedef used by `add.dart` so the
+/// same runner can be plumbed through.
+typedef ProcessRunner = Future<ProcessResult> Function(
+  String executable,
+  List<String> arguments, {
+  String? workingDirectory,
+  bool runInShell,
+});
 
-/// Ensures a `.gitattributes` file with the `gg`-required EOL rule exists in
-/// every repository of the current ticket.
+/// The lines `gg` and the ticket workflow require in every repository's
+/// `.gitattributes` file.
+///
+/// - `* text=auto eol=lf` enables automatic EOL conversion to LF (required
+///   by `gg`).
+/// - The `merge=ours` rules ensure that generated/state files are not
+///   merged textually but kept from the current branch.
+const String gitattributesRequiredLines = '* text=auto eol=lf\n'
+    '.gg/.gg.json merge=ours\n'
+    'pubspec.lock merge=ours\n'
+    '.kidney_status merge=ours';
+
+/// Ensures a `.gitattributes` file containing all
+/// [gitattributesRequiredLines] exists in every repository of the current
+/// ticket and that the `merge=ours` driver is configured locally.
 ///
 /// `gg` refuses to operate (e.g. `gg do commit`) when automatic EOL
-/// conversion is not configured via `.gitattributes`. This command makes
-/// sure the rule is present so subsequent `gg` calls succeed, regardless
-/// of whether the repository is Dart or TypeScript based.
+/// conversion is not configured via `.gitattributes`. In addition, the
+/// ticket workflow relies on `merge=ours` rules for state files so that
+/// merges do not produce textual conflicts in generated content. The
+/// referenced `ours` driver only works once
+/// `git config merge.ours.driver true` has been set in each repository.
 ///
 /// Behaviour per repository:
-/// - If `.gitattributes` does not exist, it is created with the single
-///   line [gitattributesEolLine].
-/// - If `.gitattributes` exists but does not contain that line, the line
-///   is appended.
-/// - If the line is already present, the file is left untouched.
+/// - If `.gitattributes` does not exist, it is created containing all
+///   required lines.
+/// - If `.gitattributes` exists, every required line that is missing is
+///   appended individually.
+/// - If all required lines are already present, the file is left
+///   untouched.
+/// - If a `.git` directory exists, `git config merge.ours.driver true` is
+///   executed with the repository as the working directory so the
+///   `merge=ours` rules can be honored by git.
 class DoInstallGitattributesCommand extends DirCommand<void> {
   /// Creates a new [DoInstallGitattributesCommand].
   DoInstallGitattributesCommand({
     required super.ggLog,
     super.name = 'install-gitattributes',
-    super.description =
-        'Ensures a .gitattributes file with "$gitattributesEolLine" '
-            'exists in all repositories of the current ticket.',
+    super.description = 'Ensures a .gitattributes file with the required '
+        'lines exists in all repositories of the current ticket and that '
+        'the merge=ours driver is configured.',
     SortedProcessingList? sortedProcessingList,
-  }) : _sortedProcessingList =
-            sortedProcessingList ?? SortedProcessingList(ggLog: ggLog);
+    ProcessRunner? processRunner,
+  })  : _sortedProcessingList =
+            sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
+        _processRunner = processRunner ?? Process.run;
 
   /// Helper that returns the repositories in dependency-sorted order.
   final SortedProcessingList _sortedProcessingList;
+
+  /// Process runner used to invoke `git`.
+  final ProcessRunner _processRunner;
 
   @override
   Future<void> exec({
@@ -86,7 +117,12 @@ class DoInstallGitattributesCommand extends DirCommand<void> {
       return;
     }
 
-    // Ensure .gitattributes in each repository ------------------------------
+    final requiredLines = const LineSplitter()
+        .convert(gitattributesRequiredLines)
+        .where((l) => l.isNotEmpty)
+        .toList();
+
+    // Ensure .gitattributes and merge.ours driver in each repository --------
     for (final node in nodes) {
       final repoDir = node.directory;
       final repoName = path.basename(repoDir.path);
@@ -96,29 +132,63 @@ class DoInstallGitattributesCommand extends DirCommand<void> {
       );
 
       if (!attributesFile.existsSync()) {
-        await attributesFile.writeAsString('$gitattributesEolLine\n');
+        await attributesFile.writeAsString(
+          '${requiredLines.join('\n')}\n',
+        );
         ggLog('Created .gitattributes in $repoName.');
+      } else {
+        final existing = await attributesFile.readAsString();
+        final existingLines =
+            const LineSplitter().convert(existing).map((l) => l.trim()).toSet();
+
+        final missingLines =
+            requiredLines.where((l) => !existingLines.contains(l)).toList();
+
+        if (missingLines.isNotEmpty) {
+          final needsLeadingNewline =
+              existing.isNotEmpty && !existing.endsWith('\n');
+          final prefix = needsLeadingNewline ? '\n' : '';
+          await attributesFile.writeAsString(
+            '$prefix${missingLines.join('\n')}\n',
+            mode: FileMode.append,
+          );
+          ggLog('Updated .gitattributes in $repoName.');
+        }
+      }
+
+      // Configure the `ours` merge driver locally so the `merge=ours`
+      // rules in .gitattributes resolve to a real git driver.
+      final gitDir = Directory(path.join(repoDir.path, '.git'));
+      if (!gitDir.existsSync()) {
+        ggLog(
+          yellow(
+            'Skipping merge.ours driver config for $repoName because no '
+            '.git directory was found.',
+          ),
+        );
         continue;
       }
 
-      final existing = await attributesFile.readAsString();
-      final hasLine = const LineSplitter()
-          .convert(existing)
-          .map((l) => l.trim())
-          .contains(gitattributesEolLine);
-
-      if (hasLine) {
-        continue;
-      }
-
-      final needsLeadingNewline =
-          existing.isNotEmpty && !existing.endsWith('\n');
-      final prefix = needsLeadingNewline ? '\n' : '';
-      await attributesFile.writeAsString(
-        '$prefix$gitattributesEolLine\n',
-        mode: FileMode.append,
+      final result = await _processRunner(
+        'git',
+        <String>['config', 'merge.ours.driver', 'true'],
+        workingDirectory: repoDir.path,
+        runInShell: Platform.isWindows,
       );
-      ggLog('Updated .gitattributes in $repoName.');
+
+      if (result.exitCode != 0) {
+        ggLog(
+          red(
+            'Failed to configure merge.ours driver in $repoName: '
+            '${result.stderr}',
+          ),
+        );
+        throw Exception(
+          'git config merge.ours.driver true failed in $repoName',
+        );
+      }
+
+      ggLog('Configured merge.ours driver in $repoName.');
     }
 
     ggLog(

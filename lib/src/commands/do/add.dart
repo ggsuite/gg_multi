@@ -722,6 +722,7 @@ class AddCommand extends Command<dynamic> {
     await DoInstallGitattributesCommand(
       ggLog: ggLog,
       sortedProcessingList: _sortedProcessingList,
+      processRunner: processRunner,
     ).exec(
       directory: ticketDir,
       ggLog: ggLog,
