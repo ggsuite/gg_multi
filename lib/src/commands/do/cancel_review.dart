@@ -18,6 +18,27 @@ import 'package:path/path.dart' as path;
 import '../../backend/status_utils.dart';
 import '../../backend/workspace_utils.dart';
 
+/// Typedef for running processes (for injection & tests).
+typedef ProcessRunner = Future<ProcessResult> Function(
+  String executable,
+  List<String> arguments, {
+  String? workingDirectory,
+});
+
+// coverage:ignore-start
+Future<ProcessResult> _defaultProcessRunner(
+  String executable,
+  List<String> arguments, {
+  String? workingDirectory,
+}) =>
+    Process.run(
+      executable,
+      arguments,
+      workingDirectory: workingDirectory,
+      runInShell: true,
+    );
+// coverage:ignore-end
+
 /// Command to revert review preparation and relocalize repos to local paths.
 class DoCancelReviewCommand extends DirCommand<void> {
   /// Creates a new cancel review command.
@@ -29,10 +50,12 @@ class DoCancelReviewCommand extends DirCommand<void> {
     ChangeRefsToLocal? localizeRefs,
     SortedProcessingList? sortedProcessingList,
     gg.DoCommit? ggDoCommit,
+    ProcessRunner? processRunner,
   })  : _localizeRefs = localizeRefs ?? ChangeRefsToLocal(ggLog: ggLog),
         _sortedProcessingList =
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
-        _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog) {
+        _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
+        _processRunner = processRunner ?? _defaultProcessRunner {
     _addArgs();
   }
 
@@ -44,6 +67,9 @@ class DoCancelReviewCommand extends DirCommand<void> {
 
   /// Commits changes in each repository.
   final gg.DoCommit _ggDoCommit;
+
+  /// Process runner used to invoke language-specific install commands.
+  final ProcessRunner _processRunner;
 
   @override
   Future<void> exec({
@@ -130,6 +156,14 @@ class DoCancelReviewCommand extends DirCommand<void> {
         );
       }
 
+      // node_modules will be stale after rewriting package.json — refresh.
+      await _refreshTypeScriptDependencies(
+        repoDir: repoDir,
+        repoName: repoName,
+        ticketName: ticketName,
+        ggLog: ggLog,
+      );
+
       try {
         await _ggDoCommit.exec(
           directory: repoDir,
@@ -162,6 +196,45 @@ class DoCancelReviewCommand extends DirCommand<void> {
       defaultsTo: false,
       negatable: true,
     );
+  }
+
+  /// Runs the package manager's install command for TypeScript projects so
+  /// that node_modules reflects the freshly-rewritten local path
+  /// dependencies. Dart packages are skipped because pub resolves lazily.
+  Future<void> _refreshTypeScriptDependencies({
+    required Directory repoDir,
+    required String repoName,
+    required String ticketName,
+    required GgLog ggLog,
+  }) async {
+    final gg.ProjectType projectType;
+    try {
+      projectType = gg.detectProjectType(repoDir);
+    } catch (_) {
+      return;
+    }
+    if (projectType != gg.ProjectType.typescript) return;
+
+    final pm = gg.detectTypeScriptPackageManager(repoDir);
+    final result = await _processRunner(
+      pm.executable,
+      <String>['install'],
+      workingDirectory: repoDir.path,
+    );
+    final cmd = '${pm.executable} install';
+    if (result.exitCode == 0) {
+      ggLog(green('Executed $cmd in $repoName.'));
+    } else {
+      ggLog(
+        red(
+          'Failed to execute $cmd in $repoName: ${result.stderr}',
+        ),
+      );
+      throw Exception(
+        'Failed to cancel review for some repositories in ticket '
+        '$ticketName',
+      );
+    }
   }
 }
 

@@ -270,28 +270,13 @@ class DoReviewCommand extends DirCommand<void> {
         );
       }
 
-      // Run "dart pub upgrade" if pubspec.yaml exists ----------------------
-      final pubspec = File(path.join(repoDir.path, 'pubspec.yaml'));
-      if (pubspec.existsSync()) {
-        final result = await _processRunner(
-          'dart',
-          <String>['pub', 'upgrade'],
-          workingDirectory: repoDir.path,
-        );
-        if (result.exitCode == 0) {
-          ggLog(green('Executed dart pub upgrade in $repoName.'));
-        } else {
-          ggLog(
-            red(
-              'Failed to execute dart pub upgrade in '
-              '$repoName: ${result.stderr}',
-            ),
-          );
-          throw Exception(
-            'Failed to review some repositories in ticket $ticketName',
-          );
-        }
-      }
+      // Refresh dependencies for the detected project type ----------------
+      await _refreshDependencies(
+        repoDir: repoDir,
+        repoName: repoName,
+        ticketName: ticketName,
+        ggLog: ggLog,
+      );
 
       // Commit ---------------------------------------------------------------
       try {
@@ -319,6 +304,57 @@ class DoReviewCommand extends DirCommand<void> {
           'Failed to review some repositories in ticket $ticketName',
         );
       }
+    }
+  }
+
+  /// Refreshes dependencies for [repoDir] based on the detected project
+  /// type. Runs `dart pub upgrade` for Dart/Flutter packages and the
+  /// equivalent install command for TypeScript packages (npm/yarn/pnpm).
+  Future<void> _refreshDependencies({
+    required Directory repoDir,
+    required String repoName,
+    required String ticketName,
+    required GgLog ggLog,
+  }) async {
+    final gg.ProjectType projectType;
+    try {
+      projectType = gg.detectProjectType(repoDir);
+    } catch (_) {
+      // Repos without a recognizable manifest are skipped.
+      return;
+    }
+
+    final String executable;
+    final List<String> args;
+    switch (projectType) {
+      case gg.ProjectType.dart:
+      case gg.ProjectType.flutter:
+        executable = 'dart';
+        args = <String>['pub', 'upgrade'];
+      case gg.ProjectType.typescript:
+        final pm = gg.detectTypeScriptPackageManager(repoDir);
+        executable = pm.executable;
+        args = <String>['install'];
+    }
+
+    final result = await _processRunner(
+      executable,
+      args,
+      workingDirectory: repoDir.path,
+    );
+    final cmd = '$executable ${args.join(' ')}';
+    if (result.exitCode == 0) {
+      ggLog(green('Executed $cmd in $repoName.'));
+    } else {
+      ggLog(
+        red(
+          'Failed to execute $cmd in '
+          '$repoName: ${result.stderr}',
+        ),
+      );
+      throw Exception(
+        'Failed to review some repositories in ticket $ticketName',
+      );
     }
   }
 }

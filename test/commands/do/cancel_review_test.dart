@@ -26,6 +26,14 @@ class MockLocalizeRefs extends Mock implements ChangeRefsToLocal {}
 
 class MockGgDoCommit extends Mock implements gg.DoCommit {}
 
+class MockProcessRunner extends Mock {
+  Future<ProcessResult> call(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+  });
+}
+
 class FakeDirectory extends Fake implements Directory {}
 
 void main() {
@@ -345,6 +353,185 @@ void main() {
         isTrue,
       );
     });
+
+    test(
+      'runs npm install for typescript repos after relocalize, logs success',
+      () async {
+        final mockSortedProcessingList = MockSortedProcessingList();
+        final mockLocalizeRefs = MockLocalizeRefs();
+        final mockGgDoCommit = MockGgDoCommit();
+        final mockProcessRunner = MockProcessRunner();
+
+        final repoADir = Directory(path.join(ticketDir.path, 'A'));
+        File(path.join(repoADir.path, 'package.json'))
+            .writeAsStringSync(jsonEncode(<String, dynamic>{'name': 'A'}));
+        File(path.join(repoADir.path, 'tsconfig.json')).writeAsStringSync('{}');
+
+        when(
+          () => mockSortedProcessingList.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            Node(
+              name: 'A',
+              directory: repoADir,
+              manifest: TypeScriptPackageManifest(
+                name: 'A',
+                dependencies: const <String>[],
+                devDependencies: const <String>[],
+                rawJson: const <String, dynamic>{'name': 'A'},
+              ),
+            ),
+          ],
+        );
+
+        when(
+          () => mockLocalizeRefs.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockGgDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockProcessRunner(
+            'npm',
+            ['install'],
+            workingDirectory: repoADir.path,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+        final runner = CommandRunner<void>('test', 'do cancel-review ticket')
+          ..addCommand(
+            DoCancelReviewCommand(
+              ggLog: ggLog,
+              localizeRefs: mockLocalizeRefs,
+              sortedProcessingList: mockSortedProcessingList,
+              ggDoCommit: mockGgDoCommit,
+              processRunner: mockProcessRunner.call,
+            ),
+          );
+
+        await runner.run([
+          'cancel-review',
+          '--verbose',
+          '--input',
+          ticketDir.path,
+        ]);
+
+        expect(
+          messages.any((m) => m.contains('Executed npm install in A.')),
+          isTrue,
+        );
+        verify(
+          () => mockProcessRunner(
+            'npm',
+            ['install'],
+            workingDirectory: repoADir.path,
+          ),
+        ).called(1);
+      },
+    );
+
+    test(
+      'fails and logs when npm install fails for typescript repos',
+      () async {
+        final mockSortedProcessingList = MockSortedProcessingList();
+        final mockLocalizeRefs = MockLocalizeRefs();
+        final mockGgDoCommit = MockGgDoCommit();
+        final mockProcessRunner = MockProcessRunner();
+
+        final repoADir = Directory(path.join(ticketDir.path, 'A'));
+        File(path.join(repoADir.path, 'package.json'))
+            .writeAsStringSync(jsonEncode(<String, dynamic>{'name': 'A'}));
+        File(path.join(repoADir.path, 'tsconfig.json')).writeAsStringSync('{}');
+
+        when(
+          () => mockSortedProcessingList.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            Node(
+              name: 'A',
+              directory: repoADir,
+              manifest: TypeScriptPackageManifest(
+                name: 'A',
+                dependencies: const <String>[],
+                devDependencies: const <String>[],
+                rawJson: const <String, dynamic>{'name': 'A'},
+              ),
+            ),
+          ],
+        );
+
+        when(
+          () => mockLocalizeRefs.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockGgDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockProcessRunner(
+            'npm',
+            ['install'],
+            workingDirectory: repoADir.path,
+          ),
+        ).thenAnswer(
+          (_) async => ProcessResult(1, 1, '', 'install error'),
+        );
+
+        final runner = CommandRunner<void>('test', 'do cancel-review ticket')
+          ..addCommand(
+            DoCancelReviewCommand(
+              ggLog: ggLog,
+              localizeRefs: mockLocalizeRefs,
+              sortedProcessingList: mockSortedProcessingList,
+              ggDoCommit: mockGgDoCommit,
+              processRunner: mockProcessRunner.call,
+            ),
+          );
+
+        await expectLater(
+          () async => await runner.run([
+            'cancel-review',
+            '--verbose',
+            '--input',
+            ticketDir.path,
+          ]),
+          throwsA(isA<Exception>()),
+        );
+
+        expect(
+          messages.any(
+            (m) => m.contains('Failed to execute npm install in A: '
+                'install error'),
+          ),
+          isTrue,
+        );
+      },
+    );
 
     test('uses quiet taskLog when verbose is false', () async {
       final mockSortedProcessingList = MockSortedProcessingList();

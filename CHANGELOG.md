@@ -10,6 +10,12 @@
 
 - remove unlocalize step from do review command and tests
 
+## [3.1.0] - 2026-05-04
+
+### Added
+
+- Add TypeScript support to do review and do cancel-review
+
 ## [3.0.4] - 2026-04-29
 
 ## [3.0.3] - 2026-04-28
@@ -228,6 +234,7 @@
 - Remove prints
 - Remove gh pr create from review
 
+[3.1.0]: https://github.com/ggsuite/kidney_core/compare/3.0.4...3.1.0
 [3.0.4]: https://github.com/ggsuite/kidney_core/compare/3.0.3...3.0.4
 [3.0.3]: https://github.com/ggsuite/kidney_core/compare/3.0.2...3.0.3
 [3.0.2]: https://github.com/ggsuite/kidney_core/compare/3.0.1...3.0.2
