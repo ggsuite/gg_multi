@@ -35,7 +35,7 @@ class AddDepsCommand extends Command<void> {
         gitHubPlatform = gitHubPlatform ?? GitHubPlatform(),
         packageFetcher = packageFetcher ?? http.get,
         workspacePath = workspacePath ??
-            path.join(Directory.current.path, kidneyMasterFolder);
+            path.join(Directory.current.path, ggMultiMasterFolder);
   // coverage:ignore-end
 
   /// The log function.

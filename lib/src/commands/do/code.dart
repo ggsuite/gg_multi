@@ -27,7 +27,7 @@ class CodeCommand extends Command<void> {
     VSCodeLauncher? launcher,
     SortedProcessingList? sortedProcessingList,
     // coverage:ignore-start
-  })  : workspacePath = rootPath ?? WorkspaceUtils.defaultKidneyWorkspacePath(),
+  })  : workspacePath = rootPath ?? WorkspaceUtils.defaultGgMultiWorkspacePath(),
         _executionPath = executionPath ?? Directory.current.path,
         _dirFactory = directoryFactory ?? Directory.new,
         _launcher = launcher ?? VSCodeLauncher();
@@ -36,7 +36,7 @@ class CodeCommand extends Command<void> {
   /// The log function.
   final GgLog ggLog;
 
-  /// Kidney workspace path.
+  /// Gg Multi workspace path.
   final String workspacePath;
 
   /// The path from which the command is executed.
@@ -89,7 +89,7 @@ class CodeCommand extends Command<void> {
     final repoName = parts.length == 2 ? parts[1] : null;
 
     final ticketsDir = _dirFactory(
-      path.join(workspacePath, kidneyTicketFolder),
+      path.join(workspacePath, ggMultiTicketFolder),
     );
     final ticketDir = Directory(path.join(ticketsDir.path, ticketName));
 

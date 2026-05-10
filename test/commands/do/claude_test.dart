@@ -7,7 +7,7 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:kidney_core/src/commands/do/claude.dart';
+import 'package:gg_multi/src/commands/do/claude.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 

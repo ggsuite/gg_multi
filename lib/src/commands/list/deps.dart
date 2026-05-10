@@ -20,7 +20,7 @@ class ListDepsCommand extends Command<dynamic> {
     String? workspacePath,
     // coverage:ignore-start
   }) : workspacePath = workspacePath ??
-            path.join(Directory.current.path, kidneyMasterFolder) {
+            path.join(Directory.current.path, ggMultiMasterFolder) {
     _addArgs();
   }
   // coverage:ignore-end

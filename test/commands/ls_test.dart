@@ -9,10 +9,10 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
-import 'package:kidney_core/src/backend/constants.dart';
+import 'package:gg_multi/src/backend/constants.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-import 'package:kidney_core/src/commands/ls.dart';
+import 'package:gg_multi/src/commands/ls.dart';
 
 void main() {
   group('ListCommand', () {
@@ -24,7 +24,7 @@ void main() {
       messages.clear();
       tempDir = Directory.systemTemp.createTempSync('list_test');
       masterDir = Directory(
-        path.join(tempDir.path, kidneyMasterFolder),
+        path.join(tempDir.path, ggMultiMasterFolder),
       )..createSync(recursive: true);
     });
 

@@ -11,8 +11,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
-import 'package:kidney_core/src/backend/git_platform.dart';
-import 'package:kidney_core/src/backend/repository.dart';
+import 'package:gg_multi/src/backend/git_platform.dart';
+import 'package:gg_multi/src/backend/repository.dart';
 
 class MockProcessRunner extends Mock {
   Future<ProcessResult> call(

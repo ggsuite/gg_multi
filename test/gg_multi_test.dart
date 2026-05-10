@@ -8,7 +8,7 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
-import 'package:kidney_core/kidney_core.dart';
+import 'package:gg_multi/gg_multi.dart';
 import 'package:path/path.dart';
 import 'package:recase/recase.dart';
 import 'package:test/test.dart';
@@ -20,20 +20,20 @@ void main() {
     messages.clear();
   });
 
-  group('KidneyCore()', () {
+  group('GgMulti()', () {
     // #########################################################################
-    group('KidneyCore', () {
-      final kidneyCore = KidneyCore(ggLog: messages.add);
+    group('GgMulti', () {
+      final ggMulti = GgMulti(ggLog: messages.add);
 
       final CommandRunner<void> runner = CommandRunner<void>(
-        'kidneyCore',
+        'ggMulti',
         'Description goes here.',
-      )..addCommand(kidneyCore);
+      )..addCommand(ggMulti);
 
       test('should allow to run the code from command line', () async {
         await capturePrint(
           ggLog: messages.add,
-          code: () async => await runner.run(['kidneyCore', 'ls', '--help']),
+          code: () async => await runner.run(['ggMulti', 'ls', '--help']),
         );
         expect(
           messages.first,
@@ -51,7 +51,7 @@ void main() {
         );
         final (subCommands, errorMessage) = await missingSubCommands(
           directory: commandsDir,
-          command: kidneyCore,
+          command: ggMulti,
           additionalSubCommands: ['did'],
         );
 
@@ -79,7 +79,7 @@ Future<(List<String> commandList, String? errorMessage)> missingSubCommands({
         (e) => basename(e.path)
             .replaceAll('.dart', '')
             .replaceAll('_', '-')
-            .replaceAll('kidney-', '')
+            .replaceAll('gg-multi-', '')
             .replaceAll('gg-', ''),
       )
       .toList()

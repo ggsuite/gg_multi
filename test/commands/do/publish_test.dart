@@ -9,20 +9,20 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg/gg.dart' as gg;
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
-import 'package:kidney_core/src/backend/pub_dev_checker.dart';
-import 'package:kidney_core/src/commands/do/push.dart';
-import 'package:kidney_core/src/commands/do/review.dart';
+import 'package:gg_multi/src/backend/pub_dev_checker.dart';
+import 'package:gg_multi/src/commands/do/push.dart';
+import 'package:gg_multi/src/commands/do/review.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:test/test.dart';
-import 'package:kidney_core/src/commands/do/publish.dart';
-import 'package:kidney_core/src/commands/can/publish.dart';
-import 'package:kidney_core/src/backend/status_utils.dart';
+import 'package:gg_multi/src/commands/do/publish.dart';
+import 'package:gg_multi/src/commands/can/publish.dart';
+import 'package:gg_multi/src/backend/status_utils.dart';
 
 import '../../rm_console_colors_helper.dart';
 
@@ -167,7 +167,7 @@ void main() {
       );
     });
 
-    test('runs kidney_core do review before kidney_core can publish', () async {
+    test('runs gg_multi do review before gg_multi can publish', () async {
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockSortedProcessingList = MockSortedProcessingList();
@@ -256,7 +256,7 @@ void main() {
           isA<Exception>().having(
             (e) => e.toString(),
             'message',
-            contains('kidney_core do review failed: Exception: review failed'),
+            contains('gg_multi do review failed: Exception: review failed'),
           ),
         ),
       );
@@ -1001,7 +1001,7 @@ void main() {
           isA<Exception>().having(
             (e) => e.toString(),
             'message',
-            contains('kidney_core can publish failed:'),
+            contains('gg_multi can publish failed:'),
           ),
         ),
       );
@@ -1140,7 +1140,7 @@ void main() {
       // the transition to merged for A.
       for (final repoName in ['A', 'B']) {
         final statusFile =
-            File(path.join(ticketDir.path, repoName, '.kidney_status'))
+            File(path.join(ticketDir.path, repoName, '.gg_multi_status'))
               ..createSync(recursive: true);
         statusFile.writeAsStringSync(
           jsonEncode({'status': StatusUtils.statusGitLocalized}),
@@ -1326,7 +1326,7 @@ void main() {
       // the transition to merged for A.
       for (final repoName in ['A', 'B']) {
         final statusFile =
-            File(path.join(ticketDir.path, repoName, '.kidney_status'))
+            File(path.join(ticketDir.path, repoName, '.gg_multi_status'))
               ..createSync(recursive: true);
         statusFile.writeAsStringSync(
           jsonEncode({'status': StatusUtils.statusGitLocalized}),
@@ -1478,7 +1478,7 @@ void main() {
         },
       );
 
-      final statusFileA = File(path.join(ticketDir.path, 'A', '.kidney_status'))
+      final statusFileA = File(path.join(ticketDir.path, 'A', '.gg_multi_status'))
         ..createSync(recursive: true);
       statusFileA.writeAsStringSync(
         jsonEncode({'status': StatusUtils.statusGitLocalized}),
@@ -1659,7 +1659,7 @@ void main() {
         ).thenAnswer((_) async {});
 
         for (final repo in ['A', 'B']) {
-          final f = File(path.join(ticketDir.path, repo, '.kidney_status'))
+          final f = File(path.join(ticketDir.path, repo, '.gg_multi_status'))
             ..createSync(recursive: true);
           f.writeAsStringSync(
             jsonEncode({'status': StatusUtils.statusGitLocalized}),
@@ -1836,7 +1836,7 @@ void main() {
         ).thenAnswer((_) async {});
 
         for (final repo in ['A', 'B']) {
-          final f = File(path.join(ticketDir.path, repo, '.kidney_status'))
+          final f = File(path.join(ticketDir.path, repo, '.gg_multi_status'))
             ..createSync(recursive: true);
           f.writeAsStringSync(
             jsonEncode({'status': StatusUtils.statusGitLocalized}),

@@ -11,7 +11,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 
-import 'package:kidney_core/src/backend/status_utils.dart';
+import 'package:gg_multi/src/backend/status_utils.dart';
 
 import '../rm_console_colors_helper.dart';
 
@@ -49,7 +49,7 @@ void main() {
         ggLog: ggLog,
       );
 
-      final statusFile = File(path.join(repoDir.path, '.kidney_status'));
+      final statusFile = File(path.join(repoDir.path, '.gg_multi_status'));
       expect(statusFile.existsSync(), isTrue);
       final content =
           jsonDecode(statusFile.readAsStringSync()) as Map<String, dynamic>;
@@ -90,7 +90,7 @@ void main() {
       test('returns status when file exists and is valid', () {
         final repoDir = Directory(path.join(tempDir.path, 'repo'))
           ..createSync(recursive: true);
-        File(path.join(repoDir.path, '.kidney_status'))
+        File(path.join(repoDir.path, '.gg_multi_status'))
             .writeAsStringSync(jsonEncode({'status': 'localized'}));
 
         final status = StatusUtils.readStatus(repoDir, ggLog: ggLog);
@@ -106,14 +106,14 @@ void main() {
         expect(status, isNull);
         expect(
           logMessages.first,
-          contains('Missing .kidney_status file in ${repoDir.path}'),
+          contains('Missing .gg_multi_status file in ${repoDir.path}'),
         );
       });
 
       test('returns null and logs error when parsing fails', () {
         final repoDir = Directory(path.join(tempDir.path, 'bad_json_repo'))
           ..createSync(recursive: true);
-        File(path.join(repoDir.path, '.kidney_status'))
+        File(path.join(repoDir.path, '.gg_multi_status'))
             .writeAsStringSync('invalid json');
 
         final status = StatusUtils.readStatus(repoDir, ggLog: ggLog);
@@ -127,7 +127,7 @@ void main() {
       test('returns null when status key is missing in JSON', () {
         final repoDir = Directory(path.join(tempDir.path, 'missing_key_repo'))
           ..createSync(recursive: true);
-        File(path.join(repoDir.path, '.kidney_status'))
+        File(path.join(repoDir.path, '.gg_multi_status'))
             .writeAsStringSync(jsonEncode({}));
 
         final status = StatusUtils.readStatus(repoDir, ggLog: ggLog);

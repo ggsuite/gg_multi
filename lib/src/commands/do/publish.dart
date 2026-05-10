@@ -7,7 +7,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:gg/gg.dart' as gg;
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
@@ -161,7 +161,7 @@ class DoPublishCommand extends DirCommand<void> {
     final ticketName = path.basename(ticketDir.path);
     final ticketDescription = _readTicketDescription(ticketDir);
 
-    // Step 2: Run kidney_core do review
+    // Step 2: Run gg_multi do review
     try {
       await _doReviewCommand.exec(
         directory: ticketDir,
@@ -169,14 +169,14 @@ class DoPublishCommand extends DirCommand<void> {
         verbose: verbose,
       );
     } catch (e) {
-      throw Exception('kidney_core do review failed: $e');
+      throw Exception('gg_multi do review failed: $e');
     }
 
-    // Step 3: Run kidney_core can publish
+    // Step 3: Run gg_multi can publish
     try {
       await _canPublishCommand.exec(directory: ticketDir, ggLog: ggLog);
     } catch (e) {
-      throw Exception('kidney_core can publish failed: $e');
+      throw Exception('gg_multi can publish failed: $e');
     }
 
     // Get sorted repos
@@ -268,7 +268,7 @@ class DoPublishCommand extends DirCommand<void> {
       await _ggDoCommit.exec(
         directory: repoDir,
         ggLog: taskLog,
-        message: 'Kidney: changed references to pub.dev',
+        message: 'Gg Multi: changed references to pub.dev',
         force: true,
       );
 

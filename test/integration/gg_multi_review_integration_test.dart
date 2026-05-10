@@ -9,19 +9,19 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg/gg.dart' as gg;
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_publish/gg_publish.dart';
-import 'package:kidney_core/src/backend/constants.dart';
-import 'package:kidney_core/src/backend/filesystem_utils.dart';
-import 'package:kidney_core/src/commands/can/commit.dart';
-import 'package:kidney_core/src/commands/can/review.dart';
-import 'package:kidney_core/src/commands/do/create/ticket.dart';
-import 'package:kidney_core/src/commands/do/commit.dart';
-import 'package:kidney_core/src/commands/do/publish.dart';
-import 'package:kidney_core/src/commands/do/push.dart';
-import 'package:kidney_core/src/commands/do/review.dart';
-import 'package:kidney_core/src/commands/do/add.dart';
-import 'package:kidney_core/src/commands/do/init.dart';
+import 'package:gg_multi/src/backend/constants.dart';
+import 'package:gg_multi/src/backend/filesystem_utils.dart';
+import 'package:gg_multi/src/commands/can/commit.dart';
+import 'package:gg_multi/src/commands/can/review.dart';
+import 'package:gg_multi/src/commands/do/create/ticket.dart';
+import 'package:gg_multi/src/commands/do/commit.dart';
+import 'package:gg_multi/src/commands/do/publish.dart';
+import 'package:gg_multi/src/commands/do/push.dart';
+import 'package:gg_multi/src/commands/do/review.dart';
+import 'package:gg_multi/src/commands/do/add.dart';
+import 'package:gg_multi/src/commands/do/init.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:pub_semver/pub_semver.dart';
@@ -43,7 +43,7 @@ void main() {
         return VersionIncrement.patch;
       });
 
-  group('kidney_core review integration', () {
+  group('gg_multi review integration', () {
     test(
       'adds a & b and reviews them end-to-end',
       skip: true,
@@ -71,17 +71,17 @@ void main() {
 
         // Create an isolated workspace root for this integration test ---------
         final tempRoot =
-            Directory.systemTemp.createTempSync('kidney_review_integration_');
+            Directory.systemTemp.createTempSync('gg_multi_review_integration_');
 
         try {
           // -------------------------------------------------------------------
-          // 1) Initialize master workspace via InitCommand (kidney_core init)
+          // 1) Initialize master workspace via InitCommand (gg_multi init)
 
-          print('------- Running kidney_core init -------');
+          print('------- Running gg_multi init -------');
 
           final initRunner = CommandRunner<void>(
-            'kidney_core',
-            'kidney_core integration init',
+            'gg_multi',
+            'gg_multi integration init',
           )..addCommand(
               InitCommand(
                 ggLog: ggLog,
@@ -92,7 +92,7 @@ void main() {
           await initRunner.run(<String>['init']);
 
           final masterDir = Directory(
-            path.join(tempRoot.path, kidneyMasterFolder),
+            path.join(tempRoot.path, ggMultiMasterFolder),
           );
           expect(masterDir.existsSync(), isTrue);
 
@@ -135,17 +135,17 @@ void main() {
           }
 
           // -------------------------------------------------------------------
-          // 3) Create ticket workspace KIDNEY_TEST (kidney_core create ticket)
+          // 3) Create ticket workspace KIDNEY_TEST (gg_multi create ticket)
 
           const ticketName = 'KIDNEY_TEST';
 
           print(
-            '------- Running kidney_core create ticket $ticketName -------',
+            '------- Running gg_multi create ticket $ticketName -------',
           );
 
           final ticketRunner = CommandRunner<void>(
-            'kidney_core',
-            'kidney_core integration create ticket',
+            'gg_multi',
+            'gg_multi integration create ticket',
           )..addCommand(
               TicketCommand(
                 ggLog: ggLog,
@@ -162,20 +162,20 @@ void main() {
           ]);
 
           final ticketDir = Directory(
-            path.join(tempRoot.path, kidneyTicketFolder, ticketName),
+            path.join(tempRoot.path, ggMultiTicketFolder, ticketName),
           );
           expect(ticketDir.existsSync(), isTrue);
 
           // -------------------------------------------------------------------
-          // 4) Add a and b into ticket workspace (kidney_core add a b) --------
+          // 4) Add a and b into ticket workspace (gg_multi add a b) --------
 
           print(
-            '------- Running kidney_core add a b -------',
+            '------- Running gg_multi add a b -------',
           );
 
           final addRunner = CommandRunner<void>(
-            'kidney_core',
-            'kidney_core integration add',
+            'gg_multi',
+            'gg_multi integration add',
           )..addCommand(
               AddCommand(
                 ggLog: ggLog,
@@ -204,15 +204,15 @@ void main() {
           );
 
           // -------------------------------------------------------------------
-          // 5) Run kidney_core do commit for the ticket -----------------------
+          // 5) Run gg_multi do commit for the ticket -----------------------
 
           print(
-            '------- Running kidney_core do commit -------',
+            '------- Running gg_multi do commit -------',
           );
 
           final doCommitRunner = CommandRunner<void>(
-            'kidney_core',
-            'kidney_core integration do commit',
+            'gg_multi',
+            'gg_multi integration do commit',
           )..addCommand(
               DoCommitCommand(
                 ggLog: ggLog,
@@ -224,20 +224,20 @@ void main() {
             '--input',
             ticketDir.path,
             '--message',
-            'test-kidney-integration: initial commit after '
+            'test-gg_multi-integration: initial commit after '
                 'adding to ticket and before review',
           ]);
 
           // -------------------------------------------------------------------
-          // 6) Run kidney_core do push for the ticket -------------------------
+          // 6) Run gg_multi do push for the ticket -------------------------
 
           print(
-            '------- Running kidney_core do push -------',
+            '------- Running gg_multi do push -------',
           );
 
           final doPushRunner = CommandRunner<void>(
-            'kidney_core',
-            'kidney_core integration do push',
+            'gg_multi',
+            'gg_multi integration do push',
           )..addCommand(
               DoPushCommand(
                 ggLog: ggLog,
@@ -252,15 +252,15 @@ void main() {
           ]);
 
           // -------------------------------------------------------------------
-          // 7) Run kidney_core can review for the ticket ----------------------
+          // 7) Run gg_multi can review for the ticket ----------------------
 
           print(
-            '------- Running kidney_core can review -------',
+            '------- Running gg_multi can review -------',
           );
 
           final canReviewRunner = CommandRunner<void>(
-            'kidney_core',
-            'kidney_core integration can review',
+            'gg_multi',
+            'gg_multi integration can review',
           )..addCommand(
               CanReviewCommand(
                 ggLog: ggLog,
@@ -274,15 +274,15 @@ void main() {
           ]);
 
           // -------------------------------------------------------------------
-          // 8) Run kidney_core do review for the ticket -----------------------
+          // 8) Run gg_multi do review for the ticket -----------------------
 
           print(
-            '------- Running kidney_core do review -------',
+            '------- Running gg_multi do review -------',
           );
 
           final reviewRunner = CommandRunner<void>(
-            'kidney_core',
-            'kidney_core integration do review',
+            'gg_multi',
+            'gg_multi integration do review',
           )..addCommand(
               DoReviewCommand(
                 ggLog: ggLog,
@@ -346,15 +346,15 @@ void main() {
           }
 
           // -------------------------------------------------------------------
-          // 10) Run kidney_core do publish for the ticket ---------------------
+          // 10) Run gg_multi do publish for the ticket ---------------------
 
           print(
-            '------- Running kidney_core can commit -------',
+            '------- Running gg_multi can commit -------',
           );
 
           final canCommitRunner = CommandRunner<void>(
-            'kidney_core',
-            'kidney_core integration can commit',
+            'gg_multi',
+            'gg_multi integration can commit',
           )..addCommand(
               CanCommitCommand(
                 ggLog: ggLog,
@@ -372,12 +372,12 @@ void main() {
             '--input',
             ticketDir.path,
             '--message',
-            'test-kidney-integration: initial commit after '
+            'test-gg_multi-integration: initial commit after '
                 'review and before publish',
           ]);
 
           print(
-            '------- Running kidney_core do publish -------',
+            '------- Running gg_multi do publish -------',
           );
 
           gg.VersionSelector versionSelector = gg.MockVersionSelector();
@@ -386,8 +386,8 @@ void main() {
           mockVersionSelector(versionSelector);
 
           final publishRunner = CommandRunner<void>(
-            'kidney_core',
-            'kidney_core integration do publish',
+            'gg_multi',
+            'gg_multi integration do publish',
           )..addCommand(
               DoPublishCommand(
                 ggLog: ggLog,
@@ -420,17 +420,17 @@ void main() {
           ]);
 
           final ticketDir2 = Directory(
-            path.join(tempRoot.path, kidneyTicketFolder, ticketName2),
+            path.join(tempRoot.path, ggMultiTicketFolder, ticketName2),
           );
           expect(ticketDir2.existsSync(), isTrue);
 
           print(
-            '------- Running kidney_core add a b -------',
+            '------- Running gg_multi add a b -------',
           );
 
           final addRunner2 = CommandRunner<void>(
-            'kidney_core',
-            'kidney_core integration add',
+            'gg_multi',
+            'gg_multi integration add',
           )..addCommand(
               AddCommand(
                 ggLog: ggLog,

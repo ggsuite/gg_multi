@@ -6,7 +6,7 @@
 
 import 'dart:io';
 import 'package:test/test.dart';
-import 'package:kidney_core/src/backend/vscode_launcher.dart';
+import 'package:gg_multi/src/backend/vscode_launcher.dart';
 
 void main() {
   group('VSCodeLauncher', () {

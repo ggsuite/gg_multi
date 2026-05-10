@@ -8,10 +8,10 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
-import 'package:kidney_core/src/backend/constants.dart';
+import 'package:gg_multi/src/backend/constants.dart';
 import 'package:test/test.dart';
 import 'package:path/path.dart' as path;
-import 'package:kidney_core/src/commands/list/deps.dart';
+import 'package:gg_multi/src/commands/list/deps.dart';
 
 void main() {
   group('ListDepsCommand', () {
@@ -22,7 +22,7 @@ void main() {
     setUp(() {
       messages.clear();
       tempDir = Directory.systemTemp.createTempSync('list_deps_test');
-      masterWorkspace = Directory(path.join(tempDir.path, kidneyMasterFolder))
+      masterWorkspace = Directory(path.join(tempDir.path, ggMultiMasterFolder))
         ..createSync(recursive: true);
       // Create a project folder 'project123' inside master workspace
       final projectDir =

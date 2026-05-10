@@ -21,7 +21,7 @@ class ListTicketsCommand extends Command<void> {
     String? workspacePath,
     // coverage:ignore-start
   }) : workspacePath =
-            workspacePath ?? WorkspaceUtils.defaultKidneyWorkspacePath();
+            workspacePath ?? WorkspaceUtils.defaultGgMultiWorkspacePath();
   // coverage:ignore-end
 
   /// The logger function
@@ -38,7 +38,7 @@ class ListTicketsCommand extends Command<void> {
 
   @override
   Future<void> run() async {
-    final ticketsDir = Directory(path.join(workspacePath, kidneyTicketFolder));
+    final ticketsDir = Directory(path.join(workspacePath, ggMultiTicketFolder));
     if (!ticketsDir.existsSync()) {
       ggLog(yellow('No tickets found.'));
       return;

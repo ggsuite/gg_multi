@@ -6,7 +6,7 @@
 
 import 'dart:io';
 
-import 'package:gg/gg.dart' as gg;
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_publish/gg_publish.dart' as gg_publish;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
@@ -142,7 +142,7 @@ class CanPublishCommand extends DirCommand<void> {
       ),
     );
 
-    // Step 3: Run kidney_core did commit ------------------------------------
+    // Step 3: Run gg_multi did commit ------------------------------------
     await GgStatusPrinter<void>(
       message: 'Did commit?',
       ggLog: ggLog,
@@ -177,7 +177,7 @@ class CanPublishCommand extends DirCommand<void> {
       ),
     );
 
-    // Step 6: Run kidney_core do push ---------------------------------------
+    // Step 6: Run gg_multi do push ---------------------------------------
     await GgStatusPrinter<void>(
       message: 'Running do push',
       ggLog: ggLog,
@@ -220,7 +220,7 @@ class CanPublishCommand extends DirCommand<void> {
     }
   }
 
-  /// Executes kidney_core did commit for the ticket.
+  /// Executes gg_multi did commit for the ticket.
   Future<void> _runDidCommit({
     required Directory ticketDir,
     required GgLog ggLog,
@@ -228,8 +228,8 @@ class CanPublishCommand extends DirCommand<void> {
     try {
       await _didCommitCommand.exec(directory: ticketDir, ggLog: ggLog);
     } catch (e) {
-      ggLog(red('kidney_core did commit failed: $e'));
-      throw Exception('kidney_core did commit failed');
+      ggLog(red('gg_multi did commit failed: $e'));
+      throw Exception('gg_multi did commit failed');
     }
   }
 
@@ -257,7 +257,7 @@ class CanPublishCommand extends DirCommand<void> {
     }
   }
 
-  /// Executes kidney_core do push for the ticket.
+  /// Executes gg_multi do push for the ticket.
   Future<void> _runDoPush({
     required Directory ticketDir,
     required GgLog ggLog,
@@ -265,8 +265,8 @@ class CanPublishCommand extends DirCommand<void> {
     try {
       await _doPushCommand.exec(directory: ticketDir, ggLog: ggLog);
     } catch (e) {
-      ggLog(red('kidney_core do push failed: $e'));
-      throw Exception('kidney_core do push failed');
+      ggLog(red('gg_multi do push failed: $e'));
+      throw Exception('gg_multi do push failed');
     }
   }
 

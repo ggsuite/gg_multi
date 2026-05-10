@@ -6,11 +6,11 @@
 
 import 'dart:io';
 import 'package:args/command_runner.dart';
-import 'package:kidney_core/src/backend/constants.dart';
+import 'package:gg_multi/src/backend/constants.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-import 'package:kidney_core/src/commands/do/rm.dart';
+import 'package:gg_multi/src/commands/do/rm.dart';
 
 import '../../rm_console_colors_helper.dart';
 
@@ -42,7 +42,7 @@ void main() {
       masterWs = Directory(
         path.join(
           tempDir.path,
-          kidneyMasterFolder,
+          ggMultiMasterFolder,
         ),
       )..createSync(recursive: true);
       runner = CommandRunner<void>('test', 'RemoveCommand Test')
@@ -85,7 +85,7 @@ void main() {
       final featureWs = Directory(
         path.join(
           tempDir.path,
-          'kidney_ws_feature1',
+          'gg_multi_ws_feature1',
         ),
       )..createSync(recursive: true);
       Directory(path.join(masterWs.path, 'featProj'))
@@ -105,7 +105,7 @@ void main() {
         messages,
         contains('This repo is used by the following feature branches:'),
       );
-      expect(messages, contains(' - kidney_ws_feature1'));
+      expect(messages, contains(' - gg_multi_ws_feature1'));
       expect(messages, contains('Please remove these branches first.'));
     });
 
@@ -147,7 +147,7 @@ void main() {
         () async {
       // Arrange
       // Create the master workspace if not exists
-      final masterWsPath = path.join(tempDir.path, kidneyMasterFolder);
+      final masterWsPath = path.join(tempDir.path, ggMultiMasterFolder);
       final masterDir = Directory(masterWsPath);
       if (!masterDir.existsSync()) {
         masterDir.createSync(recursive: true);
@@ -174,14 +174,14 @@ void main() {
       expect(
         messages,
         contains('Repository folder not found: '
-            '${path.join(kidneyMasterFolder, 'missingRepo')}'),
+            '${path.join(ggMultiMasterFolder, 'missingRepo')}'),
       );
     });
 
     test('deletes ticket folder when name matches ticket', () async {
       // Arrange: setup a ticket folder under tickets
       final ticketDir = Directory(
-        path.join(tempDir.path, kidneyTicketFolder, 'ticket1'),
+        path.join(tempDir.path, ggMultiTicketFolder, 'ticket1'),
       )..createSync(recursive: true);
       File(path.join(ticketDir.path, 'dummy.txt')).writeAsStringSync('data');
 
@@ -194,7 +194,7 @@ void main() {
         messages,
         contains(
           'Deleted ticket ticket1 at ${path.join(
-            kidneyTicketFolder,
+            ggMultiTicketFolder,
             'ticket1',
           )}',
         ),

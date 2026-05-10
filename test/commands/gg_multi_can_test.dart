@@ -9,17 +9,17 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
-import 'package:kidney_core/src/commands/kidney_do.dart';
+import 'package:gg_multi/src/commands/gg_multi_can.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('DoCommand', () {
+  group('CanCommand', () {
     late Directory tempDir;
     final messages = <String>[];
 
     setUp(() {
       messages.clear();
-      tempDir = Directory.systemTemp.createTempSync('do_test_');
+      tempDir = Directory.systemTemp.createTempSync('can_test_');
     });
 
     tearDown(() {
@@ -29,23 +29,16 @@ void main() {
     });
 
     test('should show all sub commands', () async {
-      final doCommand = Do(ggLog: messages.add);
+      final canCommand = Can(ggLog: messages.add);
       // Update the directory path to use the correct path separator
       final commandsDir = Directory(
         'lib${Platform.pathSeparator}src${Platform.pathSeparator}'
-        'commands${Platform.pathSeparator}do',
+        'commands${Platform.pathSeparator}can',
       );
       final (subCommands, errorMessage) = await missingSubCommands(
         directory: commandsDir,
-        command: doCommand,
-        additionalSubCommands: [
-          'commit',
-          'push',
-          'publish',
-          'review',
-          'install-git-hooks',
-          'cancel-review',
-        ],
+        command: canCommand,
+        additionalSubCommands: ['commit', 'push', 'publish', 'review'],
       );
 
       expect(subCommands, isEmpty, reason: errorMessage);
@@ -54,20 +47,20 @@ void main() {
     test('prints help message when --help is passed', () async {
       final runner = CommandRunner<void>(
         'test',
-        'DoCommand Help',
+        'CanCommand Help',
       );
       runner.addCommand(
-        Do(ggLog: (_) {}),
+        Can(ggLog: (_) {}),
       );
       final output = await capturePrint(
         code: () async {
-          await runner.run(['do', '--help']);
+          await runner.run(['can', '--help']);
         },
       );
       expect(
         output.first,
-        contains('Perform actions like committing, pushing or '
-            'reviewing across ticket repositories.'),
+        contains('Checks if you can commit, '
+            'push or review for the current ticket.'),
       );
     });
   });

@@ -9,9 +9,9 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
-import 'package:kidney_core/src/backend/constants.dart';
-import 'package:kidney_core/src/backend/git_handler.dart';
-import 'package:kidney_core/src/commands/do/add_deps.dart';
+import 'package:gg_multi/src/backend/constants.dart';
+import 'package:gg_multi/src/backend/git_handler.dart';
+import 'package:gg_multi/src/commands/do/add_deps.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:http/http.dart' as http;
@@ -41,7 +41,7 @@ void main() {
       when(() => mockGitCloner.cloneRepo(any(), any()))
           .thenAnswer((_) async {});
       tempDir = Directory.systemTemp.createTempSync('add_deps_test');
-      workspacePath = path.join(tempDir.path, kidneyMasterFolder);
+      workspacePath = path.join(tempDir.path, ggMultiMasterFolder);
       Directory(workspacePath).createSync(recursive: true);
       dirNoPubspec = Directory(path.join(workspacePath, 'no_pubspec'))
         ..createSync(recursive: true);

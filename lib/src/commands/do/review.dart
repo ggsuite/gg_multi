@@ -6,7 +6,7 @@
 
 import 'dart:io';
 
-import 'package:gg/gg.dart' as gg;
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
@@ -144,7 +144,7 @@ class DoReviewCommand extends DirCommand<void> {
 
     // Step 4: Run can review after merging ----------------------------------
     await GgStatusPrinter<void>(
-      message: 'Kidney can review?',
+      message: 'Gg Multi can review?',
       ggLog: ggLog,
     ).run(
       () async => _runCanReview(
@@ -221,7 +221,7 @@ class DoReviewCommand extends DirCommand<void> {
     }
   }
 
-  /// Executes `kidney_core can review` for the given ticket directory.
+  /// Executes `gg_multi can review` for the given ticket directory.
   Future<void> _runCanReview({
     required Directory ticketDir,
     required GgLog ggLog,
@@ -229,8 +229,8 @@ class DoReviewCommand extends DirCommand<void> {
     try {
       await _canReviewCommand.exec(directory: ticketDir, ggLog: ggLog);
     } catch (e) {
-      ggLog(red('kidney_core can review failed: $e'));
-      throw Exception('kidney_core can review failed');
+      ggLog(red('gg_multi can review failed: $e'));
+      throw Exception('gg_multi can review failed');
     }
   }
 
@@ -283,7 +283,7 @@ class DoReviewCommand extends DirCommand<void> {
         await _ggDoCommit.exec(
           directory: repoDir,
           ggLog: ggLog,
-          message: 'kidney: changed references to git',
+          message: 'gg_multi: changed references to git',
           force: true,
         );
         ggLog(green('Committed $repoName'));

@@ -20,24 +20,24 @@ void main() {
 
       final parsedLaunchJson = jsonDecode(launchJson) as Map<String, dynamic>;
 
-      // Ensure there is a configuration for executing bin/kidney_core.dart
+      // Ensure there is a configuration for executing bin/gg_multi.dart
       final configurations =
           parsedLaunchJson['configurations'] as List<dynamic>;
 
-      final kidneyCore = configurations.firstWhere(
+      final ggMulti = configurations.firstWhere(
         (dynamic configuration) =>
-            configuration['name'].toString() == 'kidney_core.dart',
+            configuration['name'].toString() == 'gg_multi.dart',
       );
 
       expect(
-        kidneyCore,
+        ggMulti,
         isNotNull,
-        reason: 'Item for executing bin/kidney_core.dart not found',
+        reason: 'Item for executing bin/gg_multi.dart not found',
       );
 
-      expect(kidneyCore['name'], 'kidney_core.dart');
-      expect(kidneyCore['type'], 'dart');
-      expect(kidneyCore['request'], 'launch');
+      expect(ggMulti['name'], 'gg_multi.dart');
+      expect(ggMulti['type'], 'dart');
+      expect(ggMulti['request'], 'launch');
 
       // Ensure there is a coniguration for executing the current file
       final currentFile = parsedLaunchJson['configurations'].firstWhere(

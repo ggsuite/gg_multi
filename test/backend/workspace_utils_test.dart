@@ -6,10 +6,10 @@
 
 import 'dart:io';
 
-import 'package:kidney_core/src/backend/constants.dart';
+import 'package:gg_multi/src/backend/constants.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-import 'package:kidney_core/src/backend/workspace_utils.dart';
+import 'package:gg_multi/src/backend/workspace_utils.dart';
 
 void main() {
   group('WorkspaceUtils.defaultMasterWorkspacePath', () {
@@ -25,7 +25,7 @@ void main() {
 
     test('returns existing master workspace in current folder', () async {
       // Arrange ---------------------------------------------------------------
-      final masterDir = Directory(path.join(tempRoot.path, kidneyMasterFolder));
+      final masterDir = Directory(path.join(tempRoot.path, ggMultiMasterFolder));
       await masterDir.create();
 
       // Act -------------------------------------------------------------------
@@ -40,12 +40,12 @@ void main() {
     test('resolves master workspace from a ticket workspace', () async {
       // Arrange ---------------------------------------------------------------
       final ticketsDir = Directory(
-        path.join(tempRoot.path, kidneyTicketFolder),
+        path.join(tempRoot.path, ggMultiTicketFolder),
       );
       final ticketDir = Directory(path.join(ticketsDir.path, 'ticket_123'));
       await ticketDir.create(recursive: true);
 
-      final expectedMaster = path.join(tempRoot.path, kidneyMasterFolder);
+      final expectedMaster = path.join(tempRoot.path, ggMultiMasterFolder);
 
       // Act -------------------------------------------------------------------
       final result = WorkspaceUtils.defaultMasterWorkspacePath(
@@ -61,7 +61,7 @@ void main() {
       final randomDir =
           Directory(path.join(tempRoot.path, 'random', 'sub', 'folder'));
       await randomDir.create(recursive: true);
-      final expectedMaster = path.join(randomDir.path, kidneyMasterFolder);
+      final expectedMaster = path.join(randomDir.path, ggMultiMasterFolder);
 
       // Act -------------------------------------------------------------------
       final result = WorkspaceUtils.defaultMasterWorkspacePath(
@@ -73,7 +73,7 @@ void main() {
     });
   });
 
-  group('WorkspaceUtils.defaultKidneyWorkspacePath', () {
+  group('WorkspaceUtils.defaultGgMultiWorkspacePath', () {
     late Directory tempRoot;
 
     setUp(() async {
@@ -87,10 +87,10 @@ void main() {
 
     test('returns parent of master workspace if existing', () async {
       final wsParent = Directory(path.join(tempRoot.path, 'the_workspace'));
-      final masterDir = Directory(path.join(wsParent.path, kidneyMasterFolder));
+      final masterDir = Directory(path.join(wsParent.path, ggMultiMasterFolder));
       await masterDir.create(recursive: true);
 
-      final result = WorkspaceUtils.defaultKidneyWorkspacePath(
+      final result = WorkspaceUtils.defaultGgMultiWorkspacePath(
         workingDir: wsParent.path,
       );
       expect(result, equals(wsParent.path));
@@ -98,11 +98,11 @@ void main() {
 
     test('returns parent of resolved master workspace path', () async {
       final ticketDir = Directory(
-        path.join(tempRoot.path, 'parent', kidneyTicketFolder, 'TICKET-42'),
+        path.join(tempRoot.path, 'parent', ggMultiTicketFolder, 'TICKET-42'),
       )..createSync(recursive: true);
       final wsParent = Directory(path.join(tempRoot.path, 'parent'));
 
-      final result = WorkspaceUtils.defaultKidneyWorkspacePath(
+      final result = WorkspaceUtils.defaultGgMultiWorkspacePath(
         workingDir: ticketDir.path,
       );
       expect(result, equals(wsParent.path));
@@ -113,7 +113,7 @@ void main() {
         'when nothing is found', () async {
       final customCwd = Directory(path.join(tempRoot.path, 'zombie'));
       await customCwd.create(recursive: true);
-      final result = WorkspaceUtils.defaultKidneyWorkspacePath(
+      final result = WorkspaceUtils.defaultGgMultiWorkspacePath(
         workingDir: customCwd.path,
       );
       expect(result, equals(customCwd.path));
@@ -149,7 +149,7 @@ void main() {
     test('returns true for direct child of a folder with master workspace',
         () async {
       final root = Directory(path.join(tempRoot.path, 'myroot'));
-      final ws = Directory(path.join(root.path, kidneyMasterFolder));
+      final ws = Directory(path.join(root.path, ggMultiMasterFolder));
       await ws.create(recursive: true);
 
       final child = Directory(path.join(root.path, 'foo'));
@@ -163,7 +163,7 @@ void main() {
     test('returns true for nested grandchild inside workspace', () async {
       // Arrange --------------------------------------------------------------
       final root = Directory(path.join(tempRoot.path, 'parent'));
-      final ws = Directory(path.join(root.path, kidneyMasterFolder));
+      final ws = Directory(path.join(root.path, ggMultiMasterFolder));
       await ws.create(recursive: true);
       final grandChild = Directory(path.join(root.path, 'nested', 'sub'));
       await grandChild.create(recursive: true);
@@ -179,7 +179,7 @@ void main() {
     test('returns true if searching at the workspace root itself', () async {
       // Arrange ---------------------------------------------------------------
       final root = Directory(path.join(tempRoot.path, 'x'));
-      final ws = Directory(path.join(root.path, kidneyMasterFolder));
+      final ws = Directory(path.join(root.path, ggMultiMasterFolder));
       await ws.create(recursive: true);
 
       // Act ------------------------------------------------------------------
@@ -194,7 +194,7 @@ void main() {
         () async {
       // Arrange ------------------------------------------------------------
       final root = Directory(path.join(tempRoot.path, 'top'));
-      final ws = Directory(path.join(root.path, kidneyMasterFolder));
+      final ws = Directory(path.join(root.path, ggMultiMasterFolder));
       await ws.create(recursive: true);
 
       // Act ---------------------------------------------------------------

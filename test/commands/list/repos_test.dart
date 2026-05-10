@@ -8,10 +8,10 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
-import 'package:kidney_core/src/backend/constants.dart';
+import 'package:gg_multi/src/backend/constants.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-import 'package:kidney_core/src/commands/list/repos.dart';
+import 'package:gg_multi/src/commands/list/repos.dart';
 
 import '../../rm_console_colors_helper.dart';
 
@@ -37,7 +37,7 @@ void main() {
 
     test('lists repositories correctly', () async {
       final workspacePath = path.join(tempDir.path, 'workspace_link');
-      final masterPath = path.join(workspacePath, kidneyMasterFolder);
+      final masterPath = path.join(workspacePath, ggMultiMasterFolder);
       final repo1 = Directory(path.join(masterPath, 'json_dart'))
         ..createSync(
           recursive: true,
@@ -70,7 +70,7 @@ void main() {
 
     test('handles empty master workspace directory', () async {
       final workspacePath = path.join(tempDir.path, 'workspace_empty');
-      final masterPath = Directory(path.join(workspacePath, kidneyMasterFolder))
+      final masterPath = Directory(path.join(workspacePath, ggMultiMasterFolder))
         ..createSync(
           recursive: true,
         );

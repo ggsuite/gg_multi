@@ -8,9 +8,9 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
-import 'package:kidney_core/src/backend/constants.dart';
+import 'package:gg_multi/src/backend/constants.dart';
 import 'package:test/test.dart';
-import 'package:kidney_core/src/commands/list/organizations.dart';
+import 'package:gg_multi/src/commands/list/organizations.dart';
 import 'package:path/path.dart' as path;
 
 import '../../rm_console_colors_helper.dart';
@@ -28,7 +28,7 @@ void main() {
     setUp(() {
       messages.clear();
       tempDir = Directory.systemTemp.createTempSync('list_org_test');
-      masterDir = Directory(path.join(tempDir.path, kidneyMasterFolder))
+      masterDir = Directory(path.join(tempDir.path, ggMultiMasterFolder))
         ..createSync(recursive: true);
     });
 

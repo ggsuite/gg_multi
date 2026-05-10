@@ -5,7 +5,7 @@
 // found in the LICENSE file in the root of this package.
 
 /// The master workspace folder
-const String kidneyMasterFolder = '.master';
+const String ggMultiMasterFolder = '.master';
 
 /// The folder where tickets are stored
-const String kidneyTicketFolder = 'tickets';
+const String ggMultiTicketFolder = 'tickets';

@@ -6,7 +6,7 @@
 
 import 'dart:io';
 
-import 'package:gg/gg.dart' as gg;
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
@@ -168,7 +168,7 @@ class DoCancelReviewCommand extends DirCommand<void> {
         await _ggDoCommit.exec(
           directory: repoDir,
           ggLog: ggLog,
-          message: 'kidney: changed references to local',
+          message: 'gg_multi: changed references to local',
           force: true,
         );
         ggLog(green('Committed $repoName'));

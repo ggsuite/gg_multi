@@ -14,8 +14,8 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:test/test.dart';
-import 'package:kidney_core/src/commands/can/review.dart';
-import 'package:kidney_core/src/backend/status_utils.dart';
+import 'package:gg_multi/src/commands/can/review.dart';
+import 'package:gg_multi/src/backend/status_utils.dart';
 
 import '../../rm_console_colors_helper.dart';
 
@@ -143,7 +143,7 @@ void main() {
       // Set status for all repos to localized
       for (final repoName in ['A', 'B']) {
         final statusFile =
-            File(path.join(ticketDir.path, repoName, '.kidney_status'))
+            File(path.join(ticketDir.path, repoName, '.gg_multi_status'))
               ..createSync(recursive: true);
         statusFile.writeAsStringSync(
           jsonEncode({'status': StatusUtils.statusLocalized}),
@@ -309,7 +309,7 @@ void main() {
       // Set status for all repos to localized
       for (final repoName in ['A', 'B']) {
         final statusFile =
-            File(path.join(ticketDir.path, repoName, '.kidney_status'))
+            File(path.join(ticketDir.path, repoName, '.gg_multi_status'))
               ..createSync(recursive: true);
         statusFile.writeAsStringSync(
           jsonEncode({'status': StatusUtils.statusLocalized}),

@@ -29,20 +29,20 @@ gg do push
 
 ## Architecture
 
-Kidney Core is a multi-repository workspace management CLI for Dart/Flutter projects. It orchestrates actions (commit, push, publish, review) across all repos in a ticket workspace, resolving them in dependency order.
+Gg Multi is a multi-repository workspace management CLI for Dart/Flutter projects. It orchestrates actions (commit, push, publish, review) across all repos in a ticket workspace, resolving them in dependency order.
 
 ### Entry Point & Command Groups
 
 ```
-bin/kidney_core.dart
-  └─ KidneyCore (lib/src/kidney_core.dart)
+bin/gg_multi.dart
+  └─ GgMulti (lib/src/gg_multi.dart)
        ├─ Can   – validate before acting (can commit, can push, can publish, can review)
        ├─ Do    – execute across all repos (do commit, do push, do review, do claude, …)
        ├─ Did   – report what happened (did commit, did push)
        └─ Ls    – list workspace contents (repos, organizations, deps)
 ```
 
-Each command group lives in `lib/src/commands/kidney_can.dart`, `kidney_do.dart`, `kidney_did.dart`, and `ls.dart`. Subcommands are in `lib/src/commands/<group>/<name>.dart`.
+Each command group lives in `lib/src/commands/gg_multi_can.dart`, `gg_multi_do.dart`, `gg_multi_did.dart`, and `ls.dart`. Subcommands are in `lib/src/commands/<group>/<name>.dart`.
 
 ### Workspace Hierarchy
 

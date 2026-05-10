@@ -5,8 +5,8 @@
 // found in the LICENSE file in the root of this package.
 
 import 'package:test/test.dart';
-import 'package:kidney_core/src/backend/url_parser.dart';
-import 'package:kidney_core/src/backend/git_platform.dart';
+import 'package:gg_multi/src/backend/url_parser.dart';
+import 'package:gg_multi/src/backend/git_platform.dart';
 
 void main() {
   group('UrlParser', () {

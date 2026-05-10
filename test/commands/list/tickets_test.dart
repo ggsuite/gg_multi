@@ -8,9 +8,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
-import 'package:kidney_core/src/backend/constants.dart';
+import 'package:gg_multi/src/backend/constants.dart';
 import 'package:test/test.dart';
-import 'package:kidney_core/src/commands/list/tickets.dart';
+import 'package:gg_multi/src/commands/list/tickets.dart';
 import 'package:path/path.dart' as path;
 
 import '../../rm_console_colors_helper.dart';
@@ -18,7 +18,7 @@ import '../../rm_console_colors_helper.dart';
 void main() {
   group('ListTicketsCommand', () {
     late Directory tempDir;
-    late Directory kidneyWorkspaceDir;
+    late Directory ggMultiWorkspaceDir;
     late Directory ticketsDir;
     late CommandRunner<void> runner;
     final messages = <String>[];
@@ -28,16 +28,16 @@ void main() {
     setUp(() {
       messages.clear();
       tempDir = Directory.systemTemp.createTempSync('ticket_list_test');
-      kidneyWorkspaceDir = Directory(path.join(tempDir.path, 'kidneyWorkspace'))
+      ggMultiWorkspaceDir = Directory(path.join(tempDir.path, 'ggMultiWorkspace'))
         ..createSync(recursive: true);
       ticketsDir = Directory(
-        path.join(kidneyWorkspaceDir.path, kidneyTicketFolder),
+        path.join(ggMultiWorkspaceDir.path, ggMultiTicketFolder),
       )..createSync(recursive: true);
       runner = CommandRunner<void>('test', 'Test ListTicketsCommand')
         ..addCommand(
           ListTicketsCommand(
             ggLog: ggLog,
-            workspacePath: kidneyWorkspaceDir.path,
+            workspacePath: ggMultiWorkspaceDir.path,
           ),
         );
     });

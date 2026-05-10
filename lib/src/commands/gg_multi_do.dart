@@ -6,14 +6,14 @@
 
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
-import 'package:kidney_core/src/commands/do/add.dart';
-import 'package:kidney_core/src/commands/do/add_deps.dart';
-import 'package:kidney_core/src/commands/do/cancel_review.dart';
-import 'package:kidney_core/src/commands/do/claude.dart';
-import 'package:kidney_core/src/commands/do/code.dart';
-import 'package:kidney_core/src/commands/do/create.dart';
-import 'package:kidney_core/src/commands/do/init.dart';
-import 'package:kidney_core/src/commands/do/rm.dart';
+import 'package:gg_multi/src/commands/do/add.dart';
+import 'package:gg_multi/src/commands/do/add_deps.dart';
+import 'package:gg_multi/src/commands/do/cancel_review.dart';
+import 'package:gg_multi/src/commands/do/claude.dart';
+import 'package:gg_multi/src/commands/do/code.dart';
+import 'package:gg_multi/src/commands/do/create.dart';
+import 'package:gg_multi/src/commands/do/init.dart';
+import 'package:gg_multi/src/commands/do/rm.dart';
 
 import 'do/commit.dart';
 import 'do/push.dart';

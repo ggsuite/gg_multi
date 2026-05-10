@@ -7,7 +7,7 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:kidney_core/src/commands/do/install_gitattributes.dart';
+import 'package:gg_multi/src/commands/do/install_gitattributes.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 
@@ -165,7 +165,7 @@ void main() {
           '* text=auto eol=lf\n'
           '.gg/.gg.json merge=ours\n'
           'pubspec.lock merge=ours\n'
-          '.kidney_status merge=ours\n';
+          '.gg_multi_status merge=ours\n';
       file.writeAsStringSync(original);
       final originalMtime = file.lastModifiedSync();
 
@@ -214,7 +214,7 @@ void main() {
         '* text=auto eol=lf\n'
         '.gg/.gg.json merge=ours\n'
         'pubspec.lock merge=ours\n'
-        '.kidney_status merge=ours\n',
+        '.gg_multi_status merge=ours\n',
       );
       expect(
         fileB.readAsStringSync(),
@@ -222,7 +222,7 @@ void main() {
         '* text=auto eol=lf\n'
         '.gg/.gg.json merge=ours\n'
         'pubspec.lock merge=ours\n'
-        '.kidney_status merge=ours\n',
+        '.gg_multi_status merge=ours\n',
       );
       expect(messages, contains('Updated .gitattributes in A.'));
       expect(messages, contains('Updated .gitattributes in B.'));

@@ -10,14 +10,14 @@ import 'dart:io';
 import 'package:test/test.dart';
 
 void main() {
-  group('bin/kidney_core.dart', () {
+  group('bin/gg_multi.dart', () {
     // #########################################################################
 
     test('should be executable', () async {
-      // Execute bin/kidney_core.dart and check if it prints help
+      // Execute bin/gg_multi.dart and check if it prints help
       final result = await Process.run(
         'dart',
-        ['./bin/kidney_core.dart', 'do', 'add'],
+        ['./bin/gg_multi.dart', 'do', 'add'],
         stdoutEncoding: utf8,
         stderrEncoding: utf8,
         runInShell: true,

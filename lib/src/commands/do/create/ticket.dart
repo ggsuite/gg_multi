@@ -29,7 +29,7 @@ class TicketCommand extends DirCommand<void> {
     super.name = 'ticket',
     super.description = 'Create a ticket folder and save ticket data as JSON.',
     // coverage:ignore-start
-  })  : rootPath = rootPath ?? WorkspaceUtils.defaultKidneyWorkspacePath(),
+  })  : rootPath = rootPath ?? WorkspaceUtils.defaultGgMultiWorkspacePath(),
         directoryFactory = directoryFactory ?? Directory.new
   // coverage:ignore-end
   {
@@ -78,7 +78,7 @@ class TicketCommand extends DirCommand<void> {
 
     // Build the directory path for the ticket (always under the workspace
     // root, independent from the execution directory).
-    final ticketsPath = path.join(rootPath, kidneyTicketFolder, issueId);
+    final ticketsPath = path.join(rootPath, ggMultiTicketFolder, issueId);
     final dir = directoryFactory(ticketsPath);
     final ticketFile = File(path.join(ticketsPath, '.ticket'));
 

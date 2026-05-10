@@ -8,7 +8,7 @@
 import 'dart:io';
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_log/gg_log.dart';
-import 'package:kidney_core/kidney_core.dart';
+import 'package:gg_multi/gg_multi.dart';
 
 // .............................................................................
 Future<void> run({
@@ -17,7 +17,7 @@ Future<void> run({
 }) =>
     GgCommandRunner(
       ggLog: ggLog,
-      command: KidneyCore(ggLog: ggLog),
+      command: GgMulti(ggLog: ggLog),
     ).run(args: args);
 
 // .............................................................................

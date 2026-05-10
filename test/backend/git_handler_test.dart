@@ -8,7 +8,7 @@ import 'dart:io';
 
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
-import 'package:kidney_core/src/backend/git_handler.dart';
+import 'package:gg_multi/src/backend/git_handler.dart';
 import 'package:path/path.dart' as path;
 
 // A mock class for the ProcessRunner function.

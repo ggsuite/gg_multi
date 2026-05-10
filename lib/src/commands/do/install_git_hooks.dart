@@ -17,7 +17,7 @@ import '../../backend/workspace_utils.dart';
 /// Installs git hooks for all repositories in the current ticket.
 ///
 /// The command copies the `assets/pre-push` template from the
-/// `kidney_core` package into `.git/hooks/pre-push` of each repository
+/// `gg_multi` package into `.git/hooks/pre-push` of each repository
 /// and the `assets/verify_push.dart` script into `.gg/verify_push.dart`.
 class DoInstallGitHooksCommand extends DirCommand<void> {
   /// Creates a new [DoInstallGitHooksCommand].

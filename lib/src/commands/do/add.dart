@@ -7,7 +7,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:args/command_runner.dart';
-import 'package:gg/gg.dart' as gg;
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
@@ -649,7 +649,7 @@ class AddCommand extends Command<dynamic> {
         await _ggDoCommit.exec(
           directory: repoDir,
           ggLog: ggLog,
-          message: 'kidney: changed references to path',
+          message: 'gg_multi: changed references to path',
           force: true,
           updateChangeLog: false,
         );

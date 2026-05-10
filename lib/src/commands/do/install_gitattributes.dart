@@ -36,7 +36,7 @@ typedef ProcessRunner = Future<ProcessResult> Function(
 const String gitattributesRequiredLines = '* text=auto eol=lf\n'
     '.gg/.gg.json merge=ours\n'
     'pubspec.lock merge=ours\n'
-    '.kidney_status merge=ours';
+    '.gg_multi_status merge=ours';
 
 /// Ensures a `.gitattributes` file containing all
 /// [gitattributesRequiredLines] exists in every repository of the current

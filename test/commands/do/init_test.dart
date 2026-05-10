@@ -6,8 +6,8 @@
 
 import 'dart:io';
 import 'package:args/command_runner.dart';
-import 'package:kidney_core/src/backend/constants.dart';
-import 'package:kidney_core/src/commands/do/init.dart';
+import 'package:gg_multi/src/backend/constants.dart';
+import 'package:gg_multi/src/commands/do/init.dart';
 import 'package:test/test.dart';
 import 'package:path/path.dart' as path;
 
@@ -41,7 +41,7 @@ void main() {
             rootPath: tempDir.path,
           ),
         );
-      final wsPath = path.join(tempDir.path, kidneyMasterFolder);
+      final wsPath = path.join(tempDir.path, ggMultiMasterFolder);
       expect(Directory(wsPath).existsSync(), isFalse);
 
       await runner.run(['init']);
@@ -51,7 +51,7 @@ void main() {
 
     test('should not recreate if already exists, and log accordingly',
         () async {
-      final wsPath = path.join(tempDir.path, kidneyMasterFolder);
+      final wsPath = path.join(tempDir.path, ggMultiMasterFolder);
       Directory(wsPath).createSync(recursive: true);
       final runner = CommandRunner<void>('test', 'InitCommand Test')
         ..addCommand(
@@ -64,7 +64,7 @@ void main() {
       await runner.run(['init']);
 
       expect(messages[0], contains('Master workspace already exists at:'));
-      expect(messages[0], contains(kidneyMasterFolder));
+      expect(messages[0], contains(ggMultiMasterFolder));
       expect(Directory(wsPath).existsSync(), isTrue);
     });
 
@@ -91,7 +91,7 @@ void main() {
         ),
       );
       expect(
-        Directory(path.join(nonEmptyDir.path, kidneyMasterFolder)).existsSync(),
+        Directory(path.join(nonEmptyDir.path, ggMultiMasterFolder)).existsSync(),
         isFalse,
       );
     });
@@ -102,7 +102,7 @@ void main() {
       // Create parent workspace
       final parentWs = Directory(path.join(tempDir.path, 'parent'))
         ..createSync();
-      final masterWs = Directory(path.join(parentWs.path, kidneyMasterFolder))
+      final masterWs = Directory(path.join(parentWs.path, ggMultiMasterFolder))
         ..createSync();
       // Create child directory inside parent
       final childDir = Directory(path.join(masterWs.path, 'child'))
@@ -120,12 +120,12 @@ void main() {
         messages,
         contains(
           'Cannot initialize a new workspace '
-          'inside an existing Kidney workspace.',
+          'inside an existing Gg Multi workspace.',
         ),
       );
       // No child/master folder created
       expect(
-        Directory(path.join(childDir.path, kidneyMasterFolder)).existsSync(),
+        Directory(path.join(childDir.path, ggMultiMasterFolder)).existsSync(),
         isFalse,
       );
     });

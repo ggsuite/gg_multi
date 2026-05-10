@@ -8,14 +8,14 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
-import 'package:kidney_core/src/backend/git_platform.dart';
+import 'package:gg_multi/src/backend/git_platform.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 
-import 'package:kidney_core/src/backend/add_repository_helper.dart';
-import 'package:kidney_core/src/backend/git_handler.dart';
-import 'package:kidney_core/src/backend/repository.dart';
+import 'package:gg_multi/src/backend/add_repository_helper.dart';
+import 'package:gg_multi/src/backend/git_handler.dart';
+import 'package:gg_multi/src/backend/repository.dart';
 
 import '../rm_console_colors_helper.dart';
 

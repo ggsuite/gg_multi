@@ -8,7 +8,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
-import 'package:kidney_core/src/backend/list_backend.dart';
+import 'package:gg_multi/src/backend/list_backend.dart';
 
 void main() {
   group('list_backend', () {

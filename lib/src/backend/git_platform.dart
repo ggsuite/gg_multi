@@ -7,8 +7,8 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:kidney_core/src/backend/organization.dart';
-import 'package:kidney_core/src/backend/url_parser.dart';
+import 'package:gg_multi/src/backend/organization.dart';
+import 'package:gg_multi/src/backend/url_parser.dart';
 
 import 'dart:io';
 

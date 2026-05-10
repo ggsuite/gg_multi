@@ -1,6 +1,6 @@
 {
-    "name": "kidney_ui",
-    "short_name": "kidney_ui",
+    "name": "gg_multi_ui",
+    "short_name": "gg_multi_ui",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

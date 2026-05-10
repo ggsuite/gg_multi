@@ -8,7 +8,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:kidney_core/src/backend/pub_dev_checker.dart';
+import 'package:gg_multi/src/backend/pub_dev_checker.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -304,7 +304,7 @@ void main() {
         final checker = PubDevChecker();
 
         final isOnPubDev = await checker.packageExistsOnPubDev(
-          packageName: 'kidney_core',
+          packageName: 'gg_multi',
         );
         expect(isOnPubDev, isTrue);
 

@@ -5,7 +5,7 @@
 // found in the LICENSE file in the root of this package.
 
 import 'package:test/test.dart';
-import 'package:kidney_core/src/backend/organization.dart';
+import 'package:gg_multi/src/backend/organization.dart';
 
 void main() {
   group('Organization model', () {

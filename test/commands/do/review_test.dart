@@ -8,16 +8,16 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg/gg.dart' as gg;
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:test/test.dart';
-import 'package:kidney_core/src/commands/do/review.dart';
-import 'package:kidney_core/src/commands/can/review.dart';
-import 'package:kidney_core/src/backend/status_utils.dart';
+import 'package:gg_multi/src/commands/do/review.dart';
+import 'package:gg_multi/src/commands/can/review.dart';
+import 'package:gg_multi/src/backend/status_utils.dart';
 
 import '../../rm_console_colors_helper.dart';
 
@@ -231,7 +231,7 @@ void main() {
         );
         expect(
           messages.any(
-            (m) => m.contains('Kidney can review?'),
+            (m) => m.contains('Gg Multi can review?'),
           ),
           isTrue,
         );
@@ -281,7 +281,7 @@ void main() {
 
         for (final repoName in ['A', 'B']) {
           final statusFile = File(
-            path.join(ticketDir.path, repoName, '.kidney_status'),
+            path.join(ticketDir.path, repoName, '.gg_multi_status'),
           );
           if (statusFile.existsSync()) {
             final content = jsonDecode(
@@ -295,7 +295,7 @@ void main() {
           () => mockGgDoCommit.exec(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
-            message: 'kidney: changed references to git',
+            message: 'gg_multi: changed references to git',
             force: any(named: 'force'),
           ),
         ).called(greaterThan(0));
@@ -395,7 +395,7 @@ void main() {
     });
 
     test(
-      'logs and throws when kidney_core can review fails',
+      'logs and throws when gg_multi can review fails',
       () async {
         final mockSortedProcessingList = MockSortedProcessingList();
         final mockUnlocalizeRefs = MockUnlocalizeRefs();
@@ -462,7 +462,7 @@ void main() {
             isA<Exception>().having(
               (e) => e.toString(),
               'message',
-              'Exception: kidney_core can review failed',
+              'Exception: gg_multi can review failed',
             ),
           ),
         );
@@ -470,7 +470,7 @@ void main() {
         expect(
           messages.any(
             (m) => m.contains(
-              'kidney_core can review failed: '
+              'gg_multi can review failed: '
               'Exception: can review failed',
             ),
           ),

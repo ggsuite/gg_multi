@@ -11,7 +11,7 @@ import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 
-/// Utility class to manage .kidney_status files in repo directories.
+/// Utility class to manage .gg_multi_status files in repo directories.
 class StatusUtils {
   /// Status Unlocalized
   static const String statusUnlocalized = 'unlocalized';
@@ -28,14 +28,14 @@ class StatusUtils {
   /// Status Merged
   static const String statusMerged = 'merged';
 
-  /// Sets the status in the .kidney_status file inside [repoDir].
+  /// Sets the status in the .gg_multi_status file inside [repoDir].
   /// Logs success in green or error in red, but does not throw on error.
   static void setStatus(
     Directory repoDir,
     String status, {
     required GgLog ggLog,
   }) {
-    final statusFile = File(path.join(repoDir.path, '.kidney_status'));
+    final statusFile = File(path.join(repoDir.path, '.gg_multi_status'));
     try {
       statusFile.writeAsStringSync(jsonEncode({'status': status}));
     } catch (e) {
@@ -43,16 +43,16 @@ class StatusUtils {
     }
   }
 
-  /// Reads the status from the .kidney_status file inside [repoDir].
+  /// Reads the status from the .gg_multi_status file inside [repoDir].
   /// Returns the status string if successful, or null on failure.
   /// Logs errors in red.
   static String? readStatus(
     Directory repoDir, {
     required GgLog ggLog,
   }) {
-    final statusFile = File(path.join(repoDir.path, '.kidney_status'));
+    final statusFile = File(path.join(repoDir.path, '.gg_multi_status'));
     if (!statusFile.existsSync()) {
-      ggLog(red('Missing .kidney_status file in ${repoDir.path}'));
+      ggLog(red('Missing .gg_multi_status file in ${repoDir.path}'));
       return null;
     }
     try {

@@ -8,17 +8,17 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg/gg.dart' as gg;
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_publish/gg_publish.dart' as gg_publish;
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:test/test.dart';
-import 'package:kidney_core/src/commands/can/publish.dart';
-import 'package:kidney_core/src/commands/did/commit.dart';
-import 'package:kidney_core/src/commands/do/push.dart';
-import 'package:kidney_core/src/backend/status_utils.dart';
+import 'package:gg_multi/src/commands/can/publish.dart';
+import 'package:gg_multi/src/commands/did/commit.dart';
+import 'package:gg_multi/src/commands/do/push.dart';
+import 'package:gg_multi/src/backend/status_utils.dart';
 
 import '../../rm_console_colors_helper.dart';
 
@@ -110,7 +110,7 @@ void main() {
       // Set status for all repos to git-localized
       for (final repoName in ['A', 'B']) {
         final statusFile = File(
-          path.join(ticketDir.path, repoName, '.kidney_status'),
+          path.join(ticketDir.path, repoName, '.gg_multi_status'),
         )..createSync(recursive: true);
         statusFile.writeAsStringSync(
           jsonEncode({'status': StatusUtils.statusGitLocalized}),
@@ -200,7 +200,7 @@ void main() {
       // Set status for all repos to git-localized
       for (final repoName in ['A', 'B']) {
         final statusFile = File(
-          path.join(ticketDir.path, repoName, '.kidney_status'),
+          path.join(ticketDir.path, repoName, '.gg_multi_status'),
         )..createSync(recursive: true);
         statusFile.writeAsStringSync(
           jsonEncode({'status': StatusUtils.statusGitLocalized}),
@@ -324,7 +324,7 @@ void main() {
       // Set status for all repos to git-localized
       for (final repoName in ['A', 'B']) {
         final statusFile = File(
-          path.join(ticketDir.path, repoName, '.kidney_status'),
+          path.join(ticketDir.path, repoName, '.gg_multi_status'),
         )..createSync(recursive: true);
         statusFile.writeAsStringSync(
           jsonEncode({'status': StatusUtils.statusGitLocalized}),
@@ -449,7 +449,7 @@ void main() {
       // Set status for all repos to git-localized
       for (final repoName in ['A', 'B']) {
         final statusFile = File(
-          path.join(ticketDir.path, repoName, '.kidney_status'),
+          path.join(ticketDir.path, repoName, '.gg_multi_status'),
         )..createSync(recursive: true);
         statusFile.writeAsStringSync(
           jsonEncode({'status': StatusUtils.statusGitLocalized}),
@@ -538,7 +538,7 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            'kidney_core did commit failed: Exception: Did commit failed',
+            'gg_multi did commit failed: Exception: Did commit failed',
           ),
         ),
         isTrue,
@@ -549,7 +549,7 @@ void main() {
       // Set status for all repos to git-localized
       for (final repoName in ['A', 'B']) {
         final statusFile = File(
-          path.join(ticketDir.path, repoName, '.kidney_status'),
+          path.join(ticketDir.path, repoName, '.gg_multi_status'),
         )..createSync(recursive: true);
         statusFile.writeAsStringSync(
           jsonEncode({'status': StatusUtils.statusGitLocalized}),
@@ -669,7 +669,7 @@ void main() {
       // Set status for all repos to git-localized
       for (final repoName in ['A', 'B']) {
         final statusFile = File(
-          path.join(ticketDir.path, repoName, '.kidney_status'),
+          path.join(ticketDir.path, repoName, '.gg_multi_status'),
         )..createSync(recursive: true);
         statusFile.writeAsStringSync(
           jsonEncode({'status': StatusUtils.statusGitLocalized}),
@@ -767,7 +767,7 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            'kidney_core do push failed: Exception: do push failed',
+            'gg_multi do push failed: Exception: do push failed',
           ),
         ),
         isTrue,
@@ -780,7 +780,7 @@ void main() {
         // Prepare git-localized status
         for (final name in ['A', 'B']) {
           final statusFile = File(
-            path.join(ticketDir.path, name, '.kidney_status'),
+            path.join(ticketDir.path, name, '.gg_multi_status'),
           )..createSync(recursive: true);
           statusFile.writeAsStringSync(
             jsonEncode(

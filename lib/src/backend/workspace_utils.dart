@@ -48,13 +48,13 @@ class WorkspaceUtils {
 
     while (true) {
       // 1. Is there an existing master workspace in the current folder? -------
-      if (Directory(path.join(dir.path, kidneyMasterFolder)).existsSync()) {
-        return path.join(dir.path, kidneyMasterFolder);
+      if (Directory(path.join(dir.path, ggMultiMasterFolder)).existsSync()) {
+        return path.join(dir.path, ggMultiMasterFolder);
       }
 
       // 2. Is the current folder the root that contains `tickets`? ------------
-      if (Directory(path.join(dir.path, kidneyTicketFolder)).existsSync()) {
-        return path.join(dir.path, kidneyMasterFolder);
+      if (Directory(path.join(dir.path, ggMultiTicketFolder)).existsSync()) {
+        return path.join(dir.path, ggMultiMasterFolder);
       }
 
       // 3. Go one level up or break when we are at the filesystem root. -------
@@ -65,19 +65,19 @@ class WorkspaceUtils {
         // present in the test setup remain untouched.  We only append the
         // platform specific separator *between* the original path and the
         // `.master` segment.
-        return path.join(workingDir, kidneyMasterFolder);
+        return path.join(workingDir, ggMultiMasterFolder);
       }
       dir = parent;
     }
   }
 
-  /// Returns the path of the Kidney workspace, which is the parent directory
+  /// Returns the path of the Gg Multi workspace, which is the parent directory
   /// of the master workspace.
-  static String defaultKidneyWorkspacePath({String? workingDir}) {
+  static String defaultGgMultiWorkspacePath({String? workingDir}) {
     return path.dirname(defaultMasterWorkspacePath(workingDir: workingDir));
   }
 
-  /// Returns `true` if [directoryPath] is located *inside* an existing Kidney
+  /// Returns `true` if [directoryPath] is located *inside* an existing Gg Multi
   /// workspace (i.e. one of its ancestor directories already contains a
   /// master folder).  This is used by `init` to prevent nested
   /// workspaces.
@@ -85,7 +85,7 @@ class WorkspaceUtils {
     var dir = Directory(directoryPath).absolute;
 
     while (true) {
-      if (Directory(path.join(dir.path, kidneyMasterFolder)).existsSync()) {
+      if (Directory(path.join(dir.path, ggMultiMasterFolder)).existsSync()) {
         return true;
       }
 
@@ -105,7 +105,7 @@ class WorkspaceUtils {
     var current = Directory(executionPath);
     while (true) {
       final parent = current.parent;
-      if (path.basename(parent.path) == kidneyTicketFolder) {
+      if (path.basename(parent.path) == ggMultiTicketFolder) {
         return current.path;
       }
       if (current.path == parent.path) {

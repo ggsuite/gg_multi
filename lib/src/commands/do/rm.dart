@@ -69,7 +69,7 @@ class RemoveCommand extends Command<void> {
     final repoName = extractRepoName(targetArg);
 
     // If a ticket exists, delete ticket folder
-    final ticketPath = path.join(rootPath, kidneyTicketFolder, repoName);
+    final ticketPath = path.join(rootPath, ggMultiTicketFolder, repoName);
     final ticketDir = Directory(ticketPath);
     if (ticketDir.existsSync()) {
       ticketDir.deleteSync(recursive: true);
@@ -77,7 +77,7 @@ class RemoveCommand extends Command<void> {
       return;
     }
 
-    // Find all workspaces under rootPath starting with "kidney_ws_"
+    // Find all workspaces under rootPath starting with "gg_multi_ws_"
     final rootDir = Directory(rootPath);
     if (!rootDir.existsSync()) {
       ggLog(red('Root path not found: ${_rel(rootPath)}'));
@@ -99,10 +99,10 @@ class RemoveCommand extends Command<void> {
       ggLog(red('Repository $repoName not found in any workspace.'));
       return;
     }
-    if (found.length == 1 && found.first == kidneyMasterFolder) {
+    if (found.length == 1 && found.first == ggMultiMasterFolder) {
       // Only in master: delete
       final toDelete =
-          directoryFactory(path.join(rootPath, kidneyMasterFolder, repoName));
+          directoryFactory(path.join(rootPath, ggMultiMasterFolder, repoName));
       if (toDelete.existsSync()) {
         toDelete.deleteSync(recursive: true);
         ggLog(
@@ -118,7 +118,7 @@ class RemoveCommand extends Command<void> {
     // or only feature branches
     ggLog('This repo is used by the following feature branches:');
     for (final ws in found.where(
-      (n) => n != kidneyMasterFolder,
+      (n) => n != ggMultiMasterFolder,
     )) {
       ggLog(' - $ws');
     }

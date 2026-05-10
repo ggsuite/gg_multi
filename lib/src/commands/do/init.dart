@@ -42,7 +42,7 @@ class InitCommand extends Command<void> {
   Future<void> run() async {
     final rootDir = Directory(rootPath);
 
-    final wsPath = path.join(rootDir.path, kidneyMasterFolder);
+    final wsPath = path.join(rootDir.path, ggMultiMasterFolder);
     final wsDir = Directory(wsPath);
 
     if (wsDir.existsSync()) {
@@ -57,7 +57,7 @@ class InitCommand extends Command<void> {
 
     if (WorkspaceUtils.isInsideExistingWorkspace(rootDir.path)) {
       ggLog(
-        red('Cannot initialize a new workspace inside an existing Kidney '
+        red('Cannot initialize a new workspace inside an existing Gg Multi '
             'workspace.'),
       );
       return;

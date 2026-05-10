@@ -6,11 +6,11 @@
 
 import 'dart:io';
 import 'package:args/command_runner.dart';
-import 'package:kidney_core/src/backend/constants.dart';
+import 'package:gg_multi/src/backend/constants.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-import 'package:kidney_core/src/commands/do/code.dart';
-import 'package:kidney_core/src/backend/vscode_launcher.dart';
+import 'package:gg_multi/src/commands/do/code.dart';
+import 'package:gg_multi/src/backend/vscode_launcher.dart';
 import '../../rm_console_colors_helper.dart';
 
 void main() {
@@ -71,7 +71,7 @@ void main() {
     });
 
     test('opens workspace file when ticket exists but is empty', () async {
-      Directory(path.join(tempRoot.path, kidneyTicketFolder, 'T1'))
+      Directory(path.join(tempRoot.path, ggMultiTicketFolder, 'T1'))
           .createSync(recursive: true);
 
       await runner.run(<String>['code', 'T1']);
@@ -80,7 +80,7 @@ void main() {
       expect(launched[0][0], 'code');
       final expectedWorkspace = path.join(
         tempRoot.path,
-        kidneyTicketFolder,
+        ggMultiTicketFolder,
         'T1',
         'T1.code-workspace',
       );
@@ -96,7 +96,7 @@ void main() {
 
     test('opens workspace file for ticket with repos', () async {
       final tdir = Directory(
-        path.join(tempRoot.path, kidneyTicketFolder, 'T2'),
+        path.join(tempRoot.path, ggMultiTicketFolder, 'T2'),
       )..createSync(recursive: true);
       final a = Directory(path.join(tdir.path, 'A'))..createSync();
       File(path.join(a.path, 'pubspec.yaml')).writeAsStringSync('name: A');
@@ -120,7 +120,7 @@ void main() {
 
     test('opens single repo when specified', () async {
       final tdir = Directory(
-        path.join(tempRoot.path, kidneyTicketFolder, 'T3'),
+        path.join(tempRoot.path, ggMultiTicketFolder, 'T3'),
       )..createSync(recursive: true);
       final r = Directory(path.join(tdir.path, 'MyRepo'))..createSync();
       File(path.join(r.path, 'pubspec.yaml')).writeAsStringSync('name: MyRepo');
@@ -138,7 +138,7 @@ void main() {
 
     test('opens single repo when specified with backslash separator', () async {
       final tdir = Directory(
-        path.join(tempRoot.path, kidneyTicketFolder, 'T5'),
+        path.join(tempRoot.path, ggMultiTicketFolder, 'T5'),
       )..createSync(recursive: true);
       final r = Directory(path.join(tdir.path, 'SlashRepo'))..createSync();
       File(path.join(r.path, 'pubspec.yaml'))
@@ -159,7 +159,7 @@ void main() {
 
     test('logs error when specified repo missing', () async {
       Directory(
-        path.join(tempRoot.path, kidneyTicketFolder, 'T4'),
+        path.join(tempRoot.path, ggMultiTicketFolder, 'T4'),
       ).createSync(recursive: true);
       await runner.run(<String>['code', 'T4/NoRepo']);
       expect(
@@ -185,7 +185,7 @@ void main() {
     test('opens workspace inside ticket dir when no args', () async {
       // Create a ticket folder under the temp root.
       final ticketDir = Directory(
-        path.join(tempRoot.path, kidneyTicketFolder, 'T_noArgs'),
+        path.join(tempRoot.path, ggMultiTicketFolder, 'T_noArgs'),
       )..createSync(recursive: true);
       final a = Directory(path.join(ticketDir.path, 'A'))..createSync();
       File(path.join(a.path, 'pubspec.yaml')).writeAsStringSync('name: A');

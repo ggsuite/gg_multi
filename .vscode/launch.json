@@ -5,10 +5,10 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "kidney_core.dart",
+      "name": "gg_multi.dart",
       "type": "dart",
       "request": "launch",
-      "program": "${workspaceFolder}/bin/kidney_core.dart",
+      "program": "${workspaceFolder}/bin/gg_multi.dart",
       "cwd": "P:\\workspace_grace_cloud\\tickets\\feat-cancel-review",
       "args": [
         "can",

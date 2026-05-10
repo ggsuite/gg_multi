@@ -9,20 +9,20 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg/gg.dart' as gg;
-import 'package:kidney_core/src/backend/constants.dart';
-import 'package:kidney_core/src/backend/git_platform.dart' hide ProcessRunner;
-import 'package:kidney_core/src/backend/organization.dart';
-import 'package:kidney_core/src/backend/status_utils.dart';
+import 'package:gg_one/gg_one.dart' as gg;
+import 'package:gg_multi/src/backend/constants.dart';
+import 'package:gg_multi/src/backend/git_platform.dart' hide ProcessRunner;
+import 'package:gg_multi/src/backend/organization.dart';
+import 'package:gg_multi/src/backend/status_utils.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-import 'package:kidney_core/src/commands/do/add.dart';
-import 'package:kidney_core/src/backend/git_handler.dart' hide ProcessRunner;
+import 'package:gg_multi/src/commands/do/add.dart';
+import 'package:gg_multi/src/backend/git_handler.dart' hide ProcessRunner;
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
-import 'package:kidney_core/src/backend/repository.dart';
+import 'package:gg_multi/src/backend/repository.dart';
 
 import '../../rm_console_colors_helper.dart';
 
@@ -100,7 +100,7 @@ void main() {
       when(() => mockGitCloner.cloneRepo(any(), any()))
           .thenAnswer((_) async {});
       tempDir = Directory.systemTemp.createTempSync('add_test');
-      masterWorkspacePath = path.join(tempDir.path, kidneyMasterFolder);
+      masterWorkspacePath = path.join(tempDir.path, ggMultiMasterFolder);
       Directory(masterWorkspacePath).createSync(recursive: true);
       final mockDoCommit = MockGgDoCommit();
       when(
@@ -187,7 +187,7 @@ void main() {
       'should clone single repository when '
       'target is a git SSH URL',
       () async {
-        const repoUrl = 'git@github.com:ggsuite/kidney_core.git';
+        const repoUrl = 'git@github.com:ggsuite/gg_multi.git';
         await runner.run(['add', repoUrl]);
         verify(
           () => mockGitCloner.cloneRepo(
@@ -198,7 +198,7 @@ void main() {
         expect(
           logMessages,
           equals([
-            'Added repository kidney_core from $repoUrl',
+            'Added repository gg_multi from $repoUrl',
           ]),
         );
       },
@@ -208,19 +208,19 @@ void main() {
       'should clone single repository when '
       'target is a URL without .git',
       () async {
-        const urlWithoutGit = 'https://github.com/ggsuite/kidney_core';
+        const urlWithoutGit = 'https://github.com/ggsuite/gg_multi';
         await runner.run(['add', urlWithoutGit]);
         verify(
           () => mockGitCloner.cloneRepo(
-            'https://github.com/ggsuite/kidney_core.git',
+            'https://github.com/ggsuite/gg_multi.git',
             any(),
           ),
         ).called(1);
         expect(
           logMessages,
           equals([
-            'Added repository kidney_core from '
-                'https://github.com/ggsuite/kidney_core.git',
+            'Added repository gg_multi from '
+                'https://github.com/ggsuite/gg_multi.git',
           ]),
         );
       },
@@ -343,14 +343,14 @@ void main() {
       'should log already added when destination '
       'exists and --force not provided',
       () async {
-        const repoName = 'kidney_core';
+        const repoName = 'gg_multi';
         final destination = path.join(masterWorkspacePath, repoName);
         Directory(destination).createSync(recursive: true);
         File(path.join(destination, 'dummy.txt')).writeAsStringSync('data');
 
         await runner.run([
           'add',
-          'git@github.com:ggsuite/kidney_core.git',
+          'git@github.com:ggsuite/gg_multi.git',
         ]);
 
         verifyNever(() => mockGitCloner.cloneRepo(any(), any()));
@@ -362,14 +362,14 @@ void main() {
       'should force clone repository when --force '
       'is provided even if destination exists',
       () async {
-        const repoName = 'kidney_core';
+        const repoName = 'gg_multi';
         final destination = path.join(masterWorkspacePath, repoName);
         Directory(destination).createSync(recursive: true);
         File(path.join(destination, 'dummy.txt')).writeAsStringSync('data');
 
         await runner.run([
           'add',
-          'git@github.com:ggsuite/kidney_core.git',
+          'git@github.com:ggsuite/gg_multi.git',
           '--force',
         ]);
 
@@ -399,7 +399,7 @@ dev_dependencies:
         pubspecFile.writeAsStringSync(pubspecContent);
 
         final ticketDir = Directory(
-          path.join(tempDir.path, kidneyTicketFolder, 'TICKET'),
+          path.join(tempDir.path, ggMultiTicketFolder, 'TICKET'),
         )..createSync(recursive: true);
 
         final mockDoCommit = MockGgDoCommit();
@@ -489,7 +489,7 @@ dev_dependencies:
           () => mockDoCommit.exec(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
-            message: 'kidney: changed references to path',
+            message: 'gg_multi: changed references to path',
             logType: any(named: 'logType'),
             updateChangeLog: any(named: 'updateChangeLog'),
             force: true,
@@ -497,7 +497,7 @@ dev_dependencies:
         ).called(greaterThanOrEqualTo(1));
 
         final statusFile = File(
-          path.join(ticketDir.path, repoName, '.kidney_status'),
+          path.join(ticketDir.path, repoName, '.gg_multi_status'),
         );
         expect(statusFile.existsSync(), isTrue);
         final content =
@@ -523,7 +523,7 @@ version: 1.0.0
 ''');
 
       final ticketDir = Directory(
-        path.join(tempDir.path, kidneyTicketFolder, 'TICKET_WS'),
+        path.join(tempDir.path, ggMultiTicketFolder, 'TICKET_WS'),
       )..createSync(recursive: true);
 
       final mockProc = MockProcessRunner();
@@ -627,7 +627,7 @@ version: 1.0.0
       File(path.join(masterRepoDir.path, 'file.txt')).writeAsStringSync('x');
 
       final ticketDir = Directory(
-        path.join(tempDir.path, kidneyTicketFolder, 'TICKET_PULL_FAIL'),
+        path.join(tempDir.path, ggMultiTicketFolder, 'TICKET_PULL_FAIL'),
       )..createSync(recursive: true);
 
       final mockProc = MockProcessRunner();
@@ -790,7 +790,7 @@ version: 1.0.0
 
     test('logs error when repo not found in master workspace', () async {
       final ticketDir = Directory(
-        path.join(tempDir.path, kidneyTicketFolder, 'TICKET-MISSING'),
+        path.join(tempDir.path, ggMultiTicketFolder, 'TICKET-MISSING'),
       )..createSync(recursive: true);
       createRunner(executionPath: ticketDir.path);
       await runner.run(['add', '--verbose', 'nonexistent']);
@@ -809,7 +809,7 @@ version: 1.0.0
         File(path.join(repoDir.path, 'foo.txt')).writeAsStringSync('hi');
 
         final ticketDir = Directory(
-          path.join(tempDir.path, kidneyTicketFolder, 'ALREADY'),
+          path.join(tempDir.path, ggMultiTicketFolder, 'ALREADY'),
         )..createSync(recursive: true);
         createRunner(executionPath: ticketDir.path);
         final destination = Directory(path.join(ticketDir.path, repoName));
@@ -834,7 +834,7 @@ version: 1.0.0
       File(path.join(repoDir.path, 'dummy.txt')).writeAsStringSync('data');
 
       final ticketDir = Directory(
-        path.join(tempDir.path, kidneyTicketFolder, 'TICKET-FAIL'),
+        path.join(tempDir.path, ggMultiTicketFolder, 'TICKET-FAIL'),
       )..createSync(recursive: true);
       final mockDoCommit = MockGgDoCommit();
       when(
@@ -853,7 +853,7 @@ version: 1.0.0
       await runner.run(['add', repoName]);
 
       final statusFile = File(
-        path.join(ticketDir.path, repoName, '.kidney_status'),
+        path.join(ticketDir.path, repoName, '.gg_multi_status'),
       );
       expect(statusFile.existsSync(), isFalse);
       verifyNever(
@@ -880,7 +880,7 @@ version: 1.0.0
           ..createSync(recursive: true);
         File(path.join(repoDir.path, 'dummy.txt')).writeAsStringSync('data');
         ticketDir = Directory(
-          path.join(tempDir.path, kidneyTicketFolder, 'TICKET-PUBGET'),
+          path.join(tempDir.path, ggMultiTicketFolder, 'TICKET-PUBGET'),
         )..createSync(recursive: true);
         final mockDoCommit = MockGgDoCommit();
         when(
@@ -1026,7 +1026,7 @@ version: 1.0.0
           .writeAsStringSync('name: x');
 
       final ticketDir = Directory(
-        path.join(tempDir.path, kidneyTicketFolder, 'TICKET-COMMIT-FAIL'),
+        path.join(tempDir.path, ggMultiTicketFolder, 'TICKET-COMMIT-FAIL'),
       )..createSync(recursive: true);
 
       final mockDoCommit = MockGgDoCommit();
@@ -1171,7 +1171,7 @@ version: 1.0.0
             .writeAsStringSync('name: $repoName');
 
         final ticketDir = Directory(
-          path.join(tempDir.path, kidneyTicketFolder, 'TICKET-LOCFAIL'),
+          path.join(tempDir.path, ggMultiTicketFolder, 'TICKET-LOCFAIL'),
         )..createSync(recursive: true);
 
         final mockSorted = MockSortedProcessingList();
@@ -1300,7 +1300,7 @@ version: 1.0.0
 ''');
 
         final ticketDir = Directory(
-          path.join(tempDir.path, kidneyTicketFolder, 'TXYZ'),
+          path.join(tempDir.path, ggMultiTicketFolder, 'TXYZ'),
         )..createSync(recursive: true);
 
         final mockRunner = MockProcessRunner();
@@ -1412,7 +1412,7 @@ version: 1.0.0
 ''');
 
         final ticketDir = Directory(
-          path.join(tempDir.path, kidneyTicketFolder, 'TXYZ_EXISTING'),
+          path.join(tempDir.path, ggMultiTicketFolder, 'TXYZ_EXISTING'),
         )..createSync(recursive: true);
 
         final existingC = Directory(path.join(ticketDir.path, 'c'))
@@ -1501,7 +1501,7 @@ version: 1.0.0
         File(path.join(repoDir.path, 'file.txt')).writeAsStringSync('x');
 
         final ticketDir = Directory(
-          path.join(tempDir.path, kidneyTicketFolder, 'T-DFG'),
+          path.join(tempDir.path, ggMultiTicketFolder, 'T-DFG'),
         )..createSync(recursive: true);
 
         final mockGraph = MockGraph();
@@ -1558,7 +1558,7 @@ version: 1.0.0
         );
 
         final ticketDir = Directory(
-          path.join(tempDir.path, kidneyTicketFolder, 'T-UPG'),
+          path.join(tempDir.path, ggMultiTicketFolder, 'T-UPG'),
         )..createSync(recursive: true);
 
         final mockSorted = MockSortedProcessingList();
@@ -1660,7 +1660,7 @@ version: 1.0.0
         );
 
         final ticketDir = Directory(
-          path.join(tempDir.path, kidneyTicketFolder, 'T-UPG-FAIL'),
+          path.join(tempDir.path, ggMultiTicketFolder, 'T-UPG-FAIL'),
         )..createSync(recursive: true);
 
         final mockSorted = MockSortedProcessingList();
@@ -1776,7 +1776,7 @@ version: 1.0.0
         ).writeAsStringSync('{}');
 
         final ticketDir = Directory(
-          path.join(tempDir.path, kidneyTicketFolder, 'TICKET-BACKUP'),
+          path.join(tempDir.path, ggMultiTicketFolder, 'TICKET-BACKUP'),
         )..createSync(recursive: true);
 
         final mockSorted = MockSortedProcessingList();
@@ -1903,7 +1903,7 @@ version: 1.0.0
         final ticketDir = Directory(
           path.join(
             tempDir.path,
-            kidneyTicketFolder,
+            ggMultiTicketFolder,
             'TICKET-UNLOC-FAIL',
           ),
         )..createSync(recursive: true);
@@ -2020,7 +2020,7 @@ version: 1.0.0
         Directory(path.join(masterRepoDir.path, '.git')).createSync();
 
         final ticketDir = Directory(
-          path.join(tempDir.path, kidneyTicketFolder, 'TICKET-HOOKS'),
+          path.join(tempDir.path, ggMultiTicketFolder, 'TICKET-HOOKS'),
         )..createSync(recursive: true);
 
         final mockProc = MockProcessRunner();
@@ -2133,7 +2133,7 @@ version: 1.0.0
         ).writeAsStringSync('name: $repoName');
 
         final ticketDir = Directory(
-          path.join(tempDir.path, kidneyTicketFolder, 'T-BACKUP'),
+          path.join(tempDir.path, ggMultiTicketFolder, 'T-BACKUP'),
         )..createSync(recursive: true);
 
         final mockSorted = MockSortedProcessingList();

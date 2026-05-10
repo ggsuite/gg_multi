@@ -6,7 +6,7 @@
 
 import 'dart:io';
 
-import 'package:gg/gg.dart' as gg;
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_changelog/gg_changelog.dart' as cl;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';

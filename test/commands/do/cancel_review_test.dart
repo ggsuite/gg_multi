@@ -8,11 +8,11 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg/gg.dart' as gg;
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
-import 'package:kidney_core/src/backend/status_utils.dart';
-import 'package:kidney_core/src/commands/do/cancel_review.dart';
+import 'package:gg_multi/src/backend/status_utils.dart';
+import 'package:gg_multi/src/commands/do/cancel_review.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:pubspec_parse/pubspec_parse.dart';
@@ -182,14 +182,14 @@ void main() {
         () => mockGgDoCommit.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          message: 'kidney: changed references to local',
+          message: 'gg_multi: changed references to local',
           force: true,
         ),
       ).called(2);
 
       for (final repoName in ['A', 'B']) {
         final statusFile = File(
-          path.join(ticketDir.path, repoName, '.kidney_status'),
+          path.join(ticketDir.path, repoName, '.gg_multi_status'),
         );
         expect(statusFile.existsSync(), isTrue);
         final content = jsonDecode(

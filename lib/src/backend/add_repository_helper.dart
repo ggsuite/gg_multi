@@ -8,7 +8,7 @@ import 'dart:io';
 
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
-import 'package:kidney_core/src/backend/url_parser.dart';
+import 'package:gg_multi/src/backend/url_parser.dart';
 import 'package:path/path.dart' as path;
 import 'git_handler.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
