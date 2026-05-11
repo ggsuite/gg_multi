@@ -2,25 +2,31 @@
 
 ## \[Unreleased\]
 
-## [4.0.0] - 2026-05-10
+## \[4.0.0\] - 2026-05-10
 
 ### Changed
 
 - **BREAKING**: Renamed package from `kidney_core` to `gg_multi`.
-  Repository moved to https://github.com/ggsuite/gg_multi. Update
-  `dependencies:` entries and `import 'package:kidney_core/...'`
-  statements to `import 'package:gg_multi/...'`. The executable is now
-  `gg_multi` (previously `kidney_core`).
+Repository moved to https://github.com/ggsuite/gg\_multi. Update
+`dependencies:` entries and `import 'package:kidney_core/...'`
+statements to `import 'package:gg_multi/...'`. The executable is now
+`gg_multi` (previously `kidney_core`).
 - **BREAKING**: Replaced dependency `gg ^7.0.5` with `gg_one ^8.0.0`
-  (the `gg` package itself was renamed to `gg_one` upstream).
+(the `gg` package itself was renamed to `gg_one` upstream).
 - Renamed status marker file `.kidney_status` to `.gg_multi_status`.
-  Existing checked-out workspaces must rename the file or run the
-  localization commands again.
+Existing checked-out workspaces must rename the file or run the
+localization commands again.
 - Upgrade gg\_localize\_refs version
 
 ### Removed
 
 - remove unlocalize step from do review command and tests
+
+## [Unreleased]
+
+### Changed
+
+- gg\_multi: changed references to git
 
 ## [3.1.0] - 2026-05-04
 
@@ -246,6 +252,7 @@
 - Remove prints
 - Remove gh pr create from review
 
+[Unreleased]: https://github.com/ggsuite/gg_multi/compare/3.1.0...HEAD
 [3.1.0]: https://github.com/ggsuite/kidney_core/compare/3.0.4...3.1.0
 [3.0.4]: https://github.com/ggsuite/kidney_core/compare/3.0.3...3.0.4
 [3.0.3]: https://github.com/ggsuite/kidney_core/compare/3.0.2...3.0.3
