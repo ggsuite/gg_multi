@@ -25,7 +25,8 @@ void main() {
 
     test('returns existing master workspace in current folder', () async {
       // Arrange ---------------------------------------------------------------
-      final masterDir = Directory(path.join(tempRoot.path, ggMultiMasterFolder));
+      final masterDir =
+          Directory(path.join(tempRoot.path, ggMultiMasterFolder));
       await masterDir.create();
 
       // Act -------------------------------------------------------------------
@@ -87,7 +88,8 @@ void main() {
 
     test('returns parent of master workspace if existing', () async {
       final wsParent = Directory(path.join(tempRoot.path, 'the_workspace'));
-      final masterDir = Directory(path.join(wsParent.path, ggMultiMasterFolder));
+      final masterDir =
+          Directory(path.join(wsParent.path, ggMultiMasterFolder));
       await masterDir.create(recursive: true);
 
       final result = WorkspaceUtils.defaultGgMultiWorkspacePath(

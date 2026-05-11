@@ -28,8 +28,9 @@ void main() {
     setUp(() {
       messages.clear();
       tempDir = Directory.systemTemp.createTempSync('ticket_list_test');
-      ggMultiWorkspaceDir = Directory(path.join(tempDir.path, 'ggMultiWorkspace'))
-        ..createSync(recursive: true);
+      ggMultiWorkspaceDir =
+          Directory(path.join(tempDir.path, 'ggMultiWorkspace'))
+            ..createSync(recursive: true);
       ticketsDir = Directory(
         path.join(ggMultiWorkspaceDir.path, ggMultiTicketFolder),
       )..createSync(recursive: true);

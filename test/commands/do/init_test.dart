@@ -91,7 +91,8 @@ void main() {
         ),
       );
       expect(
-        Directory(path.join(nonEmptyDir.path, ggMultiMasterFolder)).existsSync(),
+        Directory(path.join(nonEmptyDir.path, ggMultiMasterFolder))
+            .existsSync(),
         isFalse,
       );
     });
