@@ -70,10 +70,11 @@ void main() {
 
     test('handles empty master workspace directory', () async {
       final workspacePath = path.join(tempDir.path, 'workspace_empty');
-      final masterPath = Directory(path.join(workspacePath, ggMultiMasterFolder))
-        ..createSync(
-          recursive: true,
-        );
+      final masterPath =
+          Directory(path.join(workspacePath, ggMultiMasterFolder))
+            ..createSync(
+              recursive: true,
+            );
       final runner = CommandRunner<void>('test', 'Test ListReposCommand');
       runner.addCommand(
         ListReposCommand(

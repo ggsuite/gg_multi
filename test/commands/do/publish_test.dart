@@ -1478,8 +1478,9 @@ void main() {
         },
       );
 
-      final statusFileA = File(path.join(ticketDir.path, 'A', '.gg_multi_status'))
-        ..createSync(recursive: true);
+      final statusFileA =
+          File(path.join(ticketDir.path, 'A', '.gg_multi_status'))
+            ..createSync(recursive: true);
       statusFileA.writeAsStringSync(
         jsonEncode({'status': StatusUtils.statusGitLocalized}),
       );

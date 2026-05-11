@@ -27,7 +27,8 @@ class CodeCommand extends Command<void> {
     VSCodeLauncher? launcher,
     SortedProcessingList? sortedProcessingList,
     // coverage:ignore-start
-  })  : workspacePath = rootPath ?? WorkspaceUtils.defaultGgMultiWorkspacePath(),
+  })  : workspacePath =
+            rootPath ?? WorkspaceUtils.defaultGgMultiWorkspacePath(),
         _executionPath = executionPath ?? Directory.current.path,
         _dirFactory = directoryFactory ?? Directory.new,
         _launcher = launcher ?? VSCodeLauncher();
