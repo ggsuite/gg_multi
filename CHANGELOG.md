@@ -27,6 +27,7 @@ localization commands again.
 ### Changed
 
 - gg\_multi: changed references to git
+- Gg Multi: changed references to pub.dev
 
 ## [3.1.0] - 2026-05-04
 

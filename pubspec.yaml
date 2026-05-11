@@ -1,7 +1,6 @@
 name: gg_multi
 description: Das Herzstück der Gg Multi Suite. Fungiert als Backend und CMD-Line Tool.
 version: 4.0.0
-publish_to: none
 repository: https://github.com/ggsuite/gg_multi.git
 
 environment:
@@ -24,10 +23,7 @@ dependencies:
   gg_changelog: ^1.0.12
   interact: ^2.2.0
   recase: ^4.1.0
-  gg_localize_refs:
-    git:
-      url: git@github.com:ggsuite/gg_localize_refs.git
-      ref: bugfix-dependency-tag-pattern
+  gg_localize_refs: ^2.1.2
   gg_local_package_dependencies: ^1.3.0
 dev_dependencies:
   gg_capture_print: ^1.0.9
