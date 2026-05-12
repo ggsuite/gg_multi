@@ -101,7 +101,7 @@ void main() {
       await runner.run(['execute', '--input', emptyTicket.path, 'echo', 'x']);
       expect(
         messages,
-        contains('⚠️ No repositories found in ticket EMPTY.'),
+        contains('⚠️ No repos in this ticket'),
       );
     });
 
@@ -188,8 +188,7 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            '❌ Failed to execute the command in the '
-            'following repositories in ticket TICKX:',
+            '❌ Command failed in:',
           ),
         ),
         isTrue,

@@ -22,7 +22,6 @@ import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:test/test.dart';
 import 'package:gg_multi/src/commands/do/publish.dart';
 import 'package:gg_multi/src/commands/can/publish.dart';
-import 'package:gg_multi/src/backend/status_utils.dart';
 
 import '../../rm_console_colors_helper.dart';
 
@@ -86,6 +85,12 @@ void main() {
     ticketDir = Directory(path.join(ticketsDir.path, 'TICKPB'))..createSync();
     Directory(path.join(ticketDir.path, 'A')).createSync();
     Directory(path.join(ticketDir.path, 'B')).createSync();
+    File(path.join(ticketDir.path, 'A', 'pubspec.yaml'))
+        .writeAsStringSync('name: A\n');
+    // B is a Flutter package to also cover the Flutter switch case in
+    // DoPublishCommand._refreshDependencies.
+    File(path.join(ticketDir.path, 'B', 'pubspec.yaml'))
+        .writeAsStringSync('name: B\nflutter:\n');
   });
 
   tearDown(() {
@@ -114,8 +119,7 @@ void main() {
           isA<Exception>().having(
             (e) => e.toString(),
             'message',
-            'Exception: This command must be executed inside a '
-                'ticket folder.',
+            'Exception: Not inside a ticket folder',
           ),
         ),
       );
@@ -163,7 +167,7 @@ void main() {
       await runner.run(['publish', '--input', emptyTicket.path]);
       expect(
         messages,
-        contains('⚠️ No repositories found in ticket EMPTY.'),
+        contains('⚠️ No repos in this ticket'),
       );
     });
 
@@ -277,7 +281,7 @@ void main() {
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
-      _stubPubGet(mockProcessRunner);
+      _stubPubUpgrade(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -443,7 +447,7 @@ void main() {
       expect(
         messages,
         contains(
-          '✅ All repositories in ticket TICKPB published successfully.',
+          '✅ All repos published',
         ),
       );
       expect(
@@ -474,7 +478,7 @@ void main() {
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
-      _stubPubGet(mockProcessRunner);
+      _stubPubUpgrade(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -631,7 +635,7 @@ void main() {
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
-      _stubPubGet(mockProcessRunner);
+      _stubPubUpgrade(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -776,7 +780,7 @@ void main() {
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
-      _stubPubGet(mockProcessRunner);
+      _stubPubUpgrade(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -936,7 +940,7 @@ void main() {
       final mockGgDoPublish = MockGgDoPublish();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
-      _stubPubGet(mockProcessRunner);
+      _stubPubUpgrade(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -1015,7 +1019,7 @@ void main() {
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
-      _stubPubGet(mockProcessRunner);
+      _stubPubUpgrade(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -1136,17 +1140,6 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      // Set initial status to git-localized for each repo so we can see
-      // the transition to merged for A.
-      for (final repoName in ['A', 'B']) {
-        final statusFile =
-            File(path.join(ticketDir.path, repoName, '.gg_multi_status'))
-              ..createSync(recursive: true);
-        statusFile.writeAsStringSync(
-          jsonEncode({'status': StatusUtils.statusGitLocalized}),
-        );
-      }
-
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
           DoPublishCommand(
@@ -1201,7 +1194,7 @@ void main() {
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
-      _stubPubGet(mockProcessRunner);
+      _stubPubUpgrade(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -1322,17 +1315,6 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      // Set initial status to git-localized for each repo so we can see
-      // the transition to merged for A.
-      for (final repoName in ['A', 'B']) {
-        final statusFile =
-            File(path.join(ticketDir.path, repoName, '.gg_multi_status'))
-              ..createSync(recursive: true);
-        statusFile.writeAsStringSync(
-          jsonEncode({'status': StatusUtils.statusGitLocalized}),
-        );
-      }
-
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
           DoPublishCommand(
@@ -1377,7 +1359,7 @@ void main() {
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
-      _stubPubGet(mockProcessRunner);
+      _stubPubUpgrade(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -1478,13 +1460,6 @@ void main() {
         },
       );
 
-      final statusFileA =
-          File(path.join(ticketDir.path, 'A', '.gg_multi_status'))
-            ..createSync(recursive: true);
-      statusFileA.writeAsStringSync(
-        jsonEncode({'status': StatusUtils.statusGitLocalized}),
-      );
-
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
           DoPublishCommand(
@@ -1532,7 +1507,7 @@ void main() {
         final mockUnlocalizeRefs = MockUnlocalizeRefs();
         final mockSortedProcessingList = MockSortedProcessingList();
         final mockProcessRunner = MockProcessRunner();
-        _stubPubGet(mockProcessRunner);
+        _stubPubUpgrade(mockProcessRunner);
         final mockCanPublishCommand = MockCanPublishCommand();
         final mockDoReviewCommand = MockDoReviewCommand();
         final mockGetVersion = MockGetVersion();
@@ -1659,14 +1634,6 @@ void main() {
           ),
         ).thenAnswer((_) async {});
 
-        for (final repo in ['A', 'B']) {
-          final f = File(path.join(ticketDir.path, repo, '.gg_multi_status'))
-            ..createSync(recursive: true);
-          f.writeAsStringSync(
-            jsonEncode({'status': StatusUtils.statusGitLocalized}),
-          );
-        }
-
         final runner = CommandRunner<void>('test', 'do publish ticket')
           ..addCommand(
             DoPublishCommand(
@@ -1713,7 +1680,7 @@ void main() {
         final mockUnlocalizeRefs = MockUnlocalizeRefs();
         final mockSortedProcessingList = MockSortedProcessingList();
         final mockProcessRunner = MockProcessRunner();
-        _stubPubGet(mockProcessRunner);
+        _stubPubUpgrade(mockProcessRunner);
         final mockCanPublishCommand = MockCanPublishCommand();
         final mockDoReviewCommand = MockDoReviewCommand();
         final mockGetVersion = MockGetVersion();
@@ -1836,14 +1803,6 @@ void main() {
           ),
         ).thenAnswer((_) async {});
 
-        for (final repo in ['A', 'B']) {
-          final f = File(path.join(ticketDir.path, repo, '.gg_multi_status'))
-            ..createSync(recursive: true);
-          f.writeAsStringSync(
-            jsonEncode({'status': StatusUtils.statusGitLocalized}),
-          );
-        }
-
         final runner = CommandRunner<void>('test', 'do publish ticket')
           ..addCommand(
             DoPublishCommand(
@@ -1892,7 +1851,7 @@ void main() {
         final mockUnlocalizeRefs = MockUnlocalizeRefs();
         final mockSortedProcessingList = MockSortedProcessingList();
         final mockProcessRunner = MockProcessRunner();
-        _stubPubGet(mockProcessRunner);
+        _stubPubUpgrade(mockProcessRunner);
         final mockCanPublishCommand = MockCanPublishCommand();
         final mockDoReviewCommand = MockDoReviewCommand();
         final mockGetVersion = MockGetVersion();
@@ -2073,7 +2032,7 @@ void main() {
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
-      _stubPubGet(mockProcessRunner);
+      _stubPubUpgrade(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -2221,7 +2180,7 @@ void main() {
       final mockRestorePublishTo = MockRestorePublishTo();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
-      _stubPubGet(mockProcessRunner);
+      _stubPubUpgrade(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -2367,7 +2326,7 @@ void main() {
       final mockRestorePublishTo = MockRestorePublishTo();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
-      _stubPubGet(mockProcessRunner);
+      _stubPubUpgrade(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
 
@@ -2445,7 +2404,7 @@ void main() {
       );
     });
 
-    test('aborts when dart pub get fails for a repo', () async {
+    test('aborts when dart pub upgrade fails for a repo', () async {
       final mockGgDoPublish = MockGgDoPublish();
       final mockGgDoCommit = MockGgDoCommit();
       final mockGgDoPush = MockGgDoPush();
@@ -2496,15 +2455,15 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      // Stub `dart pub get` so it fails with non-zero exit code.
+      // Stub `dart pub upgrade` so it fails with non-zero exit code.
       when(
         () => mockProcessRunner(
           'dart',
-          ['pub', 'get'],
+          ['pub', 'upgrade'],
           workingDirectory: any(named: 'workingDirectory'),
         ),
       ).thenAnswer(
-        (_) async => ProcessResult(0, 1, '', 'pub get exploded'),
+        (_) async => ProcessResult(0, 1, '', 'pub upgrade exploded'),
       );
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
@@ -2535,7 +2494,7 @@ void main() {
           isA<Exception>().having(
             (e) => e.toString(),
             'message',
-            contains('Failed to run dart pub get for A'),
+            contains('Failed to execute dart pub upgrade in A'),
           ),
         ),
       );
@@ -2546,6 +2505,164 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+        ),
+      );
+    });
+
+    test('runs npm install for typescript repos instead of dart pub upgrade',
+        () async {
+      // Replace pubspec.yaml with package.json + tsconfig.json so
+      // detectProjectType returns ProjectType.typescript for repo A.
+      File(path.join(ticketDir.path, 'A', 'pubspec.yaml')).deleteSync();
+      File(path.join(ticketDir.path, 'A', 'package.json')).writeAsStringSync(
+        jsonEncode(<String, dynamic>{'name': 'A'}),
+      );
+      File(path.join(ticketDir.path, 'A', 'tsconfig.json'))
+          .writeAsStringSync('{}');
+
+      final mockGgDoPublish = MockGgDoPublish();
+      final mockGgDoCommit = MockGgDoCommit();
+      final mockGgDoPush = MockGgDoPush();
+      final mockUnlocalizeRefs = MockUnlocalizeRefs();
+      final mockRestorePublishTo = MockRestorePublishTo();
+      final mockSortedProcessingList = MockSortedProcessingList();
+      final mockProcessRunner = MockProcessRunner();
+      final mockCanPublishCommand = MockCanPublishCommand();
+      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockGetVersion = MockGetVersion();
+      final mockGetRefVersion = MockGetRefVersion();
+      final mockSetRefVersion = MockSetRefVersion();
+      final mockPubDevChecker = MockPubDevChecker();
+
+      final repoADir = Directory(path.join(ticketDir.path, 'A'));
+
+      when(
+        () => mockDoReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          verbose: any(named: 'verbose'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockCanPublishCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: repoADir,
+            manifest: TypeScriptPackageManifest(
+              name: 'A',
+              dependencies: const <String>[],
+              devDependencies: const <String>[],
+              rawJson: const <String, dynamic>{'name': 'A'},
+            ),
+          ),
+        ],
+      );
+      when(
+        () => mockUnlocalizeRefs.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockRestorePublishTo.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => mockSetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+          version: any(named: 'version'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockProcessRunner(
+          'npm',
+          ['install'],
+          workingDirectory: repoADir.path,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => mockGgDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGetVersion.get(directory: any(named: 'directory')),
+      ).thenAnswer((_) async => null);
+
+      final runner = CommandRunner<void>('test', 'do publish ticket')
+        ..addCommand(
+          DoPublishCommand(
+            ggLog: ggLog,
+            ggDoPublish: mockGgDoPublish,
+            ggDoCommit: mockGgDoCommit,
+            ggDoPush: mockGgDoPush,
+            unlocalizeRefs: mockUnlocalizeRefs,
+            restorePublishTo: mockRestorePublishTo,
+            sortedProcessingList: mockSortedProcessingList,
+            processRunner: mockProcessRunner.call,
+            canPublishCommand: mockCanPublishCommand,
+            doReviewCommand: mockDoReviewCommand,
+            getVersionCommand: mockGetVersion,
+            setRefVersionCommand: mockSetRefVersion,
+            getRefVersionCommand: mockGetRefVersion,
+            pubDevChecker: mockPubDevChecker,
+            editMessage: (initialMessage) async => initialMessage,
+            confirmDeleteTicket: (_) => false,
+          ),
+        );
+
+      await runner.run(['publish', '--input', ticketDir.path]);
+
+      verify(
+        () => mockProcessRunner(
+          'npm',
+          ['install'],
+          workingDirectory: repoADir.path,
+        ),
+      ).called(1);
+      verifyNever(
+        () => mockProcessRunner(
+          'dart',
+          ['pub', 'upgrade'],
+          workingDirectory: any(named: 'workingDirectory'),
         ),
       );
     });
@@ -2561,12 +2678,13 @@ class MockProcessRunner extends Mock {
   });
 }
 
-/// Stubs `dart pub get` on [runner] so it succeeds for any working directory.
-void _stubPubGet(MockProcessRunner runner) {
+/// Stubs `dart pub upgrade` on [runner] so it succeeds for any working
+/// directory.
+void _stubPubUpgrade(MockProcessRunner runner) {
   when(
     () => runner(
       'dart',
-      ['pub', 'get'],
+      ['pub', 'upgrade'],
       workingDirectory: any(named: 'workingDirectory'),
     ),
   ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));

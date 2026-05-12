@@ -15,7 +15,6 @@ import 'package:gg_log/gg_log.dart';
 import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
-import '../../backend/status_utils.dart';
 import '../../backend/workspace_utils.dart';
 import '../../commands/can/review.dart';
 
@@ -124,7 +123,7 @@ class DoReviewCommand extends DirCommand<void> {
     );
 
     if (subs.isEmpty) {
-      ggLog(yellow('⚠️ No repositories found in ticket $ticketName.'));
+      ggLog(yellow('⚠️ No repos in this ticket'));
       return;
     }
 
@@ -213,10 +212,7 @@ class DoReviewCommand extends DirCommand<void> {
             '$ticketName: $e',
           ),
         );
-        throw Exception(
-          'Failed to merge main into some repositories in ticket '
-          '$ticketName',
-        );
+        throw Exception('Failed to merge main in: $repoName');
       }
     }
   }
@@ -253,11 +249,6 @@ class DoReviewCommand extends DirCommand<void> {
           gitRef: ticketName,
         );
         ggLog(green('Localized refs for $repoName'));
-        StatusUtils.setStatus(
-          repoDir,
-          StatusUtils.statusGitLocalized,
-          ggLog: ggLog,
-        );
       } catch (e) {
         ggLog(
           red(
@@ -265,9 +256,7 @@ class DoReviewCommand extends DirCommand<void> {
             '$repoName: $e',
           ),
         );
-        throw Exception(
-          'Failed to review some repositories in ticket $ticketName',
-        );
+        throw Exception('Failed to review in: $repoName');
       }
 
       // Refresh dependencies for the detected project type ----------------
@@ -289,9 +278,7 @@ class DoReviewCommand extends DirCommand<void> {
         ggLog(green('Committed $repoName'));
       } catch (e) {
         ggLog(red('Failed to commit $repoName: $e'));
-        throw Exception(
-          'Failed to review some repositories in ticket $ticketName',
-        );
+        throw Exception('Failed to review in: $repoName');
       }
 
       // Push -----------------------------------------------------------------
@@ -300,9 +287,7 @@ class DoReviewCommand extends DirCommand<void> {
         ggLog(green('Pushed $repoName'));
       } catch (e) {
         ggLog(red('Failed to push $repoName: $e'));
-        throw Exception(
-          'Failed to review some repositories in ticket $ticketName',
-        );
+        throw Exception('Failed to review in: $repoName');
       }
     }
   }
@@ -352,9 +337,7 @@ class DoReviewCommand extends DirCommand<void> {
           '$repoName: ${result.stderr}',
         ),
       );
-      throw Exception(
-        'Failed to review some repositories in ticket $ticketName',
-      );
+      throw Exception('Failed to review in: $repoName');
     }
   }
 }

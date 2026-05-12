@@ -35,8 +35,7 @@ typedef ProcessRunner = Future<ProcessResult> Function(
 ///   merged textually but kept from the current branch.
 const String gitattributesRequiredLines = '* text=auto eol=lf\n'
     '.gg/.gg.json merge=ours\n'
-    'pubspec.lock merge=ours\n'
-    '.gg_multi_status merge=ours';
+    'pubspec.lock merge=ours';
 
 /// Ensures a `.gitattributes` file containing all
 /// [gitattributesRequiredLines] exists in every repository of the current
@@ -113,7 +112,7 @@ class DoInstallGitattributesCommand extends DirCommand<void> {
     );
 
     if (nodes.isEmpty) {
-      ggLog(yellow('⚠️ No repositories found in ticket $ticketName.'));
+      ggLog(yellow('⚠️ No repos in this ticket'));
       return;
     }
 

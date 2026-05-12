@@ -17,7 +17,6 @@ import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:test/test.dart';
 import 'package:gg_multi/src/commands/do/review.dart';
 import 'package:gg_multi/src/commands/can/review.dart';
-import 'package:gg_multi/src/backend/status_utils.dart';
 
 import '../../rm_console_colors_helper.dart';
 
@@ -115,7 +114,7 @@ void main() {
       ]);
       expect(
         messages,
-        contains('⚠️ No repositories found in ticket EMPTY.'),
+        contains('⚠️ No repos in this ticket'),
       );
     });
 
@@ -279,18 +278,6 @@ void main() {
           isTrue,
         );
 
-        for (final repoName in ['A', 'B']) {
-          final statusFile = File(
-            path.join(ticketDir.path, repoName, '.gg_multi_status'),
-          );
-          if (statusFile.existsSync()) {
-            final content = jsonDecode(
-              statusFile.readAsStringSync(),
-            ) as Map<String, dynamic>;
-            expect(content['status'], StatusUtils.statusGitLocalized);
-          }
-        }
-
         verify(
           () => mockGgDoCommit.exec(
             directory: any(named: 'directory'),
@@ -369,8 +356,7 @@ void main() {
             (e) => e.toString(),
             'message',
             contains(
-              'Failed to merge main into some '
-              'repositories in ticket TICKDR',
+              'Failed to merge main in: A',
             ),
           ),
         ),

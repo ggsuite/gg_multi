@@ -68,7 +68,7 @@ class DoInstallGitHooksCommand extends DirCommand<void> {
     );
 
     if (nodes.isEmpty) {
-      ggLog(yellow('⚠️ No repositories found in ticket $ticketName.'));
+      ggLog(yellow('⚠️ No repos in this ticket'));
       return;
     }
 

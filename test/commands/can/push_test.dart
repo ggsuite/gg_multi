@@ -86,7 +86,7 @@ void main() {
       await runner.run(['push', '--input', emptyTicket.path]);
       expect(
         messages,
-        contains('⚠️ No repositories found in ticket EMPTY.'),
+        contains('⚠️ No repos in this ticket'),
       );
     });
 
@@ -110,7 +110,7 @@ void main() {
       await runner.run(['push', '--input', ticketDir.path]);
       expect(
         messages,
-        contains('✅ All repositories in ticket TICKP can be pushed.'),
+        contains('✅ All repos can be pushed'),
       );
       expect(
         messages,

@@ -13,7 +13,6 @@ import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_multi/src/backend/constants.dart';
 import 'package:gg_multi/src/backend/git_platform.dart' hide ProcessRunner;
 import 'package:gg_multi/src/backend/organization.dart';
-import 'package:gg_multi/src/backend/status_utils.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
@@ -496,14 +495,6 @@ dev_dependencies:
           ),
         ).called(greaterThanOrEqualTo(1));
 
-        final statusFile = File(
-          path.join(ticketDir.path, repoName, '.gg_multi_status'),
-        );
-        expect(statusFile.existsSync(), isTrue);
-        final content =
-            jsonDecode(statusFile.readAsStringSync()) as Map<String, dynamic>;
-        expect(content['status'], StatusUtils.statusLocalized);
-
         expect(
           logMessages.any(
             (m) => m.contains('Re-localized all repositories in ticket'),
@@ -852,10 +843,6 @@ version: 1.0.0
 
       await runner.run(['add', repoName]);
 
-      final statusFile = File(
-        path.join(ticketDir.path, repoName, '.gg_multi_status'),
-      );
-      expect(statusFile.existsSync(), isFalse);
       verifyNever(
         () => mockDoCommit.exec(
           directory: any(named: 'directory'),

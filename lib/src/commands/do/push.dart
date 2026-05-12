@@ -83,7 +83,7 @@ class DoPushCommand extends DirCommand<void> {
     );
 
     if (nodes.isEmpty) {
-      ggLog(yellow('⚠️ No repositories found in ticket $ticketName.'));
+      ggLog(yellow('⚠️ No repos in this ticket'));
       return;
     }
 
@@ -140,23 +140,13 @@ class DoPushCommand extends DirCommand<void> {
 
     // Summarize the results ----------------------------------------------
     if (failedRepos.isEmpty) {
-      ggLog(
-        '✅ All repositories in ticket '
-        '$ticketName pushed successfully.',
-      );
+      ggLog('✅ All repos pushed');
     } else {
-      ggLog(
-        red(
-          '❌ Failed to push the following repositories in '
-          'ticket $ticketName:',
-        ),
-      );
+      ggLog(red('❌ Push failed in:'));
       for (final repoName in failedRepos) {
         ggLog(red(' - $repoName'));
       }
-      throw Exception(
-        'Failed to push some repositories in ticket $ticketName',
-      );
+      throw Exception('Failed to push in: ${failedRepos.join(', ')}');
     }
   }
 

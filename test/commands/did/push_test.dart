@@ -84,7 +84,7 @@ void main() {
       await runner.run(['push', '--input', emptyTicket.path]);
       expect(
         messages,
-        contains('⚠️ No repositories found in ticket EMPTY.'),
+        contains('⚠️ No repos in this ticket'),
       );
     });
 
@@ -108,7 +108,7 @@ void main() {
       await runner.run(['push', '--input', ticketDir.path]);
       expect(
         messages,
-        contains('✅ All repositories in ticket TICKDP were pushed.'),
+        contains('✅ All repos pushed'),
       );
       expect(
         messages,

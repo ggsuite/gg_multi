@@ -4,7 +4,6 @@
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
 
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
@@ -18,7 +17,6 @@ import 'package:test/test.dart';
 import 'package:gg_multi/src/commands/can/publish.dart';
 import 'package:gg_multi/src/commands/did/commit.dart';
 import 'package:gg_multi/src/commands/do/push.dart';
-import 'package:gg_multi/src/backend/status_utils.dart';
 
 import '../../rm_console_colors_helper.dart';
 
@@ -102,21 +100,11 @@ void main() {
       await runner.run(['publish', '--input', emptyTicket.path]);
       expect(
         messages,
-        contains('⚠️ No repositories found in ticket EMPTY.'),
+        contains('⚠️ No repos in this ticket'),
       );
     });
 
     test('checks uncommitted changes and fails if found', () async {
-      // Set status for all repos to git-localized
-      for (final repoName in ['A', 'B']) {
-        final statusFile = File(
-          path.join(ticketDir.path, repoName, '.gg_multi_status'),
-        )..createSync(recursive: true);
-        statusFile.writeAsStringSync(
-          jsonEncode({'status': StatusUtils.statusGitLocalized}),
-        );
-      }
-
       final mockGgCanCommit = MockGgCanCommit();
       final mockGgCanMerge = MockGgCanMerge();
       final mockGgMergeMainIntoFeat = MockGgMergeMainIntoFeat();
@@ -186,7 +174,7 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            'Uncommitted changes found in the following repos:',
+            'Uncommitted changes in:',
           ),
         ),
         isTrue,
@@ -197,16 +185,6 @@ void main() {
     test(
         'executes did commit, merge main into feat, '
         'do push, and can merge successfully', () async {
-      // Set status for all repos to git-localized
-      for (final repoName in ['A', 'B']) {
-        final statusFile = File(
-          path.join(ticketDir.path, repoName, '.gg_multi_status'),
-        )..createSync(recursive: true);
-        statusFile.writeAsStringSync(
-          jsonEncode({'status': StatusUtils.statusGitLocalized}),
-        );
-      }
-
       final mockGgCanCommit = MockGgCanCommit();
       final mockGgCanMerge = MockGgCanMerge();
       final mockGgMergeMainIntoFeat = MockGgMergeMainIntoFeat();
@@ -294,7 +272,7 @@ void main() {
       ]);
       expect(
         messages,
-        contains('✅ All repositories in ticket TICKPB can be published.'),
+        contains('✅ All repos can be published'),
       );
       verify(
         () => mockGgMergeMainIntoFeat.exec(
@@ -313,16 +291,6 @@ void main() {
     });
 
     test('fails on can merge check for specific repos', () async {
-      // Set status for all repos to git-localized
-      for (final repoName in ['A', 'B']) {
-        final statusFile = File(
-          path.join(ticketDir.path, repoName, '.gg_multi_status'),
-        )..createSync(recursive: true);
-        statusFile.writeAsStringSync(
-          jsonEncode({'status': StatusUtils.statusGitLocalized}),
-        );
-      }
-
       final mockGgCanCommit = MockGgCanCommit();
       final mockGgCanMerge = MockGgCanMerge();
       final mockGgMergeMainIntoFeat = MockGgMergeMainIntoFeat();
@@ -428,8 +396,7 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            '❌ Failed to check merge for the '
-            'following repositories in ticket TICKPB:',
+            '❌ Merge check failed in:',
           ),
         ),
         isTrue,
@@ -438,16 +405,6 @@ void main() {
     });
 
     test('fails when did commit throws exception', () async {
-      // Set status for all repos to git-localized
-      for (final repoName in ['A', 'B']) {
-        final statusFile = File(
-          path.join(ticketDir.path, repoName, '.gg_multi_status'),
-        )..createSync(recursive: true);
-        statusFile.writeAsStringSync(
-          jsonEncode({'status': StatusUtils.statusGitLocalized}),
-        );
-      }
-
       final mockGgCanCommit = MockGgCanCommit();
       final mockGgCanMerge = MockGgCanMerge();
       final mockGgMergeMainIntoFeat = MockGgMergeMainIntoFeat();
@@ -538,16 +495,6 @@ void main() {
     });
 
     test('fails when merge main into feat throws exception', () async {
-      // Set status for all repos to git-localized
-      for (final repoName in ['A', 'B']) {
-        final statusFile = File(
-          path.join(ticketDir.path, repoName, '.gg_multi_status'),
-        )..createSync(recursive: true);
-        statusFile.writeAsStringSync(
-          jsonEncode({'status': StatusUtils.statusGitLocalized}),
-        );
-      }
-
       final mockGgCanCommit = MockGgCanCommit();
       final mockGgCanMerge = MockGgCanMerge();
       final mockGgMergeMainIntoFeat = MockGgMergeMainIntoFeat();
@@ -658,16 +605,6 @@ void main() {
     });
 
     test('fails when do push throws exception', () async {
-      // Set status for all repos to git-localized
-      for (final repoName in ['A', 'B']) {
-        final statusFile = File(
-          path.join(ticketDir.path, repoName, '.gg_multi_status'),
-        )..createSync(recursive: true);
-        statusFile.writeAsStringSync(
-          jsonEncode({'status': StatusUtils.statusGitLocalized}),
-        );
-      }
-
       final mockGgCanCommit = MockGgCanCommit();
       final mockGgCanMerge = MockGgCanMerge();
       final mockGgMergeMainIntoFeat = MockGgMergeMainIntoFeat();
@@ -769,20 +706,6 @@ void main() {
     test(
       'uses quiet taskLog when verbose is false',
       () async {
-        // Prepare git-localized status
-        for (final name in ['A', 'B']) {
-          final statusFile = File(
-            path.join(ticketDir.path, name, '.gg_multi_status'),
-          )..createSync(recursive: true);
-          statusFile.writeAsStringSync(
-            jsonEncode(
-              {
-                'status': StatusUtils.statusGitLocalized,
-              },
-            ),
-          );
-        }
-
         final mockGgCanCommit = MockGgCanCommit();
         final mockGgCanMerge = MockGgCanMerge();
         final mockGgMergeMainIntoFeat = MockGgMergeMainIntoFeat();

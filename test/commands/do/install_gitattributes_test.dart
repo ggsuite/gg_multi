@@ -103,7 +103,7 @@ void main() {
 
       expect(
         messages,
-        contains('⚠️ No repositories found in ticket EMPTY.'),
+        contains('⚠️ No repos in this ticket'),
       );
     });
 
@@ -164,8 +164,7 @@ void main() {
       const original = '# header\n'
           '* text=auto eol=lf\n'
           '.gg/.gg.json merge=ours\n'
-          'pubspec.lock merge=ours\n'
-          '.gg_multi_status merge=ours\n';
+          'pubspec.lock merge=ours\n';
       file.writeAsStringSync(original);
       final originalMtime = file.lastModifiedSync();
 
@@ -213,16 +212,14 @@ void main() {
         '*.png binary\n'
         '* text=auto eol=lf\n'
         '.gg/.gg.json merge=ours\n'
-        'pubspec.lock merge=ours\n'
-        '.gg_multi_status merge=ours\n',
+        'pubspec.lock merge=ours\n',
       );
       expect(
         fileB.readAsStringSync(),
         '*.png binary\n'
         '* text=auto eol=lf\n'
         '.gg/.gg.json merge=ours\n'
-        'pubspec.lock merge=ours\n'
-        '.gg_multi_status merge=ours\n',
+        'pubspec.lock merge=ours\n',
       );
       expect(messages, contains('Updated .gitattributes in A.'));
       expect(messages, contains('Updated .gitattributes in B.'));

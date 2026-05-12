@@ -4,7 +4,6 @@
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
 
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
@@ -14,8 +13,8 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:test/test.dart';
+import 'package:gg_multi/src/backend/ticket_state.dart';
 import 'package:gg_multi/src/commands/can/review.dart';
-import 'package:gg_multi/src/backend/status_utils.dart';
 
 import '../../rm_console_colors_helper.dart';
 
@@ -33,6 +32,27 @@ class MockIsFeatureBranch extends Mock implements gg_publish.IsFeatureBranch {}
 
 class FakeDirectory extends Fake implements Directory {}
 
+MockTicketState _stubbedTicketState() {
+  final mock = MockTicketState();
+  when(
+    () => mock.readSuccess(
+      ticketDir: any(named: 'ticketDir'),
+      subs: any(named: 'subs'),
+      key: any(named: 'key'),
+      ignoreUnstaged: any(named: 'ignoreUnstaged'),
+    ),
+  ).thenAnswer((_) async => false);
+  when(
+    () => mock.writeSuccess(
+      ticketDir: any(named: 'ticketDir'),
+      subs: any(named: 'subs'),
+      key: any(named: 'key'),
+      ignoreUnstaged: any(named: 'ignoreUnstaged'),
+    ),
+  ).thenAnswer((_) async {});
+  return mock;
+}
+
 void main() {
   late Directory tempDir;
   late Directory ticketsDir;
@@ -41,6 +61,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(FakeDirectory());
+    registerFallbackValue(<Node>[]);
   });
 
   void ggLog(String msg) => messages.add(rmConsoleColors(msg));
@@ -96,7 +117,7 @@ void main() {
       await runner.run(['review', '--input', emptyTicket.path]);
       expect(
         messages,
-        contains('⚠️ No repositories found in ticket EMPTY.'),
+        contains('⚠️ No repos in this ticket'),
       );
     });
 
@@ -140,16 +161,6 @@ void main() {
         ),
       ).thenAnswer((_) async => true);
 
-      // Set status for all repos to localized
-      for (final repoName in ['A', 'B']) {
-        final statusFile =
-            File(path.join(ticketDir.path, repoName, '.gg_multi_status'))
-              ..createSync(recursive: true);
-        statusFile.writeAsStringSync(
-          jsonEncode({'status': StatusUtils.statusLocalized}),
-        );
-      }
-
       final runner = CommandRunner<void>('test', 'can review ticket')
         ..addCommand(
           CanReviewCommand(
@@ -157,12 +168,13 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             ggIsFeatureBranch: mockIsFeatureBranch,
+            ticketState: _stubbedTicketState(),
           ),
         );
       await runner.run(['review', '--input', ticketDir.path]);
       expect(
         messages,
-        contains('✅ All repositories in ticket TICKR can be reviewed.'),
+        contains('✅ All repos can be reviewed'),
       );
       verify(
         () => mockIsFeatureBranch.get(
@@ -236,6 +248,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             ggIsFeatureBranch: mockIsFeatureBranch,
+            ticketState: _stubbedTicketState(),
           ),
         );
       await expectLater(
@@ -250,7 +263,7 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            'The following repos are not on a feature branch:',
+            'Not on a feature branch:',
           ),
         ),
         isTrue,
@@ -306,16 +319,6 @@ void main() {
         ),
       ).thenAnswer((_) async => ProcessResult(2, 0, '', ''));
 
-      // Set status for all repos to localized
-      for (final repoName in ['A', 'B']) {
-        final statusFile =
-            File(path.join(ticketDir.path, repoName, '.gg_multi_status'))
-              ..createSync(recursive: true);
-        statusFile.writeAsStringSync(
-          jsonEncode({'status': StatusUtils.statusLocalized}),
-        );
-      }
-
       final runner = CommandRunner<void>('test', 'can review ticket')
         ..addCommand(
           CanReviewCommand(
@@ -323,6 +326,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             ggIsFeatureBranch: mockIsFeatureBranch,
+            ticketState: _stubbedTicketState(),
           ),
         );
       await expectLater(
@@ -336,12 +340,213 @@ void main() {
       );
       expect(
         messages.any(
-          (m) => m.contains('Uncommitted changes '
-              'found in the following repos:'),
+          (m) => m.contains('Uncommitted changes in:'),
         ),
         isTrue,
       );
       expect(messages.any((m) => m.contains(' - A')), isTrue);
+    });
+
+    test('short-circuits when ticket state already cached as success',
+        () async {
+      final mockSortedProcessingList = MockSortedProcessingList();
+      final mockProcessRunner = MockProcessRunner();
+      final mockIsFeatureBranch = MockIsFeatureBranch();
+      final mockTicketState = MockTicketState();
+
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: Directory(path.join(ticketDir.path, 'A')),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
+          ),
+        ],
+      );
+
+      when(
+        () => mockTicketState.readSuccess(
+          ticketDir: any(named: 'ticketDir'),
+          subs: any(named: 'subs'),
+          key: any(named: 'key'),
+          ignoreUnstaged: any(named: 'ignoreUnstaged'),
+        ),
+      ).thenAnswer((_) async => true);
+
+      final runner = CommandRunner<void>('test', 'can review ticket')
+        ..addCommand(
+          CanReviewCommand(
+            ggLog: ggLog,
+            sortedProcessingList: mockSortedProcessingList,
+            processRunner: mockProcessRunner.call,
+            ggIsFeatureBranch: mockIsFeatureBranch,
+            ticketState: mockTicketState,
+          ),
+        );
+
+      await runner.run(['review', '--input', ticketDir.path]);
+
+      expect(
+        messages,
+        contains('✅ All repos can be reviewed'),
+      );
+      verifyNever(
+        () => mockIsFeatureBranch.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      );
+      verifyNever(
+        () => mockTicketState.writeSuccess(
+          ticketDir: any(named: 'ticketDir'),
+          subs: any(named: 'subs'),
+          key: any(named: 'key'),
+          ignoreUnstaged: any(named: 'ignoreUnstaged'),
+        ),
+      );
+    });
+
+    test('--force bypasses the cached success', () async {
+      final mockSortedProcessingList = MockSortedProcessingList();
+      final mockProcessRunner = MockProcessRunner();
+      final mockIsFeatureBranch = MockIsFeatureBranch();
+      final mockTicketState = MockTicketState();
+
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: Directory(path.join(ticketDir.path, 'A')),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
+          ),
+        ],
+      );
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['status', '--porcelain'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(1, 0, '', ''));
+      when(
+        () => mockIsFeatureBranch.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async => true);
+      when(
+        () => mockTicketState.readSuccess(
+          ticketDir: any(named: 'ticketDir'),
+          subs: any(named: 'subs'),
+          key: any(named: 'key'),
+          ignoreUnstaged: any(named: 'ignoreUnstaged'),
+        ),
+      ).thenAnswer((_) async => true);
+      when(
+        () => mockTicketState.writeSuccess(
+          ticketDir: any(named: 'ticketDir'),
+          subs: any(named: 'subs'),
+          key: any(named: 'key'),
+          ignoreUnstaged: any(named: 'ignoreUnstaged'),
+        ),
+      ).thenAnswer((_) async {});
+
+      final runner = CommandRunner<void>('test', 'can review ticket')
+        ..addCommand(
+          CanReviewCommand(
+            ggLog: ggLog,
+            sortedProcessingList: mockSortedProcessingList,
+            processRunner: mockProcessRunner.call,
+            ggIsFeatureBranch: mockIsFeatureBranch,
+            ticketState: mockTicketState,
+          ),
+        );
+
+      await runner.run(['review', '--force', '--input', ticketDir.path]);
+
+      verify(
+        () => mockIsFeatureBranch.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).called(1);
+      verify(
+        () => mockTicketState.writeSuccess(
+          ticketDir: any(named: 'ticketDir'),
+          subs: any(named: 'subs'),
+          key: 'canReview',
+          ignoreUnstaged: any(named: 'ignoreUnstaged'),
+        ),
+      ).called(1);
+    });
+
+    test('--no-save-state skips persisting success', () async {
+      final mockSortedProcessingList = MockSortedProcessingList();
+      final mockProcessRunner = MockProcessRunner();
+      final mockIsFeatureBranch = MockIsFeatureBranch();
+      final mockTicketState = _stubbedTicketState();
+
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: Directory(path.join(ticketDir.path, 'A')),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
+          ),
+        ],
+      );
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['status', '--porcelain'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(1, 0, '', ''));
+      when(
+        () => mockIsFeatureBranch.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async => true);
+
+      final runner = CommandRunner<void>('test', 'can review ticket')
+        ..addCommand(
+          CanReviewCommand(
+            ggLog: ggLog,
+            sortedProcessingList: mockSortedProcessingList,
+            processRunner: mockProcessRunner.call,
+            ggIsFeatureBranch: mockIsFeatureBranch,
+            ticketState: mockTicketState,
+          ),
+        );
+
+      await runner.run(
+        ['review', '--no-save-state', '--input', ticketDir.path],
+      );
+
+      verifyNever(
+        () => mockTicketState.writeSuccess(
+          ticketDir: any(named: 'ticketDir'),
+          subs: any(named: 'subs'),
+          key: any(named: 'key'),
+          ignoreUnstaged: any(named: 'ignoreUnstaged'),
+        ),
+      );
     });
 
     test('uses quiet taskLog when verbose is false', () async {
@@ -387,6 +592,7 @@ void main() {
         sortedProcessingList: mockSortedProcessingList,
         processRunner: mockProcessRunner.call,
         ggIsFeatureBranch: mockIsFeatureBranch,
+        ticketState: _stubbedTicketState(),
       );
 
       await command.get(
@@ -397,7 +603,7 @@ void main() {
 
       expect(
         localMessages.last,
-        contains('✅ All repositories in ticket TICKR can be reviewed.'),
+        contains('✅ All repos can be reviewed'),
       );
     });
   });

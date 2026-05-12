@@ -11,7 +11,6 @@ import 'package:args/command_runner.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
-import 'package:gg_multi/src/backend/status_utils.dart';
 import 'package:gg_multi/src/commands/do/cancel_review.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
@@ -109,7 +108,7 @@ void main() {
       ]);
       expect(
         messages,
-        contains('⚠️ No repositories found in ticket EMPTY.'),
+        contains('⚠️ No repos in this ticket'),
       );
     });
 
@@ -187,23 +186,9 @@ void main() {
         ),
       ).called(2);
 
-      for (final repoName in ['A', 'B']) {
-        final statusFile = File(
-          path.join(ticketDir.path, repoName, '.gg_multi_status'),
-        );
-        expect(statusFile.existsSync(), isTrue);
-        final content = jsonDecode(
-          statusFile.readAsStringSync(),
-        ) as Map<String, dynamic>;
-        expect(content['status'], StatusUtils.statusLocalized);
-      }
-
       expect(
         messages,
-        contains(
-          '✅ All repositories in ticket TICKCR were localized '
-          'back to local paths and committed.',
-        ),
+        contains('✅ All repos re-localized and committed'),
       );
     });
 
@@ -256,7 +241,7 @@ void main() {
             (e) => e.toString(),
             'message',
             contains(
-              'Failed to cancel review for some repositories in ticket TICKCR',
+              'Failed to cancel review in: A',
             ),
           ),
         ),
@@ -340,7 +325,7 @@ void main() {
             (e) => e.toString(),
             'message',
             contains(
-              'Failed to cancel review for some repositories in ticket TICKCR',
+              'Failed to cancel review in: A',
             ),
           ),
         ),

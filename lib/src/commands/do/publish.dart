@@ -154,7 +154,7 @@ class DoPublishCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      throw Exception('This command must be executed inside a ticket folder.');
+      throw Exception('Not inside a ticket folder');
     }
 
     final ticketDir = Directory(ticketPath);
@@ -186,7 +186,7 @@ class DoPublishCommand extends DirCommand<void> {
     );
 
     if (subs.isEmpty) {
-      ggLog(yellow('⚠️ No repositories found in ticket $ticketName.'));
+      ggLog(yellow('⚠️ No repos in this ticket'));
       return;
     }
 
@@ -245,24 +245,14 @@ class DoPublishCommand extends DirCommand<void> {
         }
       }
 
-      // Run dart pub get to refresh the package config after the
-      // pubspec.yaml changes above (unlocalize refs, restore publish_to,
-      // updated dependency versions).
-      try {
-        final result = await _processRunner(
-          'dart',
-          <String>['pub', 'get'],
-          workingDirectory: repoDir.path,
-        );
-        if (result.exitCode != 0) {
-          throw Exception(
-            'dart pub get failed for $repoName: ${result.stderr}',
-          );
-        }
-        taskLog(green('$repoName: dart pub get succeeded.'));
-      } catch (e) {
-        throw Exception('Failed to run dart pub get for $repoName: $e');
-      }
+      // Refresh dependencies for the detected project type after the
+      // pubspec.yaml / package.json changes above (unlocalize refs,
+      // restore publish_to, updated dependency versions).
+      await _refreshDependencies(
+        repoDir: repoDir,
+        repoName: repoName,
+        ggLog: taskLog,
+      );
 
       // Commit
       await _ggDoCommit.exec(
@@ -355,9 +345,7 @@ class DoPublishCommand extends DirCommand<void> {
       }
     }
 
-    taskLog(
-      '✅ All repositories in ticket $ticketName published successfully.',
-    );
+    taskLog('✅ All repos published');
   }
 
   /// Waits for already published dependencies of [currentRepo] on pub.dev.
@@ -393,6 +381,50 @@ class DoPublishCommand extends DirCommand<void> {
       );
 
       confirmedPubDevVersions.add(cacheKey);
+    }
+  }
+
+  /// Refreshes dependencies for [repoDir] based on the detected project
+  /// type. Runs `dart pub upgrade` for Dart/Flutter packages and the
+  /// equivalent install command for TypeScript packages (npm/yarn/pnpm).
+  Future<void> _refreshDependencies({
+    required Directory repoDir,
+    required String repoName,
+    required GgLog ggLog,
+  }) async {
+    final gg.ProjectType projectType;
+    try {
+      projectType = gg.detectProjectType(repoDir);
+    } catch (_) {
+      // Repos without a recognizable manifest are skipped.
+      return;
+    }
+
+    final String executable;
+    final List<String> args;
+    switch (projectType) {
+      case gg.ProjectType.dart:
+      case gg.ProjectType.flutter:
+        executable = 'dart';
+        args = <String>['pub', 'upgrade'];
+      case gg.ProjectType.typescript:
+        final pm = gg.detectTypeScriptPackageManager(repoDir);
+        executable = pm.executable;
+        args = <String>['install'];
+    }
+
+    final result = await _processRunner(
+      executable,
+      args,
+      workingDirectory: repoDir.path,
+    );
+    final cmd = '$executable ${args.join(' ')}';
+    if (result.exitCode == 0) {
+      ggLog(green('Executed $cmd in $repoName.'));
+    } else {
+      throw Exception(
+        'Failed to execute $cmd in $repoName: ${result.stderr}',
+      );
     }
   }
 

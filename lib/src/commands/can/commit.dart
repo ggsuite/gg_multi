@@ -60,8 +60,6 @@ class CanCommitCommand extends DirCommand<void> {
     }
 
     final ticketDir = Directory(ticketPath);
-    final ticketName = path.basename(ticketDir.path);
-
     // Collect all repository directories in the ticket via SortedProcessingList
     final nodes = await _sortedProcessingList.get(
       directory: ticketDir,
@@ -69,7 +67,7 @@ class CanCommitCommand extends DirCommand<void> {
     );
 
     if (nodes.isEmpty) {
-      ggLog(yellow('⚠️ No repositories found in ticket $ticketName.'));
+      ggLog(yellow('⚠️ No repos in this ticket'));
       return;
     }
 
@@ -87,7 +85,7 @@ class CanCommitCommand extends DirCommand<void> {
     }
 
     // All successful
-    ggLog('✅ All repositories in ticket $ticketName can be committed.');
+    ggLog('✅ All repos can be committed');
   }
 }
 

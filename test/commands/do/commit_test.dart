@@ -87,7 +87,7 @@ void main() {
       await runner.run(['commit', '--input', emptyTicket.path]);
       expect(
         messages,
-        contains('⚠️ No repositories found in ticket EMPTY.'),
+        contains('⚠️ No repos in this ticket'),
       );
     });
 
@@ -126,7 +126,7 @@ void main() {
       );
       expect(
         messages,
-        contains('✅ All repositories in ticket TICKC committed successfully.'),
+        contains('✅ All repos committed'),
       );
       expect(
         messages,
@@ -183,12 +183,7 @@ void main() {
         messages,
         contains('❌ Failed to commit B: Exception: Failed to commit B'),
       );
-      expect(
-        messages,
-        contains(
-          '❌ Failed to commit the following repositories in ticket TICKC:',
-        ),
-      );
+      expect(messages, contains('❌ Commit failed in:'));
       expect(messages.any((m) => m.contains(' - B')), isTrue);
     });
   });

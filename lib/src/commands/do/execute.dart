@@ -102,7 +102,7 @@ class DoExecuteCommand extends DirCommand<void> {
     );
 
     if (nodes.isEmpty) {
-      ggLog(yellow('⚠️ No repositories found in ticket $ticketName.'));
+      ggLog(yellow('⚠️ No repos in this ticket'));
       return;
     }
 
@@ -137,19 +137,11 @@ class DoExecuteCommand extends DirCommand<void> {
         ),
       );
     } else {
-      ggLog(
-        red(
-          '❌ Failed to execute the command in the following repositories '
-          'in ticket $ticketName:',
-        ),
-      );
+      ggLog(red('❌ Command failed in:'));
       for (final name in failed) {
         ggLog(red(' - $name'));
       }
-      throw Exception(
-        'Failed to execute command in some repositories in ticket '
-        '$ticketName',
-      );
+      throw Exception('Failed to execute command in: ${failed.join(', ')}');
     }
   }
 

@@ -59,15 +59,13 @@ class DidPushCommand extends DirCommand<void> {
     }
 
     final ticketDir = Directory(ticketPath);
-    final ticketName = path.basename(ticketDir.path);
-
     final nodes = await _sortedProcessingList.get(
       directory: ticketDir,
       ggLog: ggLog,
     );
 
     if (nodes.isEmpty) {
-      ggLog(yellow('⚠️ No repositories found in ticket $ticketName.'));
+      ggLog(yellow('⚠️ No repos in this ticket'));
       return;
     }
 
@@ -83,7 +81,7 @@ class DidPushCommand extends DirCommand<void> {
       }
     }
 
-    ggLog('✅ All repositories in ticket $ticketName were pushed.');
+    ggLog('✅ All repos pushed');
   }
 }
 

@@ -14,6 +14,7 @@ import 'package:gg_publish/gg_publish.dart' as gg_publish;
 import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
+import '../../backend/ticket_state.dart';
 import '../../backend/workspace_utils.dart';
 
 /// Typedef for running processes (for injection & tests).
@@ -49,13 +50,19 @@ class CanReviewCommand extends DirCommand<void> {
     SortedProcessingList? sortedProcessingList,
     ProcessRunner? processRunner,
     gg_publish.IsFeatureBranch? ggIsFeatureBranch,
+    TicketState? ticketState,
   })  : _sortedProcessingList =
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
         _processRunner = processRunner ?? _defaultProcessRunner,
         _ggIsFeatureBranch =
-            ggIsFeatureBranch ?? gg_publish.IsFeatureBranch(ggLog: ggLog) {
+            ggIsFeatureBranch ?? gg_publish.IsFeatureBranch(ggLog: ggLog),
+        _ticketState = ticketState ?? TicketState(ggLog: ggLog) {
     _addArgs();
   }
+
+  /// State key used to persist the cached success in
+  /// `<ticketDir>/.gg.json`.
+  static const String stateKey = 'canReview';
 
   /// Instance of SortedProcessingList
   final SortedProcessingList _sortedProcessingList;
@@ -66,16 +73,23 @@ class CanReviewCommand extends DirCommand<void> {
   /// Instance of gg_publish IsFeatureBranch
   final gg_publish.IsFeatureBranch _ggIsFeatureBranch;
 
+  /// Caches successful runs at ticket level.
+  final TicketState _ticketState;
+
   @override
   Future<void> exec({
     required Directory directory,
     required GgLog ggLog,
     bool? verbose,
+    bool? force,
+    bool? saveState,
   }) =>
       get(
         directory: directory,
         ggLog: ggLog,
         verbose: verbose,
+        force: force,
+        saveState: saveState,
       );
 
   @override
@@ -83,8 +97,12 @@ class CanReviewCommand extends DirCommand<void> {
     required Directory directory,
     required GgLog ggLog,
     bool? verbose,
+    bool? force,
+    bool? saveState,
   }) async {
     verbose ??= argResults?['verbose'] as bool? ?? false;
+    force ??= argResults?['force'] as bool? ?? false;
+    saveState ??= argResults?['save-state'] as bool? ?? true;
 
     // Step 1: Detect ticket folder
     final String? ticketPath = WorkspaceUtils.detectTicketPath(
@@ -96,8 +114,6 @@ class CanReviewCommand extends DirCommand<void> {
     }
 
     final ticketDir = Directory(ticketPath);
-    final ticketName = path.basename(ticketDir.path);
-
     // Get sorted repos
     final subs = await _sortedProcessingList.get(
       directory: ticketDir,
@@ -105,7 +121,19 @@ class CanReviewCommand extends DirCommand<void> {
     );
 
     if (subs.isEmpty) {
-      ggLog(yellow('⚠️ No repositories found in ticket $ticketName.'));
+      ggLog(yellow('⚠️ No repos in this ticket'));
+      return;
+    }
+
+    // Short-circuit if the ticket state has not changed since the last
+    // successful run.
+    if (!force &&
+        await _ticketState.readSuccess(
+          ticketDir: ticketDir,
+          subs: subs,
+          key: stateKey,
+        )) {
+      ggLog('✅ All repos can be reviewed');
       return;
     }
 
@@ -134,8 +162,17 @@ class CanReviewCommand extends DirCommand<void> {
       ),
     );
 
+    // Persist success so the next invocation can short-circuit.
+    if (saveState) {
+      await _ticketState.writeSuccess(
+        ticketDir: ticketDir,
+        subs: subs,
+        key: stateKey,
+      );
+    }
+
     // All successful
-    ggLog('✅ All repositories in ticket $ticketName can be reviewed.');
+    ggLog('✅ All repos can be reviewed');
   }
 
   /// Checks that all repos are on a feature branch.
@@ -156,15 +193,12 @@ class CanReviewCommand extends DirCommand<void> {
       }
     }
     if (notOnFeatureBranch.isNotEmpty) {
-      ggLog(
-        yellow('The following repos are not on a feature branch:'),
-      );
+      ggLog(yellow('Not on a feature branch:'));
       for (final name in notOnFeatureBranch) {
         ggLog(yellow(' - $name'));
       }
       throw Exception(
-        'The following repositories are not on a feature branch: '
-        '${notOnFeatureBranch.join(', ')}',
+        'Not on a feature branch: ${notOnFeatureBranch.join(', ')}',
       );
     }
   }
@@ -187,13 +221,12 @@ class CanReviewCommand extends DirCommand<void> {
       }
     }
     if (uncommitted.isNotEmpty) {
-      ggLog(yellow('Uncommitted changes found in the following repos:'));
+      ggLog(yellow('Uncommitted changes in:'));
       for (final name in uncommitted) {
         ggLog(yellow(' - $name'));
       }
       throw Exception(
-        'Uncommitted changes found in the following repositories: '
-        '${uncommitted.join(', ')}',
+        'Uncommitted changes in: ${uncommitted.join(', ')}',
       );
     }
   }
@@ -206,6 +239,21 @@ class CanReviewCommand extends DirCommand<void> {
       help: 'Show detailed log output.',
       defaultsTo: false,
       negatable: true,
+    );
+    argParser.addFlag(
+      'force',
+      abbr: 'f',
+      negatable: false,
+      help: 'Execute the checks even if they succeeded before.',
+      defaultsTo: false,
+    );
+    argParser.addFlag(
+      'save-state',
+      abbr: 's',
+      negatable: true,
+      help: 'Persist the success hash in <ticketDir>/.gg.json '
+          'for later reuse.',
+      defaultsTo: true,
     );
   }
 }

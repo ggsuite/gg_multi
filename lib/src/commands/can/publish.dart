@@ -124,7 +124,7 @@ class CanPublishCommand extends DirCommand<void> {
     );
 
     if (subs.isEmpty) {
-      ggLog(yellow('⚠️ No repositories found in ticket $ticketName.'));
+      ggLog(yellow('⚠️ No repos in this ticket'));
       return;
     }
 
@@ -189,9 +189,7 @@ class CanPublishCommand extends DirCommand<void> {
     );
 
     // All successful --------------------------------------------------------
-    taskLog(
-      '✅ All repositories in ticket $ticketName can be published.',
-    );
+    taskLog('✅ All repos can be published');
   }
 
   /// Checks for uncommitted changes in all repos.
@@ -212,7 +210,7 @@ class CanPublishCommand extends DirCommand<void> {
       }
     }
     if (uncommitted.isNotEmpty) {
-      ggLog(yellow('Uncommitted changes found in the following repos:'));
+      ggLog(yellow('Uncommitted changes in:'));
       for (final name in uncommitted) {
         ggLog(yellow(' - $name'));
       }
@@ -289,16 +287,12 @@ class CanPublishCommand extends DirCommand<void> {
       }
     }
     if (failedMergeRepos.isNotEmpty) {
-      ggLog(
-        red('❌ Failed to check merge for the '
-            'following repositories in ticket $ticketName:'),
-      );
+      ggLog(red('❌ Merge check failed in:'));
       for (final repoName in failedMergeRepos) {
         ggLog(red(' - $repoName'));
       }
       throw Exception(
-        'Failed to check merge for '
-        'some repositories in ticket $ticketName',
+        'Failed to check merge in: ${failedMergeRepos.join(', ')}',
       );
     }
   }

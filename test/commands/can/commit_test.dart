@@ -85,7 +85,7 @@ void main() {
       await runner.run(['commit', '--input', emptyTicket.path]);
       expect(
         messages,
-        contains('⚠️ No repositories found in ticket EMPTY.'),
+        contains('⚠️ No repos in this ticket'),
       );
     });
 
@@ -109,7 +109,7 @@ void main() {
       await runner.run(['commit', '--input', ticketDir.path]);
       expect(
         messages,
-        contains('✅ All repositories in ticket TICKC can be committed.'),
+        contains('✅ All repos can be committed'),
       );
       expect(
         messages,

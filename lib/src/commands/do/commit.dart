@@ -77,7 +77,6 @@ class DoCommitCommand extends DirCommand<void> {
     }
 
     final ticketDir = Directory(ticketPath);
-    final ticketName = path.basename(ticketDir.path);
 
     // Collect all repository directories in the ticket via SortedProcessingList
     final nodes = await _sortedProcessingList.get(
@@ -86,7 +85,7 @@ class DoCommitCommand extends DirCommand<void> {
     );
 
     if (nodes.isEmpty) {
-      ggLog(yellow('⚠️ No repositories found in ticket $ticketName.'));
+      ggLog(yellow('⚠️ No repos in this ticket'));
       return;
     }
 
@@ -113,22 +112,13 @@ class DoCommitCommand extends DirCommand<void> {
 
     // Summarize the results
     if (failedRepos.isEmpty) {
-      ggLog(
-        '✅ All repositories in ticket $ticketName committed successfully.',
-      );
+      ggLog('✅ All repos committed');
     } else {
-      ggLog(
-        red(
-          '❌ Failed to commit the following '
-          'repositories in ticket $ticketName:',
-        ),
-      );
+      ggLog(red('❌ Commit failed in:'));
       for (final repoName in failedRepos) {
         ggLog(red(' - $repoName'));
       }
-      throw Exception(
-        'Failed to commit some repositories in ticket $ticketName',
-      );
+      throw Exception('Failed to commit in: ${failedRepos.join(', ')}');
     }
   }
 

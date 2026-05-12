@@ -15,7 +15,6 @@ import 'package:gg_log/gg_log.dart';
 import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
-import '../../backend/status_utils.dart';
 import '../../backend/workspace_utils.dart';
 
 /// Typedef for running processes (for injection & tests).
@@ -108,7 +107,7 @@ class DoCancelReviewCommand extends DirCommand<void> {
     );
 
     if (nodes.isEmpty) {
-      ggLog(yellow('⚠️ No repositories found in ticket $ticketName.'));
+      ggLog(yellow('⚠️ No repos in this ticket'));
       return;
     }
 
@@ -139,21 +138,13 @@ class DoCancelReviewCommand extends DirCommand<void> {
       try {
         await _localizeRefs.get(directory: repoDir, ggLog: ggLog);
         ggLog(green('Localized refs to local paths for $repoName'));
-        StatusUtils.setStatus(
-          repoDir,
-          StatusUtils.statusLocalized,
-          ggLog: ggLog,
-        );
       } catch (e) {
         ggLog(
           red(
             'Failed to localize refs to local paths for $repoName: $e',
           ),
         );
-        throw Exception(
-          'Failed to cancel review for some repositories in ticket '
-          '$ticketName',
-        );
+        throw Exception('Failed to cancel review in: $repoName');
       }
 
       // node_modules will be stale after rewriting package.json — refresh.
@@ -174,17 +165,11 @@ class DoCancelReviewCommand extends DirCommand<void> {
         ggLog(green('Committed $repoName'));
       } catch (e) {
         ggLog(red('Failed to commit $repoName: $e'));
-        throw Exception(
-          'Failed to cancel review for some repositories in ticket '
-          '$ticketName',
-        );
+        throw Exception('Failed to cancel review in: $repoName');
       }
     }
 
-    ggLog(
-      '✅ All repositories in ticket $ticketName were '
-      'localized back to local paths and committed.',
-    );
+    ggLog('✅ All repos re-localized and committed');
   }
 
   /// Adds command line arguments for this command.
@@ -230,10 +215,7 @@ class DoCancelReviewCommand extends DirCommand<void> {
           'Failed to execute $cmd in $repoName: ${result.stderr}',
         ),
       );
-      throw Exception(
-        'Failed to cancel review for some repositories in ticket '
-        '$ticketName',
-      );
+      throw Exception('Failed to cancel review in: $repoName');
     }
   }
 }

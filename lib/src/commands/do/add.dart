@@ -20,7 +20,6 @@ import '../../backend/add_repository_helper.dart';
 import '../../backend/filesystem_utils.dart';
 import '../../backend/git_platform.dart';
 import '../../backend/workspace_utils.dart';
-import '../../backend/status_utils.dart';
 import 'install_git_hooks.dart';
 import 'install_gitattributes.dart';
 
@@ -581,7 +580,7 @@ class AddCommand extends Command<dynamic> {
     );
 
     if (nodes.isEmpty) {
-      ggLog(yellow('⚠️ No repositories found in ticket $ticketName.'));
+      ggLog(yellow('⚠️ No repos in this ticket'));
       return;
     }
 
@@ -597,7 +596,7 @@ class AddCommand extends Command<dynamic> {
         }
       } catch (e) {
         ggLog(red('Failed to unlocalize refs for $repoName: $e'));
-        throw Exception('Failed to relocalize ticket $ticketName');
+        throw Exception('Failed to relocalize ticket');
       }
     }
 
@@ -608,14 +607,9 @@ class AddCommand extends Command<dynamic> {
       try {
         await _backupPublishTo.exec(directory: repoDir, ggLog: ggLog);
         await _localizeRefs.get(directory: repoDir, ggLog: ggLog);
-        StatusUtils.setStatus(
-          repoDir,
-          StatusUtils.statusLocalized,
-          ggLog: ggLog,
-        );
       } catch (e) {
         ggLog(red('Failed to localize refs for $repoName: $e'));
-        throw Exception('Failed to relocalize ticket $ticketName');
+        throw Exception('Failed to relocalize ticket');
       }
 
       // Execute "dart pub upgrade" if pubspec.yaml exists -------------------
