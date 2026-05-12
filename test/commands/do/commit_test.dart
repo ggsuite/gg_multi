@@ -130,11 +130,11 @@ void main() {
       );
       expect(
         messages,
-        contains('Committing A in ticket TICKC...'),
+        contains('A:'),
       );
       expect(
         messages,
-        contains('Committing B in ticket TICKC...'),
+        contains('B:'),
       );
     });
 

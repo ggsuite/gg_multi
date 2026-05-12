@@ -22,6 +22,12 @@ localization commands again.
 
 - remove unlocalize step from do review command and tests
 
+## [4.1.0] - 2026-05-12
+
+### Changed
+
+- gg\_multi: changed references to git
+
 ## [4.0.1] - 2026-05-11
 
 ### Changed
@@ -253,6 +259,7 @@ localization commands again.
 - Remove prints
 - Remove gh pr create from review
 
+[4.1.0]: https://github.com/ggsuite/gg_multi/compare/4.0.1...4.1.0
 [4.0.1]: https://github.com/ggsuite/gg_multi/compare/3.1.0...4.0.1
 [3.1.0]: https://github.com/ggsuite/kidney_core/compare/3.0.4...3.1.0
 [3.0.4]: https://github.com/ggsuite/kidney_core/compare/3.0.3...3.0.4

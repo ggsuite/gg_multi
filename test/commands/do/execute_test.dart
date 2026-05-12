@@ -147,7 +147,7 @@ void main() {
       );
       expect(
         messages,
-        contains('Executing \'echo hi\' in A in ticket TICKX...'),
+        contains('A:'),
       );
     });
 

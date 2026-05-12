@@ -303,19 +303,11 @@ void main() {
         ),
       ).called(2);
       expect(
-        messages.any(
-          (m) => m.contains(
-            'Checking if A in ticket TICKPB can be merged...',
-          ),
-        ),
+        messages.any((m) => m.contains('A:')),
         isTrue,
       );
       expect(
-        messages.any(
-          (m) => m.contains(
-            'Checking if B in ticket TICKPB can be merged...',
-          ),
-        ),
+        messages.any((m) => m.contains('B:')),
         isTrue,
       );
     });

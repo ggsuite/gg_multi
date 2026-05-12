@@ -112,11 +112,11 @@ void main() {
       );
       expect(
         messages,
-        contains('Checking if A in ticket TICKDC was committed...'),
+        contains('A:'),
       );
       expect(
         messages,
-        contains('Checking if B in ticket TICKDC was committed...'),
+        contains('B:'),
       );
     });
 

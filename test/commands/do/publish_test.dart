@@ -447,11 +447,11 @@ void main() {
         ),
       );
       expect(
-        messages.any((m) => m.contains('Publishing A')),
+        messages.any((m) => m.contains('A:')),
         isTrue,
       );
       expect(
-        messages.any((m) => m.contains('Publishing B')),
+        messages.any((m) => m.contains('B:')),
         isTrue,
       );
 

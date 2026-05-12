@@ -82,7 +82,6 @@ class DoExecuteCommand extends DirCommand<void> {
     }
     final cmd = rest.first;
     final cmdArgs = rest.sublist(1);
-    final fullCmdString = [cmd, ...cmdArgs].join(' ');
 
     // Detect ticket folder
     final String? ticketPath = WorkspaceUtils.detectTicketPath(
@@ -113,12 +112,7 @@ class DoExecuteCommand extends DirCommand<void> {
       final repoDir = node.directory;
       final repoName = path.basename(repoDir.path);
 
-      ggLog(
-        yellow(
-          "Executing '$fullCmdString' in $repoName in ticket "
-          '$ticketName...',
-        ),
-      );
+      ggLog('${cyan(repoName)}:');
 
       final result = await _processRunner(
         cmd,

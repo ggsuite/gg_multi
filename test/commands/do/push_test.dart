@@ -142,11 +142,11 @@ void main() {
       // Per-repo verbose logs
       expect(
         messages,
-        contains('Pushing A in ticket TICKP...'),
+        contains('A:'),
       );
       expect(
         messages,
-        contains('Pushing B in ticket TICKP...'),
+        contains('B:'),
       );
 
       // Summary

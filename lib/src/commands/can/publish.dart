@@ -280,10 +280,7 @@ class CanPublishCommand extends DirCommand<void> {
     for (final repo in subs) {
       final repoDir = repo.directory;
       final repoName = path.basename(repoDir.path);
-      ggLog(
-        yellow('Checking if $repoName in ticket '
-            '$ticketName can be merged...'),
-      );
+      ggLog('${cyan(repoName)}:');
       try {
         await _ggCanMerge.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {

@@ -208,7 +208,7 @@ class DoPublishCommand extends DirCommand<void> {
         ggLog: ggLog,
       );
 
-      ggLog(yellow('Publishing $repoName ...'));
+      ggLog('${cyan(repoName)}:');
 
       try {
         await _unlocalizeRefs.get(directory: repoDir, ggLog: taskLog);

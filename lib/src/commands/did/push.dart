@@ -74,11 +74,7 @@ class DidPushCommand extends DirCommand<void> {
     for (final node in nodes) {
       final repoDir = node.directory;
       final repoName = path.basename(repoDir.path);
-      ggLog(
-        yellow(
-          'Checking if $repoName in ticket $ticketName was pushed...',
-        ),
-      );
+      ggLog('${cyan(repoName)}:');
       try {
         await _ggDidPush.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {

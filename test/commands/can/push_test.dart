@@ -114,11 +114,11 @@ void main() {
       );
       expect(
         messages,
-        contains('Checking if A in ticket TICKP can be pushed...'),
+        contains('A:'),
       );
       expect(
         messages,
-        contains('Checking if B in ticket TICKP can be pushed...'),
+        contains('B:'),
       );
     });
 
