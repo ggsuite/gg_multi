@@ -154,30 +154,30 @@ const String claudeCommands = '''
 These commands are available in the ticket workspace and in the single repositories:
 
 ```bash
-kd do add <repo> [<repo2> ...] # add repos to the ticket workspace given by their names
-kd can commit # run all checks in all repos (analyze + format + tests)
-kd do commit -m <message> # commit in all repos after checks pass
-kd can push # check for all repos if they are ready to push (checks + commit)
-kd do push # push in all repos after checks pass
-kd do review # start code review in all repos
-kd do cancel-review # cancel code review in all repos and return to work
-kd do publish # publish all repos after review is approved (should be executed manually by a human)
+gg do add <repo> [<repo2> ...] # add repos to the ticket workspace given by their names
+gg can commit # run all checks in all repos (analyze + format + tests)
+gg do commit -m <message> # commit in all repos after checks pass
+gg can push # check for all repos if they are ready to push (checks + commit)
+gg do push # push in all repos after checks pass
+gg do review # start code review in all repos
+gg do cancel-review # cancel code review in all repos and return to work
+gg do publish # publish all repos after review is approved (should be executed manually by a human)
 ```
 
-To install kd, run:
+To install gg, run:
 ```bash
-dart pub global activate kd
+dart pub global activate gg
 ```
 
 The following commands are only available in the repositories in the ticket workspace:
 
-### GG Commands (gg is often used by kd commands)
+### GG One Commands (gg one is often used by gg commands)
 ```bash
-gg check analyze                 # static analysis
-gg check format                  # formatting check
-gg can commit                    # run all checks (analyze + format + tests)
-gg do commit -m <message>        # commit after checks pass
-gg do push                       # push after checks pass
+gg one check analyze             # static analysis
+gg one check format              # formatting check
+gg one can commit                # run all checks (analyze + format + tests)
+gg one do commit -m <message>    # commit after checks pass
+gg one do push                   # push after checks pass
 ```
 
 ### Testing
@@ -191,8 +191,8 @@ dart test test/path/to/file_test.dart  # run a single test file
 dart pub get
 ```
 
-For committing, always use gg do commit or kd do commit.
-For pushing, always use gg do push or kd do push.
+For committing, always use gg one do commit or gg do commit.
+For pushing, always use gg one do push or gg do push.
 
 ''';
 

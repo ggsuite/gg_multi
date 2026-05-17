@@ -131,10 +131,11 @@ void main() {
       ).called(1);
       expect(
         logMessages,
-        equals([
-          'Added repository myrepo from '
-              'https://github.com/myrepo/myrepo.git',
-        ]),
+        anyElement(
+          contains(
+            'myrepo from https://github.com/myrepo/myrepo.git',
+          ),
+        ),
       );
 
       final orgFile = File(path.join(masterWorkspacePath, '.organizations'));
@@ -158,10 +159,11 @@ void main() {
         ).called(1);
         expect(
           logMessages,
-          equals([
-            'Added repository testrepo from '
-                'https://github.com/testuser/testrepo.git',
-          ]),
+          anyElement(
+            contains(
+              'testrepo from https://github.com/testuser/testrepo.git',
+            ),
+          ),
         );
       },
     );
@@ -175,9 +177,7 @@ void main() {
         verify(() => mockGitCloner.cloneRepo(repoUrl, any())).called(1);
         expect(
           logMessages,
-          equals([
-            'Added repository somerepo from $repoUrl',
-          ]),
+          anyElement(contains('somerepo from $repoUrl')),
         );
       },
     );
@@ -196,9 +196,7 @@ void main() {
         ).called(1);
         expect(
           logMessages,
-          equals([
-            'Added repository gg_multi from $repoUrl',
-          ]),
+          anyElement(contains('gg_multi from $repoUrl')),
         );
       },
     );
@@ -217,10 +215,11 @@ void main() {
         ).called(1);
         expect(
           logMessages,
-          equals([
-            'Added repository gg_multi from '
-                'https://github.com/ggsuite/gg_multi.git',
-          ]),
+          anyElement(
+            contains(
+              'gg_multi from https://github.com/ggsuite/gg_multi.git',
+            ),
+          ),
         );
       },
     );
@@ -288,12 +287,19 @@ void main() {
         ).called(1);
         expect(
           logMessages,
-          containsAllInOrder([
-            'Added repository repo1 from '
-                'https://github.com/myorganization/repo1.git',
-            'Added repository repo2 from '
-                'https://github.com/myorganization/repo2.git',
-          ]),
+          anyElement(
+            contains(
+              'repo1 from https://github.com/myorganization/repo1.git',
+            ),
+          ),
+        );
+        expect(
+          logMessages,
+          anyElement(
+            contains(
+              'repo2 from https://github.com/myorganization/repo2.git',
+            ),
+          ),
         );
       },
     );
@@ -1138,13 +1144,19 @@ version: 1.0.0
       ).called(1);
       expect(
         logMessages,
-        contains('Added repository repoA from '
-            'https://github.com/repoA/repoA.git'),
+        anyElement(
+          contains(
+            'repoA from https://github.com/repoA/repoA.git',
+          ),
+        ),
       );
       expect(
         logMessages,
-        contains('Added repository repoB from '
-            'https://github.com/repoB/repoB.git'),
+        anyElement(
+          contains(
+            'repoB from https://github.com/repoB/repoB.git',
+          ),
+        ),
       );
     });
 

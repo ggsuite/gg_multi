@@ -22,6 +22,13 @@ localization commands again.
 
 - remove unlocalize step from do review command and tests
 
+## [4.3.0] - 2026-05-17
+
+### Changed
+
+- parallelization
+- documentation
+
 ## [4.2.0] - 2026-05-12
 
 ## [4.1.0] - 2026-05-12
@@ -261,6 +268,7 @@ localization commands again.
 - Remove prints
 - Remove gh pr create from review
 
+[4.3.0]: https://github.com/ggsuite/gg_multi/compare/4.2.0...4.3.0
 [4.2.0]: https://github.com/ggsuite/gg_multi/compare/4.1.0...4.2.0
 [4.1.0]: https://github.com/ggsuite/gg_multi/compare/4.0.1...4.1.0
 [4.0.1]: https://github.com/ggsuite/gg_multi/compare/3.1.0...4.0.1

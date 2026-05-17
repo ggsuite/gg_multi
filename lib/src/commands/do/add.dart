@@ -159,8 +159,10 @@ class AddCommand extends Command<dynamic> {
 
     // If not in a ticket workspace: keep original behaviour (no graph logic).
     if (ticketPath == null) {
-      for (final targetArg in targets) {
-        await addRepositoryHelper(
+      await runWithLimit(
+        targets,
+        4,
+        (targetArg) => addRepositoryHelper(
           targetArg: targetArg,
           ggLog: ggLog,
           gitCloner: gitCloner,
@@ -168,8 +170,8 @@ class AddCommand extends Command<dynamic> {
           workspacePath: masterWorkspacePath,
           force: force,
           logIfAlreadyAdded: true,
-        );
-      }
+        ),
+      );
       return;
     }
 
@@ -180,7 +182,11 @@ class AddCommand extends Command<dynamic> {
       if (repoName != null) {
         requestedRepoNames.add(repoName);
       }
-      await addRepositoryHelper(
+    }
+    await runWithLimit(
+      targets,
+      4,
+      (targetArg) => addRepositoryHelper(
         targetArg: targetArg,
         ggLog: ggLog,
         gitCloner: gitCloner,
@@ -190,8 +196,8 @@ class AddCommand extends Command<dynamic> {
         // When inside a ticket we do not spam "already added" messages.
         logIfAlreadyAdded: false,
         // We intentionally do not copy here; we copy after graph processing.
-      );
-    }
+      ),
+    );
 
     final ticketDir = Directory(ticketPath);
 
@@ -258,19 +264,12 @@ class AddCommand extends Command<dynamic> {
     final GgLog taskLog = verbose ? ggLog : <String>[].add;
 
     ggLog(yellow('Copying the following repos:'));
-    for (final repoName in finalToCopy) {
-      ggLog(yellow('- $repoName'));
-    }
 
-    await GgStatusPrinter<void>(
-      message: 'Copying repos to ticket',
-      ggLog: ggLog,
-    ).run(
-      () => _copyReposToTicket(
-        ticketPath: ticketPath,
-        repoNames: finalToCopy,
-        ggLog: taskLog,
-      ),
+    await _copyReposToTicket(
+      ticketPath: ticketPath,
+      repoNames: finalToCopy,
+      ggLog: taskLog,
+      reportLog: ggLog,
     );
 
     // Write project configuration files (workspace + git hooks +
@@ -329,18 +328,42 @@ class AddCommand extends Command<dynamic> {
 
   /// Copies all given [repoNames] from the master workspace into the
   /// ticket at [ticketPath].
+  ///
+  /// Runs up to [maxParallel] copy operations concurrently. Per-repo
+  /// success/failure status lines are written to [reportLog]; verbose
+  /// command output goes to [ggLog].
   Future<void> _copyReposToTicket({
     required String ticketPath,
     required Set<String> repoNames,
     required GgLog ggLog,
+    required GgLog reportLog,
+    int maxParallel = 4,
   }) async {
-    for (final repoName in repoNames) {
-      await _copyRepoToTicket(
-        repoName: repoName,
-        ticketPath: ticketPath,
-        ggLog: ggLog,
-      );
+    final queue = repoNames.toList();
+    var nextIndex = 0;
+
+    Future<void> worker() async {
+      while (true) {
+        final int index;
+        if (nextIndex >= queue.length) {
+          return;
+        }
+        index = nextIndex++;
+        final repoName = queue[index];
+        await _copyRepoToTicket(
+          repoName: repoName,
+          ticketPath: ticketPath,
+          ggLog: ggLog,
+        );
+        reportLog(green('✅ $repoName'));
+      }
     }
+
+    final workers = <Future<void>>[
+      for (var i = 0; i < maxParallel && i < queue.length; i++) worker(),
+    ];
+
+    await Future.wait(workers);
   }
 
   /// Copies the repository from the master workspace to the [ticketPath] but

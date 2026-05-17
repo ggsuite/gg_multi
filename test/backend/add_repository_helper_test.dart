@@ -87,9 +87,7 @@ void main() {
         // Verify ggLog contains the correct success message
         expect(
           logs,
-          equals([
-            'Added repository repo from $expectedRepoUrl',
-          ]),
+          anyElement(contains('repo from $expectedRepoUrl')),
         );
       });
 
@@ -110,7 +108,7 @@ void main() {
         final expectedDestination = path.join(workspacePath, 'repo');
         verify(() => mockGitCloner.cloneRepo(targetArg, expectedDestination))
             .called(1);
-        expect(logs, contains('Added repository repo from $targetArg'));
+        expect(logs, anyElement(contains('repo from $targetArg')));
       });
 
       test('Processes organization URL and clones multiple repos', () async {
@@ -157,7 +155,7 @@ void main() {
           final destination = path.join(workspacePath, repoName);
           verify(() => mockGitCloner.cloneRepo(cloneUrl, destination))
               .called(1);
-          expect(logs, contains('Added repository $repoName from $cloneUrl'));
+          expect(logs, anyElement(contains('$repoName from $cloneUrl')));
         }
       });
 
@@ -259,7 +257,7 @@ void main() {
           final destination = path.join(workspacePath, repoName);
           verify(() => mockGitCloner.cloneRepo(cloneUrl, destination))
               .called(1);
-          expect(logs, contains('Added repository $repoName from $cloneUrl'));
+          expect(logs, anyElement(contains('$repoName from $cloneUrl')));
         }
       });
 
@@ -422,7 +420,7 @@ void main() {
         final expectedDestination = path.join(workspacePath, 'repo');
         verify(() => mockGitCloner.cloneRepo(targetArg, expectedDestination))
             .called(1);
-        expect(logs, contains('Added repository repo from $targetArg'));
+        expect(logs, anyElement(contains('repo from $targetArg')));
       });
     });
 
@@ -444,7 +442,7 @@ void main() {
       final expectedDestination = path.join(workspacePath, 'project123');
       verify(() => mockGitCloner.cloneRepo(targetArg, expectedDestination))
           .called(1);
-      expect(logs, contains('Added repository project123 from $targetArg'));
+      expect(logs, anyElement(contains('project123 from $targetArg')));
     });
 
     group('Target containing "/" (non-http, non-SSH)', () {
@@ -470,7 +468,7 @@ void main() {
             expectedDestination,
           ),
         ).called(1);
-        expect(logs, contains('Added repository repo from $expectedRepoUrl'));
+        expect(logs, anyElement(contains('repo from $expectedRepoUrl')));
       });
     });
 
@@ -497,7 +495,7 @@ void main() {
             expectedDestination,
           ),
         ).called(1);
-        expect(logs, contains('Added repository repo from $expectedRepoUrl'));
+        expect(logs, anyElement(contains('repo from $expectedRepoUrl')));
       });
     });
 
@@ -646,9 +644,7 @@ void main() {
       // The repo was reported as added from the fallback URL
       expect(
         logs,
-        contains(
-          'Added repository $repoName from $fallbackUrl',
-        ),
+        anyElement(contains('$repoName from $fallbackUrl')),
       );
       expect(
         callbackExecuted,
@@ -841,8 +837,12 @@ void main() {
     ).called(1);
     expect(
       logs,
-      contains('Added repository fresh_repo from '
-          'https://github.com/fresh_repo/fresh_repo.git'),
+      anyElement(
+        contains(
+          'fresh_repo from '
+          'https://github.com/fresh_repo/fresh_repo.git',
+        ),
+      ),
     );
   });
 }

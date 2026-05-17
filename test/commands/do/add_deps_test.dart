@@ -112,14 +112,24 @@ dev_dependencies:
 
       expect(
         logMessages,
-        containsAll([
-          'Added repository json_dart from '
-              'https://github.com/json_dart/json_dart.git',
-          'Added repository http from '
-              'https://github.com/http/http.git',
-          'Added repository json_serializer from '
-              'https://github.com/json_serializer/json_serializer.git',
-        ]),
+        anyElement(
+          contains(
+            'json_dart from https://github.com/json_dart/json_dart.git',
+          ),
+        ),
+      );
+      expect(
+        logMessages,
+        anyElement(contains('http from https://github.com/http/http.git')),
+      );
+      expect(
+        logMessages,
+        anyElement(
+          contains(
+            'json_serializer from '
+            'https://github.com/json_serializer/json_serializer.git',
+          ),
+        ),
       );
     });
 

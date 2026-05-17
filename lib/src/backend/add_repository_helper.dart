@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:gg_multi/src/backend/url_parser.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 import 'git_handler.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
@@ -77,8 +78,11 @@ Future<void> addRepositoryHelper({
 
     // Try to clone the repository ............................................
     try {
-      await gitCloner.cloneRepo(repoUrl, destination);
-      ggLog(green('Added repository $repoName from $repoUrl'));
+      await GgStatusPrinter<void>(
+        message: '${cyan(repoName)} from $repoUrl',
+        ggLog: ggLog,
+        useCarriageReturn: false,
+      ).run(() => gitCloner.cloneRepo(repoUrl, destination));
       try {
         OrganizationUtils.appendOrganization(workspacePath, repoUrl);
       } catch (_) {
@@ -99,8 +103,11 @@ Future<void> addRepositoryHelper({
         final baseUrl = org.url.endsWith('/') ? org.url : '${org.url}/';
         final fallbackUrl = '$baseUrl$repoName.git';
         try {
-          await gitCloner.cloneRepo(fallbackUrl, destination);
-          ggLog(green('Added repository $repoName from $fallbackUrl'));
+          await GgStatusPrinter<void>(
+            message: '${cyan(repoName)} from $fallbackUrl',
+            ggLog: ggLog,
+            useCarriageReturn: false,
+          ).run(() => gitCloner.cloneRepo(fallbackUrl, destination));
           try {
             OrganizationUtils.appendOrganization(workspacePath, fallbackUrl);
           } catch (_) {}
@@ -159,9 +166,11 @@ Future<void> addRepositoryHelper({
         );
         return;
       }
-      for (final repo in repos) {
-        await attemptClone(repo.cloneUrl, repo.name);
-      }
+      await runWithLimit(
+        repos,
+        4,
+        (repo) => attemptClone(repo.cloneUrl, repo.name),
+      );
     } else if (parsedUrl.repo == null &&
         parsedUrl.org != null &&
         parsedUrl.platformType == 'azure' &&
@@ -179,9 +188,11 @@ Future<void> addRepositoryHelper({
           );
           return;
         }
-        for (final repo in repos) {
-          await attemptClone(repo.cloneUrl, repo.name);
-        }
+        await runWithLimit(
+          repos,
+          4,
+          (repo) => attemptClone(repo.cloneUrl, repo.name),
+        );
       } catch (e) {
         if (e.toString().contains('Bitte installiere die Azure CLI')) {
           ggLog(yellow(e.toString().replaceAll('Exception: ', '')));
@@ -218,6 +229,34 @@ Future<void> addRepositoryHelper({
     final String repoName = extractRepoName(repoUrl) ?? 'unknown_repo';
     await attemptClone(repoUrl, repoName, allowFallback: true);
   }
+}
+
+/// Processes [items] with [task], running up to [maxParallel] tasks at a time.
+/// Tasks run in submission order; the first failure is rethrown after all
+/// already-started tasks have settled.
+Future<void> runWithLimit<T>(
+  Iterable<T> items,
+  int maxParallel,
+  Future<void> Function(T item) task,
+) async {
+  final queue = items.toList();
+  var nextIndex = 0;
+
+  Future<void> worker() async {
+    while (true) {
+      if (nextIndex >= queue.length) {
+        return;
+      }
+      final item = queue[nextIndex++];
+      await task(item);
+    }
+  }
+
+  final workers = <Future<void>>[
+    for (var i = 0; i < maxParallel && i < queue.length; i++) worker(),
+  ];
+
+  await Future.wait(workers);
 }
 
 /// Extracts the repository name from a git URL supporting:
