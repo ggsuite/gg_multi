@@ -363,6 +363,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
 
@@ -544,6 +545,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -614,6 +616,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: 'edited explicit message',
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
         ),
       ).called(1);
     });
@@ -701,6 +704,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -769,6 +773,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: 'edited ticket message',
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
         ),
       ).called(1);
     });
@@ -862,6 +867,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -1092,6 +1098,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((invocation) {
         final repoDir = invocation.namedArguments[#directory] as Directory;
@@ -1273,6 +1280,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
 
@@ -1444,6 +1452,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -1610,6 +1619,7 @@ void main() {
             ggLog: any(named: 'ggLog'),
             message: any(named: 'message'),
             deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+            verbose: any(named: 'verbose'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -1779,6 +1789,7 @@ void main() {
             ggLog: any(named: 'ggLog'),
             message: any(named: 'message'),
             deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+            verbose: any(named: 'verbose'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -1947,6 +1958,7 @@ void main() {
             ggLog: any(named: 'ggLog'),
             message: any(named: 'message'),
             deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+            verbose: any(named: 'verbose'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -2094,6 +2106,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -2258,6 +2271,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -2621,6 +2635,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
       when(
