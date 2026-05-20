@@ -35,13 +35,9 @@ void main() {
 
   setUp(() {
     messages.clear();
-    tempDir = Directory.systemTemp.createTempSync(
-      'do_push_ticket_test_',
-    );
+    tempDir = Directory.systemTemp.createTempSync('do_push_ticket_test_');
     ticketsDir = Directory(path.join(tempDir.path, 'tickets'))..createSync();
     ticketDir = Directory(path.join(ticketsDir.path, 'TICKP'))..createSync();
-    // Create repositories with pubspec.yaml so SortedProcessingList finds
-    // them
     final aDir = Directory(path.join(ticketDir.path, 'A'))..createSync();
     File(path.join(aDir.path, 'pubspec.yaml')).writeAsStringSync('name: A');
     final bDir = Directory(path.join(ticketDir.path, 'B'))..createSync();
@@ -58,9 +54,7 @@ void main() {
     test('fails outside any ticket folder', () async {
       final runner = CommandRunner<void>('test', 'do push ticket')
         ..addCommand(
-          DoPushCommand(
-            ggLog: ggLog,
-          ),
+          DoPushCommand(ggLog: ggLog),
         );
       await expectLater(
         () async => await runner.run(['push', '--input', tempDir.path]),
@@ -83,28 +77,14 @@ void main() {
         ..createSync();
       final runner = CommandRunner<void>('test', 'do push ticket')
         ..addCommand(
-          DoPushCommand(
-            ggLog: ggLog,
-          ),
+          DoPushCommand(ggLog: ggLog),
         );
       await runner.run(['push', '--input', emptyTicket.path]);
-      expect(
-        messages,
-        contains('⚠️ No repos in this ticket'),
-      );
+      expect(messages, contains('⚠️ No repos in this ticket'));
     });
 
-    test('pushes all repos successfully (verbose)', () async {
-      final mockGgCanPush = MockGgCanPush();
+    test('pushes all repos successfully (parallel default)', () async {
       final mockGgDoPush = MockGgDoPush();
-
-      when(
-        () => mockGgCanPush.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-
       when(
         () => mockGgDoPush.exec(
           directory: any(named: 'directory'),
@@ -117,56 +97,22 @@ void main() {
         ..addCommand(
           DoPushCommand(
             ggLog: ggLog,
-            ggCanPush: mockGgCanPush,
             ggDoPush: mockGgDoPush,
           ),
         );
-      await runner.run([
-        'push',
-        '--input',
-        ticketDir.path,
-        '--verbose',
-      ]);
+      await runner.run(['push', '--input', ticketDir.path]);
 
-      // Status printer message
-      expect(
-        messages.any((m) => m.contains('Pushing repos')),
-        isTrue,
-      );
-
-      // Pre-push list
       expect(messages, contains('Pushing the following repos:'));
       expect(messages, contains(' - A'));
       expect(messages, contains(' - B'));
-
-      // Per-repo verbose logs
-      expect(
-        messages,
-        contains('A:'),
-      );
-      expect(
-        messages,
-        contains('B:'),
-      );
-
-      // Summary
-      expect(
-        messages,
-        contains('✅ All repos pushed'),
-      );
+      expect(messages, contains('✅ Pushing: A'));
+      expect(messages, contains('✅ Pushing: B'));
+      expect(messages, contains('✅ All repos pushed'));
     });
 
-    test('aborts on first repo that fails', () async {
-      final mockGgCanPush = MockGgCanPush();
+    test('continues on failure and reports all failed repos at the end',
+        () async {
       final mockGgDoPush = MockGgDoPush();
-
-      when(
-        () => mockGgCanPush.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-
       when(
         () => mockGgDoPush.exec(
           directory: any(named: 'directory'),
@@ -184,7 +130,6 @@ void main() {
         ..addCommand(
           DoPushCommand(
             ggLog: ggLog,
-            ggCanPush: mockGgCanPush,
             ggDoPush: mockGgDoPush,
           ),
         );
@@ -193,59 +138,191 @@ void main() {
           'push',
           '--input',
           ticketDir.path,
-          '--verbose',
         ]),
-        throwsA(isA<Exception>()),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Failed to push: B'),
+          ),
+        ),
+      );
+
+      // A still succeeded.
+      expect(messages, contains('✅ Pushing: A'));
+      expect(messages, contains('❌ Pushing: B'));
+      expect(
+        messages,
+        contains('❌ 1 of 2 repos failed to push:'),
       );
       expect(
         messages,
-        contains('❌ Failed to push B: Exception: Failed to push B'),
+        contains(' - B: Exception: Failed to push B'),
       );
-      expect(messages, contains('❌ Push failed in:'));
-      expect(messages.any((m) => m.contains(' - B')), isTrue);
     });
 
-    test('uses quiet taskLog when verbose is false', () async {
-      final mockGgCanPush = MockGgCanPush();
+    test('forwards --force to gg.DoPush', () async {
       final mockGgDoPush = MockGgDoPush();
-
-      when(
-        () => mockGgCanPush.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-
+      final forceValues = <bool?>[];
       when(
         () => mockGgDoPush.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           force: any(named: 'force'),
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((invocation) async {
+        forceValues.add(invocation.namedArguments[#force] as bool?);
+      });
 
-      final localMessages = <String>[];
-      void localLog(String msg) => localMessages.add(rmConsoleColors(msg));
+      final runner = CommandRunner<void>('test', 'do push ticket')
+        ..addCommand(
+          DoPushCommand(
+            ggLog: ggLog,
+            ggDoPush: mockGgDoPush,
+          ),
+        );
+      await runner.run([
+        'push',
+        '--input',
+        ticketDir.path,
+        '--force',
+      ]);
 
-      final command = DoPushCommand(
-        ggLog: localLog,
-        ggCanPush: mockGgCanPush,
-        ggDoPush: mockGgDoPush,
-      );
+      expect(forceValues, everyElement(isTrue));
+    });
 
-      await command.get(
-        directory: ticketDir,
-        ggLog: localLog,
-        force: false,
-        verbose: false,
-      );
-
-      expect(
-        localMessages.last,
-        contains(
-          '✅ Pushing repos',
+    test('does not leak gg do push sub-output without --verbose', () async {
+      final mockGgDoPush = MockGgDoPush();
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
         ),
-      );
+      ).thenAnswer((invocation) async {
+        final inner = invocation.namedArguments[#ggLog] as void Function(
+          String,
+        );
+        inner('Pushing to origin');
+      });
+
+      final runner = CommandRunner<void>('test', 'do push ticket')
+        ..addCommand(
+          DoPushCommand(
+            ggLog: ggLog,
+            ggDoPush: mockGgDoPush,
+          ),
+        );
+      await runner.run(['push', '--input', ticketDir.path]);
+
+      expect(messages, isNot(contains('[A] Pushing to origin')));
+      expect(messages, isNot(contains('[B] Pushing to origin')));
+    });
+
+    test('forwards prefixed sub-output with --verbose', () async {
+      final mockGgDoPush = MockGgDoPush();
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((invocation) async {
+        final inner = invocation.namedArguments[#ggLog] as void Function(
+          String,
+        );
+        inner('Pushing to origin');
+      });
+
+      final runner = CommandRunner<void>('test', 'do push ticket')
+        ..addCommand(
+          DoPushCommand(
+            ggLog: ggLog,
+            ggDoPush: mockGgDoPush,
+          ),
+        );
+      await runner.run([
+        'push',
+        '--input',
+        ticketDir.path,
+        '--verbose',
+      ]);
+
+      expect(messages, contains('[A] Pushing to origin'));
+      expect(messages, contains('[B] Pushing to origin'));
+    });
+
+    test('respects -j 1 (sequential)', () async {
+      final inFlight = <String>{};
+      var maxObservedInFlight = 0;
+      final mockGgDoPush = MockGgDoPush();
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((invocation) async {
+        final repoDir = invocation.namedArguments[#directory] as Directory;
+        final name = path.basename(repoDir.path);
+        inFlight.add(name);
+        if (inFlight.length > maxObservedInFlight) {
+          maxObservedInFlight = inFlight.length;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        inFlight.remove(name);
+      });
+
+      final runner = CommandRunner<void>('test', 'do push ticket')
+        ..addCommand(
+          DoPushCommand(
+            ggLog: ggLog,
+            ggDoPush: mockGgDoPush,
+          ),
+        );
+      await runner.run([
+        'push',
+        '--input',
+        ticketDir.path,
+        '-j',
+        '1',
+      ]);
+
+      expect(maxObservedInFlight, equals(1));
+      expect(messages, contains('✅ All repos pushed'));
+    });
+
+    test('runs in parallel with default -j (>1 in flight observed)', () async {
+      final inFlight = <String>{};
+      var maxObservedInFlight = 0;
+      final mockGgDoPush = MockGgDoPush();
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((invocation) async {
+        final repoDir = invocation.namedArguments[#directory] as Directory;
+        final name = path.basename(repoDir.path);
+        inFlight.add(name);
+        if (inFlight.length > maxObservedInFlight) {
+          maxObservedInFlight = inFlight.length;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        inFlight.remove(name);
+      });
+
+      final runner = CommandRunner<void>('test', 'do push ticket')
+        ..addCommand(
+          DoPushCommand(
+            ggLog: ggLog,
+            ggDoPush: mockGgDoPush,
+          ),
+        );
+      await runner.run(['push', '--input', ticketDir.path]);
+
+      expect(maxObservedInFlight, greaterThan(1));
     });
   });
 }

@@ -11,11 +11,23 @@ import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
+import '../../backend/parallel.dart';
 import '../../backend/workspace_utils.dart';
 
+/// Default number of parallel workers.
+const int _defaultMaxParallel = 4;
+
 /// Command to check if all repos in the ticket can be committed.
+///
+/// Iterates over all repositories in the current ticket in parallel and runs
+/// `gg can commit` on each. Short per-repo status lines are always printed
+/// via [GgStatusPrinter]; the verbose sub-output of `gg can commit` is only
+/// shown when `--verbose` is passed. The number of concurrent workers is
+/// controlled with `-j N` (default: 4). On failure the command keeps going
+/// so the user sees the full picture, and only throws at the end.
 class CanCommitCommand extends DirCommand<void> {
   /// Constructor
   CanCommitCommand({
@@ -27,7 +39,9 @@ class CanCommitCommand extends DirCommand<void> {
     SortedProcessingList? sortedProcessingList,
   })  : _ggCanCommit = ggCanCommit ?? gg.CanCommit(ggLog: ggLog),
         _sortedProcessingList =
-            sortedProcessingList ?? SortedProcessingList(ggLog: ggLog);
+            sortedProcessingList ?? SortedProcessingList(ggLog: ggLog) {
+    _addArgs();
+  }
 
   /// Instance of gg CanCommit
   final gg.CanCommit _ggCanCommit;
@@ -39,17 +53,32 @@ class CanCommitCommand extends DirCommand<void> {
   Future<void> exec({
     required Directory directory,
     required GgLog ggLog,
+    bool? verbose,
+    int? maxParallel,
   }) =>
       get(
         directory: directory,
         ggLog: ggLog,
+        verbose: verbose,
+        maxParallel: maxParallel,
       );
 
   @override
   Future<void> get({
     required Directory directory,
     required GgLog ggLog,
+    bool? verbose,
+    int? maxParallel,
   }) async {
+    verbose ??= argResults?['verbose'] as bool? ?? false;
+    maxParallel ??= int.tryParse(
+          (argResults?['jobs'] as String?) ?? '',
+        ) ??
+        _defaultMaxParallel;
+    if (maxParallel < 1) {
+      maxParallel = 1;
+    }
+
     // Detect if we are inside a ticket folder
     final String? ticketPath = WorkspaceUtils.detectTicketPath(
       path.absolute(directory.path),
@@ -71,21 +100,73 @@ class CanCommitCommand extends DirCommand<void> {
       return;
     }
 
-    // Iterate over each repository and check if it can be committed
-    for (final node in nodes) {
+    // Sub-output of `gg can commit` is only forwarded when --verbose is set.
+    final GgLog taskLog = verbose ? ggLog : <String>[].add;
+
+    // When running in parallel, the carriage-return trick of
+    // [GgStatusPrinter] would garble lines from other workers. Force the
+    // multi-line variant in that case.
+    final bool useCarriageReturn = maxParallel == 1;
+
+    final failures = <String, Object>{};
+
+    await runWithLimit<Node>(nodes, maxParallel, (node) async {
       final repoDir = node.directory;
       final repoName = path.basename(repoDir.path);
-      ggLog('${cyan(repoName)}:');
+
+      final printer = GgStatusPrinter<void>(
+        message: 'Can commit: $repoName',
+        ggLog: ggLog,
+        useCarriageReturn: useCarriageReturn,
+      );
+
       try {
-        await _ggCanCommit.exec(directory: repoDir, ggLog: ggLog);
+        await printer.run(
+          () => _ggCanCommit.exec(
+            directory: repoDir,
+            ggLog: prefixedLog('[$repoName] ', taskLog),
+          ),
+        );
       } catch (e) {
-        ggLog(red('❌ Cannot commit $repoName: $e'));
-        rethrow;
+        // GgStatusPrinter already logged the ❌ line. Remember the failure
+        // but do NOT rethrow here — other workers must keep running.
+        failures[repoName] = e;
       }
+    });
+
+    if (failures.isEmpty) {
+      ggLog(green('✅ All repos can be committed'));
+      return;
     }
 
-    // All successful
-    ggLog('✅ All repos can be committed');
+    ggLog(
+      red(
+        '❌ ${failures.length} of ${nodes.length} repos cannot be committed:',
+      ),
+    );
+    for (final entry in failures.entries) {
+      ggLog(red(' - ${entry.key}: ${entry.value}'));
+    }
+    throw Exception(
+      'Cannot commit: ${failures.keys.join(', ')}',
+    );
+  }
+
+  void _addArgs() {
+    argParser.addFlag(
+      'verbose',
+      abbr: 'v',
+      help: 'Show detailed log output of the underlying »gg can commit« '
+          'checks.',
+      defaultsTo: false,
+      negatable: true,
+    );
+    argParser.addOption(
+      'jobs',
+      abbr: 'j',
+      help: 'Maximum number of repositories checked in parallel.',
+      defaultsTo: '$_defaultMaxParallel',
+    );
   }
 }
 

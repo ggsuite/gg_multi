@@ -89,7 +89,7 @@ void main() {
       );
     });
 
-    test('checks all repos successfully', () async {
+    test('checks all repos successfully (parallel default)', () async {
       final mockGgCanCommit = MockGgCanCommit();
 
       when(
@@ -107,21 +107,16 @@ void main() {
           ),
         );
       await runner.run(['commit', '--input', ticketDir.path]);
-      expect(
-        messages,
-        contains('✅ All repos can be committed'),
-      );
-      expect(
-        messages,
-        contains('A:'),
-      );
-      expect(
-        messages,
-        contains('B:'),
-      );
+      expect(messages, contains('✅ All repos can be committed'));
+      // GgStatusPrinter prints success lines per repo (with carriage-return
+      // prefix when running sequentially; in parallel mode useCarriageReturn
+      // is forced off, so the prefix is empty).
+      expect(messages, contains('✅ Can commit: A'));
+      expect(messages, contains('✅ Can commit: B'));
     });
 
-    test('aborts on first repo that fails', () async {
+    test('continues on failure and reports all failed repos at the end',
+        () async {
       final mockGgCanCommit = MockGgCanCommit();
 
       when(
@@ -145,12 +140,163 @@ void main() {
         );
       await expectLater(
         () async => await runner.run(['commit', '--input', ticketDir.path]),
-        throwsA(isA<Exception>()),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Cannot commit: B'),
+          ),
+        ),
+      );
+
+      // A must still have been processed successfully despite B failing.
+      expect(messages, contains('✅ Can commit: A'));
+      expect(messages, contains('❌ Can commit: B'));
+      expect(
+        messages,
+        contains('❌ 1 of 2 repos cannot be committed:'),
       );
       expect(
         messages,
-        contains('❌ Cannot commit B: Exception: Failed to commit B'),
+        contains(' - B: Exception: Failed to commit B'),
       );
+    });
+
+    test('does not leak gg can commit sub-output without --verbose', () async {
+      final mockGgCanCommit = MockGgCanCommit();
+
+      when(
+        () => mockGgCanCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((invocation) async {
+        final inner = invocation.namedArguments[#ggLog] as void Function(
+          String,
+        );
+        // Simulate noisy inner output.
+        inner('Analyze');
+        inner('Format');
+      });
+
+      final runner = CommandRunner<void>('test', 'can commit ticket')
+        ..addCommand(
+          CanCommitCommand(
+            ggLog: ggLog,
+            ggCanCommit: mockGgCanCommit,
+          ),
+        );
+      await runner.run(['commit', '--input', ticketDir.path]);
+
+      // No prefixed inner lines should appear in the captured messages.
+      expect(messages, isNot(contains('[A] Analyze')));
+      expect(messages, isNot(contains('[B] Format')));
+    });
+
+    test('forwards prefixed sub-output with --verbose', () async {
+      final mockGgCanCommit = MockGgCanCommit();
+
+      when(
+        () => mockGgCanCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((invocation) async {
+        final inner = invocation.namedArguments[#ggLog] as void Function(
+          String,
+        );
+        inner('Analyze');
+      });
+
+      final runner = CommandRunner<void>('test', 'can commit ticket')
+        ..addCommand(
+          CanCommitCommand(
+            ggLog: ggLog,
+            ggCanCommit: mockGgCanCommit,
+          ),
+        );
+      await runner.run([
+        'commit',
+        '--input',
+        ticketDir.path,
+        '--verbose',
+      ]);
+
+      expect(messages, contains('[A] Analyze'));
+      expect(messages, contains('[B] Analyze'));
+    });
+
+    test('respects -j 1 (sequential)', () async {
+      final inFlight = <String>{};
+      var maxObservedInFlight = 0;
+      final mockGgCanCommit = MockGgCanCommit();
+
+      when(
+        () => mockGgCanCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((invocation) async {
+        final repoDir = invocation.namedArguments[#directory] as Directory;
+        final name = path.basename(repoDir.path);
+        inFlight.add(name);
+        if (inFlight.length > maxObservedInFlight) {
+          maxObservedInFlight = inFlight.length;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        inFlight.remove(name);
+      });
+
+      final runner = CommandRunner<void>('test', 'can commit ticket')
+        ..addCommand(
+          CanCommitCommand(
+            ggLog: ggLog,
+            ggCanCommit: mockGgCanCommit,
+          ),
+        );
+      await runner.run([
+        'commit',
+        '--input',
+        ticketDir.path,
+        '-j',
+        '1',
+      ]);
+
+      expect(maxObservedInFlight, equals(1));
+      expect(messages, contains('✅ All repos can be committed'));
+    });
+
+    test('runs in parallel with default -j (>1 in flight observed)', () async {
+      final inFlight = <String>{};
+      var maxObservedInFlight = 0;
+      final mockGgCanCommit = MockGgCanCommit();
+
+      when(
+        () => mockGgCanCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((invocation) async {
+        final repoDir = invocation.namedArguments[#directory] as Directory;
+        final name = path.basename(repoDir.path);
+        inFlight.add(name);
+        if (inFlight.length > maxObservedInFlight) {
+          maxObservedInFlight = inFlight.length;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        inFlight.remove(name);
+      });
+
+      final runner = CommandRunner<void>('test', 'can commit ticket')
+        ..addCommand(
+          CanCommitCommand(
+            ggLog: ggLog,
+            ggCanCommit: mockGgCanCommit,
+          ),
+        );
+      await runner.run(['commit', '--input', ticketDir.path]);
+
+      expect(maxObservedInFlight, greaterThan(1));
     });
   });
 }
