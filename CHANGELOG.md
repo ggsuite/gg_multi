@@ -27,11 +27,12 @@ localization commands again.
 
 - remove unlocalize step from do review command and tests
 
-## [Unreleased]
+## [4.5.1] - 2026-05-31
 
 ### Changed
 
 - Revertiere die Parallelisierung von 'gg can commit' und 'gg do push' (Commit c97a31a). Die vorherige sequentielle Implementierung wird wiederhergestellt.
+- Update gg metadata files for revert branch
 
 ## [4.5.0] - 2026-05-20
 
@@ -293,7 +294,7 @@ localization commands again.
 - Remove prints
 - Remove gh pr create from review
 
-[Unreleased]: https://github.com/ggsuite/gg_multi/compare/4.5.0...HEAD
+[4.5.1]: https://github.com/ggsuite/gg_multi/compare/4.5.0...4.5.1
 [4.5.0]: https://github.com/ggsuite/gg_multi/compare/4.4.0...4.5.0
 [4.4.0]: https://github.com/ggsuite/gg_multi/compare/4.3.1...4.4.0
 [4.3.1]: https://github.com/ggsuite/gg_multi/compare/4.3.0...4.3.1
