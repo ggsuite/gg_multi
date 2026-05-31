@@ -6,6 +6,7 @@
 
 import 'dart:io';
 
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
@@ -50,12 +51,14 @@ class CanReviewCommand extends DirCommand<void> {
     SortedProcessingList? sortedProcessingList,
     ProcessRunner? processRunner,
     gg_publish.IsFeatureBranch? ggIsFeatureBranch,
+    gg.PubGetOffline? ggPubGetOffline,
     TicketState? ticketState,
   })  : _sortedProcessingList =
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
         _processRunner = processRunner ?? _defaultProcessRunner,
         _ggIsFeatureBranch =
             ggIsFeatureBranch ?? gg_publish.IsFeatureBranch(ggLog: ggLog),
+        _ggPubGetOffline = ggPubGetOffline ?? gg.PubGetOffline(ggLog: ggLog),
         _ticketState = ticketState ?? TicketState(ggLog: ggLog) {
     _addArgs();
   }
@@ -72,6 +75,9 @@ class CanReviewCommand extends DirCommand<void> {
 
   /// Instance of gg_publish IsFeatureBranch
   final gg_publish.IsFeatureBranch _ggIsFeatureBranch;
+
+  /// Instance of gg PubGetOffline
+  final gg.PubGetOffline _ggPubGetOffline;
 
   /// Caches successful runs at ticket level.
   final TicketState _ticketState;
@@ -151,7 +157,19 @@ class CanReviewCommand extends DirCommand<void> {
       ),
     );
 
-    // Step 3: Check for uncommitted changes
+    // Step 3: Sync pubspec.lock with pubspec.yaml so the next check does not
+    // trip over an outdated lockfile.
+    await GgStatusPrinter<void>(
+      message: 'dart pub get --offline',
+      ggLog: ggLog,
+    ).run(
+      () async => _pubGetOffline(
+        subs: subs,
+        ggLog: taskLog,
+      ),
+    );
+
+    // Step 4: Check for uncommitted changes
     await GgStatusPrinter<void>(
       message: 'Uncommitted changes?',
       ggLog: ggLog,
@@ -199,6 +217,22 @@ class CanReviewCommand extends DirCommand<void> {
       }
       throw Exception(
         'Not on a feature branch: ${notOnFeatureBranch.join(', ')}',
+      );
+    }
+  }
+
+  /// Runs `dart pub get --offline` (or the Flutter equivalent) in all repos
+  /// so that each `pubspec.lock` matches its `pubspec.yaml` before the
+  /// uncommitted-changes check runs. Repos without a `pubspec.yaml` are
+  /// skipped by [gg.PubGetOffline].
+  Future<void> _pubGetOffline({
+    required List<Node> subs,
+    required GgLog ggLog,
+  }) async {
+    for (final repo in subs) {
+      await _ggPubGetOffline.exec(
+        directory: repo.directory,
+        ggLog: ggLog,
       );
     }
   }

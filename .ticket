@@ -1,1 +1,1 @@
-{"issue_id":"bugfix-revert-commit-push-parallelization","description":"Revert commit and push parallelization"}
+{"issue_id":"feat-can-review-pub-get-offline","description":"can review fuehrt vor dem Uncommitted-Check dart pub get --offline aus"}

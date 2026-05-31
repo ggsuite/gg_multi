@@ -8,6 +8,7 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_publish/gg_publish.dart' as gg_publish;
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
@@ -31,6 +32,17 @@ class MockProcessRunner extends Mock {
 class MockIsFeatureBranch extends Mock implements gg_publish.IsFeatureBranch {}
 
 class FakeDirectory extends Fake implements Directory {}
+
+gg.MockPubGetOffline _stubbedPubGetOffline() {
+  final mock = gg.MockPubGetOffline();
+  when(
+    () => mock.exec(
+      directory: any(named: 'directory'),
+      ggLog: any(named: 'ggLog'),
+    ),
+  ).thenAnswer((_) async {});
+  return mock;
+}
 
 MockTicketState _stubbedTicketState() {
   final mock = MockTicketState();
@@ -168,6 +180,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             ggIsFeatureBranch: mockIsFeatureBranch,
+            ggPubGetOffline: _stubbedPubGetOffline(),
             ticketState: _stubbedTicketState(),
           ),
         );
@@ -182,6 +195,136 @@ void main() {
           ggLog: any(named: 'ggLog'),
         ),
       ).called(2);
+    });
+
+    test(
+        'runs "dart pub get --offline" for every repo before the '
+        'uncommitted-changes check', () async {
+      final mockSortedProcessingList = MockSortedProcessingList();
+      final mockProcessRunner = MockProcessRunner();
+      final mockIsFeatureBranch = MockIsFeatureBranch();
+      final mockPubGetOffline = _stubbedPubGetOffline();
+
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: Directory(path.join(ticketDir.path, 'A')),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
+          ),
+          Node(
+            name: 'B',
+            directory: Directory(path.join(ticketDir.path, 'B')),
+            manifest: DartPackageManifest(pubspec: Pubspec('B')),
+          ),
+        ],
+      );
+
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['status', '--porcelain'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(1, 0, '', ''));
+
+      when(
+        () => mockIsFeatureBranch.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async => true);
+
+      final runner = CommandRunner<void>('test', 'can review ticket')
+        ..addCommand(
+          CanReviewCommand(
+            ggLog: ggLog,
+            sortedProcessingList: mockSortedProcessingList,
+            processRunner: mockProcessRunner.call,
+            ggIsFeatureBranch: mockIsFeatureBranch,
+            ggPubGetOffline: mockPubGetOffline,
+            ticketState: _stubbedTicketState(),
+          ),
+        );
+      await runner.run(['review', '--input', ticketDir.path]);
+
+      verify(
+        () => mockPubGetOffline.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).called(2);
+      expect(
+        messages,
+        contains('✅ All repos can be reviewed'),
+      );
+    });
+
+    test('fails if "dart pub get --offline" fails in a repo', () async {
+      final mockSortedProcessingList = MockSortedProcessingList();
+      final mockProcessRunner = MockProcessRunner();
+      final mockIsFeatureBranch = MockIsFeatureBranch();
+      final mockPubGetOffline = gg.MockPubGetOffline();
+
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: Directory(path.join(ticketDir.path, 'A')),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
+          ),
+        ],
+      );
+
+      when(
+        () => mockIsFeatureBranch.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async => true);
+
+      when(
+        () => mockPubGetOffline.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenThrow(Exception('pub get failed'));
+
+      final runner = CommandRunner<void>('test', 'can review ticket')
+        ..addCommand(
+          CanReviewCommand(
+            ggLog: ggLog,
+            sortedProcessingList: mockSortedProcessingList,
+            processRunner: mockProcessRunner.call,
+            ggIsFeatureBranch: mockIsFeatureBranch,
+            ggPubGetOffline: mockPubGetOffline,
+            ticketState: _stubbedTicketState(),
+          ),
+        );
+
+      await expectLater(
+        () async => await runner.run(['review', '--input', ticketDir.path]),
+        throwsA(isA<Exception>()),
+      );
+
+      // The uncommitted-changes check must not run when pub get fails first.
+      verifyNever(
+        () => mockProcessRunner(
+          'git',
+          ['status', '--porcelain'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      );
     });
 
     test('fails if a repo is not on a feature branch', () async {
@@ -248,6 +391,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             ggIsFeatureBranch: mockIsFeatureBranch,
+            ggPubGetOffline: _stubbedPubGetOffline(),
             ticketState: _stubbedTicketState(),
           ),
         );
@@ -326,6 +470,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             ggIsFeatureBranch: mockIsFeatureBranch,
+            ggPubGetOffline: _stubbedPubGetOffline(),
             ticketState: _stubbedTicketState(),
           ),
         );
@@ -385,6 +530,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             ggIsFeatureBranch: mockIsFeatureBranch,
+            ggPubGetOffline: _stubbedPubGetOffline(),
             ticketState: mockTicketState,
           ),
         );
@@ -468,6 +614,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             ggIsFeatureBranch: mockIsFeatureBranch,
+            ggPubGetOffline: _stubbedPubGetOffline(),
             ticketState: mockTicketState,
           ),
         );
@@ -531,6 +678,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             ggIsFeatureBranch: mockIsFeatureBranch,
+            ggPubGetOffline: _stubbedPubGetOffline(),
             ticketState: mockTicketState,
           ),
         );
@@ -592,6 +740,7 @@ void main() {
         sortedProcessingList: mockSortedProcessingList,
         processRunner: mockProcessRunner.call,
         ggIsFeatureBranch: mockIsFeatureBranch,
+        ggPubGetOffline: _stubbedPubGetOffline(),
         ticketState: _stubbedTicketState(),
       );
 

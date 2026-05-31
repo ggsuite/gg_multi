@@ -27,6 +27,12 @@ localization commands again.
 
 - remove unlocalize step from do review command and tests
 
+## [4.5.2] - 2026-05-31
+
+### Changed
+
+- can review fuehrt vor dem Uncommitted-Check dart pub get --offline aus (analog gg\_one can commit, mit Status-Printer)
+
 ## [4.5.1] - 2026-05-31
 
 ### Changed
@@ -294,6 +300,7 @@ localization commands again.
 - Remove prints
 - Remove gh pr create from review
 
+[4.5.2]: https://github.com/ggsuite/gg_multi/compare/4.5.1...4.5.2
 [4.5.1]: https://github.com/ggsuite/gg_multi/compare/4.5.0...4.5.1
 [4.5.0]: https://github.com/ggsuite/gg_multi/compare/4.4.0...4.5.0
 [4.4.0]: https://github.com/ggsuite/gg_multi/compare/4.3.1...4.4.0
