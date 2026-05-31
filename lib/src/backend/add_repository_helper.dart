@@ -15,10 +15,7 @@ import 'git_handler.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'git_platform.dart';
 import 'organization_utils.dart';
-import 'parallel.dart';
 import 'repository.dart';
-
-export 'parallel.dart' show runWithLimit;
 
 /// Helper function to add a repository given a target argument.
 /// It supports various formats like URLs, SSH links, and plain names.
@@ -232,6 +229,34 @@ Future<void> addRepositoryHelper({
     final String repoName = extractRepoName(repoUrl) ?? 'unknown_repo';
     await attemptClone(repoUrl, repoName, allowFallback: true);
   }
+}
+
+/// Processes [items] with [task], running up to [maxParallel] tasks at a time.
+/// Tasks run in submission order; the first failure is rethrown after all
+/// already-started tasks have settled.
+Future<void> runWithLimit<T>(
+  Iterable<T> items,
+  int maxParallel,
+  Future<void> Function(T item) task,
+) async {
+  final queue = items.toList();
+  var nextIndex = 0;
+
+  Future<void> worker() async {
+    while (true) {
+      if (nextIndex >= queue.length) {
+        return;
+      }
+      final item = queue[nextIndex++];
+      await task(item);
+    }
+  }
+
+  final workers = <Future<void>>[
+    for (var i = 0; i < maxParallel && i < queue.length; i++) worker(),
+  ];
+
+  await Future.wait(workers);
 }
 
 /// Extracts the repository name from a git URL supporting:
