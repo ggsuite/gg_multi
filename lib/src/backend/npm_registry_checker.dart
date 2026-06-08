@@ -6,21 +6,22 @@
 
 import 'package:gg_lang/gg_lang.dart';
 
-/// Checks whether published versions are visible on pub.dev, backed by
-/// gg_lang's [RegistryWaiter] over a [PubDevRegistry].
+import 'pub_dev_checker.dart' show PackagePublishInfo;
+
+/// The npm counterpart of [PubDevChecker]: checks whether published versions
+/// are visible on npm, backed by gg_lang's [RegistryWaiter] over an
+/// [NpmRegistry] (`npm view <name> version`).
 ///
-/// This is a thin gg_multi-side adapter: all registry interaction and the
-/// poll/wait logic live in gg_lang. The class is kept (rather than using
-/// [RegistryWaiter] directly) so the publish flow can inject a mock and
-/// dispatch by project type.
-class PubDevChecker {
+/// A thin gg_multi-side adapter — registry interaction and the poll/wait logic
+/// live in gg_lang.
+class NpmRegistryChecker {
   /// Creates a new checker. Inject [waiter] in tests; production resolves a
-  /// [RegistryWaiter] over the pub.dev registry from the language catalog.
-  PubDevChecker({
+  /// [RegistryWaiter] over the npm registry from the language catalog.
+  NpmRegistryChecker({
     RegistryWaiter? waiter,
     LanguageCatalog? catalog,
     Future<void> Function(Duration duration)? delay,
-    this.pollInterval = const Duration(seconds: 15),
+    this.pollInterval = const Duration(seconds: 5),
     this.timeout = const Duration(minutes: 2),
   })  : _waiter = waiter,
         _catalog = catalog,
@@ -33,11 +34,11 @@ class PubDevChecker {
   /// Delay between poll attempts.
   final Duration pollInterval;
 
-  /// Maximum waiting time for a version to appear on pub.dev.
+  /// Maximum waiting time for a version to appear on npm.
   final Duration timeout;
 
   /// Returns publish info for [packageName] (whether dependents must wait for
-  /// pub.dev availability).
+  /// npm availability).
   Future<PackagePublishInfo> getPackagePublishInfo({
     required String packageName,
   }) async {
@@ -48,7 +49,7 @@ class PubDevChecker {
     );
   }
 
-  /// Returns whether [version] of [packageName] is already visible on pub.dev.
+  /// Returns whether [version] of [packageName] is already visible on npm.
   Future<bool> isVersionAvailable({
     required String packageName,
     required String version,
@@ -60,7 +61,7 @@ class PubDevChecker {
     );
   }
 
-  /// Waits until [version] of [packageName] is visible on pub.dev.
+  /// Waits until [version] of [packageName] is visible on npm.
   Future<void> waitUntilVersionAvailable({
     required String packageName,
     required String version,
@@ -81,31 +82,16 @@ class PubDevChecker {
     // coverage:ignore-start
     final catalog = _catalog ?? await LanguageCatalog.load();
     final registry = const RegistryFactory().forProjectType(
-      ProjectType.dart,
-      spec: catalog.spec(ProjectType.dart),
+      ProjectType.typescript,
+      spec: catalog.spec(ProjectType.typescript),
     );
     return RegistryWaiter(
       registry: registry,
-      registryName: 'pub.dev',
+      registryName: 'npm',
       delay: _delay,
       pollInterval: pollInterval,
       timeout: timeout,
     );
     // coverage:ignore-end
   }
-}
-
-/// Describes how a package is published.
-class PackagePublishInfo {
-  /// Creates a publish info model.
-  const PackagePublishInfo({
-    required this.packageName,
-    required this.waitsForPubDev,
-  });
-
-  /// The package name from the manifest.
-  final String packageName;
-
-  /// Whether dependent publishes must wait for registry availability.
-  final bool waitsForPubDev;
 }

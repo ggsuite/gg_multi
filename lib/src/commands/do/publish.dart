@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:gg_one/gg_one.dart' as gg;
+import 'package:gg_lang/gg_lang.dart' as gg_lang;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
@@ -17,6 +18,7 @@ import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:interact/interact.dart';
 import 'package:path/path.dart' as path;
 
+import '../../backend/npm_registry_checker.dart';
 import '../../backend/pub_dev_checker.dart';
 import '../../backend/workspace_utils.dart';
 import '../../commands/can/publish.dart';
@@ -55,6 +57,7 @@ class DoPublishCommand extends DirCommand<void> {
     SetRefVersion? setRefVersionCommand,
     GetRefVersion? getRefVersionCommand,
     PubDevChecker? pubDevChecker,
+    NpmRegistryChecker? npmChecker,
     EditMessage? editMessage,
     ConfirmDeleteTicket? confirmDeleteTicket,
   })  : _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
@@ -71,6 +74,7 @@ class DoPublishCommand extends DirCommand<void> {
         _setRefVersion = setRefVersionCommand ?? SetRefVersion(ggLog: ggLog),
         _getRefVersion = getRefVersionCommand ?? GetRefVersion(ggLog: ggLog),
         _pubDevChecker = pubDevChecker ?? PubDevChecker(),
+        _npmChecker = npmChecker ?? NpmRegistryChecker(),
         _editMessage = editMessage ?? _defaultEditMessage,
         _processRunner = processRunner ?? _defaultProcessRunner,
         _confirmDeleteTicket =
@@ -113,6 +117,9 @@ class DoPublishCommand extends DirCommand<void> {
 
   /// Checks whether versions are visible on pub.dev.
   final PubDevChecker _pubDevChecker;
+
+  /// Checks whether versions are visible on npm (TypeScript packages).
+  final NpmRegistryChecker _npmChecker;
 
   /// Opens an interactive editor for the publish message.
   final EditMessage _editMessage;
@@ -160,6 +167,16 @@ class DoPublishCommand extends DirCommand<void> {
     final ticketDir = Directory(ticketPath);
     final ticketName = path.basename(ticketDir.path);
     final ticketDescription = _readTicketDescription(ticketDir);
+
+    // --config <path>: load .gg-publish.json once for the whole ticket. Per
+    // repo, fall back to top-level defaults when no override is provided.
+    final String? configArg = argResults?['config'] as String?;
+    final gg.PublishConfig? publishConfig = configArg == null
+        ? null
+        : gg.PublishConfig.load(
+            configArg: configArg,
+            fallbackDir: ticketDir.path,
+          );
 
     // Step 2: Run gg_multi do review
     try {
@@ -267,16 +284,36 @@ class DoPublishCommand extends DirCommand<void> {
 
       taskLog(green('$repoName: updated with new references.'));
 
-      final initialPublishMessage = message ?? ticketDescription;
-      final publishMessage = await _editMessage(initialPublishMessage ?? '');
+      // Resolve merge message + version increment from --config when present,
+      // otherwise fall back to the CLI `--message` flag or .ticket description
+      // and ask the user via _editMessage (existing behaviour).
+      final String publishMessage;
+      final String? publishVersionIncrement;
+      if (publishConfig != null) {
+        final resolved = publishConfig.forRepo(
+          repoName: repoName,
+          configPath: configArg!,
+        );
+        publishMessage = resolved.mergeMessage;
+        publishVersionIncrement = resolved.versionIncrement;
+      } else {
+        final initialPublishMessage = message ?? ticketDescription;
+        publishMessage = await _editMessage(initialPublishMessage ?? '') ?? '';
+        publishVersionIncrement = null;
+      }
 
-      // Execute gg do publish
+      // Execute gg do publish. The multi-publish flow is inherently
+      // non-interactive (it loops across many repos in dependency order),
+      // so we never prompt before pushing to pub.dev / npm here — callers
+      // who want a confirmation should run `gg one do publish` per repo.
       await _ggDoPublish.exec(
         directory: repoDir,
         ggLog: ggLog,
         message: publishMessage,
         deleteFeatureBranch: false,
         verbose: verbose,
+        versionIncrement: publishVersionIncrement,
+        askBeforePublishing: false,
       );
 
       // Capture current repo version and propagate known versions
@@ -285,15 +322,25 @@ class DoPublishCommand extends DirCommand<void> {
           directory: repoDir,
         );
         if (version != null && version.isNotEmpty) {
-          refVersions[repoName] = version;
+          // Use the published package name from the manifest (e.g. the
+          // scoped »@org/pkg« for npm) rather than the repository directory
+          // name, so dependency keys and registry lookups resolve correctly.
+          final packageName = await _readManifestName(repoDir, repoName);
+          refVersions[packageName] = version;
 
-          final publishInfo = await _pubDevChecker.getPackagePublishInfo(
-            packageName: repoName,
-          );
-          publishedPackages[repoName] = _PublishedPackageState(
-            packageName: repoName,
+          final projectType = _detectProjectType(repoDir);
+          final publishInfo = projectType == gg.ProjectType.typescript
+              ? await _npmChecker.getPackagePublishInfo(
+                  packageName: packageName,
+                )
+              : await _pubDevChecker.getPackagePublishInfo(
+                  packageName: packageName,
+                );
+          publishedPackages[packageName] = _PublishedPackageState(
+            packageName: packageName,
             version: version,
             waitsForPubDev: publishInfo.waitsForPubDev,
+            projectType: projectType,
           );
         }
       } catch (e) {
@@ -369,19 +416,50 @@ class DoPublishCommand extends DirCommand<void> {
         continue;
       }
 
+      final registryName =
+          state.projectType == gg.ProjectType.typescript ? 'npm' : 'pub.dev';
       await GgStatusPrinter<void>(
         message: 'Waiting for ${state.packageName} '
-            '^${state.version} to appear on pub.dev',
+            '^${state.version} to appear on $registryName',
         ggLog: ggLog,
       ).run(
-        () async => _pubDevChecker.waitUntilVersionAvailable(
-          packageName: state.packageName,
-          version: state.version,
-          ggLog: ggLog,
-        ),
+        () async => state.projectType == gg.ProjectType.typescript
+            ? _npmChecker.waitUntilVersionAvailable(
+                packageName: state.packageName,
+                version: state.version,
+                ggLog: ggLog,
+              )
+            : _pubDevChecker.waitUntilVersionAvailable(
+                packageName: state.packageName,
+                version: state.version,
+                ggLog: ggLog,
+              ),
       );
 
       confirmedPubDevVersions.add(cacheKey);
+    }
+  }
+
+  /// Detects the project type of [repoDir], defaulting to Dart for repos
+  /// without a recognizable manifest (so they use the pub.dev checker).
+  gg.ProjectType _detectProjectType(Directory repoDir) {
+    try {
+      return gg.detectProjectType(repoDir);
+    } catch (_) {
+      // Defensive: a repo being published always has a manifest.
+      return gg.ProjectType.dart; // coverage:ignore-line
+    }
+  }
+
+  /// Reads the published package name from the manifest of [repoDir]
+  /// (e.g. the scoped »@org/pkg« for npm). Falls back to [fallback] (the
+  /// repository directory name) when the manifest cannot be read.
+  Future<String> _readManifestName(Directory repoDir, String fallback) async {
+    try {
+      final catalog = await gg_lang.LanguageCatalog.load();
+      return await gg_lang.Manifest.detect(repoDir, catalog).readName();
+    } catch (_) {
+      return fallback; // coverage:ignore-line
     }
   }
 
@@ -518,6 +596,12 @@ class DoPublishCommand extends DirCommand<void> {
       abbr: 'm',
       help: 'The merge commit message.',
     );
+    argParser.addOption(
+      'config',
+      help: 'Path to a .gg-publish.json file with per-repo merge_message + '
+          'version_increment. Resolved as-given (CWD), then under the ticket '
+          'directory.',
+    );
     argParser.addFlag(
       'verbose',
       abbr: 'v',
@@ -535,6 +619,7 @@ class _PublishedPackageState {
     required this.packageName,
     required this.version,
     required this.waitsForPubDev,
+    required this.projectType,
   });
 
   /// The public package name.
@@ -543,8 +628,11 @@ class _PublishedPackageState {
   /// The published version.
   final String version;
 
-  /// Whether the next packages must wait for pub.dev visibility.
+  /// Whether the next packages must wait for registry visibility.
   final bool waitsForPubDev;
+
+  /// The project type — selects the registry (pub.dev vs npm) to wait on.
+  final gg.ProjectType projectType;
 }
 
 /// Mock for [DoPublishCommand]

@@ -27,6 +27,24 @@ localization commands again.
 
 - remove unlocalize step from do review command and tests
 
+## [5.0.0] - 2026-06-08
+
+### Changed
+
+- feat(do review): integrate the remote feature branch before pushing to avoid non-fast-forward rejections; on a real rebase conflict it aborts cleanly and fails with an actionable message (never force-pushes)
+- feat(do review): after merging origin/main, re-run 'gg can commit' for any repo whose HEAD moved, to catch merges that silently corrupt a manifest (e.g. duplicate keys) before localizing/committing/pushing; aborts early with a clear message
+- feat(do add): auto-clone transitive deps into master before graph build & P:\programs\flutter/bin/internal/exit\_with\_errorlevel.bat
+- gg\_multi: changed references to git
+- feat(do\_publish): default askBeforePublishing=false in multi-publish for non-interactive runs
+- gg\_multi: changed references to git
+- gg\_multi: changed references to git
+
+### Fixed
+
+- feat: language-aware add/publish via gg\_lang (NpmRegistryChecker + RegistryWaiter, manifest-name resolution for scoped packages); exclude fixture sub-packages from analysis and load them via relative imports
+- fix(do review): surface the exact failing step and underlying cause instead of only 'Failed to review in: <repo>' — errors now always log through the real output (not the quiet task log) and the thrown exception names the step (merge/can-review/localize/refresh/commit/push) plus the cause
+- fix(filesystem\_utils): skip node\_modules during recursive copy to preserve pnpm symlink graph in TS ticket repos
+
 ## [4.5.2] - 2026-05-31
 
 ### Changed
@@ -300,6 +318,7 @@ localization commands again.
 - Remove prints
 - Remove gh pr create from review
 
+[5.0.0]: https://github.com/ggsuite/gg_multi/compare/4.5.2...5.0.0
 [4.5.2]: https://github.com/ggsuite/gg_multi/compare/4.5.1...4.5.2
 [4.5.1]: https://github.com/ggsuite/gg_multi/compare/4.5.0...4.5.1
 [4.5.0]: https://github.com/ggsuite/gg_multi/compare/4.4.0...4.5.0

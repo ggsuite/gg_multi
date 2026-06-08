@@ -5,21 +5,21 @@
 // found in the LICENSE file in the root of this package.
 
 import 'package:gg_lang/gg_lang.dart';
-import 'package:gg_multi/src/backend/pub_dev_checker.dart';
+import 'package:gg_multi/src/backend/npm_registry_checker.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:test/test.dart';
 
 void main() {
   late MockRegistry registry;
-  late PubDevChecker checker;
+  late NpmRegistryChecker checker;
 
   setUp(() {
     registry = MockRegistry();
-    checker = PubDevChecker(
+    checker = NpmRegistryChecker(
       waiter: RegistryWaiter(
         registry: registry,
-        registryName: 'pub.dev',
+        registryName: 'npm',
         delay: (_) async {},
         pollInterval: const Duration(milliseconds: 1),
       ),
@@ -32,7 +32,7 @@ void main() {
     ).thenAnswer((_) async => version);
   }
 
-  group('PubDevChecker', () {
+  group('NpmRegistryChecker', () {
     test('getPackagePublishInfo reports whether the package is published',
         () async {
       mockLatest(Version(1, 0, 0));
@@ -67,12 +67,6 @@ void main() {
         version: '1.2.4',
         ggLog: (_) {},
       );
-    });
-
-    test('PackagePublishInfo exposes its fields', () {
-      const info = PackagePublishInfo(packageName: 'x', waitsForPubDev: true);
-      expect(info.packageName, 'x');
-      expect(info.waitsForPubDev, isTrue);
     });
   });
 }

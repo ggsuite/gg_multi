@@ -12,6 +12,7 @@ import 'package:args/command_runner.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
+import 'package:gg_multi/src/backend/npm_registry_checker.dart';
 import 'package:gg_multi/src/backend/pub_dev_checker.dart';
 import 'package:gg_multi/src/commands/do/push.dart';
 import 'package:gg_multi/src/commands/do/review.dart';
@@ -60,6 +61,9 @@ class MockSetRefVersion extends Mock implements SetRefVersion {}
 class MockGetRefVersion extends Mock implements GetRefVersion {}
 
 class MockPubDevChecker extends Mock implements PubDevChecker {}
+
+/// Mock for [NpmRegistryChecker].
+class MockNpmRegistryChecker extends Mock implements NpmRegistryChecker {}
 
 class FakeDirectory extends Fake implements Directory {}
 
@@ -469,6 +473,188 @@ void main() {
         Directory(path.join(ticketDir.path, 'B')).existsSync(),
         isFalse,
       );
+    });
+
+    test('waits on npm for a published TypeScript dependency', () async {
+      // Make repo A a TypeScript project; B (Dart) depends on A.
+      File(path.join(ticketDir.path, 'A', 'pubspec.yaml')).deleteSync();
+      File(path.join(ticketDir.path, 'A', 'package.json'))
+          .writeAsStringSync('{"name": "A", "version": "1.0.0"}');
+      File(path.join(ticketDir.path, 'A', 'tsconfig.json'))
+          .writeAsStringSync('{}');
+
+      final mockGgDoPublish = MockGgDoPublish();
+      final mockGgDoCommit = MockGgDoCommit();
+      final mockGgDoPush = MockGgDoPush();
+      final mockUnlocalizeRefs = MockUnlocalizeRefs();
+      final mockSortedProcessingList = MockSortedProcessingList();
+      final mockProcessRunner = MockProcessRunner();
+      _stubPubUpgrade(mockProcessRunner);
+      when(
+        () => mockProcessRunner(
+          'npm',
+          ['install'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      final mockCanPublishCommand = MockCanPublishCommand();
+      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockGetVersion = MockGetVersion();
+      final mockSetRefVersion = MockSetRefVersion();
+      final mockGetRefVersion = MockGetRefVersion();
+      final mockPubDevChecker = MockPubDevChecker();
+      final mockNpmChecker = MockNpmRegistryChecker();
+
+      when(
+        () => mockDoReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          verbose: any(named: 'verbose'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockCanPublishCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: Directory(path.join(ticketDir.path, 'A')),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
+          ),
+          Node(
+            name: 'B',
+            directory: Directory(path.join(ticketDir.path, 'B')),
+            manifest: DartPackageManifest(
+              pubspec: Pubspec(
+                'B',
+                dependencies: <String, Dependency>{
+                  'A': HostedDependency(
+                    version: VersionConstraint.parse('^1.0.0'),
+                  ),
+                },
+              ),
+            ),
+          ),
+        ],
+      );
+      when(
+        () => mockUnlocalizeRefs.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGetVersion.get(directory: any(named: 'directory')),
+      ).thenAnswer((_) async => '1.0.0');
+      when(
+        () => mockGetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => mockSetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+          version: any(named: 'version'),
+        ),
+      ).thenAnswer((_) async {});
+
+      // The Dart repo B reports via pub.dev; the TypeScript repo A via npm.
+      when(
+        () => mockPubDevChecker.getPackagePublishInfo(
+          packageName: any(named: 'packageName'),
+        ),
+      ).thenAnswer(
+        (i) async => PackagePublishInfo(
+          packageName: i.namedArguments[#packageName] as String,
+          waitsForPubDev: false,
+        ),
+      );
+      when(
+        () => mockNpmChecker.getPackagePublishInfo(
+          packageName: any(named: 'packageName'),
+        ),
+      ).thenAnswer(
+        (i) async => PackagePublishInfo(
+          packageName: i.namedArguments[#packageName] as String,
+          waitsForPubDev: true,
+        ),
+      );
+      when(
+        () => mockNpmChecker.waitUntilVersionAvailable(
+          packageName: any(named: 'packageName'),
+          version: any(named: 'version'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      final runner = CommandRunner<void>('test', 'do publish ticket')
+        ..addCommand(
+          DoPublishCommand(
+            ggLog: ggLog,
+            ggDoPublish: mockGgDoPublish,
+            ggDoCommit: mockGgDoCommit,
+            ggDoPush: mockGgDoPush,
+            unlocalizeRefs: mockUnlocalizeRefs,
+            sortedProcessingList: mockSortedProcessingList,
+            processRunner: mockProcessRunner.call,
+            canPublishCommand: mockCanPublishCommand,
+            doReviewCommand: mockDoReviewCommand,
+            getVersionCommand: mockGetVersion,
+            setRefVersionCommand: mockSetRefVersion,
+            getRefVersionCommand: mockGetRefVersion,
+            pubDevChecker: mockPubDevChecker,
+            npmChecker: mockNpmChecker,
+            editMessage: (initialMessage) async => initialMessage,
+            confirmDeleteTicket: (_) => false,
+          ),
+        );
+      await runner.run(['publish', '--input', ticketDir.path, '--verbose']);
+
+      // A's publish info is queried on npm, and B waits for A on npm.
+      verify(
+        () => mockNpmChecker.getPackagePublishInfo(packageName: 'A'),
+      ).called(1);
+      verify(
+        () => mockNpmChecker.waitUntilVersionAvailable(
+          packageName: 'A',
+          version: '1.0.0',
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).called(1);
     });
 
     test('uses explicit get message as initial value for interactive edit',

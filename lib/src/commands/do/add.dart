@@ -14,12 +14,15 @@ import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
+import 'package:pubspec_parse/pubspec_parse.dart';
 
 import '../../backend/git_handler.dart';
 import '../../backend/add_repository_helper.dart';
 import '../../backend/filesystem_utils.dart';
 import '../../backend/git_platform.dart';
+import '../../backend/organization_utils.dart';
 import '../../backend/workspace_utils.dart';
+import 'add_deps.dart' show fetchDependencyRepoUrl;
 import 'install_git_hooks.dart';
 import 'install_gitattributes.dart';
 
@@ -199,6 +202,14 @@ class AddCommand extends Command<dynamic> {
       ),
     );
 
+    // Transitively clone missing dependency-refs (Git + Hosted-from-known-org)
+    // into the master so the dependency graph contains every repo required to
+    // compute "between" nodes. Without this, a chain like
+    // "gg_1 -> gg_2 -> gg_3" with only gg_1+gg_3 requested would never
+    // auto-add gg_2 if it was not already in master (the graph has no gg_2
+    // node, so getNodesBetween returns []).
+    await _cloneMissingTransitiveDeps(ggLog: ggLog);
+
     final ticketDir = Directory(ticketPath);
 
     // Build the dependency graph of the master workspace and compute
@@ -302,6 +313,143 @@ class AddCommand extends Command<dynamic> {
   // Ticket support helpers ----------------------------------------------------
 
   // ...........................................................................
+  /// Walks the pubspec.yaml of every repo currently in [masterWorkspacePath]
+  /// and clones any referenced dependency that is not yet present in master,
+  /// as long as it can be attributed to a known organization (from
+  /// `.organizations`):
+  ///
+  ///  - `GitDependency` (e.g. `dep: git: …github.com:ggsuite/dep.git`) is
+  ///    cloned via [addRepositoryHelper] using its package name; the existing
+  ///    org-fallback in the helper picks the right base URL.
+  ///  - `HostedDependency` (pub.dev) is resolved by querying pub.dev for the
+  ///    package's `repository` URL and is cloned only if that URL starts with
+  ///    one of the known organization URLs. Hosted deps from external orgs
+  ///    (`dart-lang`, `flutter`, …) are skipped silently.
+  ///  - `PathDependency` and `SdkDependency` are ignored.
+  ///
+  /// Loops to a fixpoint so newly-cloned repos contribute their own
+  /// dependencies to the next iteration. Clone failures are swallowed
+  /// ([addRepositoryHelper] already logs them).
+  Future<void> _cloneMissingTransitiveDeps({
+    required GgLog ggLog,
+  }) async {
+    final masterDir = Directory(masterWorkspacePath);
+    if (!masterDir.existsSync()) {
+      return;
+    }
+
+    // Normalize known org URLs once (e.g. "https://github.com/ggsuite").
+    final orgs = OrganizationUtils.readOrganizations(masterWorkspacePath);
+    final orgUrls = orgs
+        .map((o) => o.url.replaceAll(RegExp(r'/+$'), '').toLowerCase())
+        .toSet();
+
+    // Cache pub.dev lookups across the fixpoint loop so we don't re-query the
+    // same hosted dep on every iteration.
+    final hostedLookupCache = <String, String?>{};
+
+    while (true) {
+      final existingRepos = masterDir
+          .listSync(recursive: false)
+          .whereType<Directory>()
+          .map((d) => path.basename(d.path))
+          .toSet();
+
+      // Per-iteration plan: depName -> clone targetArg ("name" for git deps so
+      // the helper's org-fallback resolves the URL, full URL for hosted deps).
+      final plan = <String, String>{};
+
+      for (final repoName in existingRepos) {
+        final pubspecFile = File(
+          path.join(masterWorkspacePath, repoName, 'pubspec.yaml'),
+        );
+        if (!pubspecFile.existsSync()) {
+          continue;
+        }
+        Pubspec parsed;
+        try {
+          parsed = Pubspec.parse(pubspecFile.readAsStringSync());
+        } catch (_) {
+          continue; // skip unparseable pubspec
+        }
+
+        Future<void> scan(Map<String, Dependency> deps) async {
+          for (final entry in deps.entries) {
+            final depName = entry.key;
+            if (existingRepos.contains(depName) || plan.containsKey(depName)) {
+              continue;
+            }
+            final dep = entry.value;
+            if (dep is GitDependency) {
+              plan[depName] = depName; // helper falls back to org URLs
+            } else if (dep is HostedDependency) {
+              // Resolve repo URL via pub.dev once, then accept only if it
+              // belongs to a known org.
+              if (!hostedLookupCache.containsKey(depName)) {
+                try {
+                  hostedLookupCache[depName] =
+                      await fetchDependencyRepoUrl(depName);
+                } catch (_) {
+                  hostedLookupCache[depName] = null;
+                }
+              }
+              final repoUrl = hostedLookupCache[depName];
+              if (repoUrl == null || repoUrl.isEmpty) {
+                continue;
+              }
+              final normalized =
+                  repoUrl.replaceAll(RegExp(r'/+$'), '').toLowerCase();
+              final inKnownOrg = orgUrls.any(
+                (o) => normalized.startsWith(o),
+              );
+              if (!inKnownOrg) {
+                continue;
+              }
+              plan[depName] = repoUrl;
+            }
+          }
+        }
+
+        await scan(parsed.dependencies);
+        await scan(parsed.devDependencies);
+      }
+
+      if (plan.isEmpty) {
+        return;
+      }
+
+      bool addedAny = false;
+      for (final entry in plan.entries) {
+        final depName = entry.key;
+        final destDir = Directory(path.join(masterWorkspacePath, depName));
+        if (destDir.existsSync()) {
+          continue;
+        }
+        try {
+          await addRepositoryHelper(
+            targetArg: entry.value,
+            ggLog: ggLog,
+            gitCloner: gitCloner,
+            gitHubPlatform: gitHubPlatform,
+            workspacePath: masterWorkspacePath,
+            logIfAlreadyAdded: false,
+          );
+        } catch (_) {
+          // Swallow: addRepositoryHelper already logged the failure.
+        }
+        if (destDir.existsSync()) {
+          addedAny = true;
+        }
+      }
+
+      // No progress -> stop (e.g. remaining deps are unreachable).
+      if (!addedAny) {
+        return;
+      }
+    }
+  }
+
+  // ...........................................................................
   /// Find a node by package name in the dependency graph.
   Node? findNode({
     required String packageName,
@@ -403,22 +551,36 @@ class AddCommand extends Command<dynamic> {
       ggLog(red('Failed to checkout branch $ticketName: $e'));
     }
 
-    // Run dart pub get in the repo -------------------------------------------
+    // Install dependencies (language-aware): `dart pub get` for Dart/Flutter
+    // and manifest-less repos, `<pm> install` (npm/yarn/pnpm) for TypeScript.
+    gg.ProjectType? projectType;
+    try {
+      projectType = gg.detectProjectType(destDir);
+    } catch (_) {
+      projectType = null;
+    }
+
+    final String executable;
+    final List<String> args;
+    if (projectType == gg.ProjectType.typescript) {
+      executable = gg.detectTypeScriptPackageManager(destDir).executable;
+      args = <String>['install'];
+    } else {
+      executable = 'dart';
+      args = <String>['pub', 'get'];
+    }
+
     final result = await processRunner(
-      'dart',
-      ['pub', 'get'],
+      executable,
+      args,
       workingDirectory: destDir.path,
       runInShell: true,
     );
+    final cmd = '$executable ${args.join(' ')}';
     if (result.exitCode == 0) {
-      ggLog(darkGray('Executed dart pub get in $repoName.'));
+      ggLog(darkGray('Executed $cmd in $repoName.'));
     } else {
-      ggLog(
-        red(
-          'Failed to execute dart pub get in $repoName: '
-          '${result.stderr}',
-        ),
-      );
+      ggLog(red('Failed to execute $cmd in $repoName: ${result.stderr}'));
     }
 
     ggLog(green('Added repository $repoName to ticket workspace.'));
@@ -635,24 +797,40 @@ class AddCommand extends Command<dynamic> {
         throw Exception('Failed to relocalize ticket');
       }
 
-      // Execute "dart pub upgrade" if pubspec.yaml exists -------------------
-      final pubspec = File(path.join(repoDir.path, 'pubspec.yaml'));
-      if (pubspec.existsSync()) {
-        final upgrade = await processRunner(
-          'dart',
-          ['pub', 'upgrade'],
+      // Refresh dependencies for the detected project type after the
+      // references were rewritten to local paths. Runs `dart pub upgrade`
+      // for Dart/Flutter packages and the equivalent install command for
+      // TypeScript packages (npm/yarn/pnpm). Repos without a recognizable
+      // manifest are skipped.
+      gg.ProjectType? projectType;
+      try {
+        projectType = gg.detectProjectType(repoDir);
+      } catch (_) {
+        projectType = null;
+      }
+
+      if (projectType != null) {
+        final String executable;
+        final List<String> args;
+        if (projectType == gg.ProjectType.typescript) {
+          executable = gg.detectTypeScriptPackageManager(repoDir).executable;
+          args = <String>['install'];
+        } else {
+          executable = 'dart';
+          args = <String>['pub', 'upgrade'];
+        }
+
+        final refresh = await processRunner(
+          executable,
+          args,
           workingDirectory: repoDir.path,
           runInShell: true,
         );
-        if (upgrade.exitCode == 0) {
-          ggLog(darkGray('Executed dart pub upgrade in $repoName.'));
+        final cmd = '$executable ${args.join(' ')}';
+        if (refresh.exitCode == 0) {
+          ggLog(darkGray('Executed $cmd in $repoName.'));
         } else {
-          ggLog(
-            red(
-              'Failed to execute dart pub upgrade in '
-              '$repoName: ${upgrade.stderr}',
-            ),
-          );
+          ggLog(red('Failed to execute $cmd in $repoName: ${refresh.stderr}'));
         }
       }
 

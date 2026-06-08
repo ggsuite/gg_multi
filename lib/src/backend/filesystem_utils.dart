@@ -12,13 +12,19 @@ import 'package:path/path.dart' as path;
 ///
 /// * Creates the destination directory if it does not exist.
 /// * Copies files and sub-directories.
-/// * Preserves symbolic links by recreating them at the destination.
+/// * Skips top-level entries listed in [skipNames]; the default
+///   skip-list excludes `node_modules` so pnpm's symlinked
+///   `node_modules/.pnpm/<pkg>/node_modules/<dep>` chains never get
+///   dereferenced and reduced to a flat copy. The destination repo is
+///   expected to run its package-manager's install step after copying
+///   to rebuild `node_modules` from scratch.
 ///
 /// Throws an [ArgumentError] if the source directory does not exist.
 Future<void> copyDirectory(
   Directory source,
-  Directory destination,
-) async {
+  Directory destination, {
+  Set<String> skipNames = const {'node_modules'},
+}) async {
   if (!source.existsSync()) {
     throw ArgumentError('Source directory ${source.path} does not exist');
   }
@@ -29,7 +35,9 @@ Future<void> copyDirectory(
   }
 
   await for (final entity in source.list(recursive: false)) {
-    String newPath = path.join(destination.path, path.basename(entity.path));
+    final name = path.basename(entity.path);
+    if (skipNames.contains(name)) continue;
+    String newPath = path.join(destination.path, name);
     // change .darta to .dart if the file is a .darta file
     if (entity is File && path.extension(entity.path) == '.darta') {
       newPath = '${path.withoutExtension(newPath)}.dart';
@@ -38,7 +46,7 @@ Future<void> copyDirectory(
       await entity.copy(newPath);
     } else if (entity is Directory) {
       // Recurse into sub-directories.
-      await copyDirectory(entity, Directory(newPath));
+      await copyDirectory(entity, Directory(newPath), skipNames: skipNames);
     }
   }
 }

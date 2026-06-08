@@ -1008,6 +1008,37 @@ version: 1.0.0
           isTrue,
         );
       });
+
+      test('executes npm install for a TypeScript repo', () async {
+        File(path.join(repoDir.path, 'package.json'))
+            .writeAsStringSync('{"name": "pubgetRepo", "version": "1.0.0"}');
+        File(path.join(repoDir.path, 'tsconfig.json')).writeAsStringSync('{}');
+        when(
+          () => mockProcessRunner(
+            'npm',
+            ['install'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'added 1 package', ''));
+
+        await runner.run(['add', '--verbose', repoName]);
+
+        // npm install runs twice for a TypeScript repo: once right after the
+        // copy and once during the post-localization dependency refresh.
+        verify(
+          () => mockProcessRunner(
+            'npm',
+            ['install'],
+            workingDirectory: path.join(ticketDir.path, repoName),
+            runInShell: true,
+          ),
+        ).called(2);
+        expect(
+          logMessages,
+          contains('Executed npm install in $repoName.'),
+        );
+      });
     });
 
     test('commit failures are logged and aborts immediately', () async {

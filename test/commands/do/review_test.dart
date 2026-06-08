@@ -37,12 +37,27 @@ class MockGgDoMerge extends Mock implements gg.DoMerge {}
 
 class FakeDirectory extends Fake implements Directory {}
 
+class MockGgCanCommit extends Mock implements gg.CanCommit {}
+
 class MockProcessRunner extends Mock {
   Future<ProcessResult> call(
     String executable,
     List<String> arguments, {
     String? workingDirectory,
   });
+}
+
+/// Stubs `git rev-parse HEAD` on [m] to return a constant value, so the merge
+/// step sees an unchanged HEAD and skips the post-merge `gg can commit`
+/// verification.
+void stubGitHeadUnchanged(MockProcessRunner m) {
+  when(
+    () => m(
+      'git',
+      ['rev-parse', 'HEAD'],
+      workingDirectory: any(named: 'workingDirectory'),
+    ),
+  ).thenAnswer((_) async => ProcessResult(0, 0, 'samehead', ''));
 }
 
 void main() {
@@ -130,6 +145,7 @@ void main() {
         final mockGgDoPush = MockGgDoPush();
         final mockGgDoMerge = MockGgDoMerge();
         final mockProcessRunner = MockProcessRunner();
+        stubGitHeadUnchanged(mockProcessRunner);
 
         when(
           () => mockCanReviewCommand.exec(
@@ -165,6 +181,14 @@ void main() {
             workingDirectory: any(named: 'workingDirectory'),
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['ls-remote', '--heads', 'origin', 'TICKDR'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
 
         when(
           () => mockLocalizeRefsToGit.get(
@@ -304,6 +328,7 @@ void main() {
       final mockGgDoCommit = MockGgDoCommit();
       final mockGgDoPush = MockGgDoPush();
       final mockProcessRunner = MockProcessRunner();
+      stubGitHeadUnchanged(mockProcessRunner);
 
       when(
         () => mockSortedProcessingList.get(
@@ -390,6 +415,7 @@ void main() {
         final mockGgDoCommit = MockGgDoCommit();
         final mockGgDoPush = MockGgDoPush();
         final mockProcessRunner = MockProcessRunner();
+        stubGitHeadUnchanged(mockProcessRunner);
 
         when(
           () => mockSortedProcessingList.get(
@@ -448,7 +474,7 @@ void main() {
             isA<Exception>().having(
               (e) => e.toString(),
               'message',
-              'Exception: gg_multi can review failed',
+              contains('gg_multi can review failed'),
             ),
           ),
         );
@@ -475,6 +501,7 @@ void main() {
       final mockGgDoPush = MockGgDoPush();
       final mockGgDoMerge = MockGgDoMerge();
       final mockProcessRunner = MockProcessRunner();
+      stubGitHeadUnchanged(mockProcessRunner);
 
       when(
         () => mockCanReviewCommand.exec(
@@ -589,6 +616,7 @@ void main() {
       final mockGgDoPush = MockGgDoPush();
       final mockGgDoMerge = MockGgDoMerge();
       final mockProcessRunner = MockProcessRunner();
+      stubGitHeadUnchanged(mockProcessRunner);
 
       when(
         () => mockCanReviewCommand.exec(
@@ -643,6 +671,14 @@ void main() {
           ggLog: any(named: 'ggLog'),
         ),
       ).thenThrow(Exception('push failed'));
+
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['ls-remote', '--heads', 'origin', 'TICKDR'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
 
       when(
         () => mockGgDoMerge.exec(
@@ -705,6 +741,7 @@ void main() {
         final mockGgDoPush = MockGgDoPush();
         final mockGgDoMerge = MockGgDoMerge();
         final mockProcessRunner = MockProcessRunner();
+        stubGitHeadUnchanged(mockProcessRunner);
 
         when(
           () => mockCanReviewCommand.exec(
@@ -823,6 +860,7 @@ void main() {
         final mockGgDoCommit = MockGgDoCommit();
         final mockGgDoPush = MockGgDoPush();
         final mockProcessRunner = MockProcessRunner();
+        stubGitHeadUnchanged(mockProcessRunner);
         final mockGgDoMerge = MockGgDoMerge();
 
         final repoADir = Directory(path.join(ticketDir.path, 'A'));
@@ -893,6 +931,14 @@ void main() {
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
 
         when(
+          () => mockProcessRunner(
+            'git',
+            ['ls-remote', '--heads', 'origin', 'TICKDR'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+        when(
           () => mockGgDoMerge.exec(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
@@ -942,6 +988,7 @@ void main() {
         final mockGgDoCommit = MockGgDoCommit();
         final mockGgDoPush = MockGgDoPush();
         final mockProcessRunner = MockProcessRunner();
+        stubGitHeadUnchanged(mockProcessRunner);
         final mockGgDoMerge = MockGgDoMerge();
 
         final repoADir = Directory(path.join(ticketDir.path, 'A'));
@@ -1077,6 +1124,7 @@ void main() {
         final mockGgDoCommit = MockGgDoCommit();
         final mockGgDoPush = MockGgDoPush();
         final mockProcessRunner = MockProcessRunner();
+        stubGitHeadUnchanged(mockProcessRunner);
 
         final repoADir = Directory(path.join(ticketDir.path, 'A'));
         File(path.join(repoADir.path, 'package.json')).writeAsStringSync(
@@ -1151,6 +1199,14 @@ void main() {
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
 
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['ls-remote', '--heads', 'origin', 'TICKDR'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
         final runner = CommandRunner<void>('test', 'do review ticket')
           ..addCommand(
             DoReviewCommand(
@@ -1198,6 +1254,7 @@ void main() {
         final mockGgDoCommit = MockGgDoCommit();
         final mockGgDoPush = MockGgDoPush();
         final mockProcessRunner = MockProcessRunner();
+        stubGitHeadUnchanged(mockProcessRunner);
 
         when(
           () => mockCanReviewCommand.exec(
@@ -1253,6 +1310,14 @@ void main() {
           ),
         ).thenAnswer((_) async {});
 
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['ls-remote', '--heads', 'origin', 'TICKDR'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
         final localMessages = <String>[];
         void localLog(String msg) => localMessages.add(rmConsoleColors(msg));
 
@@ -1280,6 +1345,545 @@ void main() {
             ),
           ),
           isTrue,
+        );
+      },
+    );
+
+    test(
+      'integrates the remote feature branch before pushing when it exists',
+      () async {
+        final mockSortedProcessingList = MockSortedProcessingList();
+        final mockUnlocalizeRefs = MockUnlocalizeRefs();
+        final mockLocalizeRefsToGit = MockLocalizeRefsToGit();
+        final mockCanReviewCommand = MockCanReviewCommand();
+        final mockGgDoCommit = MockGgDoCommit();
+        final mockGgDoPush = MockGgDoPush();
+        final mockProcessRunner = MockProcessRunner();
+        stubGitHeadUnchanged(mockProcessRunner);
+
+        when(
+          () => mockCanReviewCommand.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockSortedProcessingList.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            Node(
+              name: 'A',
+              directory: Directory(path.join(ticketDir.path, 'A')),
+              manifest: DartPackageManifest(pubspec: Pubspec('A')),
+            ),
+          ],
+        );
+
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['merge', 'origin/main'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+        when(
+          () => mockLocalizeRefsToGit.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            gitRef: any(named: 'gitRef'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockGgDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        // The remote feature branch already exists ...
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['ls-remote', '--heads', 'origin', 'TICKDR'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer(
+          (_) async => ProcessResult(0, 0, 'abc123\trefs/heads/TICKDR', ''),
+        );
+
+        // ... so a rebase pull integrates it and succeeds.
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['pull', '--rebase', 'origin', 'TICKDR'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+        when(
+          () => mockGgDoPush.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        final runner = CommandRunner<void>('test', 'do review ticket')
+          ..addCommand(
+            DoReviewCommand(
+              ggLog: ggLog,
+              canReviewCommand: mockCanReviewCommand,
+              unlocalizeRefs: mockUnlocalizeRefs,
+              localizeRefsToGit: mockLocalizeRefsToGit,
+              sortedProcessingList: mockSortedProcessingList,
+              ggDoCommit: mockGgDoCommit,
+              ggDoPush: mockGgDoPush,
+              processRunner: mockProcessRunner.call,
+            ),
+          );
+
+        await runner.run([
+          'review',
+          '--verbose',
+          '--input',
+          ticketDir.path,
+        ]);
+
+        expect(
+          messages.any(
+            (m) => m.contains('Integrated origin/TICKDR into A before push'),
+          ),
+          isTrue,
+        );
+        expect(
+          messages.any((m) => m.contains('Pushed A')),
+          isTrue,
+        );
+        verify(
+          () => mockProcessRunner(
+            'git',
+            ['pull', '--rebase', 'origin', 'TICKDR'],
+            workingDirectory: path.join(ticketDir.path, 'A'),
+          ),
+        ).called(1);
+      },
+    );
+
+    test(
+      'aborts the rebase and fails clearly when integrating the remote '
+      'feature branch conflicts (no force push)',
+      () async {
+        final mockSortedProcessingList = MockSortedProcessingList();
+        final mockUnlocalizeRefs = MockUnlocalizeRefs();
+        final mockLocalizeRefsToGit = MockLocalizeRefsToGit();
+        final mockCanReviewCommand = MockCanReviewCommand();
+        final mockGgDoCommit = MockGgDoCommit();
+        final mockGgDoPush = MockGgDoPush();
+        final mockProcessRunner = MockProcessRunner();
+        stubGitHeadUnchanged(mockProcessRunner);
+
+        when(
+          () => mockCanReviewCommand.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockSortedProcessingList.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            Node(
+              name: 'A',
+              directory: Directory(path.join(ticketDir.path, 'A')),
+              manifest: DartPackageManifest(pubspec: Pubspec('A')),
+            ),
+          ],
+        );
+
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['merge', 'origin/main'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+        when(
+          () => mockLocalizeRefsToGit.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            gitRef: any(named: 'gitRef'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockGgDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['ls-remote', '--heads', 'origin', 'TICKDR'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer(
+          (_) async => ProcessResult(0, 0, 'abc123\trefs/heads/TICKDR', ''),
+        );
+
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['pull', '--rebase', 'origin', 'TICKDR'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer(
+          (_) async => ProcessResult(1, 1, '', 'CONFLICT (content): merge'),
+        );
+
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['rebase', '--abort'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+        when(
+          () => mockGgDoPush.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        final runner = CommandRunner<void>('test', 'do review ticket')
+          ..addCommand(
+            DoReviewCommand(
+              ggLog: ggLog,
+              canReviewCommand: mockCanReviewCommand,
+              unlocalizeRefs: mockUnlocalizeRefs,
+              localizeRefsToGit: mockLocalizeRefsToGit,
+              sortedProcessingList: mockSortedProcessingList,
+              ggDoCommit: mockGgDoCommit,
+              ggDoPush: mockGgDoPush,
+              processRunner: mockProcessRunner.call,
+            ),
+          );
+
+        await expectLater(
+          () async => runner.run([
+            'review',
+            '--verbose',
+            '--input',
+            ticketDir.path,
+          ]),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('could not rebase onto origin/TICKDR'),
+            ),
+          ),
+        );
+
+        expect(
+          messages.any(
+            (m) => m.contains(
+              'Failed to integrate origin/TICKDR into A before push',
+            ),
+          ),
+          isTrue,
+        );
+        verify(
+          () => mockProcessRunner(
+            'git',
+            ['rebase', '--abort'],
+            workingDirectory: path.join(ticketDir.path, 'A'),
+          ),
+        ).called(1);
+        verifyNever(
+          () => mockGgDoPush.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        );
+      },
+    );
+
+    test(
+      'runs "gg can commit" after a merge that moved HEAD and proceeds when '
+      'it passes',
+      () async {
+        final mockSortedProcessingList = MockSortedProcessingList();
+        final mockUnlocalizeRefs = MockUnlocalizeRefs();
+        final mockLocalizeRefsToGit = MockLocalizeRefsToGit();
+        final mockCanReviewCommand = MockCanReviewCommand();
+        final mockGgDoCommit = MockGgDoCommit();
+        final mockGgDoPush = MockGgDoPush();
+        final mockGgCanCommit = MockGgCanCommit();
+        final mockProcessRunner = MockProcessRunner();
+
+        // HEAD moves during the merge → the post-merge verification runs.
+        var headCalls = 0;
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['rev-parse', 'HEAD'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer(
+          (_) async =>
+              ProcessResult(0, 0, headCalls++ == 0 ? 'before' : 'after', ''),
+        );
+
+        when(
+          () => mockCanReviewCommand.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockSortedProcessingList.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            Node(
+              name: 'A',
+              directory: Directory(path.join(ticketDir.path, 'A')),
+              manifest: DartPackageManifest(pubspec: Pubspec('A')),
+            ),
+          ],
+        );
+
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['merge', 'origin/main'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+        when(
+          () => mockGgCanCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            force: any(named: 'force'),
+            saveState: any(named: 'saveState'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['ls-remote', '--heads', 'origin', 'TICKDR'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+        when(
+          () => mockLocalizeRefsToGit.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            gitRef: any(named: 'gitRef'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockGgDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockGgDoPush.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        final runner = CommandRunner<void>('test', 'do review ticket')
+          ..addCommand(
+            DoReviewCommand(
+              ggLog: ggLog,
+              canReviewCommand: mockCanReviewCommand,
+              unlocalizeRefs: mockUnlocalizeRefs,
+              localizeRefsToGit: mockLocalizeRefsToGit,
+              sortedProcessingList: mockSortedProcessingList,
+              ggDoCommit: mockGgDoCommit,
+              ggDoPush: mockGgDoPush,
+              ggCanCommit: mockGgCanCommit,
+              processRunner: mockProcessRunner.call,
+            ),
+          );
+
+        await runner.run([
+          'review',
+          '--verbose',
+          '--input',
+          ticketDir.path,
+        ]);
+
+        expect(
+          messages.any(
+            (m) => m.contains(
+              'Verified A still passes "gg can commit" after merging main',
+            ),
+          ),
+          isTrue,
+        );
+        verify(
+          () => mockGgCanCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            saveState: false,
+          ),
+        ).called(1);
+        expect(messages.any((m) => m.contains('Pushed A')), isTrue);
+      },
+    );
+
+    test(
+      'aborts the review when "gg can commit" fails after a merge that '
+      'moved HEAD',
+      () async {
+        final mockSortedProcessingList = MockSortedProcessingList();
+        final mockUnlocalizeRefs = MockUnlocalizeRefs();
+        final mockLocalizeRefsToGit = MockLocalizeRefsToGit();
+        final mockCanReviewCommand = MockCanReviewCommand();
+        final mockGgDoCommit = MockGgDoCommit();
+        final mockGgDoPush = MockGgDoPush();
+        final mockGgCanCommit = MockGgCanCommit();
+        final mockProcessRunner = MockProcessRunner();
+
+        var headCalls = 0;
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['rev-parse', 'HEAD'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer(
+          (_) async =>
+              ProcessResult(0, 0, headCalls++ == 0 ? 'before' : 'after', ''),
+        );
+
+        when(
+          () => mockSortedProcessingList.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            Node(
+              name: 'A',
+              directory: Directory(path.join(ticketDir.path, 'A')),
+              manifest: DartPackageManifest(pubspec: Pubspec('A')),
+            ),
+          ],
+        );
+
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['merge', 'origin/main'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+        when(
+          () => mockGgCanCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            force: any(named: 'force'),
+            saveState: any(named: 'saveState'),
+          ),
+        ).thenThrow(Exception('Duplicate mapping key'));
+
+        when(
+          () => mockLocalizeRefsToGit.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            gitRef: any(named: 'gitRef'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockGgDoPush.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        final runner = CommandRunner<void>('test', 'do review ticket')
+          ..addCommand(
+            DoReviewCommand(
+              ggLog: ggLog,
+              canReviewCommand: mockCanReviewCommand,
+              unlocalizeRefs: mockUnlocalizeRefs,
+              localizeRefsToGit: mockLocalizeRefsToGit,
+              sortedProcessingList: mockSortedProcessingList,
+              ggDoCommit: mockGgDoCommit,
+              ggDoPush: mockGgDoPush,
+              ggCanCommit: mockGgCanCommit,
+              processRunner: mockProcessRunner.call,
+            ),
+          );
+
+        await expectLater(
+          () async => runner.run([
+            'review',
+            '--verbose',
+            '--input',
+            ticketDir.path,
+          ]),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('merged state no longer passes "gg can commit"'),
+            ),
+          ),
+        );
+
+        expect(
+          messages.any(
+            (m) => m.contains('Merging main into A broke "gg can commit"'),
+          ),
+          isTrue,
+        );
+        verifyNever(
+          () => mockLocalizeRefsToGit.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            gitRef: any(named: 'gitRef'),
+          ),
+        );
+        verifyNever(
+          () => mockGgDoPush.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
         );
       },
     );

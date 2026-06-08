@@ -224,6 +224,84 @@ gg_multi do publish
 Publish is meant to be triggered manually by a human after review
 approval.
 
+#### Non-interactive publish via `--config`
+
+`gg_multi do publish` is interactive by default — it asks for a merge
+message and a version increment (`patch` / `minor` / `major`) for every
+publishable repo. In scripted runs, CI pipelines or release tooling
+this is awkward. Pass `--config <path>` to load the merge messages and
+increments from a JSON file instead:
+
+```bash
+gg_multi do publish --config .gg-publish.json
+```
+
+`gg_multi` looks for the file at `<configArg>` first (relative to the
+current directory, or absolute), then under the **ticket directory**.
+Missing fields cause a hard `FormatException` — no silent fall-back to
+an interactive prompt.
+
+##### `.gg-publish.json` schema
+
+```jsonc
+{
+  // Top-level defaults applied to every repo of the ticket.
+  "version_increment": "patch",            // "patch" | "minor" | "major"
+  "merge_message": "Default merge message",
+
+  // Optional: per-repo overrides. Keyed by the repo's directory name
+  // inside the ticket. Each field is independent — anything missing
+  // falls back to the top-level value.
+  "repos": {
+    "<repoName>": {
+      "version_increment": "minor",
+      "merge_message": "Custom message for this repo"
+    },
+    "<otherRepo>": {
+      "merge_message": "Only override the message, keep the default increment"
+    }
+  }
+}
+```
+
+Resolution order per repo:
+
+1. `repos.<repoName>.version_increment` / `merge_message`, then
+2. top-level `version_increment` / `merge_message`.
+
+If neither layer supplies a value for a repo that is about to publish,
+the run aborts with an error naming the missing field.
+
+##### Example
+
+```jsonc
+// tickets/PROJ-123/.gg-publish.json
+{
+  "version_increment": "patch",
+  "merge_message": "PROJ-123: simplify login flow",
+  "repos": {
+    "app_core": {
+      "version_increment": "minor",
+      "merge_message": "PROJ-123: new public login API"
+    }
+  }
+}
+```
+
+Then:
+
+```bash
+cd tickets/PROJ-123
+gg_multi do publish --config .gg-publish.json
+```
+
+→ `app_core` gets a minor bump with the custom message; every other
+ticket repo gets a patch bump with the top-level message.
+
+The same flag exists on the single-repo `gg one do publish` (it reads
+the same schema but only uses the top-level fields). See the
+[`gg_one` README](../gg_one/README.md) for details.
+
 ## Running tests
 
 ```bash

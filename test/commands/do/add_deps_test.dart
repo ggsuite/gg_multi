@@ -9,6 +9,7 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
+import 'package:gg_lang/gg_lang.dart';
 import 'package:gg_multi/src/backend/constants.dart';
 import 'package:gg_multi/src/backend/git_handler.dart';
 import 'package:gg_multi/src/commands/do/add_deps.dart';
@@ -350,6 +351,64 @@ dependencies:
         contains('Ignoring dependency dart_dep from dart-lang repository'),
       );
     });
+
+    test('reads dependencies from package.json (TypeScript)', () async {
+      final tsRunner = CommandRunner<void>('test', 'Test AddDepsCommand')
+        ..addCommand(
+          AddDepsCommand(
+            ggLog: ggLog,
+            gitCloner: mockGitCloner,
+            workspacePath: workspacePath,
+            packageFetcher: (uri) async {
+              final name =
+                  uri.pathSegments.isNotEmpty ? uri.pathSegments.last : '';
+              return http.Response(
+                jsonEncode({
+                  'repository': {
+                    'type': 'git',
+                    'url': 'git+https://github.com/o/$name.git',
+                  },
+                }),
+                200,
+              );
+            },
+          ),
+        );
+      File(path.join(dirProject.path, 'package.json')).writeAsStringSync(
+        '{"name": "ts_project", "dependencies": {"left_pad": "^1.0.0"}, '
+        '"devDependencies": {"vitest": "^2.0.0"}}',
+      );
+      File(path.join(dirProject.path, 'tsconfig.json')).writeAsStringSync('{}');
+
+      await tsRunner.run(['add-deps', 'project']);
+
+      verify(
+        () => mockGitCloner.cloneRepo(
+          'https://github.com/o/left_pad.git',
+          any(),
+        ),
+      ).called(1);
+      verify(
+        () => mockGitCloner.cloneRepo(
+          'https://github.com/o/vitest.git',
+          any(),
+        ),
+      ).called(1);
+    });
+
+    test('logs an error when package.json cannot be parsed (TypeScript)',
+        () async {
+      File(path.join(dirProject.path, 'package.json'))
+          .writeAsStringSync('{ invalid json');
+      File(path.join(dirProject.path, 'tsconfig.json')).writeAsStringSync('{}');
+
+      await runner.run(['add-deps', 'project']);
+
+      expect(
+        logMessages.any((m) => m.contains('Error parsing package.json:')),
+        isTrue,
+      );
+    });
   });
 
   group('fetchDependencyRepoUrl', () {
@@ -431,6 +490,78 @@ dependencies:
         packageFetcher: fakeFetcher,
       );
       expect(result, equals(repoUrl));
+    });
+
+    group('for TypeScript (npm registry)', () {
+      test(
+          'returns the repository URL from the object form, stripping '
+          '"git+"', () async {
+        Future<http.Response> fakeFetcher(Uri uri) async {
+          expect(uri.toString(), contains('registry.npmjs.org'));
+          return http.Response(
+            '{"repository": {"type": "git", "url": '
+            '"git+https://github.com/o/r.git"}}',
+            200,
+          );
+        }
+
+        final result = await fetchDependencyRepoUrl(
+          packageName,
+          type: ProjectType.typescript,
+          packageFetcher: fakeFetcher,
+        );
+        expect(result, 'https://github.com/o/r.git');
+      });
+
+      test('returns the repository URL from the string form', () async {
+        Future<http.Response> fakeFetcher(Uri uri) async {
+          return http.Response('{"repository": "github:o/r"}', 200);
+        }
+
+        final result = await fetchDependencyRepoUrl(
+          packageName,
+          type: ProjectType.typescript,
+          packageFetcher: fakeFetcher,
+        );
+        expect(result, 'github:o/r');
+      });
+
+      test('returns null when there is no repository field', () async {
+        Future<http.Response> fakeFetcher(Uri uri) async {
+          return http.Response('{"name": "test_pkg"}', 200);
+        }
+
+        final result = await fetchDependencyRepoUrl(
+          packageName,
+          type: ProjectType.typescript,
+          packageFetcher: fakeFetcher,
+        );
+        expect(result, isNull);
+      });
+
+      test('throws when the npm response status is not 200', () async {
+        Future<http.Response> fakeFetcher(Uri uri) async {
+          return http.Response('Not Found', 404);
+        }
+
+        expect(
+          () async => await fetchDependencyRepoUrl(
+            packageName,
+            type: ProjectType.typescript,
+            packageFetcher: fakeFetcher,
+          ),
+          throwsA(
+            predicate(
+              (e) =>
+                  e is Exception &&
+                  e.toString().contains(
+                        'Failed to fetch package info from npm '
+                        'for $packageName',
+                      ),
+            ),
+          ),
+        );
+      });
     });
 
     test('propagates exception from packageFetcher', () async {
