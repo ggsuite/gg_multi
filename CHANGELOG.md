@@ -27,6 +27,16 @@ localization commands again.
 
 - remove unlocalize step from do review command and tests
 
+## [5.1.0] - 2026-06-09
+
+### Changed
+
+- feat(ts): version-pinned git deps via #semver: + tag-push for npm/pnpm
+- gg\_multi: changed references to git
+- refactor(ts): trim comments to grace-cloud style limits + do\_maintain layout
+- style: apply grace-cloud comment + 80-char limits across ticket
+- gg\_multi: changed references to git
+
 ## [5.0.0] - 2026-06-08
 
 ### Changed
@@ -318,6 +328,7 @@ localization commands again.
 - Remove prints
 - Remove gh pr create from review
 
+[5.1.0]: https://github.com/ggsuite/gg_multi/compare/5.0.0...5.1.0
 [5.0.0]: https://github.com/ggsuite/gg_multi/compare/4.5.2...5.0.0
 [4.5.2]: https://github.com/ggsuite/gg_multi/compare/4.5.1...4.5.2
 [4.5.1]: https://github.com/ggsuite/gg_multi/compare/4.5.0...4.5.1

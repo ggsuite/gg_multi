@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_console_colors/gg_console_colors.dart';
+// ignore: lines_longer_than_80_chars
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_log/gg_log.dart';
@@ -26,6 +27,10 @@ import 'add_deps.dart' show fetchDependencyRepoUrl;
 import 'install_git_hooks.dart';
 import 'install_gitattributes.dart';
 
+/// Resolves the repository URL of a hosted dependency.
+/// Subset of [fetchDependencyRepoUrl] without named args, for test stubs.
+typedef FetchRepoUrl = Future<String?> Function(String packageName);
+
 /// Typedef for a process runner function.
 typedef ProcessRunner = Future<ProcessResult> Function(
   String,
@@ -34,28 +39,9 @@ typedef ProcessRunner = Future<ProcessResult> Function(
   bool runInShell,
 });
 
-/// Command to add a repository or all repositories from an organization.
-///
-/// This command adds the specified git repo (also Gitlab and other servers
-/// compatible) or all git repos of the specified organization.
-/// It clones the project into the master workspace of the project root and-
-/// if executed from inside a ticket directory (./tickets/ticket)-it also
-/// copies the repository into this ticket directory.  After copying, it
-/// performs a ticket-wide two-pass re-localization:
-/// 1) Unlocalize all repositories in the ticket in sorted processing order.
-/// 2) Localize all repositories with --git, set git-localized status and
-///    commit changes per repository. Any error aborts the flow immediately.
-///    After localization, if a pubspec.yaml exists, "dart pub upgrade" is
-///    executed and must succeed before committing.
-///
-/// When running inside a ticket workspace, the dependency graph that is used
-/// for determining nodes *between* endpoints considers both endpoints that
-/// stem from the CLI arguments *and* endpoints of repositories that already
-/// exist in the ticket workspace. This allows adding the missing
-/// repositories between an already present repo and a newly added one.
-///
-/// Use the "--force" flag to overwrite an existing repository in the master
-/// workspace.
+/// Command to add a repo or all repos of an organization to master+ticket.
+/// In ticket mode it also auto-clones transitive deps and re-localizes refs.
+/// Use `--force` to overwrite an existing repo in the master workspace.
 class AddCommand extends Command<dynamic> {
   /// Constructor for AddCommand.
   AddCommand({
@@ -71,6 +57,7 @@ class AddCommand extends Command<dynamic> {
     ChangeRefsToLocal? localizeRefs,
     BackupPublishTo? backupPublishTo,
     Graph? graph,
+    FetchRepoUrl? fetchRepoUrl,
     // coverage:ignore-start
   })  : gitCloner = gitCloner ?? GitHandler(),
         gitHubPlatform = gitHubPlatform ?? GitHubPlatform(),
@@ -84,7 +71,8 @@ class AddCommand extends Command<dynamic> {
         _unlocalizeRefs = unlocalizeRefs ?? ChangeRefsToPubDev(ggLog: ggLog),
         _localizeRefs = localizeRefs ?? ChangeRefsToLocal(ggLog: ggLog),
         _backupPublishTo = backupPublishTo ?? BackupPublishTo(ggLog: ggLog),
-        _graph = graph ?? Graph(ggLog: ggLog)
+        _graph = graph ?? Graph(ggLog: ggLog),
+        _fetchRepoUrl = fetchRepoUrl ?? fetchDependencyRepoUrl
   // coverage:ignore-end
   {
     argParser.addFlag(
@@ -119,8 +107,7 @@ class AddCommand extends Command<dynamic> {
   /// The path from which the command was executed.
   final String executionPath;
 
-  /// gg do commit instance used after localization with --git in ticket
-  /// copies.
+  /// gg do commit used after localization with --git in ticket copies.
   final gg.DoCommit _ggDoCommit;
 
   /// Sorted processing helper for ticket-wide iteration.
@@ -132,12 +119,14 @@ class AddCommand extends Command<dynamic> {
   /// Localize refs helper.
   final ChangeRefsToLocal _localizeRefs;
 
-  /// Captures the original `publish_to` value so it can be restored on
-  /// publish.
+  /// Captures original `publish_to` so it can be restored on publish.
   final BackupPublishTo _backupPublishTo;
 
   /// Graph helper for determining nodes between endpoints.
   final Graph _graph;
+
+  /// Resolves a hosted-dep repo URL; tests inject stubs (incl. throwing).
+  final FetchRepoUrl _fetchRepoUrl;
 
   @override
   String get name => 'add';
@@ -202,18 +191,12 @@ class AddCommand extends Command<dynamic> {
       ),
     );
 
-    // Transitively clone missing dependency-refs (Git + Hosted-from-known-org)
-    // into the master so the dependency graph contains every repo required to
-    // compute "between" nodes. Without this, a chain like
-    // "gg_1 -> gg_2 -> gg_3" with only gg_1+gg_3 requested would never
-    // auto-add gg_2 if it was not already in master (the graph has no gg_2
-    // node, so getNodesBetween returns []).
+    // Clone missing transitive deps so the graph can resolve between-nodes.
     await _cloneMissingTransitiveDeps(ggLog: ggLog);
 
     final ticketDir = Directory(ticketPath);
 
-    // Build the dependency graph of the master workspace and compute
-    // all nodes between the provided endpoints.
+    // Build dep graph of master + compute nodes between endpoints.
     Map<String, Node> allNodes = const {};
     try {
       allNodes = await _graph.get(
@@ -227,9 +210,7 @@ class AddCommand extends Command<dynamic> {
       allNodes = const {};
     }
 
-    // Determine endpoints for between-node calculation:
-    // 1) endpoints from CLI arguments
-    // 2) additional endpoints from repos already present in the ticket.
+    // Endpoints = CLI-requested repos + repos already in the ticket.
     final endpointsByName = <String, Node>{};
 
     // Endpoints based on requested repositories ------------------------------
@@ -283,10 +264,7 @@ class AddCommand extends Command<dynamic> {
       reportLog: ggLog,
     );
 
-    // Write project configuration files (workspace + git hooks +
-    // .gitattributes). Must run before the relocalize/commit step, because
-    // gg requires ".gitattributes" with "* text=auto eol=lf" to be present
-    // before any "gg do commit" call.
+    // Write config files (workspace, hooks, .gitattributes) before commit.
     await GgStatusPrinter<void>(
       message: 'Writing project config files',
       ggLog: ggLog,
@@ -309,27 +287,11 @@ class AddCommand extends Command<dynamic> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Ticket support helpers ----------------------------------------------------
-
+  // Ticket support helpers
   // ...........................................................................
-  /// Walks the pubspec.yaml of every repo currently in [masterWorkspacePath]
-  /// and clones any referenced dependency that is not yet present in master,
-  /// as long as it can be attributed to a known organization (from
-  /// `.organizations`):
-  ///
-  ///  - `GitDependency` (e.g. `dep: git: …github.com:ggsuite/dep.git`) is
-  ///    cloned via [addRepositoryHelper] using its package name; the existing
-  ///    org-fallback in the helper picks the right base URL.
-  ///  - `HostedDependency` (pub.dev) is resolved by querying pub.dev for the
-  ///    package's `repository` URL and is cloned only if that URL starts with
-  ///    one of the known organization URLs. Hosted deps from external orgs
-  ///    (`dart-lang`, `flutter`, …) are skipped silently.
-  ///  - `PathDependency` and `SdkDependency` are ignored.
-  ///
-  /// Loops to a fixpoint so newly-cloned repos contribute their own
-  /// dependencies to the next iteration. Clone failures are swallowed
-  /// ([addRepositoryHelper] already logs them).
+  /// Clones missing deps of every repo in master that belongs to a known org.
+  /// Git deps go via [addRepositoryHelper]; hosted deps via pub.dev lookup.
+  /// Loops to a fixpoint; failures are swallowed (helper already logs).
   Future<void> _cloneMissingTransitiveDeps({
     required GgLog ggLog,
   }) async {
@@ -344,8 +306,7 @@ class AddCommand extends Command<dynamic> {
         .map((o) => o.url.replaceAll(RegExp(r'/+$'), '').toLowerCase())
         .toSet();
 
-    // Cache pub.dev lookups across the fixpoint loop so we don't re-query the
-    // same hosted dep on every iteration.
+    // Cache pub.dev lookups across the fixpoint loop.
     final hostedLookupCache = <String, String?>{};
 
     while (true) {
@@ -355,8 +316,7 @@ class AddCommand extends Command<dynamic> {
           .map((d) => path.basename(d.path))
           .toSet();
 
-      // Per-iteration plan: depName -> clone targetArg ("name" for git deps so
-      // the helper's org-fallback resolves the URL, full URL for hosted deps).
+      // Plan: depName -> targetArg (name for git, full URL for hosted).
       final plan = <String, String>{};
 
       for (final repoName in existingRepos) {
@@ -383,12 +343,10 @@ class AddCommand extends Command<dynamic> {
             if (dep is GitDependency) {
               plan[depName] = depName; // helper falls back to org URLs
             } else if (dep is HostedDependency) {
-              // Resolve repo URL via pub.dev once, then accept only if it
-              // belongs to a known org.
+              // Resolve repo URL via pub.dev; accept only known-org URLs.
               if (!hostedLookupCache.containsKey(depName)) {
                 try {
-                  hostedLookupCache[depName] =
-                      await fetchDependencyRepoUrl(depName);
+                  hostedLookupCache[depName] = await _fetchRepoUrl(depName);
                 } catch (_) {
                   hostedLookupCache[depName] = null;
                 }
@@ -474,12 +432,9 @@ class AddCommand extends Command<dynamic> {
     return null;
   }
 
-  /// Copies all given [repoNames] from the master workspace into the
-  /// ticket at [ticketPath].
-  ///
-  /// Runs up to [maxParallel] copy operations concurrently. Per-repo
-  /// success/failure status lines are written to [reportLog]; verbose
-  /// command output goes to [ggLog].
+  /// Copies all [repoNames] from master into the ticket at [ticketPath].
+  /// Up to [maxParallel] parallel; status via [reportLog], verbose via
+  /// [ggLog].
   Future<void> _copyReposToTicket({
     required String ticketPath,
     required Set<String> repoNames,
@@ -551,8 +506,7 @@ class AddCommand extends Command<dynamic> {
       ggLog(red('Failed to checkout branch $ticketName: $e'));
     }
 
-    // Install dependencies (language-aware): `dart pub get` for Dart/Flutter
-    // and manifest-less repos, `<pm> install` (npm/yarn/pnpm) for TypeScript.
+    // Install deps: `dart pub get` for Dart, `<pm> install` for TS.
     gg.ProjectType? projectType;
     try {
       projectType = gg.detectProjectType(destDir);
@@ -666,12 +620,9 @@ class AddCommand extends Command<dynamic> {
     );
   }
 
-  /// Deletes all local tags in [repoDir] in a portable way (no shell pipe).
-  ///
-  /// Uses `git tag -l` to list tags, then `git tag -d <tag1> <tag2> …` to
-  /// delete them in a single call. The previous implementation relied on
-  /// `git tag -l | xargs git tag -d`, which does not work on macOS because
-  /// the pipe is not interpreted as a real shell pipe by Process.run.
+  /// Deletes all local tags in [repoDir] without using a shell pipe.
+  /// Lists tags via `git tag -l`, then `git tag -d <tags...>` in one call
+  /// (macOS-safe; xargs-pipe variant fails under Process.run).
   Future<void> _gitDeleteAllLocalTags({
     required Directory repoDir,
     required String repoName,
@@ -747,11 +698,8 @@ class AddCommand extends Command<dynamic> {
     );
   }
 
-  /// Performs two iterations over all repositories in the ticket in
-  /// SortedProcessingList order:
-  /// 1) Unlocalize
-  /// 2) Localize with --git, set status to git-localized, commit
-  ///    and execute "dart pub upgrade" if a pubspec.yaml exists.
+  /// Re-localizes all ticket repos in two passes (sorted order):
+  /// 1) unlocalize, 2) localize --git + pub upgrade + commit.
   Future<void> _relocalizeAllReposInTicket({
     required Directory ticketDir,
     required GgLog ggLog,
@@ -797,11 +745,7 @@ class AddCommand extends Command<dynamic> {
         throw Exception('Failed to relocalize ticket');
       }
 
-      // Refresh dependencies for the detected project type after the
-      // references were rewritten to local paths. Runs `dart pub upgrade`
-      // for Dart/Flutter packages and the equivalent install command for
-      // TypeScript packages (npm/yarn/pnpm). Repos without a recognizable
-      // manifest are skipped.
+      // Refresh deps after relocalize (dart pub upgrade / pm install).
       gg.ProjectType? projectType;
       try {
         projectType = gg.detectProjectType(repoDir);
@@ -834,12 +778,7 @@ class AddCommand extends Command<dynamic> {
         }
       }
 
-      // Commit changes per repository -----------------------------------------
-      //
-      // Pass `updateChangeLog: false` to avoid gg_changelog, which
-      // unconditionally reads pubspec.yaml and therefore fails in
-      // TypeScript repositories. This is a purely mechanical
-      // "reference rewrite" commit and does not belong in the changelog.
+      // Commit per repo; skip changelog (gg_changelog needs pubspec.yaml).
       try {
         await _ggDoCommit.exec(
           directory: repoDir,
@@ -856,10 +795,8 @@ class AddCommand extends Command<dynamic> {
     ggLog('✅ Re-localized all repositories in ticket $ticketName.');
   }
 
-  /// Rewrites the VS Code `.code-workspace` file for the given [ticketDir].
-  ///
-  /// The workspace file contains one folder entry for each repository in the
-  /// ticket so that all repositories can be opened together in VS Code.
+  /// Rewrites the VS Code `.code-workspace` file for the given [ticketDir]
+  /// with one folder entry per repository in the ticket.
   Future<void> _rewriteCodeWorkspace({
     required Directory ticketDir,
     required GgLog ggLog,

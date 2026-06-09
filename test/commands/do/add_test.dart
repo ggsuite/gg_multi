@@ -19,6 +19,7 @@ import 'package:test/test.dart';
 import 'package:gg_multi/src/commands/do/add.dart';
 import 'package:gg_multi/src/backend/git_handler.dart' hide ProcessRunner;
 import 'package:gg_localize_refs/gg_localize_refs.dart';
+// ignore: lines_longer_than_80_chars
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:gg_multi/src/backend/repository.dart';
@@ -72,6 +73,7 @@ void main() {
       ChangeRefsToLocal? localizeRefs,
       BackupPublishTo? backupPublishTo,
       Graph? graph,
+      FetchRepoUrl? fetchRepoUrl,
     }) {
       final execPath = Directory.systemTemp.createTempSync('exec_path_').path;
       runner = CommandRunner<void>('test', 'Test for AddCommand');
@@ -88,6 +90,7 @@ void main() {
           localizeRefs: localizeRefs,
           backupPublishTo: backupPublishTo,
           graph: graph,
+          fetchRepoUrl: fetchRepoUrl,
         ),
       );
     }
@@ -506,6 +509,282 @@ dev_dependencies:
             (m) => m.contains('Re-localized all repositories in ticket'),
           ),
           isTrue,
+        );
+      },
+    );
+
+    test(
+      'transitive scan clones a GitDependency declared in an existing '
+      'repo via the org-fallback URL',
+      () async {
+        // Covers the GitDependency branch of `_cloneMissingTransitiveDeps`.
+        const existingRepoName = 'tx_existing';
+        const gitDepName = 'tx_git_dep';
+        final existingRepoDir = Directory(
+          path.join(masterWorkspacePath, existingRepoName),
+        )..createSync(recursive: true);
+        File(
+          path.join(existingRepoDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync(
+          'name: $existingRepoName\n'
+          'version: 1.0.0\n'
+          'dependencies:\n'
+          '  $gitDepName:\n'
+          '    git:\n'
+          '      url: https://github.com/some_org/$gitDepName.git\n',
+        );
+
+        final ticketDir = Directory(
+          path.join(tempDir.path, ggMultiTicketFolder, 'TX_TICKET'),
+        )..createSync(recursive: true);
+
+        final mockProc = MockProcessRunner();
+        when(
+          () => mockProc(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+        final mockDoCommit = MockGgDoCommit();
+        when(
+          () => mockDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            logType: any(named: 'logType'),
+            updateChangeLog: any(named: 'updateChangeLog'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        createRunner(
+          executionPath: ticketDir.path,
+          processRunner: mockProc.call,
+          ggDoCommit: mockDoCommit,
+        );
+
+        await runner.run(['add', existingRepoName]);
+
+        // Org fallback: `https://github.com/<dep>/<dep>.git`.
+        verify(
+          () => mockGitCloner.cloneRepo(
+            'https://github.com/$gitDepName/$gitDepName.git',
+            any(),
+          ),
+        ).called(1);
+      },
+    );
+
+    test(
+      'transitive scan swallows a failing hosted-dep lookup and records '
+      'a null cache entry',
+      () async {
+        // Covers the catch path in `_cloneMissingTransitiveDeps`.
+        const existingRepoName = 'tx_existing_hosted';
+        const hostedDepName = 'tx_hosted_dep';
+        final existingRepoDir = Directory(
+          path.join(masterWorkspacePath, existingRepoName),
+        )..createSync(recursive: true);
+        File(
+          path.join(existingRepoDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync(
+          'name: $existingRepoName\n'
+          'version: 1.0.0\n'
+          'dependencies:\n'
+          '  $hostedDepName: ^1.0.0\n',
+        );
+
+        final ticketDir = Directory(
+          path.join(tempDir.path, ggMultiTicketFolder, 'TX_HOSTED_TICKET'),
+        )..createSync(recursive: true);
+
+        final mockProc = MockProcessRunner();
+        when(
+          () => mockProc(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+        final mockDoCommit = MockGgDoCommit();
+        when(
+          () => mockDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            logType: any(named: 'logType'),
+            updateChangeLog: any(named: 'updateChangeLog'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        var fetchCalls = 0;
+        createRunner(
+          executionPath: ticketDir.path,
+          processRunner: mockProc.call,
+          ggDoCommit: mockDoCommit,
+          fetchRepoUrl: (pkg) async {
+            fetchCalls++;
+            throw Exception('boom: $pkg not reachable');
+          },
+        );
+
+        await runner.run(['add', existingRepoName]);
+
+        // Fetcher called; exception swallowed; cloner sees no phantom URL.
+        expect(fetchCalls, greaterThanOrEqualTo(1));
+        verifyNever(
+          () => mockGitCloner.cloneRepo(
+            any(that: contains(hostedDepName)),
+            any(),
+          ),
+        );
+      },
+    );
+
+    test(
+      'transitive scan accepts a hosted dep whose pub.dev repo URL '
+      'belongs to a known org and queues it for cloning',
+      () async {
+        // Covers the inKnownOrg success branch of _cloneMissingTransitiveDeps.
+        const existingRepoName = 'tx_existing_known';
+        const hostedDepName = 'tx_known_org_dep';
+        const orgUrl = 'https://github.com/myorg/';
+        final existingRepoDir = Directory(
+          path.join(masterWorkspacePath, existingRepoName),
+        )..createSync(recursive: true);
+        File(
+          path.join(existingRepoDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync(
+          'name: $existingRepoName\n'
+          'version: 1.0.0\n'
+          'dependencies:\n'
+          '  $hostedDepName: ^1.0.0\n',
+        );
+        File(
+          path.join(masterWorkspacePath, '.organizations'),
+        ).writeAsStringSync(
+          jsonEncode(<Map<String, dynamic>>[
+            Organization(name: 'myorg', url: orgUrl).toMap(),
+          ]),
+        );
+
+        final ticketDir = Directory(
+          path.join(tempDir.path, ggMultiTicketFolder, 'TX_KNOWN_TICKET'),
+        )..createSync(recursive: true);
+
+        final mockProc = MockProcessRunner();
+        when(
+          () => mockProc(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+        final mockDoCommit = MockGgDoCommit();
+        when(
+          () => mockDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            logType: any(named: 'logType'),
+            updateChangeLog: any(named: 'updateChangeLog'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        const repoUrl = '${orgUrl}tx_known_org_dep.git';
+        createRunner(
+          executionPath: ticketDir.path,
+          processRunner: mockProc.call,
+          ggDoCommit: mockDoCommit,
+          fetchRepoUrl: (pkg) async => repoUrl,
+        );
+
+        await runner.run(['add', existingRepoName]);
+
+        verify(
+          () => mockGitCloner.cloneRepo(repoUrl, any()),
+        ).called(1);
+      },
+    );
+
+    test(
+      'transitive scan skips a hosted dep whose pub.dev repo URL '
+      'belongs to an unknown org',
+      () async {
+        // Covers the inKnownOrg = false branch of _cloneMissingTransitiveDeps.
+        const existingRepoName = 'tx_existing_unknown';
+        const hostedDepName = 'tx_unknown_org_dep';
+        final existingRepoDir = Directory(
+          path.join(masterWorkspacePath, existingRepoName),
+        )..createSync(recursive: true);
+        File(
+          path.join(existingRepoDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync(
+          'name: $existingRepoName\n'
+          'version: 1.0.0\n'
+          'dependencies:\n'
+          '  $hostedDepName: ^1.0.0\n',
+        );
+        File(
+          path.join(masterWorkspacePath, '.organizations'),
+        ).writeAsStringSync(
+          jsonEncode(<Map<String, dynamic>>[
+            Organization(
+              name: 'myorg',
+              url: 'https://github.com/myorg/',
+            ).toMap(),
+          ]),
+        );
+
+        final ticketDir = Directory(
+          path.join(tempDir.path, ggMultiTicketFolder, 'TX_UNKNOWN_TICKET'),
+        )..createSync(recursive: true);
+
+        final mockProc = MockProcessRunner();
+        when(
+          () => mockProc(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+        final mockDoCommit = MockGgDoCommit();
+        when(
+          () => mockDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            logType: any(named: 'logType'),
+            updateChangeLog: any(named: 'updateChangeLog'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        createRunner(
+          executionPath: ticketDir.path,
+          processRunner: mockProc.call,
+          ggDoCommit: mockDoCommit,
+          fetchRepoUrl: (pkg) async => 'https://github.com/dart-lang/$pkg.git',
+        );
+
+        await runner.run(['add', existingRepoName]);
+
+        verifyNever(
+          () => mockGitCloner.cloneRepo(
+            any(that: contains(hostedDepName)),
+            any(),
+          ),
         );
       },
     );
@@ -1024,8 +1303,7 @@ version: 1.0.0
 
         await runner.run(['add', '--verbose', repoName]);
 
-        // npm install runs twice for a TypeScript repo: once right after the
-        // copy and once during the post-localization dependency refresh.
+        // npm install runs twice: after copy and after relocalize.
         verify(
           () => mockProcessRunner(
             'npm',

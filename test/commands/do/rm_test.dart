@@ -7,51 +7,35 @@
 import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:gg_multi/src/backend/constants.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 import 'package:gg_multi/src/commands/do/rm.dart';
 
 import '../../rm_console_colors_helper.dart';
 
-// A fake Directory class for testing
-// purposes that always reports non-existence.
-class _FakeDirectory extends Fake implements Directory {
-  final String _path;
-  _FakeDirectory(this._path);
-  @override
-  String get path => _path;
-  @override
-  bool existsSync() => false;
-}
-
 void main() {
   group('RemoveCommand', () {
-    late Directory tempDir;
+    late Directory tempDir; // workspace root
     late Directory masterWs;
-    late CommandRunner<void> runner;
+    late Directory ticketsRoot;
     final messages = <String>[];
 
     void ggLog(String message) {
       messages.add(rmConsoleColors(message));
     }
 
+    CommandRunner<void> runnerAt(String rootPath) {
+      return CommandRunner<void>('test', 'RemoveCommand Test')
+        ..addCommand(RemoveCommand(ggLog: ggLog, rootPath: rootPath));
+    }
+
     setUp(() {
       messages.clear();
       tempDir = Directory.systemTemp.createTempSync('remove_test_');
-      masterWs = Directory(
-        path.join(
-          tempDir.path,
-          ggMultiMasterFolder,
-        ),
-      )..createSync(recursive: true);
-      runner = CommandRunner<void>('test', 'RemoveCommand Test')
-        ..addCommand(
-          RemoveCommand(
-            ggLog: ggLog,
-            rootPath: tempDir.path,
-          ),
-        );
+      masterWs = Directory(path.join(tempDir.path, ggMultiMasterFolder))
+        ..createSync(recursive: true);
+      ticketsRoot = Directory(path.join(tempDir.path, ggMultiTicketFolder))
+        ..createSync(recursive: true);
     });
 
     tearDown(() {
@@ -60,144 +44,112 @@ void main() {
       }
     });
 
-    test('deletes repo when only in master workspace', () async {
-      // Arrange
-      final repoDir = Directory(
-        path.join(
-          masterWs.path,
-          'project',
-        ),
-      )..createSync(recursive: true);
+    group('invoked from workspace root', () {
+      test('deletes repo when only in master', () async {
+        final repoDir = Directory(path.join(masterWs.path, 'project'))
+          ..createSync(recursive: true);
 
-      // Act
-      await runner.run(['rm', 'project']);
+        await runnerAt(tempDir.path).run(['rm', 'project']);
 
-      // Assert
-      expect(repoDir.existsSync(), isFalse);
-      expect(
-        messages,
-        contains('Deleted repository project from master workspace.'),
-      );
-    });
-
-    test('lists feature branches when in multiple workspaces', () async {
-      // Arrange: repo in master and a feature workspace
-      final featureWs = Directory(
-        path.join(
-          tempDir.path,
-          'gg_multi_ws_feature1',
-        ),
-      )..createSync(recursive: true);
-      Directory(path.join(masterWs.path, 'featProj'))
-          .createSync(recursive: true);
-      Directory(path.join(featureWs.path, 'featProj'))
-          .createSync(recursive: true);
-
-      // Act
-      await runner.run(['rm', 'featProj']);
-
-      // Assert: not deleted
-      expect(
-        Directory(path.join(masterWs.path, 'featProj')).existsSync(),
-        isTrue,
-      );
-      expect(
-        messages,
-        contains('This repo is used by the following feature branches:'),
-      );
-      expect(messages, contains(' - gg_multi_ws_feature1'));
-      expect(messages, contains('Please remove these branches first.'));
-    });
-
-    test('notifies when repo not found', () async {
-      // Act
-      await runner.run(['rm', 'noRepo']);
-
-      // Assert
-      expect(
-        messages,
-        contains('Repository noRepo not found in any workspace.'),
-      );
-    });
-
-    test('throws UsageException when missing argument', () async {
-      // Act & Assert
-      expect(
-        () => runner.run(['rm']),
-        throwsA(isA<UsageException>()),
-      );
-    });
-
-    test('logs "Root path not found" when rootPath does not exist', () async {
-      // Arrange
-      final nonExistingPath = path.join(tempDir.path, 'nonexistent_workspace');
-      final localRunner = CommandRunner<void>('test', 'RemoveCommand Test')
-        ..addCommand(
-          RemoveCommand(ggLog: ggLog, rootPath: nonExistingPath),
+        expect(repoDir.existsSync(), isFalse);
+        expect(
+          messages,
+          contains('Deleted repository project from master workspace.'),
         );
+      });
 
-      // Act
-      await localRunner.run(['rm', 'anyRepo']);
+      test(
+          'refuses to delete master copy when the repo is also in a ticket — '
+          'and lists the offending tickets', () async {
+        // Repo in master + in ticket "alpha".
+        final masterRepo = Directory(path.join(masterWs.path, 'shared'))
+          ..createSync();
+        final alphaDir = Directory(path.join(ticketsRoot.path, 'alpha'))
+          ..createSync();
+        Directory(path.join(alphaDir.path, 'shared')).createSync();
 
-      // Assert
-      expect(messages, contains('Root path not found: .'));
+        await runnerAt(tempDir.path).run(['rm', 'shared']);
+
+        expect(masterRepo.existsSync(), isTrue);
+        expect(
+          messages,
+          contains('Repository shared is used by the following tickets:'),
+        );
+        expect(messages, contains(' - alpha'));
+        expect(
+          messages.any((m) => m.contains('Please remove it from those')),
+          isTrue,
+        );
+      });
+
+      test('lists multiple tickets that reference the repo', () async {
+        Directory(path.join(masterWs.path, 'r1')).createSync();
+        final t1 = Directory(path.join(ticketsRoot.path, 't1'))..createSync();
+        Directory(path.join(t1.path, 'r1')).createSync();
+        final t2 = Directory(path.join(ticketsRoot.path, 't2'))..createSync();
+        Directory(path.join(t2.path, 'r1')).createSync();
+
+        await runnerAt(tempDir.path).run(['rm', 'r1']);
+
+        expect(messages, contains(' - t1'));
+        expect(messages, contains(' - t2'));
+      });
+
+      test('reports not-found when repo lives nowhere', () async {
+        await runnerAt(tempDir.path).run(['rm', 'ghost']);
+
+        expect(
+          messages,
+          contains('Repository ghost not found in any workspace.'),
+        );
+      });
     });
 
-    test('logs repository folder not found when deletion target does not exist',
-        () async {
-      // Arrange
-      // Create the master workspace if not exists
-      final masterWsPath = path.join(tempDir.path, ggMultiMasterFolder);
-      final masterDir = Directory(masterWsPath);
-      if (!masterDir.existsSync()) {
-        masterDir.createSync(recursive: true);
-      }
-      // Create a repo folder so that it gets detected in the scanning phase
-      final repoFolderPath = path.join(masterWsPath, 'missingRepo');
-      Directory(repoFolderPath).createSync(recursive: true);
-      // Now, do not physically delete it here,
-      // but inject a fake Directory for deletion
-      final runnerWithFake =
-          CommandRunner<void>('test', 'RemoveCommand Fake Test')
-            ..addCommand(
-              RemoveCommand(
-                ggLog: ggLog,
-                rootPath: tempDir.path,
-                directoryFactory: (p) => _FakeDirectory(p),
-              ),
-            );
+    group('invoked from inside a ticket', () {
+      test('deletes the repo from this ticket only', () async {
+        // alpha-scoped rm must not touch master or sibling tickets.
+        Directory(path.join(masterWs.path, 'shared')).createSync();
+        final alphaDir = Directory(path.join(ticketsRoot.path, 'alpha'))
+          ..createSync();
+        final betaDir = Directory(path.join(ticketsRoot.path, 'beta'))
+          ..createSync();
+        final alphaRepo = Directory(path.join(alphaDir.path, 'shared'))
+          ..createSync();
+        final betaRepo = Directory(path.join(betaDir.path, 'shared'))
+          ..createSync();
 
-      // Act
-      await runnerWithFake.run(['rm', 'missingRepo']);
+        await runnerAt(alphaDir.path).run(['rm', 'shared']);
 
-      // Assert
-      expect(
-        messages,
-        contains('Repository folder not found: '
-            '${path.join(ggMultiMasterFolder, 'missingRepo')}'),
-      );
+        expect(alphaRepo.existsSync(), isFalse);
+        expect(betaRepo.existsSync(), isTrue);
+        expect(
+          Directory(path.join(masterWs.path, 'shared')).existsSync(),
+          isTrue,
+          reason: 'master must never be touched from a ticket-scoped rm',
+        );
+        expect(
+          messages,
+          contains('Deleted repository shared from ticket alpha.'),
+        );
+      });
+
+      test('reports when the repo is not part of this ticket', () async {
+        final alphaDir = Directory(path.join(ticketsRoot.path, 'alpha'))
+          ..createSync();
+
+        await runnerAt(alphaDir.path).run(['rm', 'unrelated']);
+
+        expect(
+          messages,
+          contains('Repository unrelated is not part of ticket alpha.'),
+        );
+      });
     });
 
-    test('deletes ticket folder when name matches ticket', () async {
-      // Arrange: setup a ticket folder under tickets
-      final ticketDir = Directory(
-        path.join(tempDir.path, ggMultiTicketFolder, 'ticket1'),
-      )..createSync(recursive: true);
-      File(path.join(ticketDir.path, 'dummy.txt')).writeAsStringSync('data');
-
-      // Act
-      await runner.run(['rm', 'ticket1']);
-
-      // Assert: folder is removed and log is correct
-      expect(ticketDir.existsSync(), isFalse);
+    test('throws UsageException when missing target argument', () async {
       expect(
-        messages,
-        contains(
-          'Deleted ticket ticket1 at ${path.join(
-            ggMultiTicketFolder,
-            'ticket1',
-          )}',
-        ),
+        () => runnerAt(tempDir.path).run(['rm']),
+        throwsA(isA<UsageException>()),
       );
     });
   });

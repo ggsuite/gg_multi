@@ -10,6 +10,7 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:gg_one/gg_one.dart' as gg;
+// ignore: lines_longer_than_80_chars
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_multi/src/backend/npm_registry_checker.dart';
@@ -91,8 +92,7 @@ void main() {
     Directory(path.join(ticketDir.path, 'B')).createSync();
     File(path.join(ticketDir.path, 'A', 'pubspec.yaml'))
         .writeAsStringSync('name: A\n');
-    // B is a Flutter package to also cover the Flutter switch case in
-    // DoPublishCommand._refreshDependencies.
+    // B is a Flutter package to cover the Flutter switch in refresh.
     File(path.join(ticketDir.path, 'B', 'pubspec.yaml'))
         .writeAsStringSync('name: B\nflutter:\n');
   });
@@ -368,6 +368,8 @@ void main() {
           message: any(named: 'message'),
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
         ),
       ).thenAnswer((_) async {});
 
@@ -475,6 +477,179 @@ void main() {
       );
     });
 
+    test(
+      '--config delete_ticket=true bypasses the interactive prompt',
+      () async {
+        // delete_ticket: true must bypass the interactive prompt.
+        File(path.join(ticketDir.path, '.gg-publish.json'))
+            .writeAsStringSync('''
+{
+  "version_increment": "patch",
+  "merge_message": "via --config",
+  "delete_ticket": true
+}
+''');
+
+        final mockGgDoPublish = MockGgDoPublish();
+        final mockGgDoCommit = MockGgDoCommit();
+        final mockGgDoPush = MockGgDoPush();
+        final mockUnlocalizeRefs = MockUnlocalizeRefs();
+        final mockSortedProcessingList = MockSortedProcessingList();
+        final mockProcessRunner = MockProcessRunner();
+        _stubPubUpgrade(mockProcessRunner);
+        final mockCanPublishCommand = MockCanPublishCommand();
+        final mockDoReviewCommand = MockDoReviewCommand();
+        final mockGetVersion = MockGetVersion();
+        final mockSetRefVersion = MockSetRefVersion();
+        final mockGetRefVersion = MockGetRefVersion();
+        final mockPubDevChecker = MockPubDevChecker();
+
+        when(
+          () => mockDoReviewCommand.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            verbose: any(named: 'verbose'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => mockCanPublishCommand.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => mockSortedProcessingList.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            Node(
+              name: 'A',
+              directory: Directory(path.join(ticketDir.path, 'A')),
+              manifest: DartPackageManifest(pubspec: Pubspec('A')),
+            ),
+          ],
+        );
+        when(
+          () => mockUnlocalizeRefs.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => mockGgDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => mockGgDoPush.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => mockGgDoPublish.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+            verbose: any(named: 'verbose'),
+            versionIncrement: any(named: 'versionIncrement'),
+            askBeforePublishing: any(named: 'askBeforePublishing'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => mockGetVersion.get(
+            directory: any(named: 'directory'),
+          ),
+        ).thenAnswer((_) async => '1.0.0');
+        when(
+          () => mockGetRefVersion.get(
+            directory: any(named: 'directory'),
+            ref: any(named: 'ref'),
+          ),
+        ).thenAnswer((_) async => null);
+        when(
+          () => mockSetRefVersion.get(
+            directory: any(named: 'directory'),
+            ref: any(named: 'ref'),
+            version: any(named: 'version'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => mockPubDevChecker.getPackagePublishInfo(
+            packageName: any(named: 'packageName'),
+          ),
+        ).thenAnswer(
+          (invocation) async {
+            final packageName =
+                invocation.namedArguments[#packageName] as String;
+            return PackagePublishInfo(
+              packageName: packageName,
+              waitsForPubDev: false,
+            );
+          },
+        );
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['push', 'origin', '--delete', 'TICKPB'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+        var promptCalls = 0;
+
+        final runner = CommandRunner<void>('test', 'do publish ticket')
+          ..addCommand(
+            DoPublishCommand(
+              ggLog: ggLog,
+              ggDoPublish: mockGgDoPublish,
+              ggDoCommit: mockGgDoCommit,
+              ggDoPush: mockGgDoPush,
+              unlocalizeRefs: mockUnlocalizeRefs,
+              sortedProcessingList: mockSortedProcessingList,
+              processRunner: mockProcessRunner.call,
+              canPublishCommand: mockCanPublishCommand,
+              doReviewCommand: mockDoReviewCommand,
+              getVersionCommand: mockGetVersion,
+              setRefVersionCommand: mockSetRefVersion,
+              getRefVersionCommand: mockGetRefVersion,
+              pubDevChecker: mockPubDevChecker,
+              editMessage: (initialMessage) async => initialMessage,
+              confirmDeleteTicket: (_) {
+                promptCalls++;
+                return false;
+              },
+            ),
+          );
+
+        await runner.run([
+          'publish',
+          '--input',
+          ticketDir.path,
+          '--config',
+          '.gg-publish.json',
+        ]);
+
+        expect(
+          promptCalls,
+          0,
+          reason: 'config delete_ticket=true must skip the prompt',
+        );
+        expect(
+          Directory(path.join(ticketDir.path, 'A')).existsSync(),
+          isFalse,
+          reason: 'config delete_ticket=true must delete the ticket repos',
+        );
+      },
+    );
+
     test('waits on npm for a published TypeScript dependency', () async {
       // Make repo A a TypeScript project; B (Dart) depends on A.
       File(path.join(ticketDir.path, 'A', 'pubspec.yaml')).deleteSync();
@@ -495,6 +670,7 @@ void main() {
           'npm',
           ['install'],
           workingDirectory: any(named: 'workingDirectory'),
+          environment: any(named: 'environment'),
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
       final mockCanPublishCommand = MockCanPublishCommand();
@@ -573,6 +749,8 @@ void main() {
           message: any(named: 'message'),
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -732,6 +910,8 @@ void main() {
           message: any(named: 'message'),
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -803,6 +983,8 @@ void main() {
           message: 'edited explicit message',
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
         ),
       ).called(1);
     });
@@ -891,6 +1073,8 @@ void main() {
           message: any(named: 'message'),
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -960,6 +1144,8 @@ void main() {
           message: 'edited ticket message',
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
         ),
       ).called(1);
     });
@@ -1054,6 +1240,8 @@ void main() {
           message: any(named: 'message'),
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -1285,6 +1473,8 @@ void main() {
           message: any(named: 'message'),
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
         ),
       ).thenAnswer((invocation) {
         final repoDir = invocation.namedArguments[#directory] as Directory;
@@ -1368,8 +1558,7 @@ void main() {
         ),
       );
 
-      // Repositories should still exist in
-      // ticket workspace after failed publish attempt.
+      // Repos must still exist in the ticket after a failed publish.
       expect(
         Directory(path.join(ticketDir.path, 'A')).existsSync(),
         isTrue,
@@ -1467,6 +1656,8 @@ void main() {
           message: any(named: 'message'),
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
         ),
       ).thenAnswer((_) async {});
 
@@ -1639,6 +1830,8 @@ void main() {
           message: any(named: 'message'),
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -1759,9 +1952,7 @@ void main() {
         when(() => mockGetVersion.get(directory: bDir))
             .thenAnswer((_) async => '0.0.1');
 
-        // General stub must be registered before the specific one so that
-        // the specific stub for (bDir, 'A') wins. Mocktail uses the
-        // last registered matching stub.
+        // General stub first; later (bDir, 'A') stub wins (mocktail).
         when(
           () => mockGetRefVersion.get(
             directory: any(named: 'directory'),
@@ -1806,6 +1997,8 @@ void main() {
             message: any(named: 'message'),
             deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
             verbose: any(named: 'verbose'),
+            versionIncrement: any(named: 'versionIncrement'),
+            askBeforePublishing: any(named: 'askBeforePublishing'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -1976,6 +2169,8 @@ void main() {
             message: any(named: 'message'),
             deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
             verbose: any(named: 'verbose'),
+            versionIncrement: any(named: 'versionIncrement'),
+            askBeforePublishing: any(named: 'askBeforePublishing'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -2145,6 +2340,8 @@ void main() {
             message: any(named: 'message'),
             deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
             verbose: any(named: 'verbose'),
+            versionIncrement: any(named: 'versionIncrement'),
+            askBeforePublishing: any(named: 'askBeforePublishing'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -2293,6 +2490,8 @@ void main() {
           message: any(named: 'message'),
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -2458,6 +2657,8 @@ void main() {
           message: any(named: 'message'),
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -2711,8 +2912,7 @@ void main() {
 
     test('runs npm install for typescript repos instead of dart pub upgrade',
         () async {
-      // Replace pubspec.yaml with package.json + tsconfig.json so
-      // detectProjectType returns ProjectType.typescript for repo A.
+      // Swap pubspec for package.json+tsconfig so A becomes typescript.
       File(path.join(ticketDir.path, 'A', 'pubspec.yaml')).deleteSync();
       File(path.join(ticketDir.path, 'A', 'package.json')).writeAsStringSync(
         jsonEncode(<String, dynamic>{'name': 'A'}),
@@ -2798,6 +2998,7 @@ void main() {
           'npm',
           ['install'],
           workingDirectory: repoADir.path,
+          environment: any(named: 'environment'),
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
       when(
@@ -2822,6 +3023,8 @@ void main() {
           message: any(named: 'message'),
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -2852,13 +3055,19 @@ void main() {
 
       await runner.run(['publish', '--input', ticketDir.path]);
 
-      verify(
+      // Capture env to assert PNPM_CONFIG_BLOCK_EXOTIC_SUBDEPS=false.
+      final captured = verify(
         () => mockProcessRunner(
           'npm',
           ['install'],
           workingDirectory: repoADir.path,
+          environment: captureAny(named: 'environment'),
         ),
-      ).called(1);
+      ).captured;
+      expect(captured.length, 1);
+      final env = captured.single as Map<String, String>;
+      expect(env['PNPM_CONFIG_BLOCK_EXOTIC_SUBDEPS'], 'false');
+
       verifyNever(
         () => mockProcessRunner(
           'dart',
@@ -2876,6 +3085,7 @@ class MockProcessRunner extends Mock {
     String executable,
     List<String> arguments, {
     String? workingDirectory,
+    Map<String, String>? environment,
   });
 }
 
@@ -2887,6 +3097,7 @@ void _stubPubUpgrade(MockProcessRunner runner) {
       'dart',
       ['pub', 'upgrade'],
       workingDirectory: any(named: 'workingDirectory'),
+      environment: any(named: 'environment'),
     ),
   ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
 }

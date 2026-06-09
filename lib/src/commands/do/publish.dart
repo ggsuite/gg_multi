@@ -11,6 +11,7 @@ import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_lang/gg_lang.dart' as gg_lang;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
+// ignore: lines_longer_than_80_chars
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_log/gg_log.dart';
@@ -29,6 +30,7 @@ typedef ProcessRunner = Future<ProcessResult> Function(
   String executable,
   List<String> arguments, {
   String? workingDirectory,
+  Map<String, String>? environment,
 });
 
 /// Typedef for launching an interactive editor.
@@ -168,8 +170,7 @@ class DoPublishCommand extends DirCommand<void> {
     final ticketName = path.basename(ticketDir.path);
     final ticketDescription = _readTicketDescription(ticketDir);
 
-    // --config <path>: load .gg-publish.json once for the whole ticket. Per
-    // repo, fall back to top-level defaults when no override is provided.
+    // --config: load .gg-publish.json once; per-repo fallbacks apply.
     final String? configArg = argResults?['config'] as String?;
     final gg.PublishConfig? publishConfig = configArg == null
         ? null
@@ -262,9 +263,7 @@ class DoPublishCommand extends DirCommand<void> {
         }
       }
 
-      // Refresh dependencies for the detected project type after the
-      // pubspec.yaml / package.json changes above (unlocalize refs,
-      // restore publish_to, updated dependency versions).
+      // Refresh deps after manifest edits (refs, publish_to, versions).
       await _refreshDependencies(
         repoDir: repoDir,
         repoName: repoName,
@@ -284,9 +283,7 @@ class DoPublishCommand extends DirCommand<void> {
 
       taskLog(green('$repoName: updated with new references.'));
 
-      // Resolve merge message + version increment from --config when present,
-      // otherwise fall back to the CLI `--message` flag or .ticket description
-      // and ask the user via _editMessage (existing behaviour).
+      // Resolve message + version increment: --config > --message > prompt.
       final String publishMessage;
       final String? publishVersionIncrement;
       if (publishConfig != null) {
@@ -302,10 +299,7 @@ class DoPublishCommand extends DirCommand<void> {
         publishVersionIncrement = null;
       }
 
-      // Execute gg do publish. The multi-publish flow is inherently
-      // non-interactive (it loops across many repos in dependency order),
-      // so we never prompt before pushing to pub.dev / npm here — callers
-      // who want a confirmation should run `gg one do publish` per repo.
+      // gg do publish; multi flow is non-interactive (no confirm prompt).
       await _ggDoPublish.exec(
         directory: repoDir,
         ggLog: ggLog,
@@ -322,9 +316,7 @@ class DoPublishCommand extends DirCommand<void> {
           directory: repoDir,
         );
         if (version != null && version.isNotEmpty) {
-          // Use the published package name from the manifest (e.g. the
-          // scoped »@org/pkg« for npm) rather than the repository directory
-          // name, so dependency keys and registry lookups resolve correctly.
+          // Use manifest name (e.g. scoped »@org/pkg« for npm), not dir.
           final packageName = await _readManifestName(repoDir, repoName);
           refVersions[packageName] = version;
 
@@ -350,7 +342,9 @@ class DoPublishCommand extends DirCommand<void> {
       taskLog(green('$repoName: published successfully.'));
     }
 
-    final shouldDeleteTicket = _confirmDeleteTicket(ticketName);
+    // delete_ticket from .gg-publish.json wins; else interactive prompt.
+    final bool shouldDeleteTicket =
+        publishConfig?.deleteTicket ?? _confirmDeleteTicket(ticketName);
     if (!shouldDeleteTicket) {
       taskLog(
         yellow(
@@ -492,10 +486,20 @@ class DoPublishCommand extends DirCommand<void> {
         args = <String>['install'];
     }
 
+    // pnpm 11 blockExoticSubdeps must be off (env-var-only) for git chains.
+    final Map<String, String>? envOverride =
+        projectType == gg.ProjectType.typescript
+            ? <String, String>{
+                ...Platform.environment,
+                'PNPM_CONFIG_BLOCK_EXOTIC_SUBDEPS': 'false',
+              }
+            : null;
+
     final result = await _processRunner(
       executable,
       args,
       workingDirectory: repoDir.path,
+      environment: envOverride,
     );
     final cmd = '$executable ${args.join(' ')}';
     if (result.exitCode == 0) {
@@ -569,11 +573,13 @@ class DoPublishCommand extends DirCommand<void> {
     String executable,
     List<String> arguments, {
     String? workingDirectory,
+    Map<String, String>? environment,
   }) {
     return Process.run(
       executable,
       arguments,
       workingDirectory: workingDirectory,
+      environment: environment,
       runInShell: true,
     );
   }
@@ -599,8 +605,9 @@ class DoPublishCommand extends DirCommand<void> {
     argParser.addOption(
       'config',
       help: 'Path to a .gg-publish.json file with per-repo merge_message + '
-          'version_increment. Resolved as-given (CWD), then under the ticket '
-          'directory.',
+          'version_increment, plus the optional ticket-wide '
+          '`delete_ticket` flag. Resolved as-given (CWD), then under the '
+          'ticket directory.',
     );
     argParser.addFlag(
       'verbose',
