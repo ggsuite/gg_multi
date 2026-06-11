@@ -22,6 +22,7 @@ import '../../backend/add_repository_helper.dart';
 import '../../backend/filesystem_utils.dart';
 import '../../backend/git_platform.dart';
 import '../../backend/organization_utils.dart';
+import '../../backend/repo_folder_resolver.dart';
 import '../../backend/workspace_utils.dart';
 import 'add_deps.dart' show fetchDependencyRepoUrl;
 import 'install_git_hooks.dart';
@@ -229,7 +230,8 @@ class AddCommand extends Command<dynamic> {
         ticketDir.listSync(recursive: false).whereType<Directory>();
 
     for (final repoDir in existingTicketRepos) {
-      final repoName = path.basename(repoDir.path);
+      final repoName = RepoFolderResolver.packageName(repoDir) ??
+          path.basename(repoDir.path);
       final node = findNode(
         packageName: repoName,
         nodes: allNodes,
@@ -310,19 +312,25 @@ class AddCommand extends Command<dynamic> {
     final hostedLookupCache = <String, String?>{};
 
     while (true) {
-      final existingRepos = masterDir
-          .listSync(recursive: false)
-          .whereType<Directory>()
-          .map((d) => path.basename(d.path))
-          .toSet();
+      final existingDirs =
+          masterDir.listSync(recursive: false).whereType<Directory>().toList();
+
+      // Known names: folder basenames plus manifest package names, so that
+      // org-prefixed folders are recognized by their package name too.
+      final knownPackages = <String>{};
+      for (final dir in existingDirs) {
+        knownPackages.add(path.basename(dir.path));
+        final packageName = RepoFolderResolver.packageName(dir);
+        if (packageName != null) {
+          knownPackages.add(packageName);
+        }
+      }
 
       // Plan: depName -> targetArg (name for git, full URL for hosted).
       final plan = <String, String>{};
 
-      for (final repoName in existingRepos) {
-        final pubspecFile = File(
-          path.join(masterWorkspacePath, repoName, 'pubspec.yaml'),
-        );
+      for (final repoDir in existingDirs) {
+        final pubspecFile = File(path.join(repoDir.path, 'pubspec.yaml'));
         if (!pubspecFile.existsSync()) {
           continue;
         }
@@ -336,7 +344,7 @@ class AddCommand extends Command<dynamic> {
         Future<void> scan(Map<String, Dependency> deps) async {
           for (final entry in deps.entries) {
             final depName = entry.key;
-            if (existingRepos.contains(depName) || plan.containsKey(depName)) {
+            if (knownPackages.contains(depName) || plan.containsKey(depName)) {
               continue;
             }
             final dep = entry.value;
@@ -379,8 +387,11 @@ class AddCommand extends Command<dynamic> {
       bool addedAny = false;
       for (final entry in plan.entries) {
         final depName = entry.key;
-        final destDir = Directory(path.join(masterWorkspacePath, depName));
-        if (destDir.existsSync()) {
+        Directory? destDir = RepoFolderResolver.resolve(
+          workspacePath: masterWorkspacePath,
+          repoName: depName,
+        );
+        if (destDir != null) {
           continue;
         }
         try {
@@ -395,7 +406,11 @@ class AddCommand extends Command<dynamic> {
         } catch (_) {
           // Swallow: addRepositoryHelper already logged the failure.
         }
-        if (destDir.existsSync()) {
+        destDir = RepoFolderResolver.resolve(
+          workspacePath: masterWorkspacePath,
+          repoName: depName,
+        );
+        if (destDir != null) {
           addedAny = true;
         }
       }
@@ -476,13 +491,18 @@ class AddCommand extends Command<dynamic> {
     required String ticketPath,
     required GgLog ggLog,
   }) async {
-    final srcDir = Directory(path.join(masterWorkspacePath, repoName));
-    if (!srcDir.existsSync()) {
+    final srcDir = RepoFolderResolver.resolve(
+      workspacePath: masterWorkspacePath,
+      repoName: repoName,
+    );
+    if (srcDir == null) {
       ggLog(red('Repository $repoName not found in master workspace.'));
       return;
     }
 
-    final destDir = Directory(path.join(ticketPath, repoName));
+    // The ticket copy keeps the folder name used in the master workspace.
+    final folderName = path.basename(srcDir.path);
+    final destDir = Directory(path.join(ticketPath, folderName));
     if (destDir.existsSync() && destDir.listSync().isNotEmpty) {
       ggLog(darkGray('$repoName already exists in ticket workspace.'));
       return;

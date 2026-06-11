@@ -137,6 +137,19 @@ my_project/
 wherever you invoke `gg_multi` to find the matching workspace, so the
 commands work from any sub-directory inside it.
 
+### Org-prefixed repo folders
+
+Repos newly added to `.master/` are cloned into a folder named after
+their organization: `<org>_<repo>` for Dart repos (for example
+`ggsuite_gg_test`) and `<org>-<repo>` for TypeScript repos. This lets
+same-named repos from different organizations coexist on disk. Folders
+created before this convention keep their plain repo name and continue
+to work: commands resolve a repo by exact folder name first, then by
+the package name in its manifest, then by its git remote URL. Ticket
+copies always reuse the folder name of the master clone. Note that two
+packages with the same *manifest* name still collide in the dependency
+graph — the prefix only solves the on-disk collision.
+
 ## Step-by-step: working on a ticket end-to-end
 
 ### 0. One-time project setup

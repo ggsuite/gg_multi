@@ -2,6 +2,18 @@
 
 ## \[Unreleased\]
 
+### Added
+
+- Org-prefixed repo folders: repos newly added to the master workspace
+are cloned into `<org>_<repo>` (Dart) / `<org>-<repo>` (TypeScript)
+folders, so same-named repos from different organizations can coexist.
+Existing unprefixed folders keep working: `do add`, `do rm`, ticket
+copies and transitive-dep cloning now resolve repos by folder name,
+manifest package name or git remote URL (`RepoFolderResolver`).
+- `do add <name>` now tries the known organizations from `.organizations`
+first and uses the bare `<name>/<name>` guess only as a last resort, so
+a plain add clones straight from the right org without a failed attempt.
+
 ### Reverted
 
 - Revert parallelization of `gg can commit` and `gg do push` (commit
@@ -26,6 +38,12 @@ localization commands again.
 ### Removed
 
 - remove unlocalize step from do review command and tests
+
+## [5.2.0] - 2026-06-11
+
+### Changed
+
+- gg\_multi: changed references to git
 
 ## [5.1.0] - 2026-06-09
 
@@ -328,6 +346,7 @@ localization commands again.
 - Remove prints
 - Remove gh pr create from review
 
+[5.2.0]: https://github.com/ggsuite/gg_multi/compare/5.1.0...5.2.0
 [5.1.0]: https://github.com/ggsuite/gg_multi/compare/5.0.0...5.1.0
 [5.0.0]: https://github.com/ggsuite/gg_multi/compare/4.5.2...5.0.0
 [4.5.2]: https://github.com/ggsuite/gg_multi/compare/4.5.1...4.5.2

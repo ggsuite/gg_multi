@@ -11,6 +11,7 @@ import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 import '../../backend/add_repository_helper.dart';
 import '../../backend/constants.dart';
+import '../../backend/repo_folder_resolver.dart';
 
 /// Factory for `Directory` instances — overridable in tests.
 typedef DirectoryFactory = Directory Function(String path);
@@ -72,7 +73,12 @@ class RemoveCommand extends Command<void> {
   // ...........................................................................
   /// Deletes the repo from the ticket the command was invoked in.
   void _removeFromTicket(String repoName) {
-    final ticketRepoDir = directoryFactory(path.join(rootPath, repoName));
+    final resolved = RepoFolderResolver.resolve(
+      workspacePath: rootPath,
+      repoName: repoName,
+    );
+    final ticketRepoDir =
+        resolved ?? directoryFactory(path.join(rootPath, repoName));
     if (ticketRepoDir.existsSync()) {
       ticketRepoDir.deleteSync(recursive: true);
       ggLog(
@@ -95,9 +101,14 @@ class RemoveCommand extends Command<void> {
   /// Scans tickets, deletes the master copy iff none reference the repo.
   void _removeFromMasterIfUnused(String repoName) {
     final ticketsContainingRepo = _ticketsReferencing(repoName);
-    final masterRepoDir = directoryFactory(
-      path.join(rootPath, ggMultiMasterFolder, repoName),
+    final resolved = RepoFolderResolver.resolve(
+      workspacePath: path.join(rootPath, ggMultiMasterFolder),
+      repoName: repoName,
     );
+    final masterRepoDir = resolved ??
+        directoryFactory(
+          path.join(rootPath, ggMultiMasterFolder, repoName),
+        );
     final existsInMaster = masterRepoDir.existsSync();
 
     if (ticketsContainingRepo.isEmpty && !existsInMaster) {
@@ -130,7 +141,11 @@ class RemoveCommand extends Command<void> {
     if (!ticketsRoot.existsSync()) return const <String>[];
     return [
       for (final ticket in ticketsRoot.listSync().whereType<Directory>())
-        if (Directory(path.join(ticket.path, repoName)).existsSync())
+        if (RepoFolderResolver.resolve(
+              workspacePath: ticket.path,
+              repoName: repoName,
+            ) !=
+            null)
           path.basename(ticket.path),
     ];
   }

@@ -146,6 +146,61 @@ void main() {
       });
     });
 
+    group('org-prefixed folders', () {
+      // Creates a repo folder carrying a pubspec name that differs from the
+      // (org-prefixed) folder name.
+      Directory makePrefixed(Directory parent, String folder, String pkg) {
+        final dir = Directory(path.join(parent.path, folder))
+          ..createSync(recursive: true);
+        File(path.join(dir.path, 'pubspec.yaml'))
+            .writeAsStringSync('name: $pkg\nversion: 1.0.0\n');
+        return dir;
+      }
+
+      test('deletes a prefixed master folder addressed by package name',
+          () async {
+        final dir = makePrefixed(masterWs, 'ggsuite_foo', 'foo');
+
+        await runnerAt(tempDir.path).run(['rm', 'foo']);
+
+        expect(dir.existsSync(), isFalse);
+        expect(
+          messages,
+          contains('Deleted repository foo from master workspace.'),
+        );
+      });
+
+      test('finds a prefixed ticket copy when refusing master deletion',
+          () async {
+        makePrefixed(masterWs, 'ggsuite_foo', 'foo');
+        final alphaDir = Directory(path.join(ticketsRoot.path, 'alpha'))
+          ..createSync();
+        makePrefixed(alphaDir, 'ggsuite_foo', 'foo');
+
+        await runnerAt(tempDir.path).run(['rm', 'foo']);
+
+        expect(
+          messages,
+          contains('Repository foo is used by the following tickets:'),
+        );
+        expect(messages, contains(' - alpha'));
+      });
+
+      test('deletes a prefixed folder from inside a ticket', () async {
+        final alphaDir = Directory(path.join(ticketsRoot.path, 'alpha'))
+          ..createSync();
+        final repo = makePrefixed(alphaDir, 'ggsuite_foo', 'foo');
+
+        await runnerAt(alphaDir.path).run(['rm', 'foo']);
+
+        expect(repo.existsSync(), isFalse);
+        expect(
+          messages,
+          contains('Deleted repository foo from ticket alpha.'),
+        );
+      });
+    });
+
     test('throws UsageException when missing target argument', () async {
       expect(
         () => runnerAt(tempDir.path).run(['rm']),

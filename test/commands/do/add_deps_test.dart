@@ -409,6 +409,34 @@ dependencies:
         isTrue,
       );
     });
+
+    test('reports not-found when the repo resolves to no folder', () async {
+      // "ghost" matches no folder, so the resolver returns null and the
+      // command falls back to the plain workspace path (which is absent).
+      await runner.run(['add-deps', 'ghost']);
+
+      expect(
+        logMessages.any((m) => m.contains('pubspec.yaml not found')),
+        isTrue,
+      );
+    });
+
+    test('resolves a prefixed dependency folder by package name', () async {
+      final prefixed = Directory(path.join(workspacePath, 'ggsuite_dep_pkg'))
+        ..createSync(recursive: true);
+      File(path.join(prefixed.path, 'pubspec.yaml')).writeAsStringSync(
+        'name: dep_pkg\nversion: 1.0.0\n',
+      );
+
+      await runner.run(['add-deps', 'dep_pkg']);
+
+      expect(
+        logMessages.any(
+          (m) => m.contains('No dependencies found') && m.contains('dep_pkg'),
+        ),
+        isTrue,
+      );
+    });
   });
 
   group('fetchDependencyRepoUrl', () {

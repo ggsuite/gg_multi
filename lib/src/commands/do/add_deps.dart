@@ -18,6 +18,7 @@ import '../../backend/constants.dart';
 import '../../backend/git_handler.dart';
 import '../../backend/add_repository_helper.dart';
 import '../../backend/git_platform.dart';
+import '../../backend/repo_folder_resolver.dart';
 
 /// Command to add dependencies of a project from the master workspace.
 /// It iterates over dependencies in pubspec.yaml and adds each one using
@@ -200,7 +201,13 @@ Future<String?> _fetchNpmRepoUrl(
   required GgLog ggLog,
 }) {
   final repoName = extractRepoName(targetArg);
-  final repoDir = Directory(path.join(workspacePath, repoName ?? ''));
+  final repoDir = (repoName != null
+          ? RepoFolderResolver.resolve(
+              workspacePath: workspacePath,
+              repoName: repoName,
+            )
+          : null) ??
+      Directory(path.join(workspacePath, repoName ?? ''));
 
   final gg.ProjectType type;
   try {
