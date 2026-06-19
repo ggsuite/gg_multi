@@ -252,7 +252,10 @@ class AddCommand extends Command<dynamic> {
 
     final finalToCopy = <String>{
       ...requestedRepoNames,
-      ...betweenNodes.map((n) => n.name),
+      // Use the directory name, not the (primary) package name: for a
+      // cross-language bridge repo the Dart package name differs from the
+      // folder name, and the copy step locates repos by folder name.
+      ...betweenNodes.map((n) => path.basename(n.directory.path)),
     };
 
     final GgLog taskLog = verbose ? ggLog : <String>[].add;
@@ -308,6 +311,10 @@ class AddCommand extends Command<dynamic> {
         .map((o) => o.url.replaceAll(RegExp(r'/+$'), '').toLowerCase())
         .toSet();
 
+    // Known org names, used to map npm scopes (`@<org>/<name>`) back to a
+    // cloneable repository in a known organization.
+    final orgNames = orgs.map((o) => o.name.toLowerCase()).toSet();
+
     // Cache pub.dev lookups across the fixpoint loop.
     final hostedLookupCache = <String, String?>{};
 
@@ -330,17 +337,6 @@ class AddCommand extends Command<dynamic> {
       final plan = <String, String>{};
 
       for (final repoDir in existingDirs) {
-        final pubspecFile = File(path.join(repoDir.path, 'pubspec.yaml'));
-        if (!pubspecFile.existsSync()) {
-          continue;
-        }
-        Pubspec parsed;
-        try {
-          parsed = Pubspec.parse(pubspecFile.readAsStringSync());
-        } catch (_) {
-          continue; // skip unparseable pubspec
-        }
-
         Future<void> scan(Map<String, Dependency> deps) async {
           for (final entry in deps.entries) {
             final depName = entry.key;
@@ -376,8 +372,29 @@ class AddCommand extends Command<dynamic> {
           }
         }
 
-        await scan(parsed.dependencies);
-        await scan(parsed.devDependencies);
+        // Dart: scan pubspec.yaml dependencies.
+        final pubspecFile = File(path.join(repoDir.path, 'pubspec.yaml'));
+        if (pubspecFile.existsSync()) {
+          Pubspec? parsed;
+          try {
+            parsed = Pubspec.parse(pubspecFile.readAsStringSync());
+          } catch (_) {
+            parsed = null; // skip unparseable pubspec
+          }
+          if (parsed != null) {
+            await scan(parsed.dependencies);
+            await scan(parsed.devDependencies);
+          }
+        }
+
+        // TypeScript: scan package.json for cross-language (npm) deps so a
+        // bridge referenced only from the TypeScript side is cloned too.
+        _planNpmDepsFromPackageJson(
+          repoDir: repoDir,
+          knownPackages: knownPackages,
+          orgNames: orgNames,
+          plan: plan,
+        );
       }
 
       if (plan.isEmpty) {
@@ -423,6 +440,68 @@ class AddCommand extends Command<dynamic> {
   }
 
   // ...........................................................................
+  /// Adds the scoped npm dependencies of [repoDir]'s `package.json` to [plan]
+  /// when their scope maps to a known organization in [orgNames].
+  ///
+  /// This is what makes the transitive clone cross-language: a bridge repo
+  /// that is only referenced from a TypeScript package (via its npm name,
+  /// e.g. `@tssuite/gg-bridge-dart-typescript`) still gets cloned into the
+  /// master workspace. The bare package name is used as target so that
+  /// [addRepositoryHelper] resolves it against the known organization URLs.
+  void _planNpmDepsFromPackageJson({
+    required Directory repoDir,
+    required Set<String> knownPackages,
+    required Set<String> orgNames,
+    required Map<String, String> plan,
+  }) {
+    final packageJsonFile = File(path.join(repoDir.path, 'package.json'));
+    if (!packageJsonFile.existsSync()) {
+      return;
+    }
+
+    Map<String, dynamic> json;
+    try {
+      final decoded = jsonDecode(packageJsonFile.readAsStringSync());
+      if (decoded is! Map<String, dynamic>) {
+        return;
+      }
+      json = decoded;
+    } catch (_) {
+      return; // skip unparseable package.json
+    }
+
+    void scanSection(String section) {
+      final deps = json[section];
+      if (deps is! Map<String, dynamic>) {
+        return;
+      }
+      for (final fullName in deps.keys) {
+        // Only scoped deps (`@org/name`) can be mapped back to an org.
+        if (!fullName.startsWith('@')) {
+          continue;
+        }
+        final slash = fullName.indexOf('/');
+        if (slash <= 1 || slash == fullName.length - 1) {
+          continue;
+        }
+        final scope = fullName.substring(1, slash).toLowerCase();
+        if (!orgNames.contains(scope)) {
+          continue;
+        }
+        final bareName = fullName.substring(slash + 1);
+        if (knownPackages.contains(bareName) || plan.containsKey(bareName)) {
+          continue;
+        }
+        // Bare name: addRepositoryHelper falls back to known org URLs.
+        plan[bareName] = bareName;
+      }
+    }
+
+    scanSection('dependencies');
+    scanSection('devDependencies');
+  }
+
+  // ...........................................................................
   /// Find a node by package name in the dependency graph.
   Node? findNode({
     required String packageName,
@@ -436,6 +515,11 @@ class AddCommand extends Command<dynamic> {
       return node;
     }
     for (final Node n in nodes.values) {
+      // Match by primary name or any cross-language alias (Dart name, npm
+      // name, directory name), so a repo can be requested under any of them.
+      if (n.name == packageName || n.aliases.contains(packageName)) {
+        return n;
+      }
       final Node? foundNode = findNode(
         packageName: packageName,
         nodes: n.dependencies,
@@ -526,38 +610,52 @@ class AddCommand extends Command<dynamic> {
       ggLog(red('Failed to checkout branch $ticketName: $e'));
     }
 
-    // Install deps: `dart pub get` for Dart, `<pm> install` for TS.
-    gg.ProjectType? projectType;
-    try {
-      projectType = gg.detectProjectType(destDir);
-    } catch (_) {
-      projectType = null;
-    }
-
-    final String executable;
-    final List<String> args;
-    if (projectType == gg.ProjectType.typescript) {
-      executable = gg.detectTypeScriptPackageManager(destDir).executable;
-      args = <String>['install'];
-    } else {
-      executable = 'dart';
-      args = <String>['pub', 'get'];
-    }
-
-    final result = await processRunner(
-      executable,
-      args,
-      workingDirectory: destDir.path,
-      runInShell: true,
+    // Install deps for every package manager the repo uses (Dart and/or TS).
+    await _installDependencies(
+      dir: destDir,
+      repoName: repoName,
+      ggLog: ggLog,
     );
-    final cmd = '$executable ${args.join(' ')}';
-    if (result.exitCode == 0) {
-      ggLog(darkGray('Executed $cmd in $repoName.'));
-    } else {
-      ggLog(red('Failed to execute $cmd in $repoName: ${result.stderr}'));
-    }
 
     ggLog(green('Added repository $repoName to ticket workspace.'));
+  }
+
+  /// Installs dependencies for every package manager the repo in [dir] uses.
+  ///
+  /// A cross-language bridge repo carrying both a `pubspec.yaml` and a
+  /// `package.json` gets both its Dart and its TypeScript dependencies
+  /// installed. When [upgradeDart] is true, `dart pub upgrade` is used instead
+  /// of `dart pub get` (used after re-localizing references).
+  Future<void> _installDependencies({
+    required Directory dir,
+    required String repoName,
+    required GgLog ggLog,
+    bool upgradeDart = false,
+  }) async {
+    final commands = <List<String>>[];
+
+    if (File(path.join(dir.path, 'pubspec.yaml')).existsSync()) {
+      commands.add(<String>['dart', 'pub', upgradeDart ? 'upgrade' : 'get']);
+    }
+    if (File(path.join(dir.path, 'package.json')).existsSync()) {
+      final pm = gg.detectTypeScriptPackageManager(dir).executable;
+      commands.add(<String>[pm, 'install']);
+    }
+
+    for (final command in commands) {
+      final result = await processRunner(
+        command.first,
+        command.sublist(1),
+        workingDirectory: dir.path,
+        runInShell: true,
+      );
+      final cmd = command.join(' ');
+      if (result.exitCode == 0) {
+        ggLog(darkGray('Executed $cmd in $repoName.'));
+      } else {
+        ggLog(red('Failed to execute $cmd in $repoName: ${result.stderr}'));
+      }
+    }
   }
 
   /// Prepares the master repository state before copying it into a ticket.
@@ -765,38 +863,13 @@ class AddCommand extends Command<dynamic> {
         throw Exception('Failed to relocalize ticket');
       }
 
-      // Refresh deps after relocalize (dart pub upgrade / pm install).
-      gg.ProjectType? projectType;
-      try {
-        projectType = gg.detectProjectType(repoDir);
-      } catch (_) {
-        projectType = null;
-      }
-
-      if (projectType != null) {
-        final String executable;
-        final List<String> args;
-        if (projectType == gg.ProjectType.typescript) {
-          executable = gg.detectTypeScriptPackageManager(repoDir).executable;
-          args = <String>['install'];
-        } else {
-          executable = 'dart';
-          args = <String>['pub', 'upgrade'];
-        }
-
-        final refresh = await processRunner(
-          executable,
-          args,
-          workingDirectory: repoDir.path,
-          runInShell: true,
-        );
-        final cmd = '$executable ${args.join(' ')}';
-        if (refresh.exitCode == 0) {
-          ggLog(darkGray('Executed $cmd in $repoName.'));
-        } else {
-          ggLog(red('Failed to execute $cmd in $repoName: ${refresh.stderr}'));
-        }
-      }
+      // Refresh deps after relocalize (dart pub upgrade and/or pm install).
+      await _installDependencies(
+        dir: repoDir,
+        repoName: repoName,
+        ggLog: ggLog,
+        upgradeDart: true,
+      );
 
       // Commit per repo; skip changelog (gg_changelog needs pubspec.yaml).
       try {

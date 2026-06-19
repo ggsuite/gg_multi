@@ -284,6 +284,24 @@ void main() {
         expect(name, 'tssuite-ts_foo');
       });
 
+      test('uses a hyphen separator for bridge repos (treated as TS)', () {
+        // A bridge ships pubspec.yaml + package.json + tsconfig.json. Although
+        // detectProjectType would call it dart, the clone folder is named
+        // TypeScript-style with a hyphen (e.g. `gg-bridge-dart-typescript`).
+        final dir = makeRepo(
+          'gg_bridge',
+          pubspecName: 'gg_bridge',
+          packageJsonName: 'gg_bridge',
+          tsconfig: true,
+        );
+        final name = RepoFolderResolver.orgPrefixedFolderName(
+          repoName: 'gg_bridge',
+          org: 'ggsuite',
+          repoDir: dir,
+        );
+        expect(name, 'ggsuite-gg_bridge');
+      });
+
       test('returns the repo name when the project type is unknown', () {
         final dir = Directory(path.join(workspace.path, 'gg_foo'))
           ..createSync();

@@ -1245,6 +1245,149 @@ void main() {
     );
 
     test(
+      'executes npm install for bridge repos (treated as TypeScript), '
+      'not dart pub upgrade',
+      () async {
+        final mockSortedProcessingList = MockSortedProcessingList();
+        final mockUnlocalizeRefs = MockUnlocalizeRefs();
+        final mockLocalizeRefsToGit = MockLocalizeRefsToGit();
+        final mockCanReviewCommand = MockCanReviewCommand();
+        final mockGgDoCommit = MockGgDoCommit();
+        final mockGgDoPush = MockGgDoPush();
+        final mockProcessRunner = MockProcessRunner();
+        stubGitHeadUnchanged(mockProcessRunner);
+
+        // A bridge repo carries pubspec.yaml AND package.json + tsconfig.json.
+        final repoADir = Directory(path.join(ticketDir.path, 'A'));
+        File(path.join(repoADir.path, 'pubspec.yaml')).writeAsStringSync(
+          'name: A\n',
+        );
+        File(path.join(repoADir.path, 'package.json')).writeAsStringSync(
+          jsonEncode(<String, dynamic>{'name': 'A'}),
+        );
+        File(path.join(repoADir.path, 'tsconfig.json')).writeAsStringSync('{}');
+
+        when(
+          () => mockCanReviewCommand.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockSortedProcessingList.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            Node(
+              name: 'A',
+              directory: repoADir,
+              manifest: TypeScriptPackageManifest(
+                name: 'A',
+                dependencies: const <String>[],
+                devDependencies: const <String>[],
+                rawJson: const <String, dynamic>{'name': 'A'},
+              ),
+            ),
+          ],
+        );
+
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['merge', 'origin/main'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+        when(
+          () => mockLocalizeRefsToGit.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            gitRef: any(named: 'gitRef'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockGgDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockGgDoPush.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockProcessRunner(
+            'npm',
+            ['install'],
+            workingDirectory: repoADir.path,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['ls-remote', '--heads', 'origin', 'TICKDR'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+        final runner = CommandRunner<void>('test', 'do review ticket')
+          ..addCommand(
+            DoReviewCommand(
+              ggLog: ggLog,
+              canReviewCommand: mockCanReviewCommand,
+              unlocalizeRefs: mockUnlocalizeRefs,
+              localizeRefsToGit: mockLocalizeRefsToGit,
+              sortedProcessingList: mockSortedProcessingList,
+              ggDoCommit: mockGgDoCommit,
+              ggDoPush: mockGgDoPush,
+              processRunner: mockProcessRunner.call,
+            ),
+          );
+
+        await runner.run([
+          'review',
+          '--verbose',
+          '--input',
+          ticketDir.path,
+        ]);
+
+        // The bridge took the TypeScript path: npm install, not pub upgrade.
+        expect(
+          messages.any(
+            (m) => m.contains('Executed npm install in A.'),
+          ),
+          isTrue,
+        );
+        verify(
+          () => mockProcessRunner(
+            'npm',
+            ['install'],
+            workingDirectory: repoADir.path,
+          ),
+        ).called(1);
+        verifyNever(
+          () => mockProcessRunner(
+            'dart',
+            ['pub', 'upgrade'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        );
+      },
+    );
+
+    test(
       'uses quiet taskLog when verbose is false',
       () async {
         final mockSortedProcessingList = MockSortedProcessingList();

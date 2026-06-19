@@ -67,6 +67,57 @@ dev_dependencies:
       expect(messages.any((msg) => msg.contains('^1.4.2')), isTrue);
     });
 
+    test('also lists package.json dependencies for a bridge', () async {
+      // project123 already has a pubspec.yaml (from setUp); adding a
+      // package.json turns it into a cross-language bridge.
+      File(path.join(masterWorkspace.path, 'project123', 'package.json'))
+          .writeAsStringSync(
+        '{"name":"project123","version":"1.0.0",'
+        '"dependencies":{"left_pad":"^1.0.0"}}',
+      );
+
+      final runner = CommandRunner<void>('test', 'Test ListDepsCommand');
+      runner.addCommand(
+        ListDepsCommand(
+          ggLog: messages.add,
+          workspacePath: masterWorkspace.path,
+        ),
+      );
+
+      await runner.run(['deps', 'project123']);
+
+      // Dart side still listed.
+      expect(messages[0], 'project123 v.1.0.0 (dart)');
+      expect(messages.any((m) => m.contains('json_dart')), isTrue);
+      // TypeScript side now listed too.
+      expect(
+        messages.any(
+          (m) => m.contains('left_pad') && m.contains('(typescript)'),
+        ),
+        isTrue,
+      );
+    });
+
+    test('logs an error for a malformed package.json', () async {
+      File(path.join(masterWorkspace.path, 'project123', 'package.json'))
+          .writeAsStringSync('{ not valid json');
+
+      final runner = CommandRunner<void>('test', 'Test ListDepsCommand');
+      runner.addCommand(
+        ListDepsCommand(
+          ggLog: messages.add,
+          workspacePath: masterWorkspace.path,
+        ),
+      );
+
+      await runner.run(['deps', 'project123']);
+
+      expect(
+        messages.any((m) => m.contains('Error parsing package.json')),
+        isTrue,
+      );
+    });
+
     test('prints help message when --help is passed', () async {
       final runner = CommandRunner<void>('test', 'Test ListDepsCommand');
       runner.addCommand(

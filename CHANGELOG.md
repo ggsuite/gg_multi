@@ -39,6 +39,23 @@ localization commands again.
 
 - remove unlocalize step from do review command and tests
 
+## [5.3.0] - 2026-06-19
+
+### Changed
+
+- Build dependency graph across Dart and TypeScript bridge repos
+- Treat dart-typescript bridge repos as TypeScript for can/do review (npm install, skip dart pub get); export isBridgeProject from gg\_one
+- Introduce checkProjectType() as single source of truth for bridge->TypeScript check rule; add .example() real-instance factories & P:\programs\flutter/bin/internal/exit\_with\_errorlevel.bat
+- Treat bridge repos as both Dart and TypeScript in do add-deps: getManifestDependenciesFromWorkspace now unions both manifests, tagging each dependency with its registry (pub.dev vs npm) so a bridge's deps are cloned from the correct source
+- Publish bridges as TypeScript: pnpm-aware publish, dual-manifest version bump, non-swallowed publish errors, idempotent resume, review skips merged repos, link: for local TS deps, package.json scripts check
+- gg\_multi: changed references to git
+
+### Fixed
+
+- Fix bridge handling: cancel\_review now runs npm install for bridges (symmetric to do/review); repo\_folder\_resolver names bridge clone folders TypeScript-style (hyphen) via checkProjectType
+- Fix non-destructive sorted processing order (no longer mutates live Node.dependencies); make do/publish dependency refresh treat bridges as TypeScript via checkProjectType, symmetric with do/review and do/cancel\_review
+- Review fixes: keep full npm-scoped names in the dependency graph so different scopes stay distinct (no false duplicate-drop / misrouted edges); surface bridges in gg ls (dart+nodejs label, list package.json deps as typescript)
+
 ## [5.2.0] - 2026-06-11
 
 ### Changed
@@ -346,6 +363,7 @@ localization commands again.
 - Remove prints
 - Remove gh pr create from review
 
+[5.3.0]: https://github.com/ggsuite/gg_multi/compare/5.2.0...5.3.0
 [5.2.0]: https://github.com/ggsuite/gg_multi/compare/5.1.0...5.2.0
 [5.1.0]: https://github.com/ggsuite/gg_multi/compare/5.0.0...5.1.0
 [5.0.0]: https://github.com/ggsuite/gg_multi/compare/4.5.2...5.0.0

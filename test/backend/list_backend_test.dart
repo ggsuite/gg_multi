@@ -77,6 +77,17 @@ void main() {
         expect(info.version, equals('v.1.0.0'));
       });
 
+      test('should label a bridge (pubspec + package.json) as dart+nodejs',
+          () async {
+        File(p.join(tempDir.path, 'pubspec.yaml'))
+            .writeAsStringSync('name: bridge\nversion: 1.0.0');
+        File(p.join(tempDir.path, 'package.json')).writeAsStringSync('{}');
+
+        var info = await getRepoInfo(tempDir.path);
+
+        expect(info.language, equals('dart+nodejs'));
+      });
+
       test('should return python language if a .py file exists', () async {
         // Create a dummy .py file
         File(p.join(tempDir.path, 'script.py'))

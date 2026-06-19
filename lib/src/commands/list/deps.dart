@@ -4,6 +4,7 @@
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
@@ -11,6 +12,7 @@ import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 import '../../backend/add_repository_helper.dart';
 import '../../backend/constants.dart';
+import '../../backend/repo_folder_resolver.dart';
 
 /// Command to list dependencies of a project from the master workspace.
 class ListDepsCommand extends Command<dynamic> {
@@ -70,5 +72,42 @@ class ListDepsCommand extends Command<dynamic> {
     pubspec.devDependencies.forEach((key, value) {
       ggLog(' |-- dev:$key ${value.toString()} (dart)');
     });
+
+    // A cross-language bridge ships a package.json alongside its pubspec.yaml;
+    // list its TypeScript dependencies too.
+    // coverage:ignore-start
+    final repoName = extractRepoName(targetArg) ?? targetArg;
+    final repoDir = RepoFolderResolver.resolve(
+          workspacePath: workspacePath,
+          repoName: repoName,
+        ) ??
+        Directory(path.join(workspacePath, repoName));
+    // coverage:ignore-end
+    final packageJson = File(path.join(repoDir.path, 'package.json'));
+    if (packageJson.existsSync()) {
+      _listPackageJsonDeps(packageJson);
+    }
+  }
+
+  void _listPackageJsonDeps(File packageJson) {
+    final Map<String, dynamic> json;
+    try {
+      json = jsonDecode(packageJson.readAsStringSync()) as Map<String, dynamic>;
+    } catch (e) {
+      ggLog('Error parsing package.json: $e');
+      return;
+    }
+
+    void listSection(String key, String prefix) {
+      final section = json[key];
+      if (section is Map) {
+        section.forEach((depName, spec) {
+          ggLog(' |-- $prefix$depName ${spec.toString()} (typescript)');
+        });
+      }
+    }
+
+    listSection('dependencies', '');
+    listSection('devDependencies', 'dev:');
   }
 }

@@ -249,7 +249,7 @@ dependencies:
       expect(
         logMessages,
         contains('No repository URL found for '
-            'dependency no_repo_dep on pub.dev, skipping.'),
+            'dependency no_repo_dep, skipping.'),
       );
     });
 
@@ -391,6 +391,69 @@ dependencies:
       verify(
         () => mockGitCloner.cloneRepo(
           'https://github.com/o/vitest.git',
+          any(),
+        ),
+      ).called(1);
+    });
+
+    test('reads both manifests for a bridge (pub.dev + npm)', () async {
+      // A bridge ships pubspec.yaml + package.json + tsconfig.json. Each
+      // dependency must be resolved against its own registry: the Dart dep via
+      // pub.dev, the TypeScript dep via npm.
+      final bridgeRunner = CommandRunner<void>('test', 'Test AddDepsCommand')
+        ..addCommand(
+          AddDepsCommand(
+            ggLog: ggLog,
+            gitCloner: mockGitCloner,
+            workspacePath: workspacePath,
+            packageFetcher: (uri) async {
+              final name =
+                  uri.pathSegments.isNotEmpty ? uri.pathSegments.last : '';
+              if (uri.host.contains('npmjs.org')) {
+                return http.Response(
+                  jsonEncode({
+                    'repository': {
+                      'type': 'git',
+                      'url': 'git+https://github.com/o/$name.git',
+                    },
+                  }),
+                  200,
+                );
+              }
+              return http.Response(
+                jsonEncode({
+                  'latest': {
+                    'pubspec': {
+                      'repository': 'https://github.com/$name/$name.git',
+                    },
+                  },
+                }),
+                200,
+              );
+            },
+          ),
+        );
+      File(path.join(dirProject.path, 'pubspec.yaml')).writeAsStringSync(
+        'name: bridge\nversion: 1.0.0\ndependencies:\n  dart_dep: ^1.0.0\n',
+      );
+      File(path.join(dirProject.path, 'package.json')).writeAsStringSync(
+        '{"name": "bridge", "dependencies": {"ts_dep": "^1.0.0"}}',
+      );
+      File(path.join(dirProject.path, 'tsconfig.json')).writeAsStringSync('{}');
+
+      await bridgeRunner.run(['add-deps', 'project']);
+
+      // Dart dep resolved via pub.dev.
+      verify(
+        () => mockGitCloner.cloneRepo(
+          'https://github.com/dart_dep/dart_dep.git',
+          any(),
+        ),
+      ).called(1);
+      // TypeScript dep resolved via npm.
+      verify(
+        () => mockGitCloner.cloneRepo(
+          'https://github.com/o/ts_dep.git',
           any(),
         ),
       ).called(1);

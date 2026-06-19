@@ -114,7 +114,9 @@ class RepoFolderResolver {
     }
     final gg.ProjectType type;
     try {
-      type = gg.detectProjectType(repoDir);
+      // Bridge repos are named TypeScript-style (e.g.
+      // `gg-bridge-dart-typescript`), so they take the `-` separator.
+      type = gg.checkProjectType(repoDir);
     } catch (_) {
       return repoName;
     }

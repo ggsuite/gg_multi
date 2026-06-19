@@ -437,7 +437,11 @@ class DoReviewCommand extends DirCommand<void> {
   }) async {
     final gg.ProjectType projectType;
     try {
-      projectType = gg.detectProjectType(repoDir);
+      // Cross-language bridge repos (pubspec.yaml + package.json + tsconfig)
+      // are refreshed via their TypeScript package manager, like a pure
+      // TypeScript repo. `checkProjectType` encodes that bridge → TypeScript
+      // rule in one place.
+      projectType = gg.checkProjectType(repoDir);
     } catch (_) {
       // Repos without a recognizable manifest are skipped.
       return;

@@ -436,9 +436,12 @@ class DoPublishCommand extends DirCommand<void> {
 
   /// Detects the project type of [repoDir], defaulting to Dart for repos
   /// without a recognizable manifest (so they use the pub.dev checker).
+  ///
+  /// Bridges (pubspec + package.json) resolve to TypeScript via
+  /// [gg.checkProjectType] so they are published to — and waited for on — npm.
   gg.ProjectType _detectProjectType(Directory repoDir) {
     try {
-      return gg.detectProjectType(repoDir);
+      return gg.checkProjectType(repoDir);
     } catch (_) {
       // Defensive: a repo being published always has a manifest.
       return gg.ProjectType.dart; // coverage:ignore-line
@@ -451,7 +454,12 @@ class DoPublishCommand extends DirCommand<void> {
   Future<String> _readManifestName(Directory repoDir, String fallback) async {
     try {
       final catalog = await gg_lang.LanguageCatalog.load();
-      return await gg_lang.Manifest.detect(repoDir, catalog).readName();
+      // Bridges expose their scoped npm name from package.json (TypeScript).
+      return await gg_lang.Manifest.detect(
+        repoDir,
+        catalog,
+        treatBridgeAsTypeScript: true,
+      ).readName();
     } catch (_) {
       return fallback; // coverage:ignore-line
     }
@@ -467,7 +475,9 @@ class DoPublishCommand extends DirCommand<void> {
   }) async {
     final gg.ProjectType projectType;
     try {
-      projectType = gg.detectProjectType(repoDir);
+      // Bridge repos refresh via their TypeScript package manager, like
+      // do/review and do/cancel_review (checkProjectType: bridge → TS).
+      projectType = gg.checkProjectType(repoDir);
     } catch (_) {
       // Repos without a recognizable manifest are skipped.
       return;

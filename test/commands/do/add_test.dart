@@ -5,6 +5,9 @@
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
 
+@Timeout(Duration(minutes: 2))
+library;
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -1317,6 +1320,253 @@ version: 1.0.0
           contains('Executed npm install in $repoName.'),
         );
       });
+    });
+
+    group('cross-language', () {
+      test(
+        'transitive scan clones a scoped npm dependency of a known org',
+        () async {
+          // Covers the npm scan branch of `_cloneMissingTransitiveDeps`.
+          // Register a known organization so the npm scope resolves.
+          File(
+            path.join(masterWorkspacePath, '.organizations'),
+          ).writeAsStringSync(
+            '[{"name":"tssuite","url":"https://github.com/tssuite/"}]',
+          );
+
+          // A simple Dart repo is the add target ...
+          const targetName = 'npm_scan_target';
+          final targetDir = Directory(
+            path.join(masterWorkspacePath, targetName),
+          )..createSync(recursive: true);
+          File(
+            path.join(targetDir.path, 'pubspec.yaml'),
+          ).writeAsStringSync('name: $targetName\nversion: 1.0.0\n');
+
+          // ... a TypeScript repo only present in master gets its
+          // package.json scanned for cross-language deps. The dependency
+          // entries cover every branch of the scan.
+          const consumerName = 'npm_consumer';
+          final consumerDir = Directory(
+            path.join(masterWorkspacePath, consumerName),
+          )..createSync(recursive: true);
+          File(path.join(consumerDir.path, 'package.json'))
+              .writeAsStringSync('''
+{
+  "name": "@tssuite/$consumerName",
+  "version": "1.0.0",
+  "dependencies": {
+    "plainpkg": "^1.0.0",
+    "@/y": "^1.0.0",
+    "@tssuite/": "^1.0.0",
+    "@other/skipscope": "^1.0.0",
+    "@tssuite/needed_bridge": "^1.0.0",
+    "@tssuite/$consumerName": "^1.0.0"
+  },
+  "devDependencies": {
+    "@tssuite/needed_bridge": "^2.0.0"
+  }
+}
+''');
+
+          final ticketDir = Directory(
+            path.join(tempDir.path, ggMultiTicketFolder, 'NPM_SCAN_TICKET'),
+          )..createSync(recursive: true);
+
+          final mockProc = MockProcessRunner();
+          when(
+            () => mockProc(
+              any(),
+              any(),
+              workingDirectory: any(named: 'workingDirectory'),
+              runInShell: any(named: 'runInShell'),
+            ),
+          ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+          final mockDoCommit = MockGgDoCommit();
+          when(
+            () => mockDoCommit.exec(
+              directory: any(named: 'directory'),
+              ggLog: any(named: 'ggLog'),
+              message: any(named: 'message'),
+              logType: any(named: 'logType'),
+              updateChangeLog: any(named: 'updateChangeLog'),
+              force: any(named: 'force'),
+            ),
+          ).thenAnswer((_) async {});
+
+          createRunner(
+            executionPath: ticketDir.path,
+            processRunner: mockProc.call,
+            ggDoCommit: mockDoCommit,
+          );
+
+          await runner.run(['add', targetName]);
+
+          // The scoped dep of the known org is cloned (via org-fallback URL).
+          verify(
+            () => mockGitCloner.cloneRepo(
+              any(that: contains('needed_bridge')),
+              any(),
+            ),
+          ).called(greaterThanOrEqualTo(1));
+
+          // Unscoped and unknown-org deps are ignored.
+          verifyNever(
+            () => mockGitCloner.cloneRepo(
+              any(that: contains('skipscope')),
+              any(),
+            ),
+          );
+          verifyNever(
+            () => mockGitCloner.cloneRepo(
+              any(that: contains('plainpkg')),
+              any(),
+            ),
+          );
+        },
+      );
+
+      test(
+        'a package.json that is not a JSON object is ignored by the scan',
+        () async {
+          // Covers the "decoded is not a Map" guard of the npm scan.
+          const consumerName = 'npm_array_consumer';
+          final consumerDir = Directory(
+            path.join(masterWorkspacePath, consumerName),
+          )..createSync(recursive: true);
+          File(
+            path.join(consumerDir.path, 'package.json'),
+          ).writeAsStringSync('["not", "an", "object"]');
+
+          const targetName = 'array_target';
+          final targetDir = Directory(
+            path.join(masterWorkspacePath, targetName),
+          )..createSync(recursive: true);
+          File(
+            path.join(targetDir.path, 'pubspec.yaml'),
+          ).writeAsStringSync('name: $targetName\nversion: 1.0.0\n');
+
+          final ticketDir = Directory(
+            path.join(tempDir.path, ggMultiTicketFolder, 'ARRAY_TICKET'),
+          )..createSync(recursive: true);
+
+          final mockProc = MockProcessRunner();
+          when(
+            () => mockProc(
+              any(),
+              any(),
+              workingDirectory: any(named: 'workingDirectory'),
+              runInShell: any(named: 'runInShell'),
+            ),
+          ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+          final mockDoCommit = MockGgDoCommit();
+          when(
+            () => mockDoCommit.exec(
+              directory: any(named: 'directory'),
+              ggLog: any(named: 'ggLog'),
+              message: any(named: 'message'),
+              logType: any(named: 'logType'),
+              updateChangeLog: any(named: 'updateChangeLog'),
+              force: any(named: 'force'),
+            ),
+          ).thenAnswer((_) async {});
+
+          createRunner(
+            executionPath: ticketDir.path,
+            processRunner: mockProc.call,
+            ggDoCommit: mockDoCommit,
+          );
+
+          // Must not throw despite the malformed package.json.
+          await runner.run(['add', targetName]);
+        },
+      );
+
+      test(
+        'installs both Dart and TypeScript dependencies for a bridge repo',
+        () async {
+          // Covers running both package managers for a dual-manifest repo.
+          const repoName = 'bridgeRepo';
+          final repoDir = Directory(
+            path.join(masterWorkspacePath, repoName),
+          )..createSync(recursive: true);
+          File(
+            path.join(repoDir.path, 'pubspec.yaml'),
+          ).writeAsStringSync('name: $repoName\nversion: 1.0.0\n');
+          File(
+            path.join(repoDir.path, 'package.json'),
+          ).writeAsStringSync(
+            '{"name": "@scope/$repoName", "version": "1.0.0"}',
+          );
+          File(
+            path.join(repoDir.path, 'tsconfig.json'),
+          ).writeAsStringSync('{}');
+
+          final ticketDir = Directory(
+            path.join(tempDir.path, ggMultiTicketFolder, 'BRIDGE_TICKET'),
+          )..createSync(recursive: true);
+
+          final mockProc = MockProcessRunner();
+          when(
+            () => mockProc(
+              any(),
+              any(),
+              workingDirectory: any(named: 'workingDirectory'),
+              runInShell: any(named: 'runInShell'),
+            ),
+          ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+          final mockDoCommit = MockGgDoCommit();
+          when(
+            () => mockDoCommit.exec(
+              directory: any(named: 'directory'),
+              ggLog: any(named: 'ggLog'),
+              message: any(named: 'message'),
+              logType: any(named: 'logType'),
+              updateChangeLog: any(named: 'updateChangeLog'),
+              force: any(named: 'force'),
+            ),
+          ).thenAnswer((_) async {});
+
+          createRunner(
+            executionPath: ticketDir.path,
+            processRunner: mockProc.call,
+            ggDoCommit: mockDoCommit,
+          );
+
+          await runner.run(['add', repoName]);
+
+          final ticketRepo = path.join(ticketDir.path, repoName);
+          // After copy: both dart pub get and npm install run.
+          verify(
+            () => mockProc(
+              'dart',
+              ['pub', 'get'],
+              workingDirectory: ticketRepo,
+              runInShell: true,
+            ),
+          ).called(1);
+          verify(
+            () => mockProc(
+              'npm',
+              ['install'],
+              workingDirectory: ticketRepo,
+              runInShell: true,
+            ),
+          ).called(greaterThanOrEqualTo(1));
+          // After relocalize: dart pub upgrade also runs.
+          verify(
+            () => mockProc(
+              'dart',
+              ['pub', 'upgrade'],
+              workingDirectory: ticketRepo,
+              runInShell: true,
+            ),
+          ).called(1);
+        },
+      );
     });
 
     test('commit failures are logged and aborts immediately', () async {

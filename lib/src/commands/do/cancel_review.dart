@@ -194,7 +194,10 @@ class DoCancelReviewCommand extends DirCommand<void> {
   }) async {
     final gg.ProjectType projectType;
     try {
-      projectType = gg.detectProjectType(repoDir);
+      // Cross-language bridge repos are refreshed via their TypeScript package
+      // manager here, symmetrically to do/review's _refreshDependencies, so a
+      // cancelled review leaves node_modules consistent.
+      projectType = gg.checkProjectType(repoDir);
     } catch (_) {
       return;
     }

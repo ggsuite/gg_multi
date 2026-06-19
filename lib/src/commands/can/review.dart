@@ -206,9 +206,18 @@ class CanReviewCommand extends DirCommand<void> {
         directory: repoDir,
         ggLog: ggLog,
       );
-      if (!isFeature) {
-        notOnFeatureBranch.add(repoName);
+      if (isFeature) {
+        continue;
       }
+      // A repo already merged to its default branch (main/master) has nothing
+      // left to review — e.g. when resuming a publish that already completed
+      // some repos. Skip it instead of failing.
+      final branch = await _currentBranch(repoDir);
+      if (branch == 'main' || branch == 'master') {
+        ggLog('$repoName is on $branch — already merged, skipping.');
+        continue;
+      }
+      notOnFeatureBranch.add(repoName);
     }
     if (notOnFeatureBranch.isNotEmpty) {
       ggLog(yellow('Not on a feature branch:'));
@@ -221,6 +230,16 @@ class CanReviewCommand extends DirCommand<void> {
     }
   }
 
+  /// Returns the current branch name of [repoDir] (e.g. `main`, `feat_x`).
+  Future<String> _currentBranch(Directory repoDir) async {
+    final result = await _processRunner(
+      'git',
+      ['rev-parse', '--abbrev-ref', 'HEAD'],
+      workingDirectory: repoDir.path,
+    );
+    return result.stdout.toString().trim();
+  }
+
   /// Runs `dart pub get --offline` (or the Flutter equivalent) in all repos
   /// so that each `pubspec.lock` matches its `pubspec.yaml` before the
   /// uncommitted-changes check runs. Repos without a `pubspec.yaml` are
@@ -230,6 +249,13 @@ class CanReviewCommand extends DirCommand<void> {
     required GgLog ggLog,
   }) async {
     for (final repo in subs) {
+      // Bridge repos (pubspec.yaml + package.json + tsconfig) are treated
+      // like TypeScript repos here: the Dart `pub get` is skipped (a pure
+      // TypeScript repo has no pubspec.yaml and is skipped by PubGetOffline
+      // anyway).
+      if (gg.isBridgeProject(repo.directory)) {
+        continue;
+      }
       await _ggPubGetOffline.exec(
         directory: repo.directory,
         ggLog: ggLog,

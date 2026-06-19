@@ -89,14 +89,14 @@ class AddDepsCommand extends Command<void> {
     for (final dep in deps) {
       try {
         final repoUrl = await fetchDependencyRepoUrl(
-          dep,
-          type: info.type,
+          dep.name,
+          type: dep.type,
           packageFetcher: packageFetcher,
         );
         if (repoUrl == null || repoUrl.isEmpty) {
           ggLog(
             red('No repository URL found for '
-                'dependency $dep on pub.dev, skipping.'),
+                'dependency ${dep.name}, skipping.'),
           );
           continue;
         }
@@ -104,7 +104,8 @@ class AddDepsCommand extends Command<void> {
         if (repoUrl.startsWith('https://github.com/dart-lang/')) {
           ggLog(
             yellow(
-              'Ignoring dependency $dep from dart-lang repository: $repoUrl',
+              'Ignoring dependency ${dep.name} from dart-lang '
+              'repository: $repoUrl',
             ),
           );
           continue;
@@ -118,10 +119,15 @@ class AddDepsCommand extends Command<void> {
             workspacePath: workspacePath,
           );
         } catch (e) {
-          ggLog(red('Failed to clone dependency $dep from $repoUrl: $e'));
+          ggLog(
+            red('Failed to clone dependency ${dep.name} from $repoUrl: $e'),
+          );
         }
       } catch (e) {
-        ggLog(red('Failed to fetch repository info for dependency $dep: $e'));
+        ggLog(
+          red('Failed to fetch repository info for '
+              'dependency ${dep.name}: $e'),
+        );
       }
     }
   }
@@ -191,10 +197,22 @@ Future<String?> _fetchNpmRepoUrl(
   return raw.replaceFirst(RegExp(r'^git\+'), '');
 }
 
-/// Reads the package name, dependency names and project type from a repo's
-/// manifest (`pubspec.yaml` or `package.json`) in the master workspace.
+/// A single dependency together with the registry it must be resolved
+/// against: [gg.ProjectType.dart] / [gg.ProjectType.flutter] → pub.dev,
+/// [gg.ProjectType.typescript] → npm.
+typedef ManifestDependency = ({String name, gg.ProjectType type});
+
+/// Reads the package name and dependency names from a repo's manifest(s) in
+/// the master workspace.
+///
+/// A pure Dart/Flutter package contributes its `pubspec.yaml` dependencies
+/// (resolved on pub.dev); a pure TypeScript project its `package.json`
+/// dependencies (resolved on npm). A cross-language *bridge* (pubspec.yaml +
+/// package.json + tsconfig.json) contributes BOTH, each dependency tagged
+/// with the registry it must be fetched from.
+///
 /// Returns null (and logs) when no manifest is found or it cannot be parsed.
-({String name, Set<String> deps, gg.ProjectType type, String manifestFile})?
+({String name, Set<ManifestDependency> deps, String manifestFile})?
     getManifestDependenciesFromWorkspace({
   required String targetArg,
   required String workspacePath,
@@ -209,6 +227,7 @@ Future<String?> _fetchNpmRepoUrl(
           : null) ??
       Directory(path.join(workspacePath, repoName ?? ''));
 
+  final isBridge = gg.isBridgeProject(repoDir);
   final gg.ProjectType type;
   try {
     type = gg.detectProjectType(repoDir);
@@ -222,47 +241,80 @@ Future<String?> _fetchNpmRepoUrl(
     return null;
   }
 
-  switch (type) {
-    case gg.ProjectType.dart:
-    case gg.ProjectType.flutter:
-      final pubspec = getPubspecFromWorkspace(
-        targetArg: targetArg,
-        workspacePath: workspacePath,
-        ggLog: ggLog,
-      );
-      if (pubspec == null) {
-        return null;
-      }
-      return (
-        name: pubspec.name,
-        deps: <String>{
-          ...pubspec.dependencies.keys,
-          ...pubspec.devDependencies.keys,
-        },
-        type: type,
-        manifestFile: 'pubspec.yaml',
-      );
-    case gg.ProjectType.typescript:
-      final file = File(path.join(repoDir.path, 'package.json'));
-      final Map<String, dynamic> json;
-      try {
-        json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
-      } catch (e) {
-        ggLog(red('Error parsing package.json: $e'));
-        return null;
-      }
-      final deps = <String>{};
-      for (final key in const ['dependencies', 'devDependencies']) {
-        final section = json[key];
-        if (section is Map) {
-          deps.addAll(section.keys.map((e) => e.toString()));
-        }
-      }
-      return (
-        name: json['name']?.toString() ?? repoName ?? 'unknown',
-        deps: deps,
-        type: type,
-        manifestFile: 'package.json',
-      );
+  final deps = <ManifestDependency>{};
+  final manifestFiles = <String>[];
+  String? pkgName;
+
+  // Dart side: a pure Dart/Flutter package, and the Dart half of a bridge
+  // (detectProjectType reports a bridge as dart because pubspec wins).
+  if (type.isDartFamily) {
+    final pubspec = getPubspecFromWorkspace(
+      targetArg: targetArg,
+      workspacePath: workspacePath,
+      ggLog: ggLog,
+    );
+    if (pubspec == null) {
+      return null;
+    }
+    pkgName = pubspec.name;
+    manifestFiles.add('pubspec.yaml');
+    deps.addAll(
+      <String>{
+        ...pubspec.dependencies.keys,
+        ...pubspec.devDependencies.keys,
+      }.map((d) => (name: d, type: gg.ProjectType.dart)),
+    );
   }
+
+  // TypeScript side: a pure TypeScript project, and the TypeScript half of a
+  // bridge.
+  if (type == gg.ProjectType.typescript || isBridge) {
+    final ts = _readPackageJsonDependencies(
+      repoDir: repoDir,
+      repoName: repoName,
+      ggLog: ggLog,
+    );
+    if (ts != null) {
+      pkgName ??= ts.name;
+      manifestFiles.add('package.json');
+      deps.addAll(
+        ts.deps.map((d) => (name: d, type: gg.ProjectType.typescript)),
+      );
+    }
+  }
+
+  if (pkgName == null) {
+    return null;
+  }
+  return (
+    name: pkgName,
+    deps: deps,
+    manifestFile: manifestFiles.join(' + '),
+  );
+}
+
+/// Reads the package name and dependency names (`dependencies` +
+/// `devDependencies`) from the `package.json` in [repoDir]. Returns null (and
+/// logs) when the file cannot be parsed.
+({String name, Set<String> deps})? _readPackageJsonDependencies({
+  required Directory repoDir,
+  required String? repoName,
+  required GgLog ggLog,
+}) {
+  final file = File(path.join(repoDir.path, 'package.json'));
+  final Map<String, dynamic> json;
+  try {
+    json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+  } catch (e) {
+    ggLog(red('Error parsing package.json: $e'));
+    return null;
+  }
+  final deps = <String>{};
+  for (final key in const ['dependencies', 'devDependencies']) {
+    final section = json[key];
+    if (section is Map) {
+      deps.addAll(section.keys.map((e) => e.toString()));
+    }
+  }
+  return (name: json['name']?.toString() ?? repoName ?? 'unknown', deps: deps);
 }

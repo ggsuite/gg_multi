@@ -50,24 +50,27 @@ Future<RepoInfo> getRepoInfo(String repoPath) async {
   }
   // Determine language.
   String language;
-  if (await pubspecFile.exists()) {
+  final packageJson = File(p.join(repoPath, 'package.json'));
+  final hasPubspec = await pubspecFile.exists();
+  final hasPackageJson = await packageJson.exists();
+  if (hasPubspec && hasPackageJson) {
+    // Cross-language bridge: a repo carrying both a Dart and a Node manifest.
+    language = 'dart+nodejs';
+  } else if (hasPubspec) {
     language = 'dart';
+  } else if (hasPackageJson) {
+    language = 'nodejs';
   } else {
-    final packageJson = File(p.join(repoPath, 'package.json'));
-    if (await packageJson.exists()) {
-      language = 'nodejs';
+    final dir = Directory(repoPath);
+    final files = dir.listSync(recursive: true).whereType<File>().toList();
+    if (files.any((f) => f.path.endsWith('.py'))) {
+      language = 'python';
+    } else if (files.any((f) => f.path.endsWith('.java'))) {
+      language = 'Java';
+    } else if (files.any((f) => f.path.endsWith('.cpp'))) {
+      language = 'c++';
     } else {
-      final dir = Directory(repoPath);
-      final files = dir.listSync(recursive: true).whereType<File>().toList();
-      if (files.any((f) => f.path.endsWith('.py'))) {
-        language = 'python';
-      } else if (files.any((f) => f.path.endsWith('.java'))) {
-        language = 'Java';
-      } else if (files.any((f) => f.path.endsWith('.cpp'))) {
-        language = 'c++';
-      } else {
-        language = 'dart';
-      }
+      language = 'dart';
     }
   }
   String organization = 'unknown';

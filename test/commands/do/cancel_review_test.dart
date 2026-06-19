@@ -429,6 +429,92 @@ void main() {
     );
 
     test(
+      'runs npm install for bridge repos (treated as TypeScript) after '
+      'relocalize',
+      () async {
+        final mockSortedProcessingList = MockSortedProcessingList();
+        final mockLocalizeRefs = MockLocalizeRefs();
+        final mockGgDoCommit = MockGgDoCommit();
+        final mockProcessRunner = MockProcessRunner();
+
+        // A bridge ships all three manifests on disk. detectProjectType would
+        // call it dart (and skip install); checkProjectType treats it as
+        // TypeScript so node_modules is refreshed, symmetric to do/review.
+        final repoADir = Directory(path.join(ticketDir.path, 'A'));
+        File(path.join(repoADir.path, 'pubspec.yaml'))
+            .writeAsStringSync('name: A\nversion: 1.0.0\n');
+        File(path.join(repoADir.path, 'package.json'))
+            .writeAsStringSync(jsonEncode(<String, dynamic>{'name': 'A'}));
+        File(path.join(repoADir.path, 'tsconfig.json')).writeAsStringSync('{}');
+
+        when(
+          () => mockSortedProcessingList.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            Node(
+              name: 'A',
+              directory: repoADir,
+              manifest: DartPackageManifest(pubspec: Pubspec('A')),
+            ),
+          ],
+        );
+
+        when(
+          () => mockLocalizeRefs.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockGgDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockProcessRunner(
+            'npm',
+            ['install'],
+            workingDirectory: repoADir.path,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+        final runner = CommandRunner<void>('test', 'do cancel-review ticket')
+          ..addCommand(
+            DoCancelReviewCommand(
+              ggLog: ggLog,
+              localizeRefs: mockLocalizeRefs,
+              sortedProcessingList: mockSortedProcessingList,
+              ggDoCommit: mockGgDoCommit,
+              processRunner: mockProcessRunner.call,
+            ),
+          );
+
+        await runner.run([
+          'cancel-review',
+          '--verbose',
+          '--input',
+          ticketDir.path,
+        ]);
+
+        verify(
+          () => mockProcessRunner(
+            'npm',
+            ['install'],
+            workingDirectory: repoADir.path,
+          ),
+        ).called(1);
+      },
+    );
+
+    test(
       'fails and logs when npm install fails for typescript repos',
       () async {
         final mockSortedProcessingList = MockSortedProcessingList();

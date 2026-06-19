@@ -265,6 +265,88 @@ void main() {
       );
     });
 
+    test(
+        'skips bridge repos in "dart pub get --offline" '
+        '(treated as TypeScript)', () async {
+      final mockSortedProcessingList = MockSortedProcessingList();
+      final mockProcessRunner = MockProcessRunner();
+      final mockIsFeatureBranch = MockIsFeatureBranch();
+      final mockPubGetOffline = _stubbedPubGetOffline();
+
+      // Repo A: a plain Dart repo (no files on disk -> not a bridge).
+      // Repo B: a bridge repo carrying pubspec.yaml + package.json + tsconfig.
+      final repoADir = Directory(path.join(ticketDir.path, 'A'));
+      final repoBDir = Directory(path.join(ticketDir.path, 'B'));
+      repoBDir.createSync(recursive: true);
+      File(path.join(repoBDir.path, 'pubspec.yaml')).writeAsStringSync(
+        'name: B\n',
+      );
+      File(path.join(repoBDir.path, 'package.json')).writeAsStringSync(
+        '{"name":"B"}',
+      );
+      File(path.join(repoBDir.path, 'tsconfig.json')).writeAsStringSync('{}');
+
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: repoADir,
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
+          ),
+          Node(
+            name: 'B',
+            directory: repoBDir,
+            manifest: DartPackageManifest(pubspec: Pubspec('B')),
+          ),
+        ],
+      );
+
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['status', '--porcelain'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(1, 0, '', ''));
+
+      when(
+        () => mockIsFeatureBranch.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async => true);
+
+      final runner = CommandRunner<void>('test', 'can review ticket')
+        ..addCommand(
+          CanReviewCommand(
+            ggLog: ggLog,
+            sortedProcessingList: mockSortedProcessingList,
+            processRunner: mockProcessRunner.call,
+            ggIsFeatureBranch: mockIsFeatureBranch,
+            ggPubGetOffline: mockPubGetOffline,
+            ticketState: _stubbedTicketState(),
+          ),
+        );
+      await runner.run(['review', '--input', ticketDir.path]);
+
+      // pub get runs only for the plain Dart repo A — the bridge B is skipped.
+      verify(
+        () => mockPubGetOffline.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).called(1);
+      expect(
+        messages,
+        contains('✅ All repos can be reviewed'),
+      );
+    });
+
     test('fails if "dart pub get --offline" fails in a repo', () async {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
@@ -360,6 +442,17 @@ void main() {
         ),
       ).thenAnswer((_) async => ProcessResult(1, 0, '', ''));
 
+      // B's branch is some non-default branch (not main/master), so it is a
+      // genuine "not on a feature branch" error rather than an already-merged
+      // repo to skip.
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['rev-parse', '--abbrev-ref', 'HEAD'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'detached-thing', ''));
+
       // A is on a feature branch, B is not
       when(
         () => mockIsFeatureBranch.get(
@@ -413,6 +506,98 @@ void main() {
         isTrue,
       );
       expect(messages.any((m) => m.contains(' - B')), isTrue);
+    });
+
+    test('skips repos already merged to main or master', () async {
+      final mockSortedProcessingList = MockSortedProcessingList();
+      final mockProcessRunner = MockProcessRunner();
+      final mockIsFeatureBranch = MockIsFeatureBranch();
+
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: Directory(path.join(ticketDir.path, 'A')),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
+          ),
+          Node(
+            name: 'B',
+            directory: Directory(path.join(ticketDir.path, 'B')),
+            manifest: DartPackageManifest(pubspec: Pubspec('B')),
+          ),
+        ],
+      );
+
+      // No uncommitted changes anywhere.
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['status', '--porcelain'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+      // A is already merged to main, B to master (trailing newline is trimmed).
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['rev-parse', '--abbrev-ref', 'HEAD'],
+          workingDirectory: any(
+            named: 'workingDirectory',
+            that: predicate<String>((p) => path.basename(p) == 'A'),
+          ),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'main\n', ''));
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['rev-parse', '--abbrev-ref', 'HEAD'],
+          workingDirectory: any(
+            named: 'workingDirectory',
+            that: predicate<String>((p) => path.basename(p) == 'B'),
+          ),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'master\n', ''));
+
+      // Neither is on a feature branch.
+      when(
+        () => mockIsFeatureBranch.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async => false);
+
+      final runner = CommandRunner<void>('test', 'can review ticket')
+        ..addCommand(
+          CanReviewCommand(
+            ggLog: ggLog,
+            sortedProcessingList: mockSortedProcessingList,
+            processRunner: mockProcessRunner.call,
+            ggIsFeatureBranch: mockIsFeatureBranch,
+            ggPubGetOffline: _stubbedPubGetOffline(),
+            ticketState: _stubbedTicketState(),
+          ),
+        );
+
+      await runner.run(['review', '--verbose', '--input', ticketDir.path]);
+
+      expect(
+        messages.any((m) => m.contains('A is on main — already merged')),
+        isTrue,
+      );
+      expect(
+        messages.any((m) => m.contains('B is on master — already merged')),
+        isTrue,
+      );
+      expect(
+        messages.any((m) => m.contains('All repos can be reviewed')),
+        isTrue,
+      );
     });
 
     test('fails if uncommitted changes', () async {
