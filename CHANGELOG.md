@@ -39,6 +39,16 @@ localization commands again.
 
 - remove unlocalize step from do review command and tests
 
+## [5.3.1] - 2026-06-25
+
+### Changed
+
+- gg\_multi: changed references to git
+
+### Fixed
+
+- Revert org-prefixed repo folders (ticket org\_prefix\_folders); keep gg\_cross\_language\_deps
+
 ## [5.3.0] - 2026-06-19
 
 ### Changed
@@ -363,6 +373,7 @@ localization commands again.
 - Remove prints
 - Remove gh pr create from review
 
+[5.3.1]: https://github.com/ggsuite/gg_multi/compare/5.3.0...5.3.1
 [5.3.0]: https://github.com/ggsuite/gg_multi/compare/5.2.0...5.3.0
 [5.2.0]: https://github.com/ggsuite/gg_multi/compare/5.1.0...5.2.0
 [5.1.0]: https://github.com/ggsuite/gg_multi/compare/5.0.0...5.1.0

@@ -7,14 +7,14 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:gg_one/gg_one.dart' as gg;
 import 'package:path/path.dart' as path;
 
 import 'url_parser.dart';
 
-/// Resolves repository folders in a workspace. Folders may carry an org
-/// prefix (`<org>_<repo>` for Dart, `<org>-<repo>` for TypeScript) or use
-/// the legacy layout where the folder is named like the repository.
+/// Resolves repository folders in a workspace. A folder is matched by its
+/// exact name, then by its manifest package name (for cross-language bridge
+/// repos whose folder name differs from the package name), then by its git
+/// remote url.
 class RepoFolderResolver {
   /// Returns the folder of [repoName] inside [workspacePath] or null,
   /// matching the exact folder name first, then the manifest package name.
@@ -100,28 +100,6 @@ class RepoFolderResolver {
       return null;
     }
     return '${parsed.org}/${parsed.repo}'.toLowerCase();
-  }
-
-  /// Folder name for a fresh clone of [repoName] living in [repoDir]:
-  /// `<org>_<repo>` for Dart projects, `<org>-<repo>` for TypeScript.
-  static String orgPrefixedFolderName({
-    required String repoName,
-    required String? org,
-    required Directory repoDir,
-  }) {
-    if (org == null || org.isEmpty) {
-      return repoName;
-    }
-    final gg.ProjectType type;
-    try {
-      // Bridge repos are named TypeScript-style (e.g.
-      // `gg-bridge-dart-typescript`), so they take the `-` separator.
-      type = gg.checkProjectType(repoDir);
-    } catch (_) {
-      return repoName;
-    }
-    final sep = type == gg.ProjectType.typescript ? '-' : '_';
-    return '$org$sep$repoName';
   }
 
   // ######################

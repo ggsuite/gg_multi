@@ -323,7 +323,8 @@ class AddCommand extends Command<dynamic> {
           masterDir.listSync(recursive: false).whereType<Directory>().toList();
 
       // Known names: folder basenames plus manifest package names, so that
-      // org-prefixed folders are recognized by their package name too.
+      // a cross-language bridge repo (whose folder name differs from its
+      // package name) is recognized by its package name too.
       final knownPackages = <String>{};
       for (final dir in existingDirs) {
         knownPackages.add(path.basename(dir.path));

@@ -59,17 +59,11 @@ Future<void> addRepositoryHelper({
     String repoName, {
     bool allowFallback = false,
   }) async {
-    // If the repository is already present (under any folder name) ..........
-    // For a plain-name add ([allowFallback]) the org is unknown, so any
-    // folder carrying that repo name counts as present; for an explicit
-    // url/org we match the exact remote so different orgs can coexist.
-    final existing = existingCloneFolder(
-      workspacePath: workspacePath,
-      repoUrl: repoUrl,
-      repoName: repoName,
-      matchByNameOnly: allowFallback,
-    );
-    if (existing != null) {
+    final destination = path.join(workspacePath, repoName);
+    final destDir = Directory(destination);
+
+    // If repository folder already exists and is not empty ....................
+    if (destDir.existsSync() && destDir.listSync().isNotEmpty) {
       if (!force) {
         if (logIfAlreadyAdded) {
           ggLog(darkGray('$repoName already added.'));
@@ -79,62 +73,62 @@ Future<void> addRepositoryHelper({
         }
         return;
       } else {
-        await existing.delete(recursive: true);
+        await destDir.delete(recursive: true);
       }
     }
 
-    // Clones [url] into a staging folder and applies the org prefix.
-    Future<void> cloneAndFinalize(String url) async {
-      final staging = stagingCloneFolder(workspacePath, repoName);
+    // Try to clone the repository ............................................
+    try {
       await GgStatusPrinter<void>(
-        message: '${cyan(repoName)} from $url',
+        message: '${cyan(repoName)} from $repoUrl',
         ggLog: ggLog,
         useCarriageReturn: false,
-      ).run(() => gitCloner.cloneRepo(url, staging.path));
+      ).run(() => gitCloner.cloneRepo(repoUrl, destination));
       try {
-        OrganizationUtils.appendOrganization(workspacePath, url);
+        OrganizationUtils.appendOrganization(workspacePath, repoUrl);
       } catch (_) {
         // Swallow errors: organization info shouldn't block the core flow
       }
-      finalizeClonedFolder(
-        staging: staging,
-        workspacePath: workspacePath,
-        repoName: repoName,
-        repoUrl: url,
-        ggLog: ggLog,
-      );
       if (onRepoAdded != null) {
         await onRepoAdded(repoName);
       }
-    }
-
-    // Explicit url/org add: clone exactly what was requested.
-    if (!allowFallback) {
-      await cloneAndFinalize(repoUrl);
+      return;
+    } catch (e) {
+      if (!allowFallback) {
+        rethrow;
+      }
+      // Attempt fallback: try each known organization from .organizations
+      final orgs = OrganizationUtils.readOrganizations(workspacePath);
+      bool anySuccess = false;
+      for (final org in orgs) {
+        final baseUrl = org.url.endsWith('/') ? org.url : '${org.url}/';
+        final fallbackUrl = '$baseUrl$repoName.git';
+        try {
+          await GgStatusPrinter<void>(
+            message: '${cyan(repoName)} from $fallbackUrl',
+            ggLog: ggLog,
+            useCarriageReturn: false,
+          ).run(() => gitCloner.cloneRepo(fallbackUrl, destination));
+          try {
+            OrganizationUtils.appendOrganization(workspacePath, fallbackUrl);
+          } catch (_) {}
+          if (onRepoAdded != null) {
+            await onRepoAdded(repoName);
+          }
+          anySuccess = true;
+          break;
+        } catch (_) {
+          // Continue trying next
+        }
+      }
+      if (!anySuccess) {
+        ggLog(
+          red('Failed to clone repository '
+              '$repoName from any known organizations.'),
+        );
+      }
       return;
     }
-
-    // Plain-name add: try the known organizations first (the bare
-    // "<name>/<name>" guess in [repoUrl] almost always 404s), and fall back
-    // to that guess only when no organization has the repo.
-    final orgs = OrganizationUtils.readOrganizations(workspacePath);
-    final candidates = <String>[
-      for (final org in orgs)
-        '${org.url.endsWith('/') ? org.url : '${org.url}/'}$repoName.git',
-      repoUrl,
-    ];
-    for (final url in candidates) {
-      try {
-        await cloneAndFinalize(url);
-        return;
-      } catch (_) {
-        // Try the next candidate.
-      }
-    }
-    ggLog(
-      red('Failed to clone repository '
-          '$repoName from any known organizations.'),
-    );
   }
 
   // ---------------------------------------------------------------------------
@@ -276,83 +270,6 @@ String? extractRepoName(String repoUrl) {
   return urlParser.parse(repoUrl).repo;
 }
 
-/// Returns the folder already holding this repo, or null. Matches by git
-/// remote (any folder name), then by a folder named exactly [repoName]
-/// (legacy layout). [matchByNameOnly] (plain-name adds with unknown org)
-/// additionally accepts an org-prefixed folder via its package name.
-Directory? existingCloneFolder({
-  required String workspacePath,
-  required String repoUrl,
-  required String repoName,
-  bool matchByNameOnly = false,
-}) {
-  final byUrl = RepoFolderResolver.resolveByRemoteUrl(
-    workspacePath: workspacePath,
-    repoUrl: repoUrl,
-  );
-  if (byUrl != null) {
-    return byUrl;
-  }
-  final exact = Directory(path.join(workspacePath, repoName));
-  if (exact.existsSync() && exact.listSync().isNotEmpty) {
-    return exact;
-  }
-  return matchByNameOnly
-      ? RepoFolderResolver.resolve(
-          workspacePath: workspacePath,
-          repoName: repoName,
-        )
-      : null;
-}
-
-/// Returns a free folder to clone [repoName] into: the plain repo name,
-/// or a temporary name when that folder is already taken.
-Directory stagingCloneFolder(String workspacePath, String repoName) {
-  final plain = Directory(path.join(workspacePath, repoName));
-  if (!plain.existsSync() || plain.listSync().isEmpty) {
-    return plain;
-  }
-  final tmp = Directory(path.join(workspacePath, '$repoName.clone-tmp'));
-  if (tmp.existsSync()) {
-    tmp.deleteSync(recursive: true);
-  }
-  return tmp;
-}
-
-/// Renames the freshly cloned [staging] folder to its org-prefixed name.
-/// Keeps the staging name when no prefix applies or the target is taken.
-void finalizeClonedFolder({
-  required Directory staging,
-  required String workspacePath,
-  required String repoName,
-  required String repoUrl,
-  required GgLog ggLog,
-}) {
-  final org = const UrlParser().parse(repoUrl).org;
-  final folderName = RepoFolderResolver.orgPrefixedFolderName(
-    repoName: repoName,
-    org: org,
-    repoDir: staging,
-  );
-  if (folderName == path.basename(staging.path)) {
-    return;
-  }
-  final target = Directory(path.join(workspacePath, folderName));
-  try {
-    if (target.existsSync()) {
-      throw FileSystemException('Target folder exists', target.path);
-    }
-    staging.renameSync(target.path);
-  } catch (e) {
-    ggLog(
-      yellow(
-        'Could not rename $repoName to $folderName: $e — '
-        'keeping ${path.basename(staging.path)}.',
-      ),
-    );
-  }
-}
-
 /// Retrieves the Pubspec for a repository in the master workspace.
 /// Returns null if pubspec.yaml is not found or parsing fails.
 Pubspec? getPubspecFromWorkspace({
@@ -361,6 +278,8 @@ Pubspec? getPubspecFromWorkspace({
   required GgLog ggLog,
 }) {
   final repoName = extractRepoName(targetArg);
+  // Resolve by exact folder name, then manifest package name, so a
+  // cross-language bridge repo (folder name != package name) is found too.
   final repoDir = (repoName != null
           ? RepoFolderResolver.resolve(
               workspacePath: workspacePath,

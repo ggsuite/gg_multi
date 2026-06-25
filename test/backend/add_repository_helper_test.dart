@@ -601,21 +601,25 @@ void main() {
       });
     });
 
-    test('prefers a known organization over the bare name guess', () async {
+    test('uses fallback organization when primary clone fails', () async {
       // Arrange: write .organizations file in workspace
       final orgFile = File(path.join(workspacePath, '.organizations'));
       const fallbackOrgName = 'fallbackOrg';
       const fallbackOrgUrl = 'https://github.com/fallbackOrg';
       orgFile.writeAsStringSync(jsonEncode({fallbackOrgName: fallbackOrgUrl}));
 
+      // Given a plain repo name (targetArg), the initial github URL...
       const repoName = 'test';
-      const guessUrl = 'https://github.com/$repoName/$repoName.git';
-      const orgUrl = '$fallbackOrgUrl/$repoName.git';
+      const primaryUrl = 'https://github.com/$repoName/$repoName.git';
+      const fallbackUrl = '$fallbackOrgUrl/$repoName.git';
       final destination = path.join(workspacePath, repoName);
 
       final mockGitCloner = MockGitCloner();
-      // The organization clone succeeds, so the name guess is never tried.
-      when(() => mockGitCloner.cloneRepo(orgUrl, any()))
+      // First attempt fails (default github)
+      when(() => mockGitCloner.cloneRepo(primaryUrl, any()))
+          .thenThrow(Exception('Primary clone failure'));
+      // Second attempt (fallback) succeeds
+      when(() => mockGitCloner.cloneRepo(fallbackUrl, any()))
           .thenAnswer((_) async {});
 
       var callbackExecuted = false;
@@ -634,11 +638,19 @@ void main() {
         onRepoAdded: onRepoAdded,
       );
 
-      // Assert: the org url was used and the name guess was skipped.
-      verify(() => mockGitCloner.cloneRepo(orgUrl, destination)).called(1);
-      verifyNever(() => mockGitCloner.cloneRepo(guessUrl, any()));
-      expect(logs, anyElement(contains('$repoName from $orgUrl')));
-      expect(callbackExecuted, isTrue);
+      // Assert: fallbackUrl was used
+      verify(() => mockGitCloner.cloneRepo(primaryUrl, destination)).called(1);
+      verify(() => mockGitCloner.cloneRepo(fallbackUrl, destination)).called(1);
+      // The repo was reported as added from the fallback URL
+      expect(
+        logs,
+        anyElement(contains('$repoName from $fallbackUrl')),
+      );
+      expect(
+        callbackExecuted,
+        isTrue,
+        reason: 'onRepoAdded should be executed when fallback url is used.',
+      );
     });
 
     test('logs error when primary and all fallback organization clones fail',
@@ -832,326 +844,5 @@ void main() {
         ),
       ),
     );
-  });
-
-  group('org prefix', () {
-    // Creates a non-empty folder with optional manifest and git remote.
-    Directory makeFolder(
-      String name, {
-      String? pubspecName,
-      String? remoteUrl,
-    }) {
-      final dir = Directory(path.join(workspacePath, name))
-        ..createSync(recursive: true);
-      if (pubspecName != null) {
-        File(path.join(dir.path, 'pubspec.yaml'))
-            .writeAsStringSync('name: $pubspecName\nversion: 1.0.0\n');
-      } else {
-        File(path.join(dir.path, 'dummy.txt')).writeAsStringSync('x');
-      }
-      if (remoteUrl != null) {
-        final gitDir = Directory(path.join(dir.path, '.git'))..createSync();
-        File(path.join(gitDir.path, 'config'))
-            .writeAsStringSync('[remote "origin"]\n\turl = $remoteUrl\n');
-      }
-      return dir;
-    }
-
-    // A clone stub that materializes a real Dart repo at the destination.
-    MockGitCloner clonerThatCreatesRepo() {
-      final cloner = MockGitCloner();
-      when(() => cloner.cloneRepo(any(), any())).thenAnswer((inv) async {
-        final url = inv.positionalArguments[0] as String;
-        final dest = inv.positionalArguments[1] as String;
-        final repo = path.basename(dest).replaceAll('.clone-tmp', '');
-        final dir = Directory(dest)..createSync(recursive: true);
-        File(path.join(dir.path, 'pubspec.yaml'))
-            .writeAsStringSync('name: $repo\nversion: 1.0.0\n');
-        final gitDir = Directory(path.join(dir.path, '.git'))..createSync();
-        File(path.join(gitDir.path, 'config'))
-            .writeAsStringSync('[remote "origin"]\n\turl = $url\n');
-      });
-      return cloner;
-    }
-
-    group('existingCloneFolder', () {
-      test('finds a prefixed folder by remote url', () {
-        final dir = makeFolder(
-          'ggsuite_gg_foo',
-          pubspecName: 'gg_foo',
-          remoteUrl: 'https://github.com/ggsuite/gg_foo.git',
-        );
-        final result = existingCloneFolder(
-          workspacePath: workspacePath,
-          repoUrl: 'git@github.com:ggsuite/gg_foo.git',
-          repoName: 'gg_foo',
-        );
-        expect(result?.path, dir.path);
-      });
-
-      test('returns null when no folder matches the remote', () {
-        final result = existingCloneFolder(
-          workspacePath: workspacePath,
-          repoUrl: 'https://github.com/ggsuite/gg_foo.git',
-          repoName: 'gg_foo',
-        );
-        expect(result, isNull);
-      });
-
-      test('returns a folder named exactly like the repo', () {
-        final dir = makeFolder('gg_foo');
-        final result = existingCloneFolder(
-          workspacePath: workspacePath,
-          repoUrl: 'git@github.com:ggsuite/gg_foo.git',
-          repoName: 'gg_foo',
-        );
-        expect(result?.path, dir.path);
-      });
-
-      test('allows a side-by-side clone next to a prefixed sibling', () {
-        // A prefixed folder of another org must not block the new clone.
-        makeFolder(
-          'other_gg_foo',
-          pubspecName: 'gg_foo',
-          remoteUrl: 'https://github.com/other/gg_foo.git',
-        );
-        final result = existingCloneFolder(
-          workspacePath: workspacePath,
-          repoUrl: 'https://github.com/ggsuite/gg_foo.git',
-          repoName: 'gg_foo',
-        );
-        expect(result, isNull);
-      });
-
-      test('matches by name only, ignoring the org, when requested', () {
-        // A plain add does not know the org; any folder with that package
-        // name counts as present even if the guessed url differs.
-        final dir = makeFolder('ggsuite_gg_foo', pubspecName: 'gg_foo');
-        final result = existingCloneFolder(
-          workspacePath: workspacePath,
-          repoUrl: 'https://github.com/gg_foo/gg_foo.git',
-          repoName: 'gg_foo',
-          matchByNameOnly: true,
-        );
-        expect(result?.path, dir.path);
-      });
-    });
-
-    group('stagingCloneFolder', () {
-      test('returns the plain folder when it is free', () {
-        final result = stagingCloneFolder(workspacePath, 'gg_foo');
-        expect(path.basename(result.path), 'gg_foo');
-      });
-
-      test('returns the plain folder when it exists but is empty', () {
-        Directory(path.join(workspacePath, 'gg_foo')).createSync();
-        final result = stagingCloneFolder(workspacePath, 'gg_foo');
-        expect(path.basename(result.path), 'gg_foo');
-      });
-
-      test('returns a temp folder when the plain folder is occupied', () {
-        makeFolder('gg_foo');
-        final result = stagingCloneFolder(workspacePath, 'gg_foo');
-        expect(path.basename(result.path), 'gg_foo.clone-tmp');
-      });
-
-      test('clears a stale temp folder before returning it', () {
-        makeFolder('gg_foo');
-        final stale = Directory(path.join(workspacePath, 'gg_foo.clone-tmp'))
-          ..createSync();
-        File(path.join(stale.path, 'old.txt')).writeAsStringSync('old');
-        final result = stagingCloneFolder(workspacePath, 'gg_foo');
-        expect(path.basename(result.path), 'gg_foo.clone-tmp');
-        expect(File(path.join(result.path, 'old.txt')).existsSync(), isFalse);
-      });
-    });
-
-    group('finalizeClonedFolder', () {
-      test('does nothing when the url carries no org', () {
-        final staging = makeFolder('gg_foo', pubspecName: 'gg_foo');
-        finalizeClonedFolder(
-          staging: staging,
-          workspacePath: workspacePath,
-          repoName: 'gg_foo',
-          repoUrl: 'gg_foo',
-          ggLog: ggLog,
-        );
-        expect(staging.existsSync(), isTrue);
-        expect(logs, isEmpty);
-      });
-
-      test('renames the staging folder to its org-prefixed name', () {
-        final staging = makeFolder('gg_foo', pubspecName: 'gg_foo');
-        finalizeClonedFolder(
-          staging: staging,
-          workspacePath: workspacePath,
-          repoName: 'gg_foo',
-          repoUrl: 'https://github.com/ggsuite/gg_foo.git',
-          ggLog: ggLog,
-        );
-        expect(staging.existsSync(), isFalse);
-        expect(
-          Directory(path.join(workspacePath, 'ggsuite_gg_foo')).existsSync(),
-          isTrue,
-        );
-      });
-
-      test('keeps the staging folder when the target already exists', () {
-        final staging = makeFolder('gg_foo', pubspecName: 'gg_foo');
-        makeFolder('ggsuite_gg_foo', pubspecName: 'gg_foo');
-        finalizeClonedFolder(
-          staging: staging,
-          workspacePath: workspacePath,
-          repoName: 'gg_foo',
-          repoUrl: 'https://github.com/ggsuite/gg_foo.git',
-          ggLog: ggLog,
-        );
-        expect(staging.existsSync(), isTrue);
-        expect(logs.any((l) => l.contains('Could not rename gg_foo')), isTrue);
-      });
-
-      test('warns when the rename itself fails', () {
-        final staging = makeFolder('gg_foo', pubspecName: 'gg_foo');
-        // A file (not a dir) at the target makes renameSync throw while
-        // Directory.existsSync stays false.
-        File(path.join(workspacePath, 'ggsuite_gg_foo')).writeAsStringSync('x');
-        finalizeClonedFolder(
-          staging: staging,
-          workspacePath: workspacePath,
-          repoName: 'gg_foo',
-          repoUrl: 'https://github.com/ggsuite/gg_foo.git',
-          ggLog: ggLog,
-        );
-        expect(logs.any((l) => l.contains('Could not rename gg_foo')), isTrue);
-      });
-    });
-
-    group('addRepositoryHelper', () {
-      test('clones a fresh repo into its org-prefixed folder', () async {
-        await addRepositoryHelper(
-          targetArg: 'ggsuite/gg_foo',
-          ggLog: ggLog,
-          gitCloner: clonerThatCreatesRepo(),
-          workspacePath: workspacePath,
-        );
-        expect(
-          Directory(path.join(workspacePath, 'ggsuite_gg_foo')).existsSync(),
-          isTrue,
-        );
-        expect(
-          Directory(path.join(workspacePath, 'gg_foo')).existsSync(),
-          isFalse,
-        );
-      });
-
-      test('detects an already-added repo across the prefix', () async {
-        final cloner = clonerThatCreatesRepo();
-        await addRepositoryHelper(
-          targetArg: 'ggsuite/gg_foo',
-          ggLog: ggLog,
-          gitCloner: cloner,
-          workspacePath: workspacePath,
-        );
-        logs.clear();
-        await addRepositoryHelper(
-          targetArg: 'ggsuite/gg_foo',
-          ggLog: ggLog,
-          gitCloner: cloner,
-          workspacePath: workspacePath,
-        );
-        expect(logs, contains('gg_foo already added.'));
-        verify(() => cloner.cloneRepo(any(), any())).called(1);
-      });
-
-      test('clones same-named repos of different orgs side by side', () async {
-        final cloner = clonerThatCreatesRepo();
-        await addRepositoryHelper(
-          targetArg: 'ggsuite/gg_foo',
-          ggLog: ggLog,
-          gitCloner: cloner,
-          workspacePath: workspacePath,
-        );
-        await addRepositoryHelper(
-          targetArg: 'other/gg_foo',
-          ggLog: ggLog,
-          gitCloner: cloner,
-          workspacePath: workspacePath,
-        );
-        expect(
-          Directory(path.join(workspacePath, 'ggsuite_gg_foo')).existsSync(),
-          isTrue,
-        );
-        expect(
-          Directory(path.join(workspacePath, 'other_gg_foo')).existsSync(),
-          isTrue,
-        );
-      });
-
-      test('treats a prefixed repo as added for a plain name', () async {
-        // The repo already exists as ggsuite_gg_foo; a plain "gg_foo" add
-        // must detect it by name and not clone a duplicate.
-        makeFolder(
-          'ggsuite_gg_foo',
-          pubspecName: 'gg_foo',
-          remoteUrl: 'https://github.com/ggsuite/gg_foo.git',
-        );
-        final cloner = clonerThatCreatesRepo();
-        await addRepositoryHelper(
-          targetArg: 'gg_foo',
-          ggLog: ggLog,
-          gitCloner: cloner,
-          workspacePath: workspacePath,
-        );
-        verifyNever(() => cloner.cloneRepo(any(), any()));
-        expect(
-          Directory(path.join(workspacePath, 'gg_foo')).existsSync(),
-          isFalse,
-        );
-        expect(logs, contains('gg_foo already added.'));
-      });
-
-      test('re-clones a prefixed repo when force is set', () async {
-        final cloner = clonerThatCreatesRepo();
-        await addRepositoryHelper(
-          targetArg: 'ggsuite/gg_foo',
-          ggLog: ggLog,
-          gitCloner: cloner,
-          workspacePath: workspacePath,
-        );
-        await addRepositoryHelper(
-          targetArg: 'ggsuite/gg_foo',
-          ggLog: ggLog,
-          gitCloner: cloner,
-          workspacePath: workspacePath,
-          force: true,
-        );
-        expect(
-          Directory(path.join(workspacePath, 'ggsuite_gg_foo')).existsSync(),
-          isTrue,
-        );
-        verify(() => cloner.cloneRepo(any(), any())).called(2);
-      });
-    });
-
-    group('getPubspecFromWorkspace', () {
-      test('resolves a prefixed repo folder', () {
-        makeFolder('ggsuite_gg_foo', pubspecName: 'gg_foo');
-        final pubspec = getPubspecFromWorkspace(
-          targetArg: 'gg_foo',
-          workspacePath: workspacePath,
-          ggLog: ggLog,
-        );
-        expect(pubspec?.name, 'gg_foo');
-      });
-
-      test('returns null when the repo url has no extractable name', () {
-        final pubspec = getPubspecFromWorkspace(
-          targetArg: 'https://github.com/onlyorg',
-          workspacePath: workspacePath,
-          ggLog: ggLog,
-        );
-        expect(pubspec, isNull);
-      });
-    });
   });
 }
