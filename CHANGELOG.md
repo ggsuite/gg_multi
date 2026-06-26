@@ -39,6 +39,13 @@ localization commands again.
 
 - remove unlocalize step from do review command and tests
 
+## [5.3.2] - 2026-06-26
+
+### Changed
+
+- Preserve dependency constraint operator (^^/\~/exact) through publish
+- gg\_multi: changed references to git
+
 ## [5.3.1] - 2026-06-25
 
 ### Changed
@@ -373,6 +380,7 @@ localization commands again.
 - Remove prints
 - Remove gh pr create from review
 
+[5.3.2]: https://github.com/ggsuite/gg_multi/compare/5.3.1...5.3.2
 [5.3.1]: https://github.com/ggsuite/gg_multi/compare/5.3.0...5.3.1
 [5.3.0]: https://github.com/ggsuite/gg_multi/compare/5.2.0...5.3.0
 [5.2.0]: https://github.com/ggsuite/gg_multi/compare/5.1.0...5.2.0

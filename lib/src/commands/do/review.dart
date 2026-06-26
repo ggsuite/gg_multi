@@ -460,24 +460,36 @@ class DoReviewCommand extends DirCommand<void> {
         args = <String>['install'];
     }
 
-    final result = await _processRunner(
-      executable,
-      args,
-      workingDirectory: repoDir.path,
-    );
-    final cmd = '$executable ${args.join(' ')}';
-    if (result.exitCode == 0) {
-      ggLog(green('Executed $cmd in $repoName.'));
-    } else {
-      errorLog(
-        red(
-          'Failed to execute $cmd in '
-          '$repoName: ${result.stderr}',
-        ),
+    Future<void> runStep(String exe, List<String> stepArgs) async {
+      final result = await _processRunner(
+        exe,
+        stepArgs,
+        workingDirectory: repoDir.path,
       );
-      throw Exception(
-        'Failed to review in: $repoName ($cmd failed: ${result.stderr})',
-      );
+      final cmd = '$exe ${stepArgs.join(' ')}';
+      if (result.exitCode == 0) {
+        ggLog(green('Executed $cmd in $repoName.'));
+      } else {
+        errorLog(
+          red(
+            'Failed to execute $cmd in '
+            '$repoName: ${result.stderr}',
+          ),
+        );
+        throw Exception(
+          'Failed to review in: $repoName ($cmd failed: ${result.stderr})',
+        );
+      }
+    }
+
+    await runStep(executable, args);
+
+    // A cross-language bridge also carries a Dart manifest. checkProjectType
+    // reports it as TypeScript, so the switch above only refreshed the
+    // TypeScript package manager — refresh the Dart side too, so the rewritten
+    // references are reflected in pubspec.lock as well.
+    if (gg.isBridgeProject(repoDir)) {
+      await runStep('dart', <String>['pub', 'upgrade']);
     }
   }
 }

@@ -251,10 +251,14 @@ class DoPublishCommand extends DirCommand<void> {
             ref: refName,
           );
           if (spec != null) {
+            // Pass the bare published version. set-ref-version preserves the
+            // operator (`^`, `~`, or none/exact) the dependency is currently
+            // declared with — the refs were just unlocalized back to their
+            // original spec — so the user's chosen constraint style survives.
             await _setRefVersion.get(
               directory: repoDir,
               ref: refName,
-              version: '^$refVersion',
+              version: refVersion,
             );
           }
         } catch (e) {
@@ -505,19 +509,36 @@ class DoPublishCommand extends DirCommand<void> {
               }
             : null;
 
-    final result = await _processRunner(
-      executable,
-      args,
-      workingDirectory: repoDir.path,
-      environment: envOverride,
-    );
-    final cmd = '$executable ${args.join(' ')}';
-    if (result.exitCode == 0) {
-      ggLog(green('Executed $cmd in $repoName.'));
-    } else {
-      throw Exception(
-        'Failed to execute $cmd in $repoName: ${result.stderr}',
+    Future<void> runStep(
+      String exe,
+      List<String> stepArgs,
+      Map<String, String>? env,
+    ) async {
+      final result = await _processRunner(
+        exe,
+        stepArgs,
+        workingDirectory: repoDir.path,
+        environment: env,
       );
+      final cmd = '$exe ${stepArgs.join(' ')}';
+      if (result.exitCode == 0) {
+        ggLog(green('Executed $cmd in $repoName.'));
+      } else {
+        throw Exception(
+          'Failed to execute $cmd in $repoName: ${result.stderr}',
+        );
+      }
+    }
+
+    await runStep(executable, args, envOverride);
+
+    // A cross-language bridge also carries a Dart manifest. checkProjectType
+    // reports it as TypeScript, so the switch above only refreshed the
+    // TypeScript package manager — refresh the Dart side too, so the rewritten
+    // references are reflected in pubspec.lock as well. (The pnpm env override
+    // is irrelevant to `dart pub upgrade`.)
+    if (gg.isBridgeProject(repoDir)) {
+      await runStep('dart', <String>['pub', 'upgrade'], null);
     }
   }
 

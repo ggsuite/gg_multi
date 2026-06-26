@@ -242,20 +242,18 @@ class CanReviewCommand extends DirCommand<void> {
 
   /// Runs `dart pub get --offline` (or the Flutter equivalent) in all repos
   /// so that each `pubspec.lock` matches its `pubspec.yaml` before the
-  /// uncommitted-changes check runs. Repos without a `pubspec.yaml` are
-  /// skipped by [gg.PubGetOffline].
+  /// uncommitted-changes check runs.
+  ///
+  /// [gg.PubGetOffline] self-gates on the presence of a `pubspec.yaml`: pure
+  /// TypeScript repos (no pubspec.yaml) are skipped, while bridge repos
+  /// (pubspec.yaml + package.json + tsconfig) DO carry a Dart `pubspec.lock`
+  /// that must be kept in sync — otherwise a stale lock would later surface as
+  /// an uncommitted change. So run it for every repo and let it self-gate.
   Future<void> _pubGetOffline({
     required List<Node> subs,
     required GgLog ggLog,
   }) async {
     for (final repo in subs) {
-      // Bridge repos (pubspec.yaml + package.json + tsconfig) are treated
-      // like TypeScript repos here: the Dart `pub get` is skipped (a pure
-      // TypeScript repo has no pubspec.yaml and is skipped by PubGetOffline
-      // anyway).
-      if (gg.isBridgeProject(repo.directory)) {
-        continue;
-      }
       await _ggPubGetOffline.exec(
         directory: repo.directory,
         ggLog: ggLog,

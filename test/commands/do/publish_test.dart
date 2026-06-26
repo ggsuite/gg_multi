@@ -2054,7 +2054,7 @@ void main() {
           () => mockSetRefVersion.get(
             directory: bDir,
             ref: 'A',
-            version: '^1.2.3',
+            version: '1.2.3',
           ),
         ).called(1);
       },
@@ -2143,7 +2143,7 @@ void main() {
           () => mockSetRefVersion.get(
             directory: bDir,
             ref: 'A',
-            version: '^2.0.0',
+            version: '2.0.0',
           ),
         ).thenThrow(Exception('update failed'));
 
@@ -3075,6 +3075,183 @@ void main() {
           workingDirectory: any(named: 'workingDirectory'),
         ),
       );
+    });
+
+    test('runs BOTH npm install and dart pub upgrade for bridge repos',
+        () async {
+      // Keep pubspec.yaml AND add package.json + tsconfig -> A is a bridge,
+      // whose Dart pubspec.lock must be refreshed alongside node_modules.
+      File(path.join(ticketDir.path, 'A', 'package.json')).writeAsStringSync(
+        jsonEncode(<String, dynamic>{'name': 'A'}),
+      );
+      File(path.join(ticketDir.path, 'A', 'tsconfig.json'))
+          .writeAsStringSync('{}');
+
+      final mockGgDoPublish = MockGgDoPublish();
+      final mockGgDoCommit = MockGgDoCommit();
+      final mockGgDoPush = MockGgDoPush();
+      final mockUnlocalizeRefs = MockUnlocalizeRefs();
+      final mockRestorePublishTo = MockRestorePublishTo();
+      final mockSortedProcessingList = MockSortedProcessingList();
+      final mockProcessRunner = MockProcessRunner();
+      final mockCanPublishCommand = MockCanPublishCommand();
+      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockGetVersion = MockGetVersion();
+      final mockGetRefVersion = MockGetRefVersion();
+      final mockSetRefVersion = MockSetRefVersion();
+      final mockPubDevChecker = MockPubDevChecker();
+
+      final repoADir = Directory(path.join(ticketDir.path, 'A'));
+
+      when(
+        () => mockDoReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          verbose: any(named: 'verbose'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockCanPublishCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: repoADir,
+            manifest: TypeScriptPackageManifest(
+              name: 'A',
+              dependencies: const <String>[],
+              devDependencies: const <String>[],
+              rawJson: const <String, dynamic>{'name': 'A'},
+            ),
+          ),
+        ],
+      );
+      when(
+        () => mockUnlocalizeRefs.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockRestorePublishTo.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => mockSetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+          version: any(named: 'version'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockProcessRunner(
+          'npm',
+          ['install'],
+          workingDirectory: repoADir.path,
+          environment: any(named: 'environment'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => mockProcessRunner(
+          'dart',
+          ['pub', 'upgrade'],
+          workingDirectory: repoADir.path,
+          environment: any(named: 'environment'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => mockGgDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGetVersion.get(directory: any(named: 'directory')),
+      ).thenAnswer((_) async => null);
+
+      final runner = CommandRunner<void>('test', 'do publish ticket')
+        ..addCommand(
+          DoPublishCommand(
+            ggLog: ggLog,
+            ggDoPublish: mockGgDoPublish,
+            ggDoCommit: mockGgDoCommit,
+            ggDoPush: mockGgDoPush,
+            unlocalizeRefs: mockUnlocalizeRefs,
+            restorePublishTo: mockRestorePublishTo,
+            sortedProcessingList: mockSortedProcessingList,
+            processRunner: mockProcessRunner.call,
+            canPublishCommand: mockCanPublishCommand,
+            doReviewCommand: mockDoReviewCommand,
+            getVersionCommand: mockGetVersion,
+            setRefVersionCommand: mockSetRefVersion,
+            getRefVersionCommand: mockGetRefVersion,
+            pubDevChecker: mockPubDevChecker,
+            editMessage: (initialMessage) async => initialMessage,
+            confirmDeleteTicket: (_) => false,
+          ),
+        );
+
+      await runner.run(['publish', '--input', ticketDir.path]);
+
+      // The bridge refreshes BOTH: the TypeScript install (with the pnpm env
+      // override) AND the Dart pubspec.lock via dart pub upgrade.
+      final captured = verify(
+        () => mockProcessRunner(
+          'npm',
+          ['install'],
+          workingDirectory: repoADir.path,
+          environment: captureAny(named: 'environment'),
+        ),
+      ).captured;
+      expect(captured.length, 1);
+      final env = captured.single as Map<String, String>;
+      expect(env['PNPM_CONFIG_BLOCK_EXOTIC_SUBDEPS'], 'false');
+
+      verify(
+        () => mockProcessRunner(
+          'dart',
+          ['pub', 'upgrade'],
+          workingDirectory: repoADir.path,
+          environment: any(named: 'environment'),
+        ),
+      ).called(1);
     });
   });
 }

@@ -266,8 +266,8 @@ void main() {
     });
 
     test(
-        'skips bridge repos in "dart pub get --offline" '
-        '(treated as TypeScript)', () async {
+        'runs "dart pub get --offline" for bridge repos too '
+        '(they carry a Dart pubspec.lock)', () async {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       final mockIsFeatureBranch = MockIsFeatureBranch();
@@ -334,13 +334,14 @@ void main() {
         );
       await runner.run(['review', '--input', ticketDir.path]);
 
-      // pub get runs only for the plain Dart repo A — the bridge B is skipped.
+      // pub get runs for BOTH repos: the plain Dart repo A and the bridge B
+      // (PubGetOffline itself skips only repos without a pubspec.yaml).
       verify(
         () => mockPubGetOffline.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
         ),
-      ).called(1);
+      ).called(2);
       expect(
         messages,
         contains('✅ All repos can be reviewed'),

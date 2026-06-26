@@ -1245,8 +1245,8 @@ void main() {
     );
 
     test(
-      'executes npm install for bridge repos (treated as TypeScript), '
-      'not dart pub upgrade',
+      'executes npm install AND dart pub upgrade for bridge repos '
+      '(both manifests are refreshed)',
       () async {
         final mockSortedProcessingList = MockSortedProcessingList();
         final mockUnlocalizeRefs = MockUnlocalizeRefs();
@@ -1336,6 +1336,14 @@ void main() {
 
         when(
           () => mockProcessRunner(
+            'dart',
+            ['pub', 'upgrade'],
+            workingDirectory: repoADir.path,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+        when(
+          () => mockProcessRunner(
             'git',
             ['ls-remote', '--heads', 'origin', 'TICKDR'],
             workingDirectory: any(named: 'workingDirectory'),
@@ -1363,10 +1371,17 @@ void main() {
           ticketDir.path,
         ]);
 
-        // The bridge took the TypeScript path: npm install, not pub upgrade.
+        // A bridge refreshes BOTH manifests: the TypeScript package manager
+        // (npm install) AND the Dart side (dart pub upgrade).
         expect(
           messages.any(
             (m) => m.contains('Executed npm install in A.'),
+          ),
+          isTrue,
+        );
+        expect(
+          messages.any(
+            (m) => m.contains('Executed dart pub upgrade in A.'),
           ),
           isTrue,
         );
@@ -1377,13 +1392,13 @@ void main() {
             workingDirectory: repoADir.path,
           ),
         ).called(1);
-        verifyNever(
+        verify(
           () => mockProcessRunner(
             'dart',
             ['pub', 'upgrade'],
-            workingDirectory: any(named: 'workingDirectory'),
+            workingDirectory: repoADir.path,
           ),
-        );
+        ).called(1);
       },
     );
 
