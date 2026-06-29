@@ -23,6 +23,7 @@ import '../../backend/filesystem_utils.dart';
 import '../../backend/git_platform.dart';
 import '../../backend/organization_utils.dart';
 import '../../backend/repo_folder_resolver.dart';
+import '../../backend/ticket_json.dart';
 import '../../backend/workspace_utils.dart';
 import 'add_deps.dart' show fetchDependencyRepoUrl;
 import 'install_git_hooks.dart';
@@ -835,6 +836,15 @@ class AddCommand extends Command<dynamic> {
       ggLog(yellow('⚠️ No repos in this ticket'));
       return;
     }
+
+    // Write the ticket marker into every repo so the full ticket layout
+    // travels with each feature branch. It is overwritten on every `do add`,
+    // keeping the repo list current, and committed in iteration 2 below.
+    final repoDirs = nodes.map((n) => n.directory).toList();
+    writeTicketJsonToRepos(
+      repoDirs: repoDirs,
+      ticket: buildTicketJson(ticketDir: ticketDir, repoDirs: repoDirs),
+    );
 
     // Iteration 1: Unlocalize all ---------------------------------------------
     for (final node in nodes) {

@@ -513,6 +513,15 @@ dev_dependencies:
           ),
           isTrue,
         );
+
+        // The ticket marker is written into the repo's .gg folder.
+        final ticketJson = File(
+          path.join(ticketDir.path, repoName, '.gg', '.ticket.json'),
+        );
+        expect(ticketJson.existsSync(), isTrue);
+        final markerContent = ticketJson.readAsStringSync();
+        expect(markerContent, contains('"issue_id": "TICKET"'));
+        expect(markerContent, contains('"repositories"'));
       },
     );
 
