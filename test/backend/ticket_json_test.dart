@@ -195,45 +195,29 @@ void main() {
       expect(markerOf(repo).existsSync(), isTrue);
     });
 
-    test('skips gitignore handling when there is no .gitignore', () {
-      final repo = makeDir('no_gitignore');
-      writeTicketJsonToRepos(repoDirs: [repo], ticket: ticket);
-      expect(File(path.join(repo.path, '.gitignore')).existsSync(), isFalse);
+    test(
+        'writes the same marker into every repo and never touches '
+        'the .gitignore', () {
+      final a = makeDir('multi_a');
+      final b = makeDir('multi_b');
+      File(path.join(b.path, '.gitignore')).writeAsStringSync('.gg\n');
+      writeTicketJsonToRepos(repoDirs: [a, b], ticket: ticket);
+      expect(markerOf(a).readAsStringSync(), ticket.toPrettyJson());
+      expect(markerOf(b).readAsStringSync(), ticket.toPrettyJson());
+      // The marker is force-staged by the caller, not via .gitignore.
+      expect(File(path.join(b.path, '.gitignore')).readAsStringSync(), '.gg\n');
     });
+  });
 
-    test('appends the whitelist line (file ends with newline)', () {
-      final repo = makeDir('gi_newline');
-      final gi = File(path.join(repo.path, '.gitignore'))
-        ..writeAsStringSync('.gg\n!.gg/.gg.json\n');
-      writeTicketJsonToRepos(repoDirs: [repo], ticket: ticket);
+  group('writeRootTicket', () {
+    test('writes the issue id and description as JSON', () {
+      final ticketDir = makeDir('rt');
+      writeRootTicket(ticketDir, issueId: 'feat_x', description: 'desc');
+      final f = File(path.join(ticketDir.path, '.ticket'));
       expect(
-        gi.readAsStringSync(),
-        '.gg\n!.gg/.gg.json\n$ticketJsonGitignoreLine\n',
+        f.readAsStringSync(),
+        '{"issue_id":"feat_x","description":"desc"}',
       );
-    });
-
-    test('appends the whitelist line (file without trailing newline)', () {
-      final repo = makeDir('gi_no_newline');
-      final gi = File(path.join(repo.path, '.gitignore'))
-        ..writeAsStringSync('.gg');
-      writeTicketJsonToRepos(repoDirs: [repo], ticket: ticket);
-      expect(gi.readAsStringSync(), '.gg\n$ticketJsonGitignoreLine\n');
-    });
-
-    test('writes the whitelist line into an empty .gitignore', () {
-      final repo = makeDir('gi_empty');
-      final gi = File(path.join(repo.path, '.gitignore'))
-        ..writeAsStringSync('');
-      writeTicketJsonToRepos(repoDirs: [repo], ticket: ticket);
-      expect(gi.readAsStringSync(), '$ticketJsonGitignoreLine\n');
-    });
-
-    test('does not duplicate an existing whitelist line', () {
-      final repo = makeDir('gi_present');
-      final gi = File(path.join(repo.path, '.gitignore'))
-        ..writeAsStringSync('.gg\n$ticketJsonGitignoreLine\n');
-      writeTicketJsonToRepos(repoDirs: [repo], ticket: ticket);
-      expect(gi.readAsStringSync(), '.gg\n$ticketJsonGitignoreLine\n');
     });
   });
 }

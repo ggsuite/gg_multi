@@ -20,6 +20,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 import 'package:gg_multi/src/commands/do/add.dart';
+import 'package:gg_multi/src/backend/repo_setup.dart';
 import 'package:gg_multi/src/backend/git_handler.dart' hide ProcessRunner;
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 // ignore: lines_longer_than_80_chars
@@ -429,6 +430,22 @@ dev_dependencies:
         when(
           () => mockProc(
             'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+        when(
+          () => mockProc(
+            'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+        when(
+          () => mockProc(
+            'git',
             ['fetch'],
             workingDirectory: repoDir.path,
             runInShell: true,
@@ -553,6 +570,22 @@ dev_dependencies:
         final mockProc = MockProcessRunner();
         when(
           () => mockProc(
+            'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+        when(
+          () => mockProc(
+            'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+        when(
+          () => mockProc(
             any(),
             any(),
             workingDirectory: any(named: 'workingDirectory'),
@@ -614,6 +647,22 @@ dev_dependencies:
         )..createSync(recursive: true);
 
         final mockProc = MockProcessRunner();
+        when(
+          () => mockProc(
+            'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+        when(
+          () => mockProc(
+            'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
         when(
           () => mockProc(
             any(),
@@ -693,6 +742,22 @@ dev_dependencies:
         final mockProc = MockProcessRunner();
         when(
           () => mockProc(
+            'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+        when(
+          () => mockProc(
+            'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+        when(
+          () => mockProc(
             any(),
             any(),
             workingDirectory: any(named: 'workingDirectory'),
@@ -764,6 +829,22 @@ dev_dependencies:
         final mockProc = MockProcessRunner();
         when(
           () => mockProc(
+            'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+        when(
+          () => mockProc(
+            'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+        when(
+          () => mockProc(
             any(),
             any(),
             workingDirectory: any(named: 'workingDirectory'),
@@ -815,6 +896,14 @@ version: 1.0.0
       )..createSync(recursive: true);
 
       final mockProc = MockProcessRunner();
+      when(
+        () => mockProc(
+          'git',
+          ['add', '-f', '.gg/.ticket.json'],
+          workingDirectory: any(named: 'workingDirectory'),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
       when(
         () => mockProc(
           'git',
@@ -919,6 +1008,14 @@ version: 1.0.0
       )..createSync(recursive: true);
 
       final mockProc = MockProcessRunner();
+      when(
+        () => mockProc(
+          'git',
+          ['add', '-f', '.gg/.ticket.json'],
+          workingDirectory: any(named: 'workingDirectory'),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
       final mockSorted = MockSortedProcessingList();
       final mockDoCommit = MockGgDoCommit();
       final mockGraph = MockGraph();
@@ -1217,6 +1314,14 @@ version: 1.0.0
             runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
         createRunner(
           executionPath: ticketDir.path,
           processRunner: mockProcessRunner.call,
@@ -1385,6 +1490,30 @@ version: 1.0.0
           final mockProc = MockProcessRunner();
           when(
             () => mockProc(
+              'git',
+              ['add', '-f', '.gg/.ticket.json'],
+              workingDirectory: any(named: 'workingDirectory'),
+              runInShell: any(named: 'runInShell'),
+            ),
+          ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+          when(
+            () => mockProc(
+              'git',
+              ['add', '-f', '.gg/.ticket.json'],
+              workingDirectory: any(named: 'workingDirectory'),
+              runInShell: any(named: 'runInShell'),
+            ),
+          ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+          when(
+            () => mockProc(
+              'git',
+              ['add', '-f', '.gg/.ticket.json'],
+              workingDirectory: any(named: 'workingDirectory'),
+              runInShell: any(named: 'runInShell'),
+            ),
+          ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+          when(
+            () => mockProc(
               any(),
               any(),
               workingDirectory: any(named: 'workingDirectory'),
@@ -1463,6 +1592,30 @@ version: 1.0.0
           final mockProc = MockProcessRunner();
           when(
             () => mockProc(
+              'git',
+              ['add', '-f', '.gg/.ticket.json'],
+              workingDirectory: any(named: 'workingDirectory'),
+              runInShell: any(named: 'runInShell'),
+            ),
+          ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+          when(
+            () => mockProc(
+              'git',
+              ['add', '-f', '.gg/.ticket.json'],
+              workingDirectory: any(named: 'workingDirectory'),
+              runInShell: any(named: 'runInShell'),
+            ),
+          ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+          when(
+            () => mockProc(
+              'git',
+              ['add', '-f', '.gg/.ticket.json'],
+              workingDirectory: any(named: 'workingDirectory'),
+              runInShell: any(named: 'runInShell'),
+            ),
+          ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+          when(
+            () => mockProc(
               any(),
               any(),
               workingDirectory: any(named: 'workingDirectory'),
@@ -1518,6 +1671,30 @@ version: 1.0.0
           )..createSync(recursive: true);
 
           final mockProc = MockProcessRunner();
+          when(
+            () => mockProc(
+              'git',
+              ['add', '-f', '.gg/.ticket.json'],
+              workingDirectory: any(named: 'workingDirectory'),
+              runInShell: any(named: 'runInShell'),
+            ),
+          ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+          when(
+            () => mockProc(
+              'git',
+              ['add', '-f', '.gg/.ticket.json'],
+              workingDirectory: any(named: 'workingDirectory'),
+              runInShell: any(named: 'runInShell'),
+            ),
+          ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+          when(
+            () => mockProc(
+              'git',
+              ['add', '-f', '.gg/.ticket.json'],
+              workingDirectory: any(named: 'workingDirectory'),
+              runInShell: any(named: 'runInShell'),
+            ),
+          ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
           when(
             () => mockProc(
               any(),
@@ -1603,6 +1780,14 @@ version: 1.0.0
       ).thenThrow(Exception('commit error'));
 
       final mockProc = MockProcessRunner();
+      when(
+        () => mockProc(
+          'git',
+          ['add', '-f', '.gg/.ticket.json'],
+          workingDirectory: any(named: 'workingDirectory'),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
       when(
         () => mockProc(
           'git',
@@ -2082,6 +2267,22 @@ version: 1.0.0
         final mockProc = MockProcessRunner();
         when(
           () => mockProc(
+            'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+        when(
+          () => mockProc(
+            'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+        when(
+          () => mockProc(
             any(),
             any(),
             workingDirectory: any(named: 'workingDirectory'),
@@ -2160,6 +2361,22 @@ version: 1.0.0
         ).thenAnswer((_) async {});
 
         final mockProc = MockProcessRunner();
+        when(
+          () => mockProc(
+            'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+        when(
+          () => mockProc(
+            'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
         when(
           () => mockProc(
             'git',
@@ -2265,6 +2482,22 @@ version: 1.0.0
         when(
           () => mockProc(
             'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+        when(
+          () => mockProc(
+            'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+        when(
+          () => mockProc(
+            'git',
             any(),
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: true,
@@ -2351,6 +2584,22 @@ version: 1.0.0
         final mockLoc = MockLocalizeRefs();
         final mockDoCommit = MockGgDoCommit();
         final mockProc = MockProcessRunner();
+        when(
+          () => mockProc(
+            'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+        when(
+          () => mockProc(
+            'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
 
         when(
           () => mockDoCommit.exec(
@@ -2480,6 +2729,22 @@ version: 1.0.0
         final mockLoc = MockLocalizeRefs();
         final mockDoCommit = MockGgDoCommit();
         final mockProc = MockProcessRunner();
+        when(
+          () => mockProc(
+            'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+        when(
+          () => mockProc(
+            'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
 
         when(
           () => mockDoCommit.exec(
@@ -2591,6 +2856,22 @@ version: 1.0.0
         )..createSync(recursive: true);
 
         final mockProc = MockProcessRunner();
+        when(
+          () => mockProc(
+            'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+        when(
+          () => mockProc(
+            'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
         when(
           () => mockProc(
             'git',
@@ -2748,6 +3029,22 @@ version: 1.0.0
         });
 
         final mockProc = MockProcessRunner();
+        when(
+          () => mockProc(
+            'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+        when(
+          () => mockProc(
+            'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
         when(
           () => mockProc(
             any(),

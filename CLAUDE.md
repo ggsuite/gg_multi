@@ -37,7 +37,7 @@ Gg Multi is a multi-repository workspace management CLI for Dart/Flutter project
 bin/gg_multi.dart
   └─ GgMulti (lib/src/gg_multi.dart)
        ├─ Can   – validate before acting (can commit, can push, can publish, can review)
-       ├─ Do    – execute across all repos (do commit, do push, do review, do claude, …)
+       ├─ Do    – execute across all repos (do commit, do push, do review, do add, do checkout, do claude, …)
        ├─ Did   – report what happened (did commit, did push)
        └─ Ls    – list workspace contents (repos, organizations, deps)
 ```
@@ -58,7 +58,8 @@ The tool manages two levels of workspace:
 | Module | Role |
 |--------|------|
 | `workspace_utils.dart` | Detects master/ticket paths from any working directory |
-| `git_handler.dart` | Clone, branch, and Git operations |
+| `git_handler.dart` | Clone & create-branch (workspace-specific); generic git ops (fetch, checkout, show-file, remote-branches) live in `gg_git` |
+| `ticket_json.dart` | Reads/writes/parses the per-repo `.gg/.ticket.json` ticket marker |
 | `git_platform.dart` | GitHub API abstraction |
 | `list_backend.dart` | Lists repos/orgs/deps with metadata |
 | `add_repository_helper.dart` | Logic for adding repos to a workspace |
@@ -73,6 +74,20 @@ The tool manages two levels of workspace:
 2. Resolves repos in dependency order with `SortedProcessingList` (from `gg_local_package_dependencies`).
 3. Reads each repo's `CLAUDE.md` (throws with a helpful message if one is missing — the user must run `/init` in that repo first).
 4. Writes a single `<ticket-dir>/CLAUDE.md` combining workspace overview, commands, per-repo architecture sections, and code standards.
+
+### `.gg/.ticket.json` ticket marker
+
+`do add` writes a pretty-printed `.gg/.ticket.json` into **every** repo of a ticket (overwriting on each `add` so it stays current). It holds `issue_id`, `description` and the full list of repos with their git URLs, and is whitelisted in each repo's `.gitignore` (`!.gg/.ticket.json`) so it travels with the feature branch. `gg_one do merge` removes it again before merging so it never reaches `main`. Logic lives in `lib/src/backend/ticket_json.dart`.
+
+### `do checkout` Command
+
+`DoCheckoutCommand` (in `lib/src/commands/do/checkout.dart`) reproduces a whole ticket from a single `.gg/.ticket.json` marker (e.g. one another person created) — its repositories on their feature branch, not a byte-identical clone of a fresh `do add` (no git-hook/`.gitattributes` reinstall). `gg do checkout <X>` resolves `<X>` in three modes:
+
+1. **Inside a `.master` repo** → `<X>` is the ticket name, read from that repo's `origin/<X>` branch.
+2. **`<X>` is a known `.master` repo** → fetch it and pick a ticket branch interactively.
+3. **Otherwise** → `<X>` is a ticket name, searched across all `.master` repos.
+
+Once found, it recreates the ticket folder + root `.ticket`, clones any missing repos from their URLs, copies each into the ticket, checks out the existing feature branch, and installs deps.
 
 ## Code Standards
 

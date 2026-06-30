@@ -9,6 +9,7 @@ import 'package:gg_log/gg_log.dart';
 import 'package:gg_multi/src/commands/do/add.dart';
 import 'package:gg_multi/src/commands/do/add_deps.dart';
 import 'package:gg_multi/src/commands/do/cancel_review.dart';
+import 'package:gg_multi/src/commands/do/checkout.dart';
 import 'package:gg_multi/src/commands/do/claude.dart';
 import 'package:gg_multi/src/commands/do/code.dart';
 import 'package:gg_multi/src/commands/do/create.dart';
@@ -56,6 +57,7 @@ class Do extends Command<void> {
     addSubcommand(DoClaudeCommand(ggLog: ggLog));
     addSubcommand(AddDepsCommand(ggLog: ggLog));
     addSubcommand(AddCommand(ggLog: ggLog));
+    addSubcommand(DoCheckoutCommand(ggLog: ggLog));
     addSubcommand(CodeCommand(ggLog: ggLog));
     addSubcommand(CreateCommand(ggLog: ggLog));
     addSubcommand(InitCommand(ggLog: ggLog));

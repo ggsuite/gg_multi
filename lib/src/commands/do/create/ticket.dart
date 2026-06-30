@@ -4,7 +4,6 @@
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
 
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
@@ -13,6 +12,7 @@ import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 import '../../../backend/constants.dart';
+import '../../../backend/ticket_json.dart';
 import '../../../backend/workspace_utils.dart';
 import 'package:path/path.dart' as p;
 
@@ -99,11 +99,11 @@ class TicketCommand extends DirCommand<void> {
     }
 
     // Write the .ticket file as JSON.
-    final data = <String, String>{
-      'issue_id': issueId,
-      'description': description,
-    };
-    ticketFile.writeAsStringSync(jsonEncode(data));
+    writeRootTicket(
+      Directory(ticketsPath),
+      issueId: issueId,
+      description: description,
+    );
 
     ggLog('✅ Created ticket $issueId');
     ggLog(

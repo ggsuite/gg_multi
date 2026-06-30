@@ -14,10 +14,6 @@ import 'repo_folder_resolver.dart';
 /// Relative path of the ticket marker inside a repository.
 const String ticketJsonRelativePath = '.gg/.ticket.json';
 
-/// The `.gitignore` line that re-includes the otherwise-ignored marker so it
-/// is committed together with the feature branch.
-const String ticketJsonGitignoreLine = '!.gg/.ticket.json';
-
 /// One repository entry of a [TicketJson] marker.
 class TicketRepo {
   /// Constructor.
@@ -120,8 +116,12 @@ TicketJson buildTicketJson({
 }
 
 /// Writes (overwriting) the `.gg/.ticket.json` marker into every repository in
-/// [repoDirs] and whitelists it in each repo's `.gitignore`, so the marker is
-/// committed with the feature branch. The same [ticket] is written everywhere.
+/// [repoDirs]. The same [ticket] is written everywhere.
+///
+/// The `.gg/` folder is git-ignored (and gg re-appends that ignore on every
+/// run, so a `.gitignore` re-include is unreliable), therefore the caller must
+/// force-stage the marker (`git add -f`) to make it a tracked file that
+/// travels with the feature branch.
 void writeTicketJsonToRepos({
   required Iterable<Directory> repoDirs,
   required TicketJson ticket,
@@ -133,8 +133,22 @@ void writeTicketJsonToRepos({
       ggDir.createSync(recursive: true);
     }
     File(path.join(ggDir.path, '.ticket.json')).writeAsStringSync(content);
-    _whitelistInGitignore(repoDir);
   }
+}
+
+/// Writes the root `.ticket` file (issue id + description) into [ticketDir].
+void writeRootTicket(
+  Directory ticketDir, {
+  required String issueId,
+  required String description,
+}) {
+  final data = <String, String>{
+    'issue_id': issueId,
+    'description': description,
+  };
+  File(
+    path.join(ticketDir.path, '.ticket'),
+  ).writeAsStringSync(jsonEncode(data));
 }
 
 /// Reads the `description` field from the root `.ticket` file, or returns an
@@ -153,25 +167,4 @@ String _readTicketDescription(Directory ticketDir) {
     // Fall through to an empty description on a malformed .ticket.
   }
   return '';
-}
-
-/// Appends [ticketJsonGitignoreLine] to the repo's `.gitignore` when present
-/// and not already whitelisted. A no-op when there is no `.gitignore` (then
-/// the marker is not ignored anyway).
-void _whitelistInGitignore(Directory repoDir) {
-  final gitignore = File(path.join(repoDir.path, '.gitignore'));
-  if (!gitignore.existsSync()) {
-    return;
-  }
-  final current = gitignore.readAsStringSync();
-  final alreadyWhitelisted = const LineSplitter()
-      .convert(current)
-      .any((line) => line.trim() == ticketJsonGitignoreLine);
-  if (alreadyWhitelisted) {
-    return;
-  }
-  final needsNewline = current.isNotEmpty && !current.endsWith('\n');
-  gitignore.writeAsStringSync(
-    '$current${needsNewline ? '\n' : ''}$ticketJsonGitignoreLine\n',
-  );
 }

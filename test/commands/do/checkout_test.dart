@@ -1,0 +1,564 @@
+// @license
+// Copyright (c) 2025 Göran Hegenberg. All Rights Reserved.
+//
+// Use of this source code is governed by terms that can be
+// found in the LICENSE file in the root of this package.
+
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:args/command_runner.dart';
+import 'package:gg_git/gg_git.dart' as gg_git;
+import 'package:gg_multi/src/backend/git_handler.dart';
+import 'package:gg_multi/src/commands/do/checkout.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as path;
+import 'package:test/test.dart';
+
+class _FakeDir extends Fake implements Directory {}
+
+class MockGitHandler extends Mock implements GitHandler {}
+
+class MockFetch extends Mock implements gg_git.Fetch {}
+
+class MockCheckout extends Mock implements gg_git.Checkout {}
+
+class MockShowFile extends Mock implements gg_git.ShowFile {}
+
+class MockRemoteBranches extends Mock implements gg_git.RemoteBranches {}
+
+class MockRemoteBranchExists extends Mock
+    implements gg_git.RemoteBranchExists {}
+
+class MockProcessRunner extends Mock {
+  Future<ProcessResult> call(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+    bool runInShell,
+  });
+}
+
+void main() {
+  setUpAll(() => registerFallbackValue(_FakeDir()));
+
+  late Directory tempDir;
+  late String masterPath;
+  final messages = <String>[];
+  final ggLog = messages.add;
+  late MockGitHandler gitHandler;
+  late MockFetch fetch;
+  late MockCheckout checkout;
+  late MockShowFile showFile;
+  late MockRemoteBranches remoteBranches;
+  late MockRemoteBranchExists remoteBranchExists;
+  late MockProcessRunner proc;
+  final copyCalls = <String>[];
+
+  String ticketJsonStr({
+    String issueId = 'feat_x',
+    String desc = 'd',
+    List<Map<String, String>> repos = const [
+      {'name': 'repo_a', 'url': 'u_a'},
+    ],
+  }) =>
+      jsonEncode(<String, Object?>{
+        'issue_id': issueId,
+        'description': desc,
+        'repositories': repos,
+      });
+
+  void stubShowFile(String? content) {
+    when(
+      () => showFile.get(
+        directory: any(named: 'directory'),
+        ggLog: any(named: 'ggLog'),
+        ref: any(named: 'ref'),
+        filePath: any(named: 'filePath'),
+      ),
+    ).thenAnswer((_) async => content);
+  }
+
+  Directory makeMasterRepo(String name) {
+    final d = Directory(path.join(masterPath, name))
+      ..createSync(recursive: true);
+    Directory(path.join(d.path, '.git')).createSync();
+    File(path.join(d.path, 'pubspec.yaml')).writeAsStringSync('name: x\n');
+    return d;
+  }
+
+  Future<void> fakeCopyDir(Directory src, Directory dest) async {
+    copyCalls.add(dest.path);
+    dest.createSync(recursive: true);
+    File(path.join(dest.path, 'pubspec.yaml')).writeAsStringSync('name: x\n');
+  }
+
+  setUp(() {
+    messages.clear();
+    copyCalls.clear();
+    tempDir = Directory.systemTemp.createTempSync('do_checkout_test');
+    masterPath = path.join(tempDir.path, '.master');
+    Directory(masterPath).createSync(recursive: true);
+
+    gitHandler = MockGitHandler();
+    fetch = MockFetch();
+    checkout = MockCheckout();
+    showFile = MockShowFile();
+    remoteBranches = MockRemoteBranches();
+    remoteBranchExists = MockRemoteBranchExists();
+    proc = MockProcessRunner();
+
+    when(
+      () => fetch.get(
+        directory: any(named: 'directory'),
+        ggLog: any(named: 'ggLog'),
+      ),
+    ).thenAnswer((_) async {});
+    when(
+      () => checkout.get(
+        directory: any(named: 'directory'),
+        ggLog: any(named: 'ggLog'),
+        branch: any(named: 'branch'),
+      ),
+    ).thenAnswer((_) async {});
+    stubShowFile(ticketJsonStr());
+    when(
+      () => remoteBranches.get(
+        directory: any(named: 'directory'),
+        ggLog: any(named: 'ggLog'),
+      ),
+    ).thenAnswer((_) async => ['main', 'master', 'feat_x']);
+    when(
+      () => remoteBranchExists.get(
+        directory: any(named: 'directory'),
+        ggLog: any(named: 'ggLog'),
+        branch: any(named: 'branch'),
+      ),
+    ).thenAnswer((_) async => true);
+    when(() => gitHandler.cloneRepo(any(), any())).thenAnswer((_) async {});
+    when(
+      () => proc.call(
+        any(),
+        any(),
+        workingDirectory: any(named: 'workingDirectory'),
+        runInShell: any(named: 'runInShell'),
+      ),
+    ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+  });
+
+  tearDown(() => tempDir.deleteSync(recursive: true));
+
+  DoCheckoutCommand build({
+    String? executionPath,
+    BranchSelector? selectBranch,
+    CopyDirectory? copyDir,
+  }) =>
+      DoCheckoutCommand(
+        ggLog: ggLog,
+        gitHandler: gitHandler,
+        fetch: fetch,
+        checkout: checkout,
+        showFile: showFile,
+        remoteBranches: remoteBranches,
+        remoteBranchExists: remoteBranchExists,
+        masterWorkspacePath: masterPath,
+        executionPath: executionPath ?? tempDir.path,
+        processRunner: proc.call,
+        selectBranch: selectBranch ?? (b) async => b.first,
+        copyDir: copyDir ?? fakeCopyDir,
+      );
+
+  Future<void> runCmd(DoCheckoutCommand cmd, List<String> args) async {
+    final runner = CommandRunner<dynamic>('gg', 'gg')..addCommand(cmd);
+    await runner.run(['checkout', ...args]);
+  }
+
+  Directory ticketDirOf(String name) =>
+      Directory(path.join(tempDir.path, 'tickets', name));
+
+  bool logged(String fragment) => messages.any((m) => m.contains(fragment));
+
+  group('DoCheckoutCommand', () {
+    test('has the expected name and description', () {
+      final cmd = build();
+      expect(cmd.name, 'checkout');
+      expect(cmd.description, contains('Reproduces a ticket'));
+    });
+
+    test('throws UsageException when no name is given', () async {
+      await expectLater(runCmd(build(), []), throwsA(isA<UsageException>()));
+    });
+
+    group('mode 1 (inside a master repo)', () {
+      test('reproduces the ticket from the current repo branch', () async {
+        final repoA = makeMasterRepo('repo_a');
+        await runCmd(build(executionPath: repoA.path), ['feat_x']);
+
+        final tdir = ticketDirOf('feat_x');
+        expect(tdir.existsSync(), isTrue);
+        expect(File(path.join(tdir.path, '.ticket')).existsSync(), isTrue);
+        expect(
+          File(
+            path.join(tdir.path, 'feat_x.code-workspace'),
+          ).existsSync(),
+          isTrue,
+        );
+        expect(copyCalls.any((p) => p.endsWith('repo_a')), isTrue);
+        verify(
+          () => checkout.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            branch: 'feat_x',
+          ),
+        ).called(1);
+        expect(logged('Executed dart pub get in repo_a'), isTrue);
+        expect(logged('Checked out ticket feat_x'), isTrue);
+      });
+
+      test('an exec at master root is not treated as mode 1', () async {
+        makeMasterRepo('repo_a');
+        when(
+          () => remoteBranchExists.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            branch: any(named: 'branch'),
+          ),
+        ).thenAnswer((_) async => false);
+        await expectLater(
+          runCmd(build(executionPath: masterPath), ['nope']),
+          throwsA(isA<Exception>()),
+        );
+      });
+
+      test('an exec in a non-existent master subdir is not mode 1', () async {
+        await expectLater(
+          runCmd(build(executionPath: path.join(masterPath, 'ghost')), [
+            'nope',
+          ]),
+          throwsA(isA<Exception>()),
+        );
+      });
+    });
+
+    group('mode 2 (known repo, interactive)', () {
+      test('lists branches and reproduces the selected one', () async {
+        makeMasterRepo('repo_a');
+        await runCmd(build(), ['repo_a']);
+
+        verify(
+          () => remoteBranches.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).called(1);
+        verify(
+          () => checkout.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            branch: 'feat_x',
+          ),
+        ).called(1);
+        expect(ticketDirOf('feat_x').existsSync(), isTrue);
+      });
+
+      test('logs when there are no ticket branches', () async {
+        makeMasterRepo('repo_a');
+        when(
+          () => remoteBranches.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async => ['main', 'master']);
+        await runCmd(build(), ['repo_a']);
+
+        expect(logged('No ticket branches found'), isTrue);
+        verifyNever(
+          () => checkout.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            branch: any(named: 'branch'),
+          ),
+        );
+      });
+
+      test('returns when the selection is cancelled (null)', () async {
+        makeMasterRepo('repo_a');
+        await runCmd(build(selectBranch: (b) async => null), ['repo_a']);
+        verifyNever(
+          () => showFile.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            ref: any(named: 'ref'),
+            filePath: any(named: 'filePath'),
+          ),
+        );
+      });
+
+      test('returns when the selection is empty', () async {
+        makeMasterRepo('repo_a');
+        await runCmd(build(selectBranch: (b) async => ''), ['repo_a']);
+        verifyNever(
+          () => showFile.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            ref: any(named: 'ref'),
+            filePath: any(named: 'filePath'),
+          ),
+        );
+      });
+    });
+
+    group('mode 3 (search by ticket name)', () {
+      test('finds the branch across master repos and reproduces', () async {
+        makeMasterRepo('repo_a');
+        await runCmd(build(), ['feat_x']);
+
+        verify(
+          () => remoteBranchExists.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            branch: 'feat_x',
+          ),
+        ).called(1);
+        expect(ticketDirOf('feat_x').existsSync(), isTrue);
+      });
+
+      test('throws when no repo has the branch', () async {
+        makeMasterRepo('repo_a');
+        when(
+          () => remoteBranchExists.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            branch: any(named: 'branch'),
+          ),
+        ).thenAnswer((_) async => false);
+        await expectLater(
+          runCmd(build(), ['feat_x']),
+          throwsA(
+            predicate(
+              (e) => e.toString().contains(
+                    'No repository in the master workspace has a branch',
+                  ),
+            ),
+          ),
+        );
+      });
+
+      test('skips a repo whose fetch fails, then throws not-found', () async {
+        makeMasterRepo('repo_a');
+        when(
+          () => fetch.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenThrow(Exception('boom'));
+        await expectLater(
+          runCmd(build(), ['feat_x']),
+          throwsA(isA<Exception>()),
+        );
+        expect(logged('Failed to fetch repo_a'), isTrue);
+      });
+
+      test('throws cleanly when the master workspace is missing', () async {
+        Directory(masterPath).deleteSync(recursive: true);
+        await expectLater(
+          runCmd(build(), ['nope']),
+          throwsA(isA<Exception>()),
+        );
+      });
+    });
+
+    group('marker handling', () {
+      test('throws when the branch has no ticket marker', () async {
+        final repoA = makeMasterRepo('repo_a');
+        stubShowFile(null);
+        await expectLater(
+          runCmd(build(executionPath: repoA.path), ['feat_x']),
+          throwsA(
+            predicate(
+              (e) => e.toString().contains('Could not read .gg/.ticket.json'),
+            ),
+          ),
+        );
+      });
+
+      test('throws on an invalid ticket marker', () async {
+        final repoA = makeMasterRepo('repo_a');
+        stubShowFile('[1, 2]');
+        await expectLater(
+          runCmd(build(executionPath: repoA.path), ['feat_x']),
+          throwsA(
+            predicate(
+              (e) => e.toString().contains('Invalid .gg/.ticket.json'),
+            ),
+          ),
+        );
+      });
+
+      test('throws when the marker has no issue_id', () async {
+        final repoA = makeMasterRepo('repo_a');
+        stubShowFile(ticketJsonStr(issueId: ''));
+        await expectLater(
+          runCmd(build(executionPath: repoA.path), ['feat_x']),
+          throwsA(predicate((e) => e.toString().contains('no issue_id'))),
+        );
+      });
+    });
+
+    group('reproduce repositories', () {
+      test('skips a ticket repo that cannot be obtained', () async {
+        final repoA = makeMasterRepo('repo_a');
+        stubShowFile(
+          ticketJsonStr(
+            repos: const [
+              {'name': 'ghost', 'url': ''},
+            ],
+          ),
+        );
+        await runCmd(build(executionPath: repoA.path), ['feat_x']);
+        expect(logged('Could not obtain repository ghost'), isTrue);
+        expect(logged('1 repo(s) failed: ghost'), isTrue);
+        // The workspace file does not list the skipped repo.
+        final ws = File(
+          path.join(ticketDirOf('feat_x').path, 'feat_x.code-workspace'),
+        ).readAsStringSync();
+        expect(ws.contains('ghost'), isFalse);
+      });
+
+      test('clones a missing ticket repo from its url', () async {
+        final repoA = makeMasterRepo('repo_a');
+        stubShowFile(
+          ticketJsonStr(
+            repos: const [
+              {'name': 'new_repo', 'url': 'https://x/new_repo.git'},
+            ],
+          ),
+        );
+        await runCmd(build(executionPath: repoA.path), ['feat_x']);
+        verify(
+          () => gitHandler.cloneRepo(
+            'https://x/new_repo.git',
+            path.join(masterPath, 'new_repo'),
+          ),
+        ).called(1);
+      });
+
+      test('logs and skips when cloning a missing repo fails', () async {
+        final repoA = makeMasterRepo('repo_a');
+        stubShowFile(
+          ticketJsonStr(
+            repos: const [
+              {'name': 'new_repo', 'url': 'u'},
+            ],
+          ),
+        );
+        when(
+          () => gitHandler.cloneRepo(any(), any()),
+        ).thenThrow(Exception('clone failed'));
+        await runCmd(build(executionPath: repoA.path), ['feat_x']);
+        expect(logged('Failed to clone new_repo'), isTrue);
+        expect(logged('Could not obtain repository new_repo'), isTrue);
+      });
+
+      test('does not re-copy a repo already present in the ticket', () async {
+        final repoA = makeMasterRepo('repo_a');
+        final dest = Directory(
+          path.join(tempDir.path, 'tickets', 'feat_x', 'repo_a'),
+        )..createSync(recursive: true);
+        File(path.join(dest.path, 'pubspec.yaml')).writeAsStringSync('name: x');
+        await runCmd(build(executionPath: repoA.path), ['feat_x']);
+        expect(copyCalls.any((p) => p.endsWith('repo_a')), isFalse);
+        verify(
+          () => checkout.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            branch: 'feat_x',
+          ),
+        ).called(1);
+      });
+
+      test('logs and stops a repo when checkout fails', () async {
+        final repoA = makeMasterRepo('repo_a');
+        when(
+          () => checkout.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            branch: any(named: 'branch'),
+          ),
+        ).thenThrow(Exception('co fail'));
+        await runCmd(build(executionPath: repoA.path), ['feat_x']);
+        expect(logged('Failed to checkout feat_x in repo_a'), isTrue);
+        expect(logged('1 repo(s) failed: repo_a'), isTrue);
+        verifyNever(
+          () => proc.call(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        );
+      });
+    });
+
+    group('dependency install', () {
+      test('logs a failed dependency install', () async {
+        final repoA = makeMasterRepo('repo_a');
+        when(
+          () => proc.call(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 1, '', 'err'));
+        await runCmd(build(executionPath: repoA.path), ['feat_x']);
+        expect(logged('Failed to execute dart pub get in repo_a'), isTrue);
+      });
+
+      test('installs TypeScript deps for a package.json repo', () async {
+        final repoA = makeMasterRepo('repo_a');
+        Future<void> tsCopyDir(Directory src, Directory dest) async {
+          copyCalls.add(dest.path);
+          dest.createSync(recursive: true);
+          File(path.join(dest.path, 'package.json')).writeAsStringSync('{}');
+        }
+
+        await runCmd(
+          build(executionPath: repoA.path, copyDir: tsCopyDir),
+          ['feat_x'],
+        );
+        verify(
+          () => proc.call(
+            any(),
+            ['install'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).called(1);
+        expect(logged('install in repo_a'), isTrue);
+      });
+
+      test('skips install when the repo has neither manifest', () async {
+        final repoA = makeMasterRepo('repo_a');
+        Future<void> emptyCopyDir(Directory src, Directory dest) async {
+          copyCalls.add(dest.path);
+          dest.createSync(recursive: true);
+        }
+
+        await runCmd(
+          build(executionPath: repoA.path, copyDir: emptyCopyDir),
+          ['feat_x'],
+        );
+        verifyNever(
+          () => proc.call(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        );
+        expect(logged('Added repo_a on branch feat_x'), isTrue);
+      });
+    });
+  });
+}

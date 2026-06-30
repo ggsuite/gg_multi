@@ -17,29 +17,22 @@ import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 import 'package:pubspec_parse/pubspec_parse.dart';
 
-import '../../backend/git_handler.dart';
+import '../../backend/git_handler.dart' hide ProcessRunner;
 import '../../backend/add_repository_helper.dart';
 import '../../backend/filesystem_utils.dart';
-import '../../backend/git_platform.dart';
+import '../../backend/git_platform.dart' hide ProcessRunner;
 import '../../backend/organization_utils.dart';
 import '../../backend/repo_folder_resolver.dart';
+import '../../backend/repo_setup.dart';
 import '../../backend/ticket_json.dart';
 import '../../backend/workspace_utils.dart';
 import 'add_deps.dart' show fetchDependencyRepoUrl;
 import 'install_git_hooks.dart';
-import 'install_gitattributes.dart';
+import 'install_gitattributes.dart' hide ProcessRunner;
 
 /// Resolves the repository URL of a hosted dependency.
 /// Subset of [fetchDependencyRepoUrl] without named args, for test stubs.
 typedef FetchRepoUrl = Future<String?> Function(String packageName);
-
-/// Typedef for a process runner function.
-typedef ProcessRunner = Future<ProcessResult> Function(
-  String,
-  List<String>, {
-  String? workingDirectory,
-  bool runInShell,
-});
 
 /// Command to add a repo or all repos of an organization to master+ticket.
 /// In ticket mode it also auto-clones transitive deps and re-localizes refs.
@@ -613,51 +606,14 @@ class AddCommand extends Command<dynamic> {
     }
 
     // Install deps for every package manager the repo uses (Dart and/or TS).
-    await _installDependencies(
+    await installRepoDependencies(
       dir: destDir,
       repoName: repoName,
       ggLog: ggLog,
+      processRunner: processRunner,
     );
 
     ggLog(green('Added repository $repoName to ticket workspace.'));
-  }
-
-  /// Installs dependencies for every package manager the repo in [dir] uses.
-  ///
-  /// A cross-language bridge repo carrying both a `pubspec.yaml` and a
-  /// `package.json` gets both its Dart and its TypeScript dependencies
-  /// installed. When [upgradeDart] is true, `dart pub upgrade` is used instead
-  /// of `dart pub get` (used after re-localizing references).
-  Future<void> _installDependencies({
-    required Directory dir,
-    required String repoName,
-    required GgLog ggLog,
-    bool upgradeDart = false,
-  }) async {
-    final commands = <List<String>>[];
-
-    if (File(path.join(dir.path, 'pubspec.yaml')).existsSync()) {
-      commands.add(<String>['dart', 'pub', upgradeDart ? 'upgrade' : 'get']);
-    }
-    if (File(path.join(dir.path, 'package.json')).existsSync()) {
-      final pm = gg.detectTypeScriptPackageManager(dir).executable;
-      commands.add(<String>[pm, 'install']);
-    }
-
-    for (final command in commands) {
-      final result = await processRunner(
-        command.first,
-        command.sublist(1),
-        workingDirectory: dir.path,
-        runInShell: true,
-      );
-      final cmd = command.join(' ');
-      if (result.exitCode == 0) {
-        ggLog(darkGray('Executed $cmd in $repoName.'));
-      } else {
-        ggLog(red('Failed to execute $cmd in $repoName: ${result.stderr}'));
-      }
-    }
   }
 
   /// Prepares the master repository state before copying it into a ticket.
@@ -875,11 +831,23 @@ class AddCommand extends Command<dynamic> {
       }
 
       // Refresh deps after relocalize (dart pub upgrade and/or pm install).
-      await _installDependencies(
+      await installRepoDependencies(
         dir: repoDir,
         repoName: repoName,
         ggLog: ggLog,
+        processRunner: processRunner,
         upgradeDart: true,
+      );
+
+      // Force-stage the ticket marker: `.gg/` is gitignored, so a plain
+      // `git add .` would skip it. Force-adding makes it a tracked file that
+      // travels with the feature branch.
+      await _runGit(
+        repoDir: repoDir,
+        arguments: const ['add', '-f', '.gg/.ticket.json'],
+        successMessage: 'Staged .gg/.ticket.json in $repoName.',
+        failureLabel: 'git add -f .gg/.ticket.json in $repoName',
+        ggLog: ggLog,
       );
 
       // Commit per repo; skip changelog (gg_changelog needs pubspec.yaml).
@@ -918,25 +886,7 @@ class AddCommand extends Command<dynamic> {
       folderNames.add(name);
     }
 
-    final folders = folderNames
-        .map<Map<String, String>>(
-          (name) => <String, String>{'path': name},
-        )
-        .toList();
-
-    final ticketName = path.basename(ticketDir.path);
-
-    final workspaceFile = File(
-      path.join(ticketDir.path, '$ticketName.code-workspace'),
-    );
-
-    final content = jsonEncode(
-      <String, Object?>{
-        'folders': folders,
-      },
-    );
-
-    await workspaceFile.writeAsString('$content\n');
+    writeCodeWorkspaceFile(ticketDir, folderNames.toList());
   }
 
   /// Writes all project configuration files that depend on the set of
