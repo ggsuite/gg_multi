@@ -23,6 +23,7 @@ typedef ProcessRunner = Future<ProcessResult> Function(
   String executable,
   List<String> arguments, {
   String? workingDirectory,
+  Map<String, String>? environment,
 });
 
 /// Default process runner that uses the system's `Process.run`
@@ -31,11 +32,13 @@ Future<ProcessResult> _defaultProcessRunner(
   String executable,
   List<String> arguments, {
   String? workingDirectory,
+  Map<String, String>? environment,
 }) =>
     Process.run(
       executable,
       arguments,
       workingDirectory: workingDirectory,
+      environment: environment,
       runInShell: true,
     );
 // coverage:ignore-end
@@ -460,36 +463,60 @@ class DoReviewCommand extends DirCommand<void> {
         args = <String>['install'];
     }
 
-    Future<void> runStep(String exe, List<String> stepArgs) async {
+    // Localizing to git feature branches turns dependencies between ticket
+    // repos into git references, so a git repo ends up depending on another
+    // git repo. pnpm 11's blockExoticSubdeps rejects such exotic
+    // subdependencies, and it can only be disabled via env var (not a CLI
+    // flag) — so mirror do/publish and force it off for the TypeScript install.
+    final Map<String, String>? envOverride =
+        projectType == gg.ProjectType.typescript
+            ? <String, String>{
+                ...Platform.environment,
+                'PNPM_CONFIG_BLOCK_EXOTIC_SUBDEPS': 'false',
+              }
+            : null;
+
+    Future<void> runStep(
+      String exe,
+      List<String> stepArgs,
+      Map<String, String>? env,
+    ) async {
       final result = await _processRunner(
         exe,
         stepArgs,
         workingDirectory: repoDir.path,
+        environment: env,
       );
       final cmd = '$exe ${stepArgs.join(' ')}';
       if (result.exitCode == 0) {
         ggLog(green('Executed $cmd in $repoName.'));
       } else {
+        // pnpm prints its errors to stdout, so fall back to stdout when stderr
+        // is empty — otherwise the real cause is swallowed ("... failed: ").
+        final err = result.stderr?.toString().trim() ?? '';
+        final out = result.stdout?.toString().trim() ?? '';
+        final detail = err.isNotEmpty ? err : out;
         errorLog(
           red(
             'Failed to execute $cmd in '
-            '$repoName: ${result.stderr}',
+            '$repoName: $detail',
           ),
         );
         throw Exception(
-          'Failed to review in: $repoName ($cmd failed: ${result.stderr})',
+          'Failed to review in: $repoName ($cmd failed: $detail)',
         );
       }
     }
 
-    await runStep(executable, args);
+    await runStep(executable, args, envOverride);
 
     // A cross-language bridge also carries a Dart manifest. checkProjectType
     // reports it as TypeScript, so the switch above only refreshed the
     // TypeScript package manager — refresh the Dart side too, so the rewritten
-    // references are reflected in pubspec.lock as well.
+    // references are reflected in pubspec.lock as well. (The pnpm env override
+    // is irrelevant to `dart pub upgrade`.)
     if (gg.isBridgeProject(repoDir)) {
-      await runStep('dart', <String>['pub', 'upgrade']);
+      await runStep('dart', <String>['pub', 'upgrade'], null);
     }
   }
 }

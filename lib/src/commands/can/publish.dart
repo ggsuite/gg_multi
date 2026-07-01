@@ -51,12 +51,14 @@ class CanPublishCommand extends DirCommand<void> {
         'Checks if all repositories in the current ticket can be published.',
     gg.CanCommit? ggCanCommit,
     gg.CanMerge? ggCanMerge,
+    gg.CanPublish? ggCanPublish,
     gg_publish.MergeMainIntoFeat? ggMergeMainIntoFeat,
     SortedProcessingList? sortedProcessingList,
     ProcessRunner? processRunner,
     DidCommitCommand? didCommitCommand,
     DoPushCommand? doPushCommand,
   })  : _ggCanMerge = ggCanMerge ?? gg.CanMerge(ggLog: ggLog),
+        _ggCanPublish = ggCanPublish ?? gg.CanPublish(ggLog: ggLog),
         _ggMergeMainIntoFeat =
             ggMergeMainIntoFeat ?? gg_publish.MergeMainIntoFeat(ggLog: ggLog),
         _sortedProcessingList =
@@ -69,6 +71,9 @@ class CanPublishCommand extends DirCommand<void> {
 
   /// Instance of gg CanMerge
   final gg.CanMerge _ggCanMerge;
+
+  /// Instance of gg CanPublish (per-repo publish readiness, incl. npm auth)
+  final gg.CanPublish _ggCanPublish;
 
   /// Instance of gg MergeMainIntoFeat
   final gg_publish.MergeMainIntoFeat _ggMergeMainIntoFeat;
@@ -188,6 +193,20 @@ class CanPublishCommand extends DirCommand<void> {
       ),
     );
 
+    // Step 7: Run gg can publish per repo -----------------------------------
+    // Verifies each repo's publish readiness (feature branch, CHANGELOG, pana,
+    // npm authentication) so blockers — like a missing npm login for an
+    // npm-published package — surface here instead of mid-publish as a 404.
+    await GgStatusPrinter<void>(
+      message: 'Can publish?',
+      ggLog: ggLog,
+    ).run(
+      () async => _checkCanPublish(
+        subs: subs,
+        ggLog: taskLog,
+      ),
+    );
+
     // All successful --------------------------------------------------------
     taskLog('✅ All repos can be published');
   }
@@ -265,6 +284,29 @@ class CanPublishCommand extends DirCommand<void> {
     } catch (e) {
       ggLog(red('gg_multi do push failed: $e'));
       throw Exception('gg_multi do push failed');
+    }
+  }
+
+  /// Runs gg can publish for every repository in the ticket, collecting the
+  /// repos that are not publish-ready (e.g. not logged in to npm).
+  Future<void> _checkCanPublish({
+    required List<Node> subs,
+    required GgLog ggLog,
+  }) async {
+    final failedRepos = <String>[];
+    for (final repo in subs) {
+      final repoDir = repo.directory;
+      final repoName = path.basename(repoDir.path);
+      ggLog('${cyan(repoName)}:');
+      try {
+        await _ggCanPublish.exec(directory: repoDir, ggLog: ggLog);
+      } catch (e) {
+        ggLog(red('❌ Cannot publish $repoName: $e'));
+        failedRepos.add('$repoName ($e)');
+      }
+    }
+    if (failedRepos.isNotEmpty) {
+      throw Exception('Cannot publish: ${failedRepos.join('; ')}');
     }
   }
 

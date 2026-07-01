@@ -13,11 +13,26 @@ manifest package name or git remote URL (`RepoFolderResolver`).
 - `do add <name>` now tries the known organizations from `.organizations`
 first and uses the bare `<name>/<name>` guess only as a last resort, so
 a plain add clones straight from the right org without a failed attempt.
+- `can publish` now runs `gg can publish` for every repo in the ticket
+(feature branch, CHANGELOG, pana, npm authentication), so publish
+blockers — like a missing npm login for an npm-published package —
+surface up front instead of as a cryptic 404 mid-publish.
 
 ### Reverted
 
 - Revert parallelization of `gg can commit` and `gg do push` (commit
 c97a31a). Restores the previous sequential implementation.
+
+### Fixed
+
+- `do review` (and therefore `do publish`) now disables pnpm 11's
+`blockExoticSubdeps` while refreshing dependencies, so the transitive
+git-referenced dependency chain that localizing to git feature branches
+creates installs instead of failing with `ERR_PNPM_EXOTIC_SUBDEP`. This
+matches the fix `do publish` already applied to its own refresh step.
+- `do review` now surfaces a failed install's output from stdout when
+stderr is empty (pnpm writes its errors to stdout), instead of throwing
+the cause-less `... (pnpm install failed: )`.
 
 ## \[4.0.0\] - 2026-05-10
 
@@ -38,6 +53,12 @@ localization commands again.
 ### Removed
 
 - remove unlocalize step from do review command and tests
+
+## [Unreleased]
+
+### Changed
+
+- feat(gg): interactive npm publish + npm-logged-in precheck; package.json prepublishOnly-&gt;build-&gt;test rules (bridges exempt from build-&gt;test); do review pnpm blockExoticSubdeps + stdout; can publish runs per-repo can-publish; do merge/publish write doCommit; pana skip label
 
 ## [5.3.2] - 2026-06-26
 
@@ -380,6 +401,7 @@ localization commands again.
 - Remove prints
 - Remove gh pr create from review
 
+[Unreleased]: https://github.com/ggsuite/gg_multi/compare/5.3.2...HEAD
 [5.3.2]: https://github.com/ggsuite/gg_multi/compare/5.3.1...5.3.2
 [5.3.1]: https://github.com/ggsuite/gg_multi/compare/5.3.0...5.3.1
 [5.3.0]: https://github.com/ggsuite/gg_multi/compare/5.2.0...5.3.0

@@ -24,6 +24,8 @@ class MockGgCanCommit extends Mock implements gg.CanCommit {}
 
 class MockGgCanMerge extends Mock implements gg.CanMerge {}
 
+class MockGgCanPublish extends Mock implements gg.CanPublish {}
+
 class MockGgMergeMainIntoFeat extends Mock
     implements gg_publish.MergeMainIntoFeat {}
 
@@ -251,12 +253,21 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
+      final mockGgCanPublish = MockGgCanPublish();
+      when(
+        () => mockGgCanPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
       final runner = CommandRunner<void>('test', 'can publish ticket')
         ..addCommand(
           CanPublishCommand(
             ggLog: ggLog,
             ggCanCommit: mockGgCanCommit,
             ggCanMerge: mockGgCanMerge,
+            ggCanPublish: mockGgCanPublish,
             ggMergeMainIntoFeat: mockGgMergeMainIntoFeat,
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
@@ -274,6 +285,12 @@ void main() {
         messages,
         contains('✅ All repos can be published'),
       );
+      verify(
+        () => mockGgCanPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).called(2);
       verify(
         () => mockGgMergeMainIntoFeat.exec(
           directory: any(named: 'directory'),
@@ -703,6 +720,122 @@ void main() {
       );
     });
 
+    test('fails when a repo is not publish-ready (e.g. not logged in to npm)',
+        () async {
+      final mockGgCanCommit = MockGgCanCommit();
+      final mockGgCanMerge = MockGgCanMerge();
+      final mockGgCanPublish = MockGgCanPublish();
+      final mockGgMergeMainIntoFeat = MockGgMergeMainIntoFeat();
+      final mockSortedProcessingList = MockSortedProcessingList();
+      final mockProcessRunner = MockProcessRunner();
+      final mockDidCommitCommand = MockDidCommitCommand();
+      final mockDoPushCommand = MockDoPushCommand();
+
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: Directory(path.join(ticketDir.path, 'A')),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
+          ),
+          Node(
+            name: 'B',
+            directory: Directory(path.join(ticketDir.path, 'B')),
+            manifest: DartPackageManifest(pubspec: Pubspec('B')),
+          ),
+        ],
+      );
+
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['status', '--porcelain'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(1, 0, '', ''));
+
+      when(
+        () => mockDidCommitCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockGgMergeMainIntoFeat.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockDoPushCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockGgCanMerge.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      // Repo B is not logged in to npm.
+      when(
+        () => mockGgCanPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((invocation) {
+        final repoDir = invocation.namedArguments[#directory] as Directory;
+        if (path.basename(repoDir.path) == 'B') {
+          throw Exception('Not logged in to the npm registry');
+        }
+        return Future.value();
+      });
+
+      final runner = CommandRunner<void>('test', 'can publish ticket')
+        ..addCommand(
+          CanPublishCommand(
+            ggLog: ggLog,
+            ggCanCommit: mockGgCanCommit,
+            ggCanMerge: mockGgCanMerge,
+            ggCanPublish: mockGgCanPublish,
+            ggMergeMainIntoFeat: mockGgMergeMainIntoFeat,
+            sortedProcessingList: mockSortedProcessingList,
+            processRunner: mockProcessRunner.call,
+            didCommitCommand: mockDidCommitCommand,
+            doPushCommand: mockDoPushCommand,
+          ),
+        );
+      await expectLater(
+        () async => await runner.run([
+          'publish',
+          '--verbose',
+          '--input',
+          ticketDir.path,
+        ]),
+        throwsA(isA<Exception>()),
+      );
+      expect(
+        messages.any((m) => m.contains('❌ Cannot publish B')),
+        isTrue,
+      );
+      expect(
+        messages.any(
+          (m) => m.contains('Not logged in to the npm registry'),
+        ),
+        isTrue,
+      );
+    });
+
     test(
       'uses quiet taskLog when verbose is false',
       () async {
@@ -778,6 +911,14 @@ void main() {
           ),
         ).thenAnswer((_) async {});
 
+        final mockGgCanPublish = MockGgCanPublish();
+        when(
+          () => mockGgCanPublish.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
         final localMessages = <String>[];
         void localLog(String msg) => localMessages.add(rmConsoleColors(msg));
 
@@ -785,6 +926,7 @@ void main() {
           ggLog: localLog,
           ggCanCommit: mockGgCanCommit,
           ggCanMerge: mockGgCanMerge,
+          ggCanPublish: mockGgCanPublish,
           ggMergeMainIntoFeat: mockGgMergeMainIntoFeat,
           sortedProcessingList: mockSortedProcessingList,
           processRunner: mockProcessRunner.call,
@@ -798,10 +940,11 @@ void main() {
           verbose: false,
         );
 
+        // The per-repo "Can publish?" check is now the final status line.
         expect(
           localMessages.last,
           contains(
-            '✅ Running do push',
+            '✅ Can publish?',
           ),
         );
       },

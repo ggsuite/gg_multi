@@ -44,6 +44,7 @@ class MockProcessRunner extends Mock {
     String executable,
     List<String> arguments, {
     String? workingDirectory,
+    Map<String, String>? environment,
   });
 }
 
@@ -68,6 +69,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(FakeDirectory());
+    registerFallbackValue(<String, String>{});
   });
 
   void ggLog(String msg) => messages.add(rmConsoleColors(msg));
@@ -1196,6 +1198,7 @@ void main() {
             'npm',
             ['install'],
             workingDirectory: repoADir.path,
+            environment: any(named: 'environment'),
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
 
@@ -1234,13 +1237,138 @@ void main() {
           ),
           isTrue,
         );
-        verify(
+        final captured = verify(
           () => mockProcessRunner(
             'npm',
             ['install'],
             workingDirectory: repoADir.path,
+            environment: captureAny(named: 'environment'),
           ),
-        ).called(1);
+        ).captured;
+        expect(captured, hasLength(1));
+        // The install runs with pnpm's blockExoticSubdeps disabled, so the
+        // git-referenced dependency chain that localizing creates installs.
+        final env = captured.single as Map<String, String>;
+        expect(env['PNPM_CONFIG_BLOCK_EXOTIC_SUBDEPS'], 'false');
+      },
+    );
+
+    test(
+      'surfaces the package manager stdout when install fails with an empty '
+      'stderr (pnpm reports its errors on stdout)',
+      () async {
+        final mockSortedProcessingList = MockSortedProcessingList();
+        final mockUnlocalizeRefs = MockUnlocalizeRefs();
+        final mockLocalizeRefsToGit = MockLocalizeRefsToGit();
+        final mockCanReviewCommand = MockCanReviewCommand();
+        final mockGgDoCommit = MockGgDoCommit();
+        final mockGgDoPush = MockGgDoPush();
+        final mockProcessRunner = MockProcessRunner();
+        stubGitHeadUnchanged(mockProcessRunner);
+
+        final repoADir = Directory(path.join(ticketDir.path, 'A'));
+        File(path.join(repoADir.path, 'package.json')).writeAsStringSync(
+          jsonEncode(<String, dynamic>{'name': 'A'}),
+        );
+        File(path.join(repoADir.path, 'tsconfig.json')).writeAsStringSync('{}');
+
+        when(
+          () => mockCanReviewCommand.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockSortedProcessingList.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            Node(
+              name: 'A',
+              directory: repoADir,
+              manifest: TypeScriptPackageManifest(
+                name: 'A',
+                dependencies: const <String>[],
+                devDependencies: const <String>[],
+                rawJson: const <String, dynamic>{'name': 'A'},
+              ),
+            ),
+          ],
+        );
+
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['merge', 'origin/main'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+        when(
+          () => mockLocalizeRefsToGit.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            gitRef: any(named: 'gitRef'),
+          ),
+        ).thenAnswer((_) async {});
+
+        // The package manager fails but writes its diagnostic to stdout, not
+        // stderr — exactly how pnpm reports ERR_PNPM_EXOTIC_SUBDEP.
+        when(
+          () => mockProcessRunner(
+            'npm',
+            ['install'],
+            workingDirectory: repoADir.path,
+            environment: any(named: 'environment'),
+          ),
+        ).thenAnswer(
+          (_) async =>
+              ProcessResult(1, 1, 'ERR_PNPM_EXOTIC_SUBDEP blocked', ''),
+        );
+
+        final runner = CommandRunner<void>('test', 'do review ticket')
+          ..addCommand(
+            DoReviewCommand(
+              ggLog: ggLog,
+              canReviewCommand: mockCanReviewCommand,
+              unlocalizeRefs: mockUnlocalizeRefs,
+              localizeRefsToGit: mockLocalizeRefsToGit,
+              sortedProcessingList: mockSortedProcessingList,
+              ggDoCommit: mockGgDoCommit,
+              ggDoPush: mockGgDoPush,
+              processRunner: mockProcessRunner.call,
+            ),
+          );
+
+        await expectLater(
+          () async => await runner.run([
+            'review',
+            '--verbose',
+            '--input',
+            ticketDir.path,
+          ]),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('ERR_PNPM_EXOTIC_SUBDEP blocked'),
+            ),
+          ),
+        );
+
+        // The swallowed cause is surfaced from stdout, not left blank.
+        expect(
+          messages.any(
+            (m) => m.contains(
+              'Failed to execute npm install in A: '
+              'ERR_PNPM_EXOTIC_SUBDEP blocked',
+            ),
+          ),
+          isTrue,
+        );
       },
     );
 
@@ -1331,6 +1459,7 @@ void main() {
             'npm',
             ['install'],
             workingDirectory: repoADir.path,
+            environment: any(named: 'environment'),
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
 
@@ -1390,6 +1519,7 @@ void main() {
             'npm',
             ['install'],
             workingDirectory: repoADir.path,
+            environment: any(named: 'environment'),
           ),
         ).called(1);
         verify(
