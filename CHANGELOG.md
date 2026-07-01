@@ -58,7 +58,8 @@ localization commands again.
 
 ### Changed
 
-- feat(gg): interactive npm publish + npm-logged-in precheck; package.json prepublishOnly-&gt;build-&gt;test rules (bridges exempt from build-&gt;test); do review pnpm blockExoticSubdeps + stdout; can publish runs per-repo can-publish; do merge/publish write doCommit; pana skip label
+- feat(gg): interactive npm publish + npm-logged-in precheck; package.json prepublishOnly->build->test rules (bridges exempt from build->test); do review pnpm blockExoticSubdeps + stdout; can publish runs per-repo can-publish; do merge/publish write doCommit; pana skip label
+- gg\_multi: changed references to git
 
 ## [5.3.2] - 2026-06-26
 
