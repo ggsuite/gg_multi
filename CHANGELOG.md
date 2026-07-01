@@ -1,6 +1,6 @@
 # Changelog
 
-## \[Unreleased\]
+## \[5.4.0\] - 2026-07-01
 
 ### Added
 
@@ -53,13 +53,6 @@ localization commands again.
 ### Removed
 
 - remove unlocalize step from do review command and tests
-
-## [Unreleased]
-
-### Changed
-
-- feat(gg): interactive npm publish + npm-logged-in precheck; package.json prepublishOnly->build->test rules (bridges exempt from build->test); do review pnpm blockExoticSubdeps + stdout; can publish runs per-repo can-publish; do merge/publish write doCommit; pana skip label
-- gg\_multi: changed references to git
 
 ## [5.3.2] - 2026-06-26
 
