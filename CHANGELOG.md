@@ -54,6 +54,16 @@ localization commands again.
 
 - remove unlocalize step from do review command and tests
 
+## [5.5.0] - 2026-07-06
+
+### Changed
+
+- feat: clone whole GitHub org via gg do add - recognize /orgs/<org> URLs and list org repos authenticated through the GitHub CLI so private orgs work
+
+### Fixed
+
+- fix(org-add): handle missing GitHub CLI gracefully and fall back to https clone url when sshUrl is empty (code-review)
+
 ## [5.3.2] - 2026-06-26
 
 ### Changed
@@ -395,7 +405,7 @@ localization commands again.
 - Remove prints
 - Remove gh pr create from review
 
-[Unreleased]: https://github.com/ggsuite/gg_multi/compare/5.3.2...HEAD
+[5.5.0]: https://github.com/ggsuite/gg_multi/compare/5.3.2...5.5.0
 [5.3.2]: https://github.com/ggsuite/gg_multi/compare/5.3.1...5.3.2
 [5.3.1]: https://github.com/ggsuite/gg_multi/compare/5.3.0...5.3.1
 [5.3.0]: https://github.com/ggsuite/gg_multi/compare/5.2.0...5.3.0

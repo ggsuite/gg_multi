@@ -47,6 +47,14 @@ void main() {
       expect(result.repo, 'myrepo');
     });
 
+    test('parses GitHub org landing URL (/orgs/<org>) as org without repo', () {
+      const url = 'https://github.com/orgs/myorg';
+      final result = parser.parse(url);
+      expect(result.platformType, 'github');
+      expect(result.org, 'myorg');
+      expect(result.repo, isNull);
+    });
+
     test('parses HTTP URL correctly for Azure', () {
       const url = 'https://ssh.dev.azure.com/v3/myorg/myproj/myrepo.git';
       final result = parser.parse(url);
@@ -237,6 +245,22 @@ void main() {
         expect(result.platformType, 'github');
         expect(result.org, null);
         expect(result.repo, null);
+      });
+
+      test('parses GitHub /orgs/<org> as org without repo', () {
+        const url = 'https://github.com/orgs/myorg';
+        final result = parser.parseHttp(url);
+        expect(result.platformType, 'github');
+        expect(result.org, 'myorg');
+        expect(result.repo, isNull);
+      });
+
+      test('parses bare GitHub /orgs path as github without org or repo', () {
+        const url = 'https://github.com/orgs';
+        final result = parser.parseHttp(url);
+        expect(result.platformType, 'github');
+        expect(result.org, isNull);
+        expect(result.repo, isNull);
       });
 
       test('handles invalid URI by returning unknown', () {

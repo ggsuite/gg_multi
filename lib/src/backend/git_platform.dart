@@ -57,6 +57,13 @@ abstract class GitPlatform {
 
 /// GitHub implementation of GitPlatform.
 class GitHubPlatform implements GitPlatform {
+  /// Constructor accepts an optional process runner for testing.
+  GitHubPlatform({
+    ProcessRunner? processRunner,
+  }) : _processRunner = processRunner ?? _defaultProcessRunner;
+
+  final ProcessRunner _processRunner;
+
   @override
   String buildRepoUrl(String org, String repo, [String? project]) {
     return 'https://github.com/$org/$repo.git';
@@ -68,29 +75,67 @@ class GitHubPlatform implements GitPlatform {
     String? project,
     http.Client? client,
   }) async {
-    client ??= http.Client();
-    final uri = Uri.parse(
-      'https://api.github.com/orgs/$org/repos?per_page=100',
+    // The organization's repositories are listed via the GitHub CLI so the
+    // caller's existing `gh` authentication is reused. This is what makes
+    // private organizations work: an unauthenticated REST call only ever
+    // sees public repositories. Cloning itself still uses each repository's
+    // ssh url and therefore the configured ssh key.
+    await _checkGhInstalled();
+    final result = await _processRunner(
+      'gh',
+      [
+        'repo',
+        'list',
+        org,
+        '--limit',
+        '1000',
+        '--json',
+        'name,sshUrl,url',
+      ],
     );
-    final response = await client.get(uri);
-    if (response.statusCode != 200) {
+    if (result.exitCode != 0) {
       throw Exception(
         'Failed to fetch repositories for organization $org: '
-        '${response.body}',
+        '${result.stderr}',
       );
     }
-    final decoded =
-        (jsonDecode(response.body) as List).cast<Map<String, dynamic>>();
-    return decoded
-        .map(
-          (m) => Repository(
-            name: (m['name'] ?? '').toString(),
-            httpsUrl: (m['clone_url'] ?? '').toString(),
-            sshUrl: (m['ssh_url'] ?? '').toString(),
-          ),
-        )
-        .where((r) => r.name.isNotEmpty && r.cloneUrl.isNotEmpty)
-        .toList();
+    final jsonOutput = result.stdout.toString();
+    try {
+      final repos = jsonDecode(jsonOutput) as List<dynamic>;
+      return repos
+          .map((repo) {
+            final repoMap = repo as Map<String, dynamic>;
+            final ssh = (repoMap['sshUrl'] ?? '').toString();
+            return Repository(
+              name: (repoMap['name'] ?? '').toString(),
+              httpsUrl: (repoMap['url'] ?? '').toString(),
+              // Keep null (not '') when absent so Repository.cloneUrl can fall
+              // back to the https url instead of yielding an empty clone url.
+              sshUrl: ssh.isEmpty ? null : ssh,
+            );
+          })
+          .where((r) => r.name.isNotEmpty && r.cloneUrl.isNotEmpty)
+          .toList();
+    } catch (e) {
+      throw Exception('Failed to parse GitHub CLI output: $e');
+    }
+  }
+
+  /// Checks if the GitHub CLI is installed by running 'gh --version'.
+  /// Throws an exception with installation instructions if not installed.
+  Future<void> _checkGhInstalled() async {
+    try {
+      final result = await _processRunner('gh', ['--version']);
+      if (result.exitCode != 0) {
+        throw Exception(result.stderr);
+      }
+    } catch (e) {
+      throw Exception(
+        'Bitte installiere die GitHub CLI und melde dich an: \n'
+        '    winget install --exact --id GitHub.cli \n'
+        '    gh auth login',
+      );
+    }
   }
 
   @override

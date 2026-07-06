@@ -157,21 +157,32 @@ Future<void> addRepositoryHelper({
         parsedUrl.org != null &&
         parsedUrl.platformType == 'github') {
       // Treat as organization URL ---------------------------------------------
-
-      final List<Repository> repos =
-          await gitHubPlatform.fetchOrgRepos(parsedUrl.org!);
-      if (repos.isEmpty) {
-        ggLog(
-          yellow('No repositories found for organization '
-              '${parsedUrl.org!}'),
+      try {
+        final List<Repository> repos =
+            await gitHubPlatform.fetchOrgRepos(parsedUrl.org!);
+        if (repos.isEmpty) {
+          ggLog(
+            yellow('No repositories found for organization '
+                '${parsedUrl.org!}'),
+          );
+          return;
+        }
+        await runWithLimit(
+          repos,
+          4,
+          (repo) => attemptClone(repo.cloneUrl, repo.name),
         );
-        return;
+      } catch (e) {
+        // A missing/unauthenticated GitHub CLI surfaces as a friendly hint;
+        // print it cleanly and stop instead of aborting with a stack trace
+        // (mirrors the Azure branch below).
+        if (e.toString().contains('Bitte installiere die GitHub CLI')) {
+          ggLog(yellow(e.toString().replaceAll('Exception: ', '')));
+          return;
+        } else {
+          rethrow;
+        }
       }
-      await runWithLimit(
-        repos,
-        4,
-        (repo) => attemptClone(repo.cloneUrl, repo.name),
-      );
     } else if (parsedUrl.repo == null &&
         parsedUrl.org != null &&
         parsedUrl.platformType == 'azure' &&

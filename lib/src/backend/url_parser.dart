@@ -123,6 +123,17 @@ class UrlParser {
         );
       }
     }
+    // GitHub organization landing URL: `github.com/orgs/<org>` points at an
+    // organization, not a repository (`orgs` is a reserved GitHub path and
+    // can never be an account name). Report it as an org without a repo so
+    // callers treat it like the bare `github.com/<org>` form.
+    if (platform == 'github' && segments[0] == 'orgs') {
+      return ParseResult(
+        org: segments.length > 1 ? segments[1] : null,
+        repo: null,
+        platformType: platform,
+      );
+    }
     return ParseResult(
       org: segments[0],
       repo: segments.length > 1 ? segments[1].replaceAll('.git', '') : null,

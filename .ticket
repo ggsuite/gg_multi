@@ -1,1 +1,1 @@
-{"issue_id":"feat-can-review-pub-get-offline","description":"can review fuehrt vor dem Uncommitted-Check dart pub get --offline aus"}
+{"issue_id":"feat-clone-private-org","description":"Klonen einer ganzen privaten GitHub-Org via gg do add: /orgs/<org>-URL erkennen und Org-Repos authentifiziert ueber die GitHub CLI (gh) auflisten statt tokenlos"}

@@ -159,6 +159,54 @@ void main() {
         }
       });
 
+      test('Treats /orgs/<org> URL as organization and clones repos', () async {
+        // The GitHub browser URL for an organization overview page carries an
+        // extra `orgs` path segment; it must still be recognised as an org.
+        const targetArg = 'https://github.com/orgs/myorg';
+        final mockGitCloner = MockGitCloner();
+        when(() => mockGitCloner.cloneRepo(any(), any()))
+            .thenAnswer((_) async {});
+
+        final repoList = <Repository>[
+          const Repository(
+            name: 'repo1',
+            httpsUrl: 'https://github.com/myorg/repo1.git',
+            sshUrl: 'git@github.com:myorg/repo1.git',
+          ),
+        ];
+
+        final mockGitHubPlatform = MockGitHubPlatform();
+        when(
+          () => mockGitHubPlatform.fetchOrgRepos(
+            'myorg',
+            client: any(named: 'client'),
+          ),
+        ).thenAnswer((_) async => repoList);
+
+        await addRepositoryHelper(
+          targetArg: targetArg,
+          ggLog: ggLog,
+          gitCloner: mockGitCloner,
+          gitHubPlatform: mockGitHubPlatform,
+          workspacePath: workspacePath,
+          force: false,
+        );
+
+        // Verify it queried the correct org and cloned via the ssh url.
+        verify(
+          () => mockGitHubPlatform.fetchOrgRepos(
+            'myorg',
+            client: any(named: 'client'),
+          ),
+        ).called(1);
+        verify(
+          () => mockGitCloner.cloneRepo(
+            'git@github.com:myorg/repo1.git',
+            path.join(workspacePath, 'repo1'),
+          ),
+        ).called(1);
+      });
+
       test('Processes organization URL with empty repo list', () async {
         // Test organization branch when no repositories are found
         const targetArg = 'http://github.com/myorg';
@@ -191,18 +239,28 @@ void main() {
         verifyNever(() => mockGitCloner.cloneRepo(any(), any()));
       });
 
-      test('Throws exception for HTTP organization URL with invalid status',
-          () async {
+      test('Rethrows when fetching organization repos fails', () async {
         const targetArg = 'http://github.com/myorg';
         final mockGitCloner = MockGitCloner();
         when(() => mockGitCloner.cloneRepo(any(), any()))
             .thenAnswer((_) async {});
+
+        final mockGitHubPlatform = MockGitHubPlatform();
+        when(
+          () => mockGitHubPlatform.fetchOrgRepos(
+            any(),
+            client: any(named: 'client'),
+          ),
+        ).thenThrow(
+          Exception('Failed to fetch repositories for organization myorg'),
+        );
 
         expect(
           () async => await addRepositoryHelper(
             targetArg: targetArg,
             ggLog: ggLog,
             gitCloner: mockGitCloner,
+            gitHubPlatform: mockGitHubPlatform,
             workspacePath: workspacePath,
             force: false,
           ),
@@ -214,6 +272,46 @@ void main() {
             ),
           ),
         );
+      });
+
+      test('Handles gh not installed for GitHub organization URL', () async {
+        const targetArg = 'https://github.com/orgs/myorg';
+        final mockGitCloner = MockGitCloner();
+        when(() => mockGitCloner.cloneRepo(any(), any()))
+            .thenAnswer((_) async {});
+
+        final mockGitHubPlatform = MockGitHubPlatform();
+        when(
+          () => mockGitHubPlatform.fetchOrgRepos(
+            any(),
+            client: any(named: 'client'),
+          ),
+        ).thenThrow(
+          Exception(
+            'Bitte installiere die GitHub CLI und melde dich an: \n'
+            '    winget install --exact --id GitHub.cli \n'
+            '    gh auth login',
+          ),
+        );
+
+        await addRepositoryHelper(
+          targetArg: targetArg,
+          ggLog: ggLog,
+          gitCloner: mockGitCloner,
+          gitHubPlatform: mockGitHubPlatform,
+          workspacePath: workspacePath,
+          force: false,
+        );
+
+        expect(
+          logs,
+          contains(
+            'Bitte installiere die GitHub CLI und melde dich an: \n'
+            '    winget install --exact --id GitHub.cli \n'
+            '    gh auth login',
+          ),
+        );
+        verifyNever(() => mockGitCloner.cloneRepo(any(), any()));
       });
 
       test('Processes Azure organization URL with project', () async {

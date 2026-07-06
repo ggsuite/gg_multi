@@ -7,12 +7,9 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 import 'package:gg_multi/src/backend/git_platform.dart';
-import 'package:gg_multi/src/backend/repository.dart';
 
 class MockProcessRunner extends Mock {
   Future<ProcessResult> call(
@@ -30,54 +27,146 @@ void main() {
       expect(url, equals('https://github.com/myorg/myrepo.git'));
     });
 
-    test('fetchOrgRepos fetches and returns repo list', () async {
-      final platform = GitHubPlatform();
-      final mockClient = MockClient((request) async {
-        if (request.url.toString().contains(
-              'https://api.github.com/orgs/testorg/repos',
-            )) {
-          return http.Response(
-            jsonEncode([
-              {'name': 'repo1', 'clone_url': 'url1', 'ssh_url': 'ssh1'},
-              {'name': 'repo2', 'clone_url': 'url2', 'ssh_url': 'ssh2'},
-            ]),
-            200,
-          );
-        }
-        return http.Response('Not Found', 404);
-      });
-
-      final repos = await platform.fetchOrgRepos('testorg', client: mockClient);
+    test('fetchOrgRepos lists repos via the GitHub CLI and parses JSON',
+        () async {
+      final mockRunner = MockProcessRunner();
+      when(
+        () => mockRunner('gh', any()),
+      ).thenAnswer(
+        (_) async => ProcessResult(
+          1,
+          0,
+          jsonEncode([
+            {
+              'name': 'repo1',
+              'sshUrl': 'git@github.com:myorg/repo1.git',
+              'url': 'https://github.com/myorg/repo1',
+            },
+            {
+              'name': 'repo2',
+              'sshUrl': 'git@github.com:myorg/repo2.git',
+              'url': 'https://github.com/myorg/repo2',
+            },
+          ]),
+          '',
+        ),
+      );
+      final platform = GitHubPlatform(processRunner: mockRunner.call);
+      final repos = await platform.fetchOrgRepos('myorg');
       expect(repos.length, 2);
-      expect(repos[0], isA<Repository>());
       expect(repos[0].name, 'repo1');
-      expect(repos[1].httpsUrl, 'url2');
+      // Cloning prefers the ssh url so the configured ssh key is used.
+      expect(repos[0].cloneUrl, 'git@github.com:myorg/repo1.git');
+      expect(repos[1].httpsUrl, 'https://github.com/myorg/repo2');
+      verify(
+        () => mockRunner(
+          'gh',
+          [
+            'repo',
+            'list',
+            'myorg',
+            '--limit',
+            '1000',
+            '--json',
+            'name,sshUrl,url',
+          ],
+        ),
+      ).called(1);
     });
 
-    test('fetchOrgRepos creates default client if none provided', () async {
-      final platform = GitHubPlatform();
-      await expectLater(
-        platform.fetchOrgRepos(
-          'nonexistentorg123456789abcdef',
+    test('fetchOrgRepos falls back to https url when sshUrl is empty',
+        () async {
+      final mockRunner = MockProcessRunner();
+      when(
+        () => mockRunner('gh', any()),
+      ).thenAnswer(
+        (_) async => ProcessResult(
+          1,
+          0,
+          jsonEncode([
+            {
+              'name': 'repo',
+              'sshUrl': '',
+              'url': 'https://github.com/myorg/repo',
+            },
+          ]),
+          '',
         ),
+      );
+      final platform = GitHubPlatform(processRunner: mockRunner.call);
+      final repos = await platform.fetchOrgRepos('myorg');
+      expect(repos.length, 1);
+      // An empty sshUrl must not drop the repo: cloneUrl falls back to https.
+      expect(repos.first.cloneUrl, 'https://github.com/myorg/repo');
+    });
+
+    test('fetchOrgRepos throws on non-zero exit code', () async {
+      final mockRunner = MockProcessRunner();
+      when(
+        () => mockRunner('gh', any()),
+      ).thenAnswer(
+        (_) async => ProcessResult(3, 1, '', 'gh error message'),
+      );
+      when(
+        () => mockRunner('gh', ['--version']),
+      ).thenAnswer(
+        (_) async => ProcessResult(2, 0, 'gh version 2.0.0', ''),
+      );
+      final platform = GitHubPlatform(processRunner: mockRunner.call);
+      await expectLater(
+        platform.fetchOrgRepos('myorg'),
         throwsA(
           isA<Exception>().having(
             (e) => e.toString(),
-            'toString',
-            contains('Failed to fetch repositories'),
+            'message',
+            'Exception: Failed to fetch repositories for organization myorg: '
+                'gh error message',
           ),
         ),
       );
     });
 
-    test('fetchOrgRepos throws on non-200 response', () async {
-      final platform = GitHubPlatform();
-      final mockClient =
-          MockClient((request) async => http.Response('Error', 403));
+    test('fetchOrgRepos throws on invalid JSON', () async {
+      final mockRunner = MockProcessRunner();
+      when(
+        () => mockRunner('gh', any()),
+      ).thenAnswer(
+        (_) async => ProcessResult(3, 0, 'invalid json', ''),
+      );
+      final platform = GitHubPlatform(processRunner: mockRunner.call);
+      await expectLater(
+        platform.fetchOrgRepos('myorg'),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Failed to parse GitHub CLI output'),
+          ),
+        ),
+      );
+    });
 
-      expect(
-        () => platform.fetchOrgRepos('badorg', client: mockClient),
-        throwsException,
+    test('fetchOrgRepos throws when gh is not installed', () async {
+      final mockRunner = MockProcessRunner();
+      when(
+        () => mockRunner('gh', ['--version']),
+      ).thenAnswer(
+        (_) async => ProcessResult(4, 1, '', 'gh not found'),
+      );
+      final platform = GitHubPlatform(processRunner: mockRunner.call);
+      await expectLater(
+        platform.fetchOrgRepos('myorg'),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Bitte installiere die GitHub CLI'),
+          ),
+        ),
+      );
+      // The main repo-list call must not run when gh is missing.
+      verifyNever(
+        () => mockRunner('gh', any(that: contains('repo'))),
       );
     });
 
@@ -103,25 +192,28 @@ void main() {
     });
 
     test('fetchOrgRepos ignores project parameter', () async {
-      final platform = GitHubPlatform();
-      final mockClient = MockClient((request) async {
-        return http.Response(
-          jsonEncode(
-            [
-              {'name': 'repo', 'clone_url': 'url', 'ssh_url': 'ssh'},
-            ],
-          ),
-          200,
-        );
-      });
-      final repos = await platform.fetchOrgRepos(
-        'testorg',
-        project: 'ignored',
-        client: mockClient,
+      final mockRunner = MockProcessRunner();
+      when(
+        () => mockRunner('gh', any()),
+      ).thenAnswer(
+        (_) async => ProcessResult(
+          1,
+          0,
+          jsonEncode([
+            {
+              'name': 'repo',
+              'sshUrl': 'git@github.com:myorg/repo.git',
+              'url': 'https://github.com/myorg/repo',
+            },
+          ]),
+          '',
+        ),
       );
+      final platform = GitHubPlatform(processRunner: mockRunner.call);
+      final repos = await platform.fetchOrgRepos('testorg', project: 'ignored');
       expect(repos.length, 1);
       expect(repos.first.name, 'repo');
-      expect(repos.first.httpsUrl, 'url');
+      expect(repos.first.httpsUrl, 'https://github.com/myorg/repo');
     });
   });
 

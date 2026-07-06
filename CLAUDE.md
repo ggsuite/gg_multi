@@ -60,9 +60,9 @@ The tool manages two levels of workspace:
 | `workspace_utils.dart` | Detects master/ticket paths from any working directory |
 | `git_handler.dart` | Clone & create-branch (workspace-specific); generic git ops (fetch, checkout, show-file, remote-branches) live in `gg_git` |
 | `ticket_json.dart` | Reads/writes/parses the per-repo `.gg/.ticket.json` ticket marker |
-| `git_platform.dart` | GitHub API abstraction |
+| `git_platform.dart` | Git-platform abstraction. `GitHubPlatform.fetchOrgRepos` lists an org's repos via the **GitHub CLI** (`gh repo list --json name,sshUrl,url`), `AzureDevOpsPlatform` via `az repos list`. Using the CLIs reuses the caller's existing auth so **private** orgs work (an unauthenticated REST call only ever sees public repos); cloning then uses each repo's ssh url. Both require the respective CLI for org-add and emit an install hint otherwise. |
 | `list_backend.dart` | Lists repos/orgs/deps with metadata |
-| `add_repository_helper.dart` | Logic for adding repos to a workspace |
+| `add_repository_helper.dart` | Logic for adding repos to a workspace. Accepts a repo URL/`owner/repo`/name, or an **org** URL (`github.com/<org>` or the browser form `github.com/orgs/<org>`) to clone every repo of that org. |
 | `pub_dev_checker.dart` | Checks published versions on pub.dev |
 | `constants.dart` | Directory name constants (`.master`, `tickets`) |
 
