@@ -19,6 +19,7 @@ import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:interact/interact.dart';
 import 'package:path/path.dart' as path;
 
+import '../../backend/git_snapshot.dart' as git_snapshot;
 import '../../backend/npm_registry_checker.dart';
 import '../../backend/pub_dev_checker.dart';
 import '../../backend/workspace_utils.dart';
@@ -38,6 +39,59 @@ typedef EditMessage = Future<String?> Function(String initialMessage);
 
 /// Typedef for asking the user whether the ticket should be deleted.
 typedef ConfirmDeleteTicket = bool Function(String ticketName);
+
+/// Snapshot of a repository's state taken before its publish starts.
+class _RepoPublishSnapshot {
+  _RepoPublishSnapshot({
+    required this.directory,
+    required this.branch,
+    required this.head,
+    required this.status,
+    required this.version,
+    required this.mainBranch,
+    required this.mainHead,
+    required this.remoteMainHead,
+    required this.remoteFeatureHead,
+    required this.tags,
+    this.stash,
+  });
+
+  /// The repository directory.
+  final Directory directory;
+
+  /// The branch the repository was on (usually the ticket feature branch).
+  final String branch;
+
+  /// The commit hash HEAD pointed to.
+  final String head;
+
+  /// The `git status --porcelain` output at snapshot time.
+  final String status;
+
+  /// The package version at snapshot time (null when unreadable).
+  final String? version;
+
+  /// The name of the default branch (`main`/`master`), null when absent.
+  final String? mainBranch;
+
+  /// The local commit hash of [mainBranch], null when absent.
+  final String? mainHead;
+
+  /// The remote commit hash of [mainBranch], null when unreachable/absent.
+  final String? remoteMainHead;
+
+  /// The remote commit hash of the feature branch, null when the snapshot was
+  /// taken in detached HEAD or the branch is absent/unreachable. Used to skip
+  /// resetting a feature branch whose commit already reached the remote.
+  final String? remoteFeatureHead;
+
+  /// All local tags at snapshot time.
+  final Set<String> tags;
+
+  /// Commit created via `git stash create` holding uncommitted changes,
+  /// or null when there were none to preserve.
+  final String? stash;
+}
 
 /// Command to publish all repos in the ticket.
 class DoPublishCommand extends DirCommand<void> {
@@ -228,91 +282,32 @@ class DoPublishCommand extends DirCommand<void> {
 
       ggLog('${cyan(repoName)}:');
 
-      try {
-        await _unlocalizeRefs.get(directory: repoDir, ggLog: taskLog);
-        taskLog(green('$repoName: unlocalized refs.'));
-      } catch (e) {
-        throw Exception('Failed to unlocalize refs for $repoName: $e');
-      }
+      // Save the repo state so a failed publish can restore it.
+      final snapshot = await _saveRepoState(repoDir: repoDir, ggLog: taskLog);
 
       try {
-        await _restorePublishTo.exec(directory: repoDir, ggLog: taskLog);
-      } catch (e) {
-        throw Exception('Failed to restore publish_to for $repoName: $e');
-      }
-
-      // Apply all known reference versions to this repo if it depends on them
-      for (final entry in refVersions.entries) {
-        final refName = entry.key;
-        final refVersion = entry.value;
-        try {
-          final spec = await _getRefVersion.get(
-            directory: repoDir,
-            ref: refName,
-          );
-          if (spec != null) {
-            // Pass the bare published version. set-ref-version preserves the
-            // operator (`^`, `~`, or none/exact) the dependency is currently
-            // declared with — the refs were just unlocalized back to their
-            // original spec — so the user's chosen constraint style survives.
-            await _setRefVersion.get(
-              directory: repoDir,
-              ref: refName,
-              version: refVersion,
-            );
-          }
-        } catch (e) {
-          throw Exception('Failed to update version of $refName '
-              'in $repoName: $e');
-        }
-      }
-
-      // Refresh deps after manifest edits (refs, publish_to, versions).
-      await _refreshDependencies(
-        repoDir: repoDir,
-        repoName: repoName,
-        ggLog: taskLog,
-      );
-
-      // Commit
-      await _ggDoCommit.exec(
-        directory: repoDir,
-        ggLog: taskLog,
-        message: 'Gg Multi: changed references to pub.dev',
-        force: true,
-      );
-
-      // Push
-      await _ggDoPush.exec(directory: repoDir, ggLog: taskLog);
-
-      taskLog(green('$repoName: updated with new references.'));
-
-      // Resolve message + version increment: --config > --message > prompt.
-      final String publishMessage;
-      final String? publishVersionIncrement;
-      if (publishConfig != null) {
-        final resolved = publishConfig.forRepo(
+        await _publishRepo(
+          repoDir: repoDir,
           repoName: repoName,
-          configPath: configArg!,
+          refVersions: refVersions,
+          publishConfig: publishConfig,
+          configArg: configArg,
+          message: message,
+          ticketDescription: ticketDescription,
+          verbose: verbose,
+          ggLog: ggLog,
+          taskLog: taskLog,
         );
-        publishMessage = resolved.mergeMessage;
-        publishVersionIncrement = resolved.versionIncrement;
-      } else {
-        final initialPublishMessage = message ?? ticketDescription;
-        publishMessage = await _editMessage(initialPublishMessage ?? '') ?? '';
-        publishVersionIncrement = null;
+      } catch (_) {
+        // Bring the repo back to (or safely towards) its pre-publish state,
+        // then surface the publish failure as the primary error.
+        await _restoreRepoStateOnFailure(
+          snapshot: snapshot,
+          ggLog: ggLog,
+          taskLog: taskLog,
+        );
+        rethrow;
       }
-
-      // gg do publish; multi flow is non-interactive (no confirm prompt).
-      await _ggDoPublish.exec(
-        directory: repoDir,
-        ggLog: ggLog,
-        message: publishMessage,
-        deleteFeatureBranch: false,
-        verbose: verbose,
-        versionIncrement: publishVersionIncrement,
-        askBeforePublishing: false,
-      );
 
       // Capture current repo version and propagate known versions
       try {
@@ -392,6 +387,441 @@ class DoPublishCommand extends DirCommand<void> {
     }
 
     taskLog('✅ All repos published');
+  }
+
+  /// Performs the per-repo publish steps: unlocalize refs, restore
+  /// publish_to, propagate reference versions, refresh dependencies, commit,
+  /// push and finally `gg do publish`.
+  Future<void> _publishRepo({
+    required Directory repoDir,
+    required String repoName,
+    required Map<String, String> refVersions,
+    required gg.PublishConfig? publishConfig,
+    required String? configArg,
+    required String? message,
+    required String? ticketDescription,
+    required bool verbose,
+    required GgLog ggLog,
+    required GgLog taskLog,
+  }) async {
+    try {
+      await _unlocalizeRefs.get(directory: repoDir, ggLog: taskLog);
+      taskLog(green('$repoName: unlocalized refs.'));
+    } catch (e) {
+      throw Exception('Failed to unlocalize refs for $repoName: $e');
+    }
+
+    try {
+      await _restorePublishTo.exec(directory: repoDir, ggLog: taskLog);
+    } catch (e) {
+      throw Exception('Failed to restore publish_to for $repoName: $e');
+    }
+
+    // Apply all known reference versions to this repo if it depends on them
+    for (final entry in refVersions.entries) {
+      final refName = entry.key;
+      final refVersion = entry.value;
+      try {
+        final spec = await _getRefVersion.get(
+          directory: repoDir,
+          ref: refName,
+        );
+        if (spec != null) {
+          // Pass the bare published version. set-ref-version preserves the
+          // operator (`^`, `~`, or none/exact) the dependency is currently
+          // declared with — the refs were just unlocalized back to their
+          // original spec — so the user's chosen constraint style survives.
+          await _setRefVersion.get(
+            directory: repoDir,
+            ref: refName,
+            version: refVersion,
+          );
+        }
+      } catch (e) {
+        throw Exception('Failed to update version of $refName '
+            'in $repoName: $e');
+      }
+    }
+
+    // Refresh deps after manifest edits (refs, publish_to, versions).
+    await _refreshDependencies(
+      repoDir: repoDir,
+      repoName: repoName,
+      ggLog: taskLog,
+    );
+
+    // Commit
+    await _ggDoCommit.exec(
+      directory: repoDir,
+      ggLog: taskLog,
+      message: 'Gg Multi: changed references to pub.dev',
+      force: true,
+    );
+
+    // Push
+    await _ggDoPush.exec(directory: repoDir, ggLog: taskLog);
+
+    taskLog(green('$repoName: updated with new references.'));
+
+    // Resolve message + version increment: --config > --message > prompt.
+    final String publishMessage;
+    final String? publishVersionIncrement;
+    if (publishConfig != null) {
+      final resolved = publishConfig.forRepo(
+        repoName: repoName,
+        configPath: configArg!,
+      );
+      publishMessage = resolved.mergeMessage;
+      publishVersionIncrement = resolved.versionIncrement;
+    } else {
+      final initialPublishMessage = message ?? ticketDescription;
+      publishMessage = await _editMessage(initialPublishMessage ?? '') ?? '';
+      publishVersionIncrement = null;
+    }
+
+    // gg do publish; multi flow is non-interactive (no confirm prompt).
+    await _ggDoPublish.exec(
+      directory: repoDir,
+      ggLog: ggLog,
+      message: publishMessage,
+      deleteFeatureBranch: false,
+      verbose: verbose,
+      versionIncrement: publishVersionIncrement,
+      askBeforePublishing: false,
+    );
+  }
+
+  /// Runs git with [args] in [repoDir] and returns the trimmed stdout.
+  /// Delegates to the shared [git_snapshot.runGit] so `do review` and
+  /// `do publish` use one git runner. See there for [allowFailure].
+  Future<String> _runGit(
+    List<String> args, {
+    required Directory repoDir,
+    bool allowFailure = false,
+  }) =>
+      git_snapshot.runGit(
+        _processRunner,
+        args,
+        repoDir: repoDir,
+        allowFailure: allowFailure,
+      );
+
+  /// Returns the commit hash of the local branch [branch] in [repoDir],
+  /// or null when the branch does not exist.
+  Future<String?> _localBranchHead(Directory repoDir, String branch) async {
+    final out = await _runGit(
+      <String>['rev-parse', '--verify', '--quiet', 'refs/heads/$branch'],
+      repoDir: repoDir,
+      allowFailure: true,
+    );
+    return out.isEmpty ? null : out;
+  }
+
+  /// Returns the commit hash of `origin/<branch>` for [repoDir], or null
+  /// when the remote branch does not exist or cannot be queried.
+  Future<String?> _remoteBranchHead(Directory repoDir, String branch) async {
+    final result = await _processRunner(
+      'git',
+      <String>['ls-remote', 'origin', 'refs/heads/$branch'],
+      workingDirectory: repoDir.path,
+    );
+    if (result.exitCode != 0) {
+      return null;
+    }
+    final out = (result.stdout?.toString() ?? '').trim();
+    if (out.isEmpty) {
+      return null;
+    }
+    return out.split(RegExp(r'\s+')).first;
+  }
+
+  /// Captures the uncommitted changes of [repoDir] in a dangling stash commit,
+  /// leaving the working tree unchanged. Delegates to the shared
+  /// [git_snapshot.captureUncommitted]; returns the stash hash or null.
+  Future<String?> _captureUncommitted({
+    required Directory repoDir,
+    required String status,
+  }) =>
+      git_snapshot.captureUncommitted(
+        _processRunner,
+        repoDir: repoDir,
+        status: status,
+      );
+
+  /// Whether [status] (a `git status --porcelain` output) shows an uncommitted
+  /// change to the version-bearing manifest. Used to tell a *committed* version
+  /// bump apart from an uncommitted half-written one left by a failed publish.
+  bool _manifestDirty(String status) =>
+      status.contains('pubspec.yaml') || status.contains('package.json');
+
+  /// Records branch, HEAD, working tree, package version, default-branch
+  /// position (local + remote), feature-branch remote head and tags of
+  /// [repoDir], so a failed publish can be rolled back by [_restoreRepoState].
+  Future<_RepoPublishSnapshot> _saveRepoState({
+    required Directory repoDir,
+    required GgLog ggLog,
+  }) async {
+    final repoName = path.basename(repoDir.path);
+    try {
+      final head = await _runGit(
+        <String>['rev-parse', 'HEAD'],
+        repoDir: repoDir,
+      );
+      final rawBranch = await _runGit(
+        <String>['rev-parse', '--abbrev-ref', 'HEAD'],
+        repoDir: repoDir,
+      );
+      final detached = rawBranch == 'HEAD';
+      // Detached HEAD: `rev-parse --abbrev-ref` prints the literal "HEAD".
+      // Store the commit so restore re-detaches at it instead of running the
+      // no-op `git checkout HEAD`.
+      final branch = detached ? head : rawBranch;
+      final status = await _runGit(
+        <String>['status', '--porcelain'],
+        repoDir: repoDir,
+      );
+      final stash = await _captureUncommitted(repoDir: repoDir, status: status);
+      // The version is compared again on restore to detect a committed
+      // version bump. Not every repo has a readable version — tolerate that.
+      String? version;
+      try {
+        version = await _getVersion.get(directory: repoDir);
+      } catch (_) {
+        version = null;
+      }
+      String? mainBranch = 'main';
+      String? mainHead = await _localBranchHead(repoDir, 'main');
+      if (mainHead == null) {
+        mainBranch = 'master';
+        mainHead = await _localBranchHead(repoDir, 'master');
+        if (mainHead == null) {
+          mainBranch = null;
+        }
+      }
+      final remoteMainHead = mainBranch == null
+          ? null
+          : await _remoteBranchHead(repoDir, mainBranch);
+      final remoteFeatureHead =
+          detached ? null : await _remoteBranchHead(repoDir, rawBranch);
+      final tags = (await _runGit(<String>['tag', '--list'], repoDir: repoDir))
+          .split('\n')
+          .map((t) => t.trim())
+          .where((t) => t.isNotEmpty)
+          .toSet();
+      ggLog(green('Saved state of $repoName'));
+      return _RepoPublishSnapshot(
+        directory: repoDir,
+        branch: branch,
+        head: head,
+        status: status,
+        version: version,
+        mainBranch: mainBranch,
+        mainHead: mainHead,
+        remoteMainHead: remoteMainHead,
+        remoteFeatureHead: remoteFeatureHead,
+        tags: tags,
+        stash: stash,
+      );
+    } catch (e) {
+      throw Exception(
+        'Failed to save the state of $repoName before publishing — $repoName '
+        'was not changed (repositories published earlier in this run stay '
+        'published): $e',
+      );
+    }
+  }
+
+  /// Restores the repository after a failed publish. Never throws — the
+  /// publish failure that triggered the restore must stay the primary error.
+  Future<void> _restoreRepoStateOnFailure({
+    required _RepoPublishSnapshot snapshot,
+    required GgLog ggLog,
+    required GgLog taskLog,
+  }) async {
+    final repoName = path.basename(snapshot.directory.path);
+    try {
+      await GgStatusPrinter<void>(
+        message: 'Restoring $repoName after the failed publish',
+        ggLog: ggLog,
+      ).run(
+        () async => _restoreRepoState(
+          snapshot: snapshot,
+          ggLog: ggLog,
+          taskLog: taskLog,
+        ),
+      );
+    } catch (e) {
+      final manual = StringBuffer(
+        '"git checkout ${snapshot.branch}" + '
+        '"git reset --hard ${snapshot.head}"',
+      );
+      if (snapshot.stash != null) {
+        manual.write(' + "git stash apply --index ${snapshot.stash}"');
+      }
+      ggLog(
+        red(
+          'Restoring $repoName after the failed publish failed — restore it '
+          'manually ($manual): $e',
+        ),
+      );
+    }
+  }
+
+  /// Brings the repository back to its snapshot after a failed publish.
+  ///
+  /// Two modes, because a publish has effects that must not be undone: when the
+  /// failed run already *committed* a version bump (the registry release may
+  /// exist — pub.dev/npm cannot be unpublished), already moved `origin/main`,
+  /// or already pushed the feature branch, only half-done merges/rebases are
+  /// ended and the original branch is checked out again; all commits are kept
+  /// so a re-run of `gg do publish` resumes. Otherwise nothing irreversible
+  /// happened and the full snapshot is restored: HEAD, default-branch
+  /// position, tags and stashed changes (with the original staged/unstaged
+  /// split).
+  Future<void> _restoreRepoState({
+    required _RepoPublishSnapshot snapshot,
+    required GgLog ggLog,
+    required GgLog taskLog,
+  }) async {
+    final s = snapshot;
+    final repoDir = s.directory;
+    final repoName = path.basename(repoDir.path);
+
+    final headNow = await _runGit(
+      <String>['rev-parse', 'HEAD'],
+      repoDir: repoDir,
+    );
+    final statusNow = await _runGit(
+      <String>['status', '--porcelain'],
+      repoDir: repoDir,
+    );
+    final branchNowFirst = await _runGit(
+      <String>['rev-parse', '--abbrev-ref', 'HEAD'],
+      repoDir: repoDir,
+    );
+    if (headNow == s.head &&
+        statusNow == s.status &&
+        branchNowFirst == s.branch) {
+      taskLog('Unchanged: $repoName');
+      return;
+    }
+
+    // End half-done merges/rebases the failed publish may have left behind.
+    await _runGit(
+      <String>['merge', '--abort'],
+      repoDir: repoDir,
+      allowFailure: true,
+    );
+    await _runGit(
+      <String>['rebase', '--abort'],
+      repoDir: repoDir,
+      allowFailure: true,
+    );
+
+    // Back to the original (feature) branch.
+    final branchNow = await _runGit(
+      <String>['rev-parse', '--abbrev-ref', 'HEAD'],
+      repoDir: repoDir,
+    );
+    if (branchNow != s.branch) {
+      await _runGit(<String>['checkout', s.branch], repoDir: repoDir);
+    }
+
+    // Detect irreversible effects of the failed run. Read the state *after*
+    // checking out the feature branch so the manifest-dirty check reflects it.
+    final statusForDecision = await _runGit(
+      <String>['status', '--porcelain'],
+      repoDir: repoDir,
+    );
+    String? versionNow;
+    try {
+      versionNow = await _getVersion.get(directory: repoDir);
+    } catch (_) {
+      versionNow = null;
+    }
+    final remoteMainNow = s.mainBranch == null
+        ? null
+        : await _remoteBranchHead(repoDir, s.mainBranch!);
+    // Detached snapshots store the commit hash in `branch`; there is no
+    // feature branch name to query then.
+    final remoteFeatureNow =
+        s.branch == s.head ? null : await _remoteBranchHead(repoDir, s.branch);
+
+    // A version bump only counts as irreversible when it was *committed*
+    // (gg_one commits the bump before touching the registry). An uncommitted
+    // half-written bump left by a failed commit still shows in the working
+    // tree — that is recoverable, so restore fully.
+    final versionBumped =
+        versionNow != s.version && !_manifestDirty(statusForDecision);
+    // Only conclude the remote moved when we actually read a differing hash.
+    // A failed/unreachable `git ls-remote` (often the very cause of the
+    // rollback) returns null and must not masquerade as "already released".
+    final remoteMainMoved =
+        remoteMainNow != null && remoteMainNow != s.remoteMainHead;
+    // The feature-branch commit already reached the remote; resetting local
+    // behind it would desync the two and make the next run rebase onto it.
+    final featurePushed =
+        remoteFeatureNow != null && remoteFeatureNow != s.remoteFeatureHead;
+
+    if (versionBumped || remoteMainMoved || featurePushed) {
+      final String reason;
+      if (versionBumped) {
+        reason = 'version ${versionNow ?? '?'} is already prepared and may '
+            'already be published to the registry';
+      } else if (remoteMainMoved) {
+        reason = 'origin/${s.mainBranch} already received the release';
+      } else {
+        reason = 'the feature branch was already pushed to origin';
+      }
+      ggLog(
+        yellow(
+          '$repoName: back on ${s.branch}, but all commits were kept '
+          'because $reason. Re-running "gg do publish" resumes the publish.',
+        ),
+      );
+      return;
+    }
+
+    // Nothing irreversible happened — restore the full snapshot.
+    await _runGit(<String>['reset', '--hard', s.head], repoDir: repoDir);
+
+    if (s.mainBranch != null &&
+        s.mainBranch != s.branch &&
+        s.mainHead != null) {
+      final mainHeadNow = await _localBranchHead(repoDir, s.mainBranch!);
+      if (mainHeadNow != null && mainHeadNow != s.mainHead) {
+        await _runGit(
+          <String>['branch', '-f', s.mainBranch!, s.mainHead!],
+          repoDir: repoDir,
+        );
+      }
+    }
+
+    // Remove tags the failed run created.
+    final tagsNow = (await _runGit(<String>['tag', '--list'], repoDir: repoDir))
+        .split('\n')
+        .map((t) => t.trim())
+        .where((t) => t.isNotEmpty);
+    for (final tag in tagsNow) {
+      if (!s.tags.contains(tag)) {
+        await _runGit(<String>['tag', '-d', tag], repoDir: repoDir);
+      }
+    }
+
+    if (s.stash != null) {
+      await _runGit(
+        <String>['stash', 'apply', '--index', s.stash!],
+        repoDir: repoDir,
+      );
+    }
+
+    taskLog(green('Restored the state before the publish in $repoName'));
+    ggLog(
+      yellow(
+        '$repoName: pushes to origin are not rolled back; the next run '
+        'integrates them.',
+      ),
+    );
   }
 
   /// Waits for already published dependencies of [currentRepo] on pub.dev.

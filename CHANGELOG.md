@@ -54,6 +54,17 @@ localization commands again.
 
 - remove unlocalize step from do review command and tests
 
+## [5.6.0] - 2026-07-13
+
+### Changed
+
+- `do review` and `do publish` now roll back the repository state when
+they fail, restoring the snapshot taken before the run. `do review`
+restores every changed, not-yet-pushed repo; `do publish` restores only
+the failed repo — fully when nothing irreversible happened, otherwise
+keeping all commits so a re-run resumes. The shared git runner and
+snapshot capture live in `backend/git_snapshot.dart`.
+
 ## [5.5.1] - 2026-07-06
 
 ### Changed
@@ -411,6 +422,7 @@ localization commands again.
 - Remove prints
 - Remove gh pr create from review
 
+[5.6.0]: https://github.com/ggsuite/gg_multi/compare/5.5.1...5.6.0
 [5.5.1]: https://github.com/ggsuite/gg_multi/compare/5.5.0...5.5.1
 [5.5.0]: https://github.com/ggsuite/gg_multi/compare/5.3.2...5.5.0
 [5.3.2]: https://github.com/ggsuite/gg_multi/compare/5.3.1...5.3.2

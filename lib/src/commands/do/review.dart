@@ -15,6 +15,7 @@ import 'package:gg_log/gg_log.dart';
 import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
+import '../../backend/git_snapshot.dart' as git_snapshot;
 import '../../backend/workspace_utils.dart';
 import '../../commands/can/review.dart';
 
@@ -42,6 +43,33 @@ Future<ProcessResult> _defaultProcessRunner(
       runInShell: true,
     );
 // coverage:ignore-end
+
+/// Snapshot of a repository's git state taken before the review mutates it.
+class _RepoSnapshot {
+  _RepoSnapshot({
+    required this.directory,
+    required this.branch,
+    required this.head,
+    required this.status,
+    this.stash,
+  });
+
+  /// The repository directory.
+  final Directory directory;
+
+  /// The branch the repository was on.
+  final String branch;
+
+  /// The commit hash HEAD pointed to.
+  final String head;
+
+  /// The `git status --porcelain` output at snapshot time.
+  final String status;
+
+  /// Commit created via `git stash create` holding uncommitted changes,
+  /// or null when there were none to preserve.
+  final String? stash;
+}
 
 /// Command to review all repos in the ticket.
 class DoReviewCommand extends DirCommand<void> {
@@ -145,43 +173,68 @@ class DoReviewCommand extends DirCommand<void> {
     // quiet task log.
     final GgLog errorLog = ggLog;
 
-    // Step 3: Merge origin/main into the current feature branch -------------
+    // Step 3: Save the state of every repo so a failure can restore it ------
+    late final List<_RepoSnapshot> snapshots;
     await GgStatusPrinter<void>(
-      message: 'Merging origin/main into feature branches',
+      message: 'Saving the state before the review',
       ggLog: ggLog,
     ).run(
-      () async => _mergeMainIntoRepos(
-        ticketName: ticketName,
-        subs: subs,
-        ggLog: taskLog,
-        errorLog: errorLog,
-      ),
+      () async => snapshots = await _saveState(subs: subs, ggLog: taskLog),
     );
 
-    // Step 4: Run can review after merging ----------------------------------
-    await GgStatusPrinter<void>(
-      message: 'Gg Multi can review?',
-      ggLog: ggLog,
-    ).run(
-      () async => _runCanReview(
-        ticketDir: ticketDir,
-        ggLog: taskLog,
-        errorLog: errorLog,
-      ),
-    );
+    final pushedRepos = <String>[];
 
-    // Step 5: Localize, upgrade, commit & push ------------------------------
-    await GgStatusPrinter<void>(
-      message: 'Setting dependencies to git, committing and pushing',
-      ggLog: ggLog,
-    ).run(
-      () async => _localizeAndCommitAll(
-        ticketName: ticketName,
-        subs: subs,
-        ggLog: taskLog,
+    try {
+      // Step 4: Merge origin/main into the current feature branch -----------
+      await GgStatusPrinter<void>(
+        message: 'Merging origin/main into feature branches',
+        ggLog: ggLog,
+      ).run(
+        () async => _mergeMainIntoRepos(
+          ticketName: ticketName,
+          subs: subs,
+          ggLog: taskLog,
+          errorLog: errorLog,
+        ),
+      );
+
+      // Step 5: Run can review after merging ---------------------------------
+      await GgStatusPrinter<void>(
+        message: 'Gg Multi can review?',
+        ggLog: ggLog,
+      ).run(
+        () async => _runCanReview(
+          ticketDir: ticketDir,
+          ggLog: taskLog,
+          errorLog: errorLog,
+        ),
+      );
+
+      // Step 6: Localize, upgrade, commit & push -----------------------------
+      await GgStatusPrinter<void>(
+        message: 'Setting dependencies to git, committing and pushing',
+        ggLog: ggLog,
+      ).run(
+        () async => _localizeAndCommitAll(
+          ticketName: ticketName,
+          subs: subs,
+          pushedRepos: pushedRepos,
+          ggLog: taskLog,
+          errorLog: errorLog,
+        ),
+      );
+    } catch (_) {
+      // Bring the repos back to the state saved above, then surface the
+      // review failure as the primary error.
+      await _restoreStateOnFailure(
+        snapshots: snapshots,
+        pushedRepos: pushedRepos,
+        ggLog: ggLog,
+        taskLog: taskLog,
         errorLog: errorLog,
-      ),
-    );
+      );
+      rethrow;
+    }
   }
 
   /// Adds command line arguments for this command.
@@ -262,8 +315,10 @@ class DoReviewCommand extends DirCommand<void> {
           );
           throw Exception(
             'Failed to merge main in: $repoName (merged state no longer '
-            'passes "gg can commit" — the merge may have corrupted a file, '
-            'resolve it manually then re-run): $e',
+            'passes "gg can commit" — the merge likely corrupted a file. '
+            'The repo is rolled back to before the review; to fix, merge '
+            'origin/main manually ("git merge origin/main"), resolve the '
+            'problem, then re-run): $e',
           );
         }
       }
@@ -271,13 +326,204 @@ class DoReviewCommand extends DirCommand<void> {
   }
 
   /// Returns the current `HEAD` commit hash of [repoDir].
-  Future<String> _gitHead(Directory repoDir) async {
-    final result = await _processRunner(
-      'git',
-      <String>['rev-parse', 'HEAD'],
-      workingDirectory: repoDir.path,
-    );
-    return (result.stdout?.toString() ?? '').trim();
+  Future<String> _gitHead(Directory repoDir) =>
+      _runGit(<String>['rev-parse', 'HEAD'], repoDir: repoDir);
+
+  /// Runs git with [args] in [repoDir] and returns the trimmed stdout.
+  /// Delegates to the shared [git_snapshot.runGit] so `do review` and
+  /// `do publish` use one git runner. See there for [allowFailure].
+  Future<String> _runGit(
+    List<String> args, {
+    required Directory repoDir,
+    bool allowFailure = false,
+  }) =>
+      git_snapshot.runGit(
+        _processRunner,
+        args,
+        repoDir: repoDir,
+        allowFailure: allowFailure,
+      );
+
+  /// Records branch, HEAD and working-tree state of every repository so
+  /// [_restoreState] can bring the repos back when the review fails.
+  Future<List<_RepoSnapshot>> _saveState({
+    required List<Node> subs,
+    required GgLog ggLog,
+  }) async {
+    final snapshots = <_RepoSnapshot>[];
+    for (final repo in subs) {
+      final repoDir = repo.directory;
+      final repoName = path.basename(repoDir.path);
+      try {
+        final head = await _gitHead(repoDir);
+        var branch = await _runGit(
+          <String>['rev-parse', '--abbrev-ref', 'HEAD'],
+          repoDir: repoDir,
+        );
+        if (branch == 'HEAD') {
+          // Detached HEAD: `rev-parse --abbrev-ref` prints the literal string
+          // "HEAD". Store the commit so restore re-detaches at it instead of
+          // running the no-op `git checkout HEAD`.
+          branch = head;
+        }
+        final status = await _runGit(
+          <String>['status', '--porcelain'],
+          repoDir: repoDir,
+        );
+        final stash =
+            await _captureUncommitted(repoDir: repoDir, status: status);
+        snapshots.add(
+          _RepoSnapshot(
+            directory: repoDir,
+            branch: branch,
+            head: head,
+            status: status,
+            stash: stash,
+          ),
+        );
+        ggLog(green('Saved state of $repoName'));
+      } catch (e) {
+        throw Exception(
+          'Failed to save the state of $repoName before the review — '
+          'nothing was changed: $e',
+        );
+      }
+    }
+    return snapshots;
+  }
+
+  /// Captures the uncommitted changes of [repoDir] in a dangling stash commit,
+  /// leaving the working tree unchanged. Delegates to the shared
+  /// [git_snapshot.captureUncommitted]; returns the stash hash or null.
+  Future<String?> _captureUncommitted({
+    required Directory repoDir,
+    required String status,
+  }) =>
+      git_snapshot.captureUncommitted(
+        _processRunner,
+        repoDir: repoDir,
+        status: status,
+      );
+
+  /// Restores the pre-review state after a failure and reports repos whose
+  /// pushes cannot be rolled back. Never throws — the review failure that
+  /// triggered the restore must stay the primary error.
+  Future<void> _restoreStateOnFailure({
+    required List<_RepoSnapshot> snapshots,
+    required List<String> pushedRepos,
+    required GgLog ggLog,
+    required GgLog taskLog,
+    required GgLog errorLog,
+  }) async {
+    try {
+      await GgStatusPrinter<void>(
+        message: 'Restoring the state before the review',
+        ggLog: ggLog,
+      ).run(
+        () async => _restoreState(
+          snapshots: snapshots,
+          pushedRepos: pushedRepos,
+          ggLog: taskLog,
+        ),
+      );
+    } catch (e) {
+      errorLog(
+        red(
+          'Restoring the state before the review failed — '
+          'restore it manually: $e',
+        ),
+      );
+    }
+    if (pushedRepos.isNotEmpty) {
+      errorLog(
+        yellow(
+          'Already pushed and not rolled back: ${pushedRepos.join(', ')}. '
+          'The next "gg do review" integrates these pushes automatically.',
+        ),
+      );
+    }
+  }
+
+  /// Brings every changed repository back to its snapshot: ends a possibly
+  /// running merge/rebase, checks out the original branch, resets to the
+  /// original HEAD and re-applies stashed uncommitted changes.
+  ///
+  /// Repos in [pushedRepos] are left untouched: their review commit already
+  /// reached the remote, so resetting the local branch behind it would desync
+  /// the two and make the next run rebase a fresh commit onto the pushed one.
+  /// Leaving them keeps local and remote in sync; the push warning covers them
+  /// and the next run's integrate step builds on top.
+  Future<void> _restoreState({
+    required List<_RepoSnapshot> snapshots,
+    required List<String> pushedRepos,
+    required GgLog ggLog,
+  }) async {
+    final failures = <String>[];
+    for (final s in snapshots) {
+      final repoName = path.basename(s.directory.path);
+      if (pushedRepos.contains(repoName)) {
+        ggLog('Kept already-pushed repo: $repoName');
+        continue;
+      }
+      try {
+        final headNow = await _gitHead(s.directory);
+        final statusNow = await _runGit(
+          <String>['status', '--porcelain'],
+          repoDir: s.directory,
+        );
+        if (headNow == s.head && statusNow == s.status) {
+          ggLog('Unchanged: $repoName');
+          continue;
+        }
+        // A failed `git merge`/`git pull --rebase` may have left a merge or
+        // rebase in progress; ending them is a no-op otherwise.
+        await _runGit(
+          <String>['merge', '--abort'],
+          repoDir: s.directory,
+          allowFailure: true,
+        );
+        await _runGit(
+          <String>['rebase', '--abort'],
+          repoDir: s.directory,
+          allowFailure: true,
+        );
+        final branchNow = await _runGit(
+          <String>['rev-parse', '--abbrev-ref', 'HEAD'],
+          repoDir: s.directory,
+        );
+        if (branchNow != s.branch) {
+          await _runGit(
+            <String>['checkout', s.branch],
+            repoDir: s.directory,
+          );
+        }
+        await _runGit(
+          <String>['reset', '--hard', s.head],
+          repoDir: s.directory,
+        );
+        if (s.stash != null) {
+          await _runGit(
+            <String>['stash', 'apply', '--index', s.stash!],
+            repoDir: s.directory,
+          );
+        }
+        ggLog(green('Restored the state before the review in $repoName'));
+      } catch (e) {
+        final manual = StringBuffer(
+          'git checkout ${s.branch} && git reset --hard ${s.head}',
+        );
+        if (s.stash != null) {
+          manual.write(' && git stash apply --index ${s.stash}');
+        }
+        failures.add('$repoName (restore with: $manual): $e');
+      }
+    }
+    if (failures.isNotEmpty) {
+      throw Exception(
+        'Could not restore the state before the review in:\n'
+        '${failures.map((f) => ' - $f').join('\n')}',
+      );
+    }
   }
 
   /// Executes `gg_multi can review` for the given ticket directory.
@@ -296,9 +542,13 @@ class DoReviewCommand extends DirCommand<void> {
 
   /// Performs localization, `dart pub upgrade`, commit
   /// and push for every repository in the ticket.
+  ///
+  /// Successfully pushed repos are appended to [pushedRepos] so a later
+  /// rollback can report the pushes it cannot undo.
   Future<void> _localizeAndCommitAll({
     required String ticketName,
     required List<Node> subs,
+    required List<String> pushedRepos,
     required GgLog ggLog,
     required GgLog errorLog,
   }) async {
@@ -362,6 +612,7 @@ class DoReviewCommand extends DirCommand<void> {
       // Push -----------------------------------------------------------------
       try {
         await _ggDoPush.exec(directory: repoDir, ggLog: ggLog);
+        pushedRepos.add(repoName);
         ggLog(green('Pushed $repoName'));
       } catch (e) {
         errorLog(red('Failed to push $repoName: $e'));

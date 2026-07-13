@@ -50,7 +50,9 @@ class MockProcessRunner extends Mock {
 
 /// Stubs `git rev-parse HEAD` on [m] to return a constant value, so the merge
 /// step sees an unchanged HEAD and skips the post-merge `gg can commit`
-/// verification.
+/// verification. Also stubs the branch and status calls of the pre-review
+/// snapshot, so the state save sees a clean repo and a rollback after a
+/// failure skips it as unchanged.
 void stubGitHeadUnchanged(MockProcessRunner m) {
   when(
     () => m(
@@ -59,6 +61,20 @@ void stubGitHeadUnchanged(MockProcessRunner m) {
       workingDirectory: any(named: 'workingDirectory'),
     ),
   ).thenAnswer((_) async => ProcessResult(0, 0, 'samehead', ''));
+  when(
+    () => m(
+      'git',
+      ['rev-parse', '--abbrev-ref', 'HEAD'],
+      workingDirectory: any(named: 'workingDirectory'),
+    ),
+  ).thenAnswer((_) async => ProcessResult(0, 0, 'TICKDR', ''));
+  when(
+    () => m(
+      'git',
+      ['status', '--porcelain'],
+      workingDirectory: any(named: 'workingDirectory'),
+    ),
+  ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
 }
 
 void main() {
@@ -1927,6 +1943,7 @@ void main() {
         final mockProcessRunner = MockProcessRunner();
 
         // HEAD moves during the merge → the post-merge verification runs.
+        // Call 0 is the pre-review snapshot, call 1 the pre-merge hash.
         var headCalls = 0;
         when(
           () => mockProcessRunner(
@@ -1936,8 +1953,22 @@ void main() {
           ),
         ).thenAnswer(
           (_) async =>
-              ProcessResult(0, 0, headCalls++ == 0 ? 'before' : 'after', ''),
+              ProcessResult(0, 0, headCalls++ <= 1 ? 'before' : 'after', ''),
         );
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['rev-parse', '--abbrev-ref', 'HEAD'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'TICKDR', ''));
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['status', '--porcelain'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
 
         when(
           () => mockCanReviewCommand.exec(
@@ -2064,6 +2095,7 @@ void main() {
         final mockGgCanCommit = MockGgCanCommit();
         final mockProcessRunner = MockProcessRunner();
 
+        // Call 0 is the pre-review snapshot, call 1 the pre-merge hash.
         var headCalls = 0;
         when(
           () => mockProcessRunner(
@@ -2073,8 +2105,46 @@ void main() {
           ),
         ).thenAnswer(
           (_) async =>
-              ProcessResult(0, 0, headCalls++ == 0 ? 'before' : 'after', ''),
+              ProcessResult(0, 0, headCalls++ <= 1 ? 'before' : 'after', ''),
         );
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['rev-parse', '--abbrev-ref', 'HEAD'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'TICKDR', ''));
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['status', '--porcelain'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+        // The rollback tolerates a failing `git merge/rebase --abort` (nothing
+        // to abort) and resets the moved HEAD back to the snapshot.
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['merge', '--abort'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 1, '', 'no merge'));
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['rebase', '--abort'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 1, '', 'no rebase'));
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['reset', '--hard', 'before'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
 
         when(
           () => mockSortedProcessingList.get(
@@ -2160,6 +2230,20 @@ void main() {
           ),
           isTrue,
         );
+        // The failed review rolled the repo back to the pre-review snapshot.
+        expect(
+          messages.any(
+            (m) => m.contains('Restored the state before the review in A'),
+          ),
+          isTrue,
+        );
+        verify(
+          () => mockProcessRunner(
+            'git',
+            ['reset', '--hard', 'before'],
+            workingDirectory: path.join(ticketDir.path, 'A'),
+          ),
+        ).called(1);
         verifyNever(
           () => mockLocalizeRefsToGit.get(
             directory: any(named: 'directory'),
@@ -2175,5 +2259,679 @@ void main() {
         );
       },
     );
+  });
+
+  group('DoReviewCommand rollback on failure', () {
+    late MockSortedProcessingList mockSortedProcessingList;
+    late MockUnlocalizeRefs mockUnlocalizeRefs;
+    late MockLocalizeRefsToGit mockLocalizeRefsToGit;
+    late MockCanReviewCommand mockCanReviewCommand;
+    late MockGgDoCommit mockGgDoCommit;
+    late MockGgDoPush mockGgDoPush;
+    late MockGgCanCommit mockGgCanCommit;
+    late MockProcessRunner m;
+
+    /// Creates a runner wired with all mocks of this group.
+    CommandRunner<void> buildRunner() => CommandRunner<void>(
+          'test',
+          'do review ticket',
+        )..addCommand(
+            DoReviewCommand(
+              ggLog: ggLog,
+              canReviewCommand: mockCanReviewCommand,
+              unlocalizeRefs: mockUnlocalizeRefs,
+              localizeRefsToGit: mockLocalizeRefsToGit,
+              sortedProcessingList: mockSortedProcessingList,
+              ggDoCommit: mockGgDoCommit,
+              ggDoPush: mockGgDoPush,
+              ggCanCommit: mockGgCanCommit,
+              processRunner: m.call,
+            ),
+          );
+
+    /// Makes the processing list return the repos [names].
+    void stubRepos(List<String> names) {
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          for (final name in names)
+            Node(
+              name: name,
+              directory: Directory(path.join(ticketDir.path, name)),
+              manifest: DartPackageManifest(pubspec: Pubspec(name)),
+            ),
+        ],
+      );
+    }
+
+    setUp(() {
+      mockSortedProcessingList = MockSortedProcessingList();
+      mockUnlocalizeRefs = MockUnlocalizeRefs();
+      mockLocalizeRefsToGit = MockLocalizeRefsToGit();
+      mockCanReviewCommand = MockCanReviewCommand();
+      mockGgDoCommit = MockGgDoCommit();
+      mockGgDoPush = MockGgDoPush();
+      mockGgCanCommit = MockGgCanCommit();
+      m = MockProcessRunner();
+
+      when(
+        () => mockCanReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockLocalizeRefsToGit.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          gitRef: any(named: 'gitRef'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgCanCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+          saveState: any(named: 'saveState'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => m(
+          'git',
+          ['ls-remote', '--heads', 'origin', 'TICKDR'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m(
+          'git',
+          ['rebase', '--abort'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m(
+          'git',
+          ['merge', '--abort'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+    });
+
+    test('resets only the repos the failed review changed', () async {
+      stubRepos(['A', 'B']);
+      final dirA = path.join(ticketDir.path, 'A');
+      final dirB = path.join(ticketDir.path, 'B');
+
+      // A: the snapshot sees headA0, every later call the merged headA1.
+      var headCallsA = 0;
+      when(
+        () => m('git', ['rev-parse', 'HEAD'], workingDirectory: dirA),
+      ).thenAnswer(
+        (_) async =>
+            ProcessResult(0, 0, headCallsA++ == 0 ? 'headA0' : 'headA1', ''),
+      );
+      // B: never changes.
+      when(
+        () => m('git', ['rev-parse', 'HEAD'], workingDirectory: dirB),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'headB0', ''));
+      when(
+        () => m(
+          'git',
+          ['rev-parse', '--abbrev-ref', 'HEAD'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'TICKDR', ''));
+      when(
+        () => m(
+          'git',
+          ['status', '--porcelain'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+      // Merging A succeeds, merging B fails and aborts the review.
+      when(
+        () => m('git', ['merge', 'origin/main'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+      when(
+        () => m('git', ['merge', 'origin/main'], workingDirectory: dirB),
+      ).thenAnswer((_) async => ProcessResult(1, 1, '', 'merge failed'));
+
+      when(
+        () => m('git', ['reset', '--hard', 'headA0'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+      await expectLater(
+        () async => buildRunner().run(
+          ['review', '--verbose', '--input', ticketDir.path],
+        ),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Failed to merge main in: B'),
+          ),
+        ),
+      );
+
+      // A is reset to its snapshot, the untouched B is left alone.
+      verify(
+        () => m('git', ['reset', '--hard', 'headA0'], workingDirectory: dirA),
+      ).called(1);
+      verifyNever(
+        () => m(
+          'git',
+          any(that: contains('reset')),
+          workingDirectory: dirB,
+        ),
+      );
+      expect(
+        messages.any(
+          (msg) => msg.contains('Restored the state before the review in A'),
+        ),
+        isTrue,
+      );
+      expect(messages.any((msg) => msg.contains('Unchanged: B')), isTrue);
+    });
+
+    test('restores stashed uncommitted changes of a dirty repo', () async {
+      stubRepos(['A']);
+      final dirA = path.join(ticketDir.path, 'A');
+
+      // The snapshot and the pre-merge hash see h0, the merge moves HEAD.
+      var headCalls = 0;
+      when(
+        () => m('git', ['rev-parse', 'HEAD'], workingDirectory: dirA),
+      ).thenAnswer(
+        (_) async => ProcessResult(0, 0, headCalls++ <= 1 ? 'h0' : 'h1', ''),
+      );
+      when(
+        () => m(
+          'git',
+          ['rev-parse', '--abbrev-ref', 'HEAD'],
+          workingDirectory: dirA,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'TICKDR', ''));
+      // The repo carries uncommitted changes → the snapshot stashes them
+      // (push-with-untracked, record the hash, re-apply, drop).
+      when(
+        () => m('git', ['status', '--porcelain'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, ' M lib/a.dart', ''));
+      when(
+        () => m(
+          'git',
+          [
+            'stash',
+            'push',
+            '--include-untracked',
+            '--message',
+            'gg-multi snapshot',
+          ],
+          workingDirectory: dirA,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m('git', ['rev-parse', 'stash@{0}'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'stashsha', ''));
+      when(
+        () => m(
+          'git',
+          ['stash', 'apply', '--index', 'stash@{0}'],
+          workingDirectory: dirA,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m('git', ['stash', 'drop', 'stash@{0}'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+      when(
+        () => m('git', ['merge', 'origin/main'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+      when(
+        () => m('git', ['reset', '--hard', 'h0'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m(
+          'git',
+          ['stash', 'apply', '--index', 'stashsha'],
+          workingDirectory: dirA,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+      when(
+        () => mockLocalizeRefsToGit.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          gitRef: any(named: 'gitRef'),
+        ),
+      ).thenThrow(Exception('localize failed'));
+
+      await expectLater(
+        () async => buildRunner().run(
+          ['review', '--verbose', '--input', ticketDir.path],
+        ),
+        throwsA(isA<Exception>()),
+      );
+
+      verify(
+        () => m('git', ['reset', '--hard', 'h0'], workingDirectory: dirA),
+      ).called(1);
+      verify(
+        () => m(
+          'git',
+          ['stash', 'apply', '--index', 'stashsha'],
+          workingDirectory: dirA,
+        ),
+      ).called(1);
+      expect(
+        messages.any(
+          (msg) => msg.contains('Restored the state before the review in A'),
+        ),
+        isTrue,
+      );
+    });
+
+    test('captures and restores untracked-only changes via stash', () async {
+      stubRepos(['A']);
+      final dirA = path.join(ticketDir.path, 'A');
+
+      var headCalls = 0;
+      when(
+        () => m('git', ['rev-parse', 'HEAD'], workingDirectory: dirA),
+      ).thenAnswer(
+        (_) async => ProcessResult(0, 0, headCalls++ <= 1 ? 'h0' : 'h1', ''),
+      );
+      when(
+        () => m(
+          'git',
+          ['rev-parse', '--abbrev-ref', 'HEAD'],
+          workingDirectory: dirA,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'TICKDR', ''));
+      // Untracked files only → `git stash push --include-untracked` records
+      // them (unlike `git stash create`), so the rollback re-applies them.
+      when(
+        () => m('git', ['status', '--porcelain'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '?? new.txt', ''));
+      when(
+        () => m(
+          'git',
+          [
+            'stash',
+            'push',
+            '--include-untracked',
+            '--message',
+            'gg-multi snapshot',
+          ],
+          workingDirectory: dirA,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m('git', ['rev-parse', 'stash@{0}'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'untrackedsha', ''));
+      when(
+        () => m(
+          'git',
+          ['stash', 'apply', '--index', 'stash@{0}'],
+          workingDirectory: dirA,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m('git', ['stash', 'drop', 'stash@{0}'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+      when(
+        () => m('git', ['merge', 'origin/main'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+      when(
+        () => m('git', ['reset', '--hard', 'h0'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m(
+          'git',
+          ['stash', 'apply', '--index', 'untrackedsha'],
+          workingDirectory: dirA,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+      when(
+        () => mockLocalizeRefsToGit.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          gitRef: any(named: 'gitRef'),
+        ),
+      ).thenThrow(Exception('localize failed'));
+
+      await expectLater(
+        () async => buildRunner().run(
+          ['review', '--verbose', '--input', ticketDir.path],
+        ),
+        throwsA(isA<Exception>()),
+      );
+
+      verify(
+        () => m('git', ['reset', '--hard', 'h0'], workingDirectory: dirA),
+      ).called(1);
+      verify(
+        () => m(
+          'git',
+          ['stash', 'apply', '--index', 'untrackedsha'],
+          workingDirectory: dirA,
+        ),
+      ).called(1);
+    });
+
+    test('reports pushes that cannot be rolled back', () async {
+      stubRepos(['A', 'B']);
+      stubGitHeadUnchanged(m);
+
+      when(
+        () => m(
+          'git',
+          ['merge', 'origin/main'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+      // A commits and pushes fine, committing B fails.
+      when(
+        () => mockGgDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((invocation) async {
+        final dir = invocation.namedArguments[#directory] as Directory;
+        if (path.basename(dir.path) == 'B') {
+          throw Exception('commit failed');
+        }
+      });
+
+      await expectLater(
+        () async => buildRunner().run(
+          ['review', '--verbose', '--input', ticketDir.path],
+        ),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Failed to review in: B'),
+          ),
+        ),
+      );
+
+      expect(
+        messages.any(
+          (msg) => msg.contains('Already pushed and not rolled back: A'),
+        ),
+        isTrue,
+      );
+    });
+
+    test('logs a manual-recovery hint when the restore itself fails', () async {
+      stubRepos(['A']);
+      final dirA = path.join(ticketDir.path, 'A');
+
+      var headCalls = 0;
+      when(
+        () => m('git', ['rev-parse', 'HEAD'], workingDirectory: dirA),
+      ).thenAnswer(
+        (_) async => ProcessResult(0, 0, headCalls++ <= 1 ? 'h0' : 'h1', ''),
+      );
+      when(
+        () => m(
+          'git',
+          ['rev-parse', '--abbrev-ref', 'HEAD'],
+          workingDirectory: dirA,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'TICKDR', ''));
+      // A dirty repo → the manual-recovery hint must also surface the stash
+      // hash, otherwise following it would wipe the uncommitted changes.
+      when(
+        () => m('git', ['status', '--porcelain'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, ' M lib/a.dart', ''));
+      when(
+        () => m(
+          'git',
+          [
+            'stash',
+            'push',
+            '--include-untracked',
+            '--message',
+            'gg-multi snapshot',
+          ],
+          workingDirectory: dirA,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m('git', ['rev-parse', 'stash@{0}'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'stashsha', ''));
+      when(
+        () => m(
+          'git',
+          ['stash', 'apply', '--index', 'stash@{0}'],
+          workingDirectory: dirA,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m('git', ['stash', 'drop', 'stash@{0}'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m('git', ['merge', 'origin/main'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+      when(
+        () => m('git', ['reset', '--hard', 'h0'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(1, 1, '', 'reset boom'));
+
+      when(
+        () => mockLocalizeRefsToGit.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          gitRef: any(named: 'gitRef'),
+        ),
+      ).thenThrow(Exception('localize failed'));
+
+      await expectLater(
+        () async => buildRunner().run(
+          ['review', '--verbose', '--input', ticketDir.path],
+        ),
+        // The review failure stays the primary error.
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('localize refs to git failed'),
+          ),
+        ),
+      );
+
+      expect(
+        messages.any(
+          (msg) =>
+              msg.contains('Restoring the state before the review failed') &&
+              msg.contains('git reset --hard h0') &&
+              msg.contains('git stash apply --index stashsha'),
+        ),
+        isTrue,
+      );
+    });
+
+    test('aborts before changing anything when saving the state fails',
+        () async {
+      stubRepos(['A']);
+      final dirA = path.join(ticketDir.path, 'A');
+
+      when(
+        () => m('git', ['rev-parse', 'HEAD'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'h0', ''));
+      when(
+        () => m(
+          'git',
+          ['rev-parse', '--abbrev-ref', 'HEAD'],
+          workingDirectory: dirA,
+        ),
+      ).thenAnswer((_) async => ProcessResult(1, 1, '', 'not a repo'));
+
+      await expectLater(
+        () async => buildRunner().run(
+          ['review', '--verbose', '--input', ticketDir.path],
+        ),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Failed to save the state of A before the review'),
+          ),
+        ),
+      );
+
+      verifyNever(
+        () => m(
+          'git',
+          ['merge', 'origin/main'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      );
+    });
+
+    test('checks out the original branch when the rollback finds another one',
+        () async {
+      stubRepos(['A']);
+      final dirA = path.join(ticketDir.path, 'A');
+
+      var headCalls = 0;
+      when(
+        () => m('git', ['rev-parse', 'HEAD'], workingDirectory: dirA),
+      ).thenAnswer(
+        (_) async => ProcessResult(0, 0, headCalls++ <= 1 ? 'h0' : 'h1', ''),
+      );
+      // The snapshot sees TICKDR, the rollback finds a detached HEAD.
+      var branchCalls = 0;
+      when(
+        () => m(
+          'git',
+          ['rev-parse', '--abbrev-ref', 'HEAD'],
+          workingDirectory: dirA,
+        ),
+      ).thenAnswer(
+        (_) async =>
+            ProcessResult(0, 0, branchCalls++ == 0 ? 'TICKDR' : 'HEAD', ''),
+      );
+      when(
+        () => m('git', ['status', '--porcelain'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m('git', ['merge', 'origin/main'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+      when(
+        () => m('git', ['checkout', 'TICKDR'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m('git', ['reset', '--hard', 'h0'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+      when(
+        () => mockLocalizeRefsToGit.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          gitRef: any(named: 'gitRef'),
+        ),
+      ).thenThrow(Exception('localize failed'));
+
+      await expectLater(
+        () async => buildRunner().run(
+          ['review', '--verbose', '--input', ticketDir.path],
+        ),
+        throwsA(isA<Exception>()),
+      );
+
+      verify(
+        () => m('git', ['checkout', 'TICKDR'], workingDirectory: dirA),
+      ).called(1);
+      verify(
+        () => m('git', ['reset', '--hard', 'h0'], workingDirectory: dirA),
+      ).called(1);
+    });
+
+    test('restores a detached-HEAD snapshot at its commit', () async {
+      stubRepos(['A']);
+      final dirA = path.join(ticketDir.path, 'A');
+
+      // Snapshot on 'dh0', the merge moves HEAD to 'dh1'.
+      var headCalls = 0;
+      when(
+        () => m('git', ['rev-parse', 'HEAD'], workingDirectory: dirA),
+      ).thenAnswer(
+        (_) async => ProcessResult(0, 0, headCalls++ <= 1 ? 'dh0' : 'dh1', ''),
+      );
+      // The snapshot sees a detached HEAD (literal "HEAD"); the rollback later
+      // finds some branch checked out.
+      var branchCalls = 0;
+      when(
+        () => m(
+          'git',
+          ['rev-parse', '--abbrev-ref', 'HEAD'],
+          workingDirectory: dirA,
+        ),
+      ).thenAnswer(
+        (_) async =>
+            ProcessResult(0, 0, branchCalls++ == 0 ? 'HEAD' : 'main', ''),
+      );
+      when(
+        () => m('git', ['status', '--porcelain'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m('git', ['merge', 'origin/main'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+      // The detached snapshot stored the commit, so restore checks out 'dh0'.
+      when(
+        () => m('git', ['checkout', 'dh0'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m('git', ['reset', '--hard', 'dh0'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+      when(
+        () => mockLocalizeRefsToGit.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          gitRef: any(named: 'gitRef'),
+        ),
+      ).thenThrow(Exception('localize failed'));
+
+      await expectLater(
+        () async => buildRunner().run(
+          ['review', '--verbose', '--input', ticketDir.path],
+        ),
+        throwsA(isA<Exception>()),
+      );
+
+      verify(
+        () => m('git', ['checkout', 'dh0'], workingDirectory: dirA),
+      ).called(1);
+      verify(
+        () => m('git', ['reset', '--hard', 'dh0'], workingDirectory: dirA),
+      ).called(1);
+    });
   });
 }

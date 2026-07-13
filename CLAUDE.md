@@ -59,6 +59,7 @@ The tool manages two levels of workspace:
 |--------|------|
 | `workspace_utils.dart` | Detects master/ticket paths from any working directory |
 | `git_handler.dart` | Clone & create-branch (workspace-specific); generic git ops (fetch, checkout, show-file, remote-branches) live in `gg_git` |
+| `git_snapshot.dart` | Shared rollback helpers for `do review` + `do publish`: `runGit` (throw-on-non-zero unless `allowFailure`) and `captureUncommitted` (stash tracked+staged/unstaged+untracked into a dangling commit, tree left unchanged). One copy so the two rollback paths cannot drift. |
 | `ticket_json.dart` | Reads/writes/parses the per-repo `.gg/.ticket.json` ticket marker |
 | `git_platform.dart` | Git-platform abstraction. `GitHubPlatform.fetchOrgRepos` lists an org's repos via the **GitHub CLI** (`gh repo list --json name,sshUrl,url`), `AzureDevOpsPlatform` via `az repos list`. Using the CLIs reuses the caller's existing auth so **private** orgs work (an unauthenticated REST call only ever sees public repos); cloning then uses each repo's ssh url. Both require the respective CLI for org-add and emit an install hint otherwise. |
 | `list_backend.dart` | Lists repos/orgs/deps with metadata |
@@ -88,6 +89,23 @@ The tool manages two levels of workspace:
 3. **Otherwise** → `<X>` is a ticket name, searched across all `.master` repos.
 
 Once found, it recreates the ticket folder + root `.ticket`, clones any missing repos from their URLs, copies each into the ticket, checks out the existing feature branch, and installs deps.
+
+### `do review` Command
+
+`DoReviewCommand` (in `lib/src/commands/do/review.dart`) prepares every ticket repo for review: merge `origin/main` into the feature branch (re-verifying with `gg can commit` when the merge moved HEAD), run `can review`, then per repo localize refs to git feature branches, refresh dependencies, force-commit, integrate the remote feature branch (`pull --rebase`, never force-push) and push.
+
+Before touching anything it snapshots every repo (branch — the commit hash when HEAD is detached, HEAD, `status --porcelain`, plus a `git stash push --include-untracked` commit that captures tracked changes, the staged/unstaged split *and* untracked files, immediately re-applied so the working tree is unchanged). **If any step fails, the changed repos are rolled back to that snapshot** (`merge --abort` → `rebase --abort` → `checkout <branch>` if needed → `reset --hard <head>` → `stash apply --index`); unchanged repos are skipped. Already-pushed repos are **left as-is, not reset** — resetting local behind the pushed commit would desync them and make the next run rebase onto it; they are reported instead, and the next `do review` run integrates those remote commits via the `pull --rebase` step. If the restore itself fails, a manual-recovery hint with the checkout/reset commands *and the stash hash* is logged and the original review error stays the primary one.
+
+### `do publish` Command
+
+`DoPublishCommand` (in `lib/src/commands/do/publish.dart`) publishes all ticket repos in dependency order: `do review` + `can publish` first, then per repo unlocalize refs, restore `publish_to`, propagate published dependency versions, refresh deps, commit, push and delegate to gg_one's `gg do publish` (version bump → registry publish → squash-merge to main → tag → push).
+
+Each repo is snapshotted before its publish (branch — the commit hash when HEAD is detached, HEAD, `status`/stash via the same `stash push --include-untracked` capture as `do review`, package version, `main`/`master` position local + remote, the feature branch's remote head, tags). **When the publish of a repo fails, only that repo is restored — previously published repos stay published.** The restore is two-mode, because gg_one's flow publishes to the registry *before* merging and pub.dev/npm cannot be unpublished:
+
+- **Full restore** — only when provably nothing irreversible happened: end merges/rebases, back to the feature branch, `reset --hard`, restore the local main position, delete tags the run created, re-apply stashed changes with `--index`.
+- **Cleanup restore** — otherwise, **keep all commits** so a re-run of `gg do publish` resumes via gg_one's idempotent state keys (`doPrepareVersion`, `doPublishPubDev`, `doMerge`). Cleanup is entered on any of: a *committed* version bump (a version change still uncommitted in the working tree is a half-written bump and does **not** count — it is recoverable, so it full-restores), `origin/main` having moved, or the feature branch already pushed. Remote comparisons only conclude "moved" from a concrete differing hash — an unreachable `git ls-remote` (often the very cause of the failure) is treated as *unknown*, never as "already released".
+
+The publish failure always stays the primary error; restore problems are logged with a manual-recovery hint that includes the checkout/reset commands and the stash hash.
 
 ## Code Standards
 

@@ -286,6 +286,7 @@ void main() {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       _stubPubUpgrade(mockProcessRunner);
+      _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -497,6 +498,7 @@ void main() {
         final mockSortedProcessingList = MockSortedProcessingList();
         final mockProcessRunner = MockProcessRunner();
         _stubPubUpgrade(mockProcessRunner);
+        _stubRepoSnapshot(mockProcessRunner);
         final mockCanPublishCommand = MockCanPublishCommand();
         final mockDoReviewCommand = MockDoReviewCommand();
         final mockGetVersion = MockGetVersion();
@@ -665,6 +667,7 @@ void main() {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       _stubPubUpgrade(mockProcessRunner);
+      _stubRepoSnapshot(mockProcessRunner);
       when(
         () => mockProcessRunner(
           'npm',
@@ -844,6 +847,7 @@ void main() {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       _stubPubUpgrade(mockProcessRunner);
+      _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -1007,6 +1011,7 @@ void main() {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       _stubPubUpgrade(mockProcessRunner);
+      _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -1158,6 +1163,7 @@ void main() {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       _stubPubUpgrade(mockProcessRunner);
+      _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -1321,6 +1327,7 @@ void main() {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       _stubPubUpgrade(mockProcessRunner);
+      _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -1400,6 +1407,7 @@ void main() {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       _stubPubUpgrade(mockProcessRunner);
+      _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -1577,6 +1585,7 @@ void main() {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       _stubPubUpgrade(mockProcessRunner);
+      _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -1745,6 +1754,7 @@ void main() {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       _stubPubUpgrade(mockProcessRunner);
+      _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -1896,6 +1906,7 @@ void main() {
         final mockSortedProcessingList = MockSortedProcessingList();
         final mockProcessRunner = MockProcessRunner();
         _stubPubUpgrade(mockProcessRunner);
+        _stubRepoSnapshot(mockProcessRunner);
         final mockCanPublishCommand = MockCanPublishCommand();
         final mockDoReviewCommand = MockDoReviewCommand();
         final mockGetVersion = MockGetVersion();
@@ -2070,6 +2081,7 @@ void main() {
         final mockSortedProcessingList = MockSortedProcessingList();
         final mockProcessRunner = MockProcessRunner();
         _stubPubUpgrade(mockProcessRunner);
+        _stubRepoSnapshot(mockProcessRunner);
         final mockCanPublishCommand = MockCanPublishCommand();
         final mockDoReviewCommand = MockDoReviewCommand();
         final mockGetVersion = MockGetVersion();
@@ -2244,6 +2256,7 @@ void main() {
         final mockSortedProcessingList = MockSortedProcessingList();
         final mockProcessRunner = MockProcessRunner();
         _stubPubUpgrade(mockProcessRunner);
+        _stubRepoSnapshot(mockProcessRunner);
         final mockCanPublishCommand = MockCanPublishCommand();
         final mockDoReviewCommand = MockDoReviewCommand();
         final mockGetVersion = MockGetVersion();
@@ -2428,6 +2441,7 @@ void main() {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       _stubPubUpgrade(mockProcessRunner);
+      _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -2579,6 +2593,7 @@ void main() {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       _stubPubUpgrade(mockProcessRunner);
+      _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -2728,6 +2743,7 @@ void main() {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       _stubPubUpgrade(mockProcessRunner);
+      _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
 
@@ -2813,6 +2829,7 @@ void main() {
       final mockRestorePublishTo = MockRestorePublishTo();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
+      _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
 
@@ -2927,6 +2944,7 @@ void main() {
       final mockRestorePublishTo = MockRestorePublishTo();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
+      _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -3094,6 +3112,7 @@ void main() {
       final mockRestorePublishTo = MockRestorePublishTo();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
+      _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -3254,6 +3273,842 @@ void main() {
       ).called(1);
     });
   });
+
+  group('DoPublishCommand rollback on failure', () {
+    late MockGgDoPublish mockGgDoPublish;
+    late MockGgDoCommit mockGgDoCommit;
+    late MockGgDoPush mockGgDoPush;
+    late MockUnlocalizeRefs mockUnlocalizeRefs;
+    late MockRestorePublishTo mockRestorePublishTo;
+    late MockSortedProcessingList mockSortedProcessingList;
+    late MockCanPublishCommand mockCanPublishCommand;
+    late MockDoReviewCommand mockDoReviewCommand;
+    late MockGetVersion mockGetVersion;
+    late MockSetRefVersion mockSetRefVersion;
+    late MockGetRefVersion mockGetRefVersion;
+    late MockProcessRunner m;
+    late String dirA;
+
+    /// Creates a runner wired with all mocks of this group.
+    CommandRunner<void> buildRunner() => CommandRunner<void>(
+          'test',
+          'do publish ticket',
+        )..addCommand(
+            DoPublishCommand(
+              ggLog: ggLog,
+              ggDoCommit: mockGgDoCommit,
+              unlocalizeRefs: mockUnlocalizeRefs,
+              restorePublishTo: mockRestorePublishTo,
+              ggDoPush: mockGgDoPush,
+              ggDoPublish: mockGgDoPublish,
+              sortedProcessingList: mockSortedProcessingList,
+              processRunner: m.call,
+              canPublishCommand: mockCanPublishCommand,
+              doReviewCommand: mockDoReviewCommand,
+              getVersionCommand: mockGetVersion,
+              setRefVersionCommand: mockSetRefVersion,
+              getRefVersionCommand: mockGetRefVersion,
+              editMessage: (initialMessage) async => 'merge message',
+              confirmDeleteTicket: (_) => false,
+            ),
+          );
+
+    /// Makes `gg do publish` fail for the single repo A.
+    void stubPublishFails() {
+      when(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+        ),
+      ).thenThrow(Exception('publish failed'));
+    }
+
+    /// Stubs `git rev-parse HEAD` so the snapshot sees [before] and every
+    /// later call sees [after] — the failed publish moved HEAD.
+    void stubHeadMoves(String before, String after) {
+      var headCalls = 0;
+      when(
+        () => m(
+          'git',
+          ['rev-parse', 'HEAD'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer(
+        (_) async => ProcessResult(0, 0, headCalls++ == 0 ? before : after, ''),
+      );
+    }
+
+    setUp(() {
+      mockGgDoPublish = MockGgDoPublish();
+      mockGgDoCommit = MockGgDoCommit();
+      mockGgDoPush = MockGgDoPush();
+      mockUnlocalizeRefs = MockUnlocalizeRefs();
+      mockRestorePublishTo = MockRestorePublishTo();
+      mockSortedProcessingList = MockSortedProcessingList();
+      mockCanPublishCommand = MockCanPublishCommand();
+      mockDoReviewCommand = MockDoReviewCommand();
+      mockGetVersion = MockGetVersion();
+      mockSetRefVersion = MockSetRefVersion();
+      mockGetRefVersion = MockGetRefVersion();
+      m = MockProcessRunner();
+      dirA = path.join(ticketDir.path, 'A');
+
+      when(
+        () => mockDoReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          verbose: any(named: 'verbose'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockCanPublishCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: Directory(path.join(ticketDir.path, 'A')),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
+          ),
+        ],
+      );
+      when(
+        () => mockUnlocalizeRefs.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockRestorePublishTo.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGetVersion.get(directory: any(named: 'directory')),
+      ).thenAnswer((_) async => '1.0.0');
+      _stubPubUpgrade(m);
+
+      // Baseline git behaviour: clean repo on the feature branch with an
+      // unchanged main. Individual tests override what their scenario needs.
+      when(
+        () => m(
+          'git',
+          ['rev-parse', '--abbrev-ref', 'HEAD'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'TICKPB', ''));
+      when(
+        () => m(
+          'git',
+          ['rev-parse', 'HEAD'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'h0', ''));
+      when(
+        () => m(
+          'git',
+          ['status', '--porcelain'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m(
+          'git',
+          ['rev-parse', '--verify', '--quiet', 'refs/heads/main'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'm0', ''));
+      when(
+        () => m(
+          'git',
+          ['ls-remote', 'origin', 'refs/heads/main'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer(
+        (_) async => ProcessResult(0, 0, 'r0\trefs/heads/main', ''),
+      );
+      when(
+        () => m(
+          'git',
+          ['ls-remote', 'origin', 'refs/heads/TICKPB'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer(
+        (_) async => ProcessResult(0, 0, 'rf0\trefs/heads/TICKPB', ''),
+      );
+      when(
+        () => m(
+          'git',
+          ['tag', '--list'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      // A rollback tolerates failing aborts (nothing to abort).
+      when(
+        () => m(
+          'git',
+          ['merge', '--abort'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 1, '', 'no merge'));
+      when(
+        () => m(
+          'git',
+          ['rebase', '--abort'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 1, '', 'no rebase'));
+    });
+
+    test(
+        'restores HEAD, main position and new tags when nothing '
+        'irreversible happened', () async {
+      stubPublishFails();
+      stubHeadMoves('h0', 'h1');
+
+      // main moved locally during the failed run (m0 → m1) ...
+      var mainCalls = 0;
+      when(
+        () => m(
+          'git',
+          ['rev-parse', '--verify', '--quiet', 'refs/heads/main'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer(
+        (_) async => ProcessResult(0, 0, mainCalls++ == 0 ? 'm0' : 'm1', ''),
+      );
+      // ... and the failed run created a tag.
+      var tagCalls = 0;
+      when(
+        () => m(
+          'git',
+          ['tag', '--list'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer(
+        (_) async => ProcessResult(0, 0, tagCalls++ == 0 ? '' : 'v1.1.0', ''),
+      );
+      when(
+        () => m(
+          'git',
+          ['reset', '--hard', 'h0'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m(
+          'git',
+          ['branch', '-f', 'main', 'm0'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m(
+          'git',
+          ['tag', '-d', 'v1.1.0'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+      await expectLater(
+        () async => buildRunner().run(
+          ['publish', '--verbose', '--input', ticketDir.path],
+        ),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('publish failed'),
+          ),
+        ),
+      );
+
+      verify(
+        () => m('git', ['reset', '--hard', 'h0'], workingDirectory: dirA),
+      ).called(1);
+      verify(
+        () => m('git', ['branch', '-f', 'main', 'm0'], workingDirectory: dirA),
+      ).called(1);
+      verify(
+        () => m('git', ['tag', '-d', 'v1.1.0'], workingDirectory: dirA),
+      ).called(1);
+      expect(
+        messages.any(
+          (msg) => msg.contains('Restored the state before the publish in A'),
+        ),
+        isTrue,
+      );
+      expect(
+        messages.any(
+          (msg) => msg.contains('pushes to origin are not rolled back'),
+        ),
+        isTrue,
+      );
+    });
+
+    test('keeps all commits when the version was already bumped', () async {
+      stubPublishFails();
+      stubHeadMoves('h0', 'h1');
+
+      // The snapshot sees 1.0.0, the restore sees the bumped 1.1.0 — the
+      // registry may already carry the release, so nothing is reset.
+      var versionCalls = 0;
+      when(
+        () => mockGetVersion.get(directory: any(named: 'directory')),
+      ).thenAnswer(
+        (_) async => versionCalls++ == 0 ? '1.0.0' : '1.1.0',
+      );
+
+      await expectLater(
+        () async => buildRunner().run(
+          ['publish', '--verbose', '--input', ticketDir.path],
+        ),
+        throwsA(isA<Exception>()),
+      );
+
+      verifyNever(
+        () => m(
+          'git',
+          any(that: contains('reset')),
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      );
+      expect(
+        messages.any(
+          (msg) =>
+              msg.contains('all commits were kept') &&
+              msg.contains('resumes the publish'),
+        ),
+        isTrue,
+      );
+    });
+
+    test(
+        'checks out the feature branch and keeps commits when origin/main '
+        'already moved', () async {
+      stubPublishFails();
+
+      // The failed run left the repo on main ...
+      var branchCalls = 0;
+      when(
+        () => m(
+          'git',
+          ['rev-parse', '--abbrev-ref', 'HEAD'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer(
+        (_) async =>
+            ProcessResult(0, 0, branchCalls++ == 0 ? 'TICKPB' : 'main', ''),
+      );
+      // ... and origin/main already received the release push (r0 → r9).
+      var remoteCalls = 0;
+      when(
+        () => m(
+          'git',
+          ['ls-remote', 'origin', 'refs/heads/main'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer(
+        (_) async => ProcessResult(
+          0,
+          0,
+          remoteCalls++ == 0 ? 'r0\trefs/heads/main' : 'r9\trefs/heads/main',
+          '',
+        ),
+      );
+      when(
+        () => m('git', ['checkout', 'TICKPB'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+      await expectLater(
+        () async => buildRunner().run(
+          ['publish', '--verbose', '--input', ticketDir.path],
+        ),
+        throwsA(isA<Exception>()),
+      );
+
+      verify(
+        () => m('git', ['checkout', 'TICKPB'], workingDirectory: dirA),
+      ).called(1);
+      verifyNever(
+        () => m(
+          'git',
+          any(that: contains('reset')),
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      );
+      expect(
+        messages.any(
+          (msg) => msg.contains('origin/main already received the release'),
+        ),
+        isTrue,
+      );
+    });
+
+    test('aborts before changing anything when saving the state fails',
+        () async {
+      when(
+        () => m(
+          'git',
+          ['rev-parse', '--abbrev-ref', 'HEAD'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 1, '', 'not a repo'));
+
+      await expectLater(
+        () async => buildRunner().run(
+          ['publish', '--verbose', '--input', ticketDir.path],
+        ),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Failed to save the state of A before publishing'),
+          ),
+        ),
+      );
+
+      verifyNever(
+        () => mockUnlocalizeRefs.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      );
+    });
+
+    test('logs a manual-recovery hint when the restore itself fails', () async {
+      stubPublishFails();
+      stubHeadMoves('h0', 'h1');
+      // A dirty repo → the manual-recovery hint must also surface the stash
+      // hash, otherwise following it would wipe the uncommitted changes.
+      when(
+        () => m(
+          'git',
+          ['status', '--porcelain'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, ' M lib/a.dart', ''));
+      when(
+        () => m(
+          'git',
+          [
+            'stash',
+            'push',
+            '--include-untracked',
+            '--message',
+            'gg-multi snapshot',
+          ],
+          workingDirectory: dirA,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m('git', ['rev-parse', 'stash@{0}'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'stashsha', ''));
+      when(
+        () => m(
+          'git',
+          ['stash', 'apply', '--index', 'stash@{0}'],
+          workingDirectory: dirA,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m('git', ['stash', 'drop', 'stash@{0}'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m(
+          'git',
+          ['reset', '--hard', 'h0'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 1, '', 'reset boom'));
+
+      await expectLater(
+        () async => buildRunner().run(
+          ['publish', '--verbose', '--input', ticketDir.path],
+        ),
+        // The publish failure stays the primary error.
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('publish failed'),
+          ),
+        ),
+      );
+
+      expect(
+        messages.any(
+          (msg) =>
+              msg.contains('restore it manually') &&
+              msg.contains('git reset --hard h0') &&
+              msg.contains('git stash apply --index stashsha'),
+        ),
+        isTrue,
+      );
+    });
+
+    test('falls back to master and tolerates unreachable remotes', () async {
+      stubPublishFails();
+      stubHeadMoves('h0', 'h1');
+
+      // No main branch → the snapshot falls back to master.
+      when(
+        () => m(
+          'git',
+          ['rev-parse', '--verify', '--quiet', 'refs/heads/main'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 1, '', ''));
+      when(
+        () => m(
+          'git',
+          ['rev-parse', '--verify', '--quiet', 'refs/heads/master'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'm0', ''));
+      // The remote is unreachable at snapshot time and has no master branch
+      // at restore time → both resolve to "unknown" and compare equal.
+      var remoteCalls = 0;
+      when(
+        () => m(
+          'git',
+          ['ls-remote', 'origin', 'refs/heads/master'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer(
+        (_) async => remoteCalls++ == 0
+            ? ProcessResult(0, 128, '', 'no connection')
+            : ProcessResult(0, 0, '', ''),
+      );
+      when(
+        () => m(
+          'git',
+          ['reset', '--hard', 'h0'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+      await expectLater(
+        () async => buildRunner().run(
+          ['publish', '--verbose', '--input', ticketDir.path],
+        ),
+        throwsA(isA<Exception>()),
+      );
+
+      // Full restore ran; master did not move (m0 both times) → no branch -f.
+      verify(
+        () => m('git', ['reset', '--hard', 'h0'], workingDirectory: dirA),
+      ).called(1);
+      verifyNever(
+        () => m(
+          'git',
+          any(that: contains('branch')),
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      );
+    });
+
+    test('works without any default branch and an unreadable version',
+        () async {
+      stubPublishFails();
+      stubHeadMoves('h0', 'h1');
+
+      // Neither main nor master exist; the version is unreadable — both are
+      // tolerated and the full restore still runs.
+      when(
+        () => m(
+          'git',
+          ['rev-parse', '--verify', '--quiet', 'refs/heads/main'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 1, '', ''));
+      when(
+        () => m(
+          'git',
+          ['rev-parse', '--verify', '--quiet', 'refs/heads/master'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 1, '', ''));
+      when(
+        () => mockGetVersion.get(directory: any(named: 'directory')),
+      ).thenThrow(Exception('no version'));
+      when(
+        () => m(
+          'git',
+          ['reset', '--hard', 'h0'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+      await expectLater(
+        () async => buildRunner().run(
+          ['publish', '--verbose', '--input', ticketDir.path],
+        ),
+        throwsA(isA<Exception>()),
+      );
+
+      verify(
+        () => m('git', ['reset', '--hard', 'h0'], workingDirectory: dirA),
+      ).called(1);
+      // No default branch → neither main nor master is queried on the remote.
+      // (The feature branch is still queried, so this is scoped to main/master.)
+      verifyNever(
+        () => m(
+          'git',
+          ['ls-remote', 'origin', 'refs/heads/main'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      );
+      verifyNever(
+        () => m(
+          'git',
+          ['ls-remote', 'origin', 'refs/heads/master'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      );
+    });
+
+    test('restores stashed uncommitted changes of a dirty repo', () async {
+      stubPublishFails();
+      stubHeadMoves('h0', 'h1');
+
+      // The repo carries uncommitted changes → the snapshot stashes them
+      // (push-with-untracked, record the hash, re-apply, drop).
+      when(
+        () => m(
+          'git',
+          ['status', '--porcelain'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, ' M lib/a.dart', ''));
+      when(
+        () => m(
+          'git',
+          [
+            'stash',
+            'push',
+            '--include-untracked',
+            '--message',
+            'gg-multi snapshot',
+          ],
+          workingDirectory: dirA,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m('git', ['rev-parse', 'stash@{0}'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, 'stashsha', ''));
+      when(
+        () => m(
+          'git',
+          ['stash', 'apply', '--index', 'stash@{0}'],
+          workingDirectory: dirA,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m('git', ['stash', 'drop', 'stash@{0}'], workingDirectory: dirA),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m(
+          'git',
+          ['reset', '--hard', 'h0'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => m(
+          'git',
+          ['stash', 'apply', '--index', 'stashsha'],
+          workingDirectory: dirA,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+      await expectLater(
+        () async => buildRunner().run(
+          ['publish', '--verbose', '--input', ticketDir.path],
+        ),
+        throwsA(isA<Exception>()),
+      );
+
+      verify(
+        () => m(
+          'git',
+          ['stash', 'apply', '--index', 'stashsha'],
+          workingDirectory: dirA,
+        ),
+      ).called(1);
+    });
+
+    test('fully restores an uncommitted half-written version bump', () async {
+      stubPublishFails();
+      stubHeadMoves('h0', 'h1');
+
+      // gg_one wrote the new version into pubspec.yaml but its commit failed,
+      // so the bump is uncommitted (shows in `git status`). That is
+      // recoverable — nothing reached the registry — so restore fully.
+      var versionCalls = 0;
+      when(
+        () => mockGetVersion.get(directory: any(named: 'directory')),
+      ).thenAnswer(
+        (_) async => versionCalls++ == 0 ? '1.0.0' : '1.1.0',
+      );
+      // Clean at snapshot time, dirty (the half-bump) at restore time.
+      var statusCalls = 0;
+      when(
+        () => m(
+          'git',
+          ['status', '--porcelain'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async {
+        final out = statusCalls++ == 0 ? '' : ' M pubspec.yaml';
+        return ProcessResult(0, 0, out, '');
+      });
+      when(
+        () => m(
+          'git',
+          ['reset', '--hard', 'h0'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+      await expectLater(
+        () async => buildRunner().run(
+          ['publish', '--verbose', '--input', ticketDir.path],
+        ),
+        throwsA(isA<Exception>()),
+      );
+
+      // The half-bump did not count as irreversible → full restore.
+      verify(
+        () => m('git', ['reset', '--hard', 'h0'], workingDirectory: dirA),
+      ).called(1);
+      expect(
+        messages.any((msg) => msg.contains('all commits were kept')),
+        isFalse,
+      );
+    });
+
+    test('keeps all commits when the feature branch was already pushed',
+        () async {
+      stubPublishFails();
+      stubHeadMoves('h0', 'h1');
+
+      // origin/<feature> advanced (rf0 → rf9): the failed run pushed the
+      // feature commit, so resetting local below it would desync the two.
+      var featureCalls = 0;
+      when(
+        () => m(
+          'git',
+          ['ls-remote', 'origin', 'refs/heads/TICKPB'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer(
+        (_) async => ProcessResult(
+          0,
+          0,
+          featureCalls++ == 0
+              ? 'rf0\trefs/heads/TICKPB'
+              : 'rf9\trefs/heads/TICKPB',
+          '',
+        ),
+      );
+
+      await expectLater(
+        () async => buildRunner().run(
+          ['publish', '--verbose', '--input', ticketDir.path],
+        ),
+        throwsA(isA<Exception>()),
+      );
+
+      verifyNever(
+        () => m(
+          'git',
+          any(that: contains('reset')),
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      );
+      expect(
+        messages.any(
+          (msg) =>
+              msg.contains('the feature branch was already pushed to origin') &&
+              msg.contains('resumes the publish'),
+        ),
+        isTrue,
+      );
+    });
+
+    test('does not treat an unreachable remote as a moved main', () async {
+      stubPublishFails();
+      stubHeadMoves('h0', 'h1');
+
+      // The snapshot read a concrete origin/main hash, but at restore time
+      // `git ls-remote` fails (e.g. the network outage that broke the
+      // publish). A null result must NOT masquerade as "already released".
+      var remoteCalls = 0;
+      when(
+        () => m(
+          'git',
+          ['ls-remote', 'origin', 'refs/heads/main'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer(
+        (_) async => remoteCalls++ == 0
+            ? ProcessResult(0, 0, 'r0\trefs/heads/main', '')
+            : ProcessResult(0, 1, '', 'no connection'),
+      );
+      when(
+        () => m(
+          'git',
+          ['reset', '--hard', 'h0'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+      await expectLater(
+        () async => buildRunner().run(
+          ['publish', '--verbose', '--input', ticketDir.path],
+        ),
+        throwsA(isA<Exception>()),
+      );
+
+      // Full restore ran; the failed ls-remote did not force cleanup mode.
+      verify(
+        () => m('git', ['reset', '--hard', 'h0'], workingDirectory: dirA),
+      ).called(1);
+      expect(
+        messages.any((msg) => msg.contains('already received the release')),
+        isFalse,
+      );
+    });
+  });
 }
 
 // Mock for ProcessRunner
@@ -3275,6 +4130,66 @@ void _stubPubUpgrade(MockProcessRunner runner) {
       ['pub', 'upgrade'],
       workingDirectory: any(named: 'workingDirectory'),
       environment: any(named: 'environment'),
+    ),
+  ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+}
+
+/// Stubs the git calls of the pre-publish snapshot on [runner]: constant
+/// branch/HEAD, a clean working tree, an existing `main` with an unchanged
+/// remote and no tags. With these values a rollback after a failure sees an
+/// unchanged repo and skips it.
+void _stubRepoSnapshot(MockProcessRunner runner) {
+  when(
+    () => runner(
+      'git',
+      ['rev-parse', '--abbrev-ref', 'HEAD'],
+      workingDirectory: any(named: 'workingDirectory'),
+    ),
+  ).thenAnswer((_) async => ProcessResult(0, 0, 'TICKPB', ''));
+  when(
+    () => runner(
+      'git',
+      ['rev-parse', 'HEAD'],
+      workingDirectory: any(named: 'workingDirectory'),
+    ),
+  ).thenAnswer((_) async => ProcessResult(0, 0, 'samehead', ''));
+  when(
+    () => runner(
+      'git',
+      ['status', '--porcelain'],
+      workingDirectory: any(named: 'workingDirectory'),
+    ),
+  ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+  when(
+    () => runner(
+      'git',
+      ['rev-parse', '--verify', '--quiet', 'refs/heads/main'],
+      workingDirectory: any(named: 'workingDirectory'),
+    ),
+  ).thenAnswer((_) async => ProcessResult(0, 0, 'mainhead', ''));
+  when(
+    () => runner(
+      'git',
+      ['ls-remote', 'origin', 'refs/heads/main'],
+      workingDirectory: any(named: 'workingDirectory'),
+    ),
+  ).thenAnswer(
+    (_) async => ProcessResult(0, 0, 'remotemain\trefs/heads/main', ''),
+  );
+  when(
+    () => runner(
+      'git',
+      ['ls-remote', 'origin', 'refs/heads/TICKPB'],
+      workingDirectory: any(named: 'workingDirectory'),
+    ),
+  ).thenAnswer(
+    (_) async => ProcessResult(0, 0, 'remotefeature\trefs/heads/TICKPB', ''),
+  );
+  when(
+    () => runner(
+      'git',
+      ['tag', '--list'],
+      workingDirectory: any(named: 'workingDirectory'),
     ),
   ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
 }
