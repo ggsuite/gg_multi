@@ -1240,6 +1240,10 @@ class DoPublishCommand extends DirCommand<void> {
 
   /// Asks the user whether the ticket repositories should be deleted.
   static bool _defaultConfirmDeleteTicket(String ticketName) {
+    gg.throwWhenNotATerminal(
+      'the delete-ticket prompt',
+      'set delete_ticket in .gg/.gg-publish.json (or --config)',
+    );
     final selected = Select(
       prompt: 'Delete ticket $ticketName and remove remote feature branches?',
       options: ['No', 'Yes'],

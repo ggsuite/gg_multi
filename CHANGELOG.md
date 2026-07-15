@@ -1,5 +1,20 @@
 # Changelog
 
+## [5.7.1] - 2026-07-16
+
+### Added
+
+- The delete-ticket and merge-message default prompts fail fast with an
+actionable error when stdin is not a terminal (via gg\_one's
+throwWhenNotATerminal), instead of hanging forever in CI or piped
+shells. Set delete\_ticket in `.gg/.gg-publish.json` (or pass `-m` /
+`--config`) for headless runs.
+
+### Changed
+
+- Tidy CHANGELOG Unreleased sections
+- gg\_multi: changed references to git
+
 ## [5.7.0] - 2026-07-15
 
 ### Added
@@ -456,6 +471,7 @@ localization commands again.
 - Remove prints
 - Remove gh pr create from review
 
+[5.7.1]: https://github.com/ggsuite/gg_multi/compare/5.7.0...5.7.1
 [5.7.0]: https://github.com/ggsuite/gg_multi/compare/5.6.0...5.7.0
 [5.6.0]: https://github.com/ggsuite/gg_multi/compare/5.5.1...5.6.0
 [5.5.1]: https://github.com/ggsuite/gg_multi/compare/5.5.0...5.5.1

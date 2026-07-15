@@ -224,6 +224,10 @@ class DoConfigurePublishCommand extends DirCommand<void> {
   /// Opens the default editor with [initialMessage] and returns the result.
   // coverage:ignore-start
   static Future<String?> _defaultEditMessage(String initialMessage) async {
+    gg.throwWhenNotATerminal(
+      'the merge message prompt',
+      'pass -m <message> or provide a config file via --config',
+    );
     return Input(
       prompt: 'Edit merge message',
       defaultValue: initialMessage,
@@ -233,6 +237,10 @@ class DoConfigurePublishCommand extends DirCommand<void> {
 
   /// Asks the user whether the ticket repositories should be deleted.
   static bool _defaultConfirmDeleteTicket(String ticketName) {
+    gg.throwWhenNotATerminal(
+      'the delete-ticket prompt',
+      'set delete_ticket in .gg/.gg-publish.json (or --config)',
+    );
     final selected = Select(
       prompt: 'Delete ticket $ticketName and remove remote feature branches?',
       options: ['No', 'Yes'],
