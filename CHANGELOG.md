@@ -1,58 +1,48 @@
 # Changelog
 
-## \[5.4.0\] - 2026-07-01
+## [5.7.0] - 2026-07-15
 
 ### Added
 
-- Org-prefixed repo folders: repos newly added to the master workspace
-are cloned into `<org>_<repo>` (Dart) / `<org>-<repo>` (TypeScript)
-folders, so same-named repos from different organizations can coexist.
-Existing unprefixed folders keep working: `do add`, `do rm`, ticket
-copies and transitive-dep cloning now resolve repos by folder name,
-manifest package name or git remote URL (`RepoFolderResolver`).
-- `do add <name>` now tries the known organizations from `.organizations`
-first and uses the bare `<name>/<name>` guess only as a last resort, so
-a plain add clones straight from the right org without a failed attempt.
-- `can publish` now runs `gg can publish` for every repo in the ticket
-(feature branch, CHANGELOG, pana, npm authentication), so publish
-blockers — like a missing npm login for an npm-published package —
-surface up front instead of as a cryptic 404 mid-publish.
-
-### Reverted
-
-- Revert parallelization of `gg can commit` and `gg do push` (commit
-c97a31a). Restores the previous sequential implementation.
-
-### Fixed
-
-- `do review` (and therefore `do publish`) now disables pnpm 11's
-`blockExoticSubdeps` while refreshing dependencies, so the transitive
-git-referenced dependency chain that localizing to git feature branches
-creates installs instead of failing with `ERR_PNPM_EXOTIC_SUBDEP`. This
-matches the fix `do publish` already applied to its own refresh step.
-- `do review` now surfaces a failed install's output from stdout when
-stderr is empty (pnpm writes its errors to stdout), instead of throwing
-the cause-less `... (pnpm install failed: )`.
-
-## \[4.0.0\] - 2026-05-10
+- `do configure-publish`: new command that interactively writes
+`<ticket>/.gg/.gg-publish.json` (per-repo version increment + merge
+message, plus one `delete_ticket` choice). `do publish` runs it
+automatically when started without a config, so every interactive
+decision is made up front before the unattended publish.
+- `do publish --continue`: records per-repo progress in
+`.gg/.gg-publish.json`, skips already-published repos and resumes the
+rest after a failure; the file is deleted on full success. Review /
+`can publish` are re-run unless at least one repo already published.
+Within a repo, resume: true is forwarded to gg\_one's `do publish`,
+which resumes at the first open step of its repo-level
+`<repo>/.gg/.gg-publish.json` (done\_steps) — including the version
+tag. The full-restore rollback deletes that repo-level file (its
+markers would be stale); the keep-commits rollback keeps it, and
+`--reconfigure` discards ticket **and** repo-level files. Each repo's
+`.gitignore` gets the `.gg/.gg-publish.json` entry automatically
+before the pre-publish commit.
+- `do publish --reconfigure`: discards an existing `.gg/.gg-publish.json`
+and reconfigures interactively.
+- Code-review hardening: `--continue` also skips review/can-publish when
+a failed repo's own step file proves irreversible progress (first-repo
+failure after registry publish/merge no longer blocks the resume);
+`--config` and `do configure-publish` refuse to clobber a runtime file
+that still holds progress markers.
 
 ### Changed
 
-- **BREAKING**: Renamed package from `kidney_core` to `gg_multi`.
-Repository moved to https://github.com/ggsuite/gg\_multi. Update
-`dependencies:` entries and `import 'package:kidney_core/...'`
-statements to `import 'package:gg_multi/...'`. The executable is now
-`gg_multi` (previously `kidney_core`).
-- **BREAKING**: Replaced dependency `gg ^7.0.5` with `gg_one ^8.0.0`
-(the `gg` package itself was renamed to `gg_one` upstream).
-- Renamed status marker file `.kidney_status` to `.gg_multi_status`.
-Existing checked-out workspaces must rename the file or run the
-localization commands again.
-- Upgrade gg\_localize\_refs version
+- `do publish --message` / `-m` is kept, with refined meaning: it is the
+default merge message used only when the `.gg/.gg-publish.json` is
+written interactively (a fresh run or `--reconfigure`). It seeds every
+repo's merge-message prompt and takes precedence over the ticket
+description. It is ignored once a config exists or is supplied via
+`--config`. `do configure-publish` accepts the same `-m`.
+- Tidy CHANGELOGs: single Unreleased section and chronological order
+- gg\_multi: changed references to git
 
-### Removed
+### Fixed
 
-- remove unlocalize step from do review command and tests
+- Code-review fixes: resume-safe branch handling, progress guards for configure/--config, did-commit check and idempotent branch deletion on resume
 
 ## [5.6.0] - 2026-07-13
 
@@ -73,6 +63,22 @@ snapshot capture live in `backend/git_snapshot.dart`.
 
 ## [5.5.0] - 2026-07-06
 
+### Added
+
+- Org-prefixed repo folders: repos newly added to the master workspace
+are cloned into `<org>_<repo>` (Dart) / `<org>-<repo>` (TypeScript)
+folders, so same-named repos from different organizations can coexist.
+Existing unprefixed folders keep working: `do add`, `do rm`, ticket
+copies and transitive-dep cloning now resolve repos by folder name,
+manifest package name or git remote URL (`RepoFolderResolver`).
+- `do add <name>` now tries the known organizations from `.organizations`
+first and uses the bare `<name>/<name>` guess only as a last resort, so
+a plain add clones straight from the right org without a failed attempt.
+- `can publish` now runs `gg can publish` for every repo in the ticket
+(feature branch, CHANGELOG, pana, npm authentication), so publish
+blockers — like a missing npm login for an npm-published package —
+surface up front instead of as a cryptic 404 mid-publish.
+
 ### Changed
 
 - feat: clone whole GitHub org via gg do add - recognize /orgs/<org> URLs and list org repos authenticated through the GitHub CLI so private orgs work
@@ -80,6 +86,19 @@ snapshot capture live in `backend/git_snapshot.dart`.
 ### Fixed
 
 - fix(org-add): handle missing GitHub CLI gracefully and fall back to https clone url when sshUrl is empty (code-review)
+- `do review` (and therefore `do publish`) now disables pnpm 11's
+`blockExoticSubdeps` while refreshing dependencies, so the transitive
+git-referenced dependency chain that localizing to git feature branches
+creates installs instead of failing with `ERR_PNPM_EXOTIC_SUBDEP`. This
+matches the fix `do publish` already applied to its own refresh step.
+- `do review` now surfaces a failed install's output from stdout when
+stderr is empty (pnpm writes its errors to stdout), instead of throwing
+the cause-less `... (pnpm install failed: )`.
+
+### Reverted
+
+- Revert parallelization of `gg can commit` and `gg do push` (commit
+c97a31a). Restores the previous sequential implementation.
 
 ## [5.3.2] - 2026-06-26
 
@@ -197,6 +216,21 @@ snapshot capture live in `backend/git_snapshot.dart`.
 
 - gg\_multi: changed references to git
 - Gg Multi: changed references to pub.dev
+- **BREAKING**: Renamed package from `kidney_core` to `gg_multi`.
+Repository moved to https://github.com/ggsuite/gg\_multi. Update
+`dependencies:` entries and `import 'package:kidney_core/...'`
+statements to `import 'package:gg_multi/...'`. The executable is now
+`gg_multi` (previously `kidney_core`).
+- **BREAKING**: Replaced dependency `gg ^7.0.5` with `gg_one ^8.0.0`
+(the `gg` package itself was renamed to `gg_one` upstream).
+- Renamed status marker file `.kidney_status` to `.gg_multi_status`.
+Existing checked-out workspaces must rename the file or run the
+localization commands again.
+- Upgrade gg\_localize\_refs version
+
+### Removed
+
+- remove unlocalize step from do review command and tests
 
 ## [3.1.0] - 2026-05-04
 
@@ -422,6 +456,7 @@ snapshot capture live in `backend/git_snapshot.dart`.
 - Remove prints
 - Remove gh pr create from review
 
+[5.7.0]: https://github.com/ggsuite/gg_multi/compare/5.6.0...5.7.0
 [5.6.0]: https://github.com/ggsuite/gg_multi/compare/5.5.1...5.6.0
 [5.5.1]: https://github.com/ggsuite/gg_multi/compare/5.5.0...5.5.1
 [5.5.0]: https://github.com/ggsuite/gg_multi/compare/5.3.2...5.5.0

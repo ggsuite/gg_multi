@@ -237,12 +237,49 @@ gg_multi do publish
 Publish is meant to be triggered manually by a human after review
 approval.
 
+#### Configuration up front, and resuming after a failure
+
+`gg_multi do publish` gathers **all** interactive input before the long,
+unattended publish starts. When no config is supplied it runs
+`gg_multi do configure-publish`, which asks — per repo, in dependency
+order — for the version increment (`patch` / `minor` / `major`) and the
+merge message, plus a single "delete the ticket?" choice, and writes the
+answers to `<ticket>/.gg/.gg-publish.json`. You can also run
+`gg_multi do configure-publish` on its own to prepare that file ahead of
+time.
+
+Pass `-m`/`--message` to set the **default merge message** that pre-fills
+each repo's prompt (hit enter to accept it, or edit per repo):
+
+```bash
+gg_multi do publish -m 'Release: unified publish flow'
+```
+
+`-m` only applies while the config is being written interactively (a
+fresh run or `--reconfigure`); it takes precedence over the ticket
+description and is ignored once a config exists or is supplied via
+`--config`. `gg_multi do configure-publish` accepts the same `-m`.
+
+While publishing, each repo's status is recorded in that same file. If a
+publish fails partway through, fix the cause and resume with:
+
+```bash
+gg_multi do publish --continue
+```
+
+`--continue` reuses `.gg/.gg-publish.json`, skips the repos already marked
+`published`, skips the up-front review/validation, and picks up at the
+repo that failed — and *within* that repo, gg_one resumes at the first
+open publish step (version bump, registry publish, merge, branch
+deletion, tag) recorded in the repo's own `.gg/.gg-publish.json`.
+Nothing already done is repeated. On a fully successful run the files
+are removed again. Use `--reconfigure` to discard an existing
+`.gg/.gg-publish.json` (ticket and repo level) and be asked again.
+
 #### Non-interactive publish via `--config`
 
-`gg_multi do publish` is interactive by default — it asks for a merge
-message and a version increment (`patch` / `minor` / `major`) for every
-publishable repo. In scripted runs, CI pipelines or release tooling
-this is awkward. Pass `--config <path>` to load the merge messages and
+To publish without any prompts (scripted runs, CI pipelines, release
+tooling), pass `--config <path>` to load the merge messages and
 increments from a JSON file instead:
 
 ```bash
@@ -252,7 +289,9 @@ gg_multi do publish --config .gg-publish.json
 `gg_multi` looks for the file at `<configArg>` first (relative to the
 current directory, or absolute), then under the **ticket directory**.
 Missing fields cause a hard `FormatException` — no silent fall-back to
-an interactive prompt.
+an interactive prompt. The `--config` file is only read; a runtime copy
+at `<ticket>/.gg/.gg-publish.json` holds the progress and is removed on
+success, so your source file is left untouched.
 
 ##### `.gg-publish.json` schema
 

@@ -15,6 +15,8 @@ import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_multi/src/backend/npm_registry_checker.dart';
 import 'package:gg_multi/src/backend/pub_dev_checker.dart';
+import 'package:gg_multi/src/commands/do/configure_publish.dart'
+    show DoConfigurePublishCommand;
 import 'package:gg_multi/src/commands/do/push.dart';
 import 'package:gg_multi/src/commands/do/review.dart';
 import 'package:mocktail/mocktail.dart';
@@ -47,6 +49,10 @@ class MockDoPushCommand extends Mock implements DoPushCommand {}
 
 /// Mock for DoReviewCommand
 class MockDoReviewCommand extends Mock implements DoReviewCommand {}
+
+/// Mock for DoConfigurePublishCommand
+class MockConfigurePublishCommand extends Mock
+    implements DoConfigurePublishCommand {}
 
 /// Mock for UnlocalizeRefs
 class MockUnlocalizeRefs extends Mock implements ChangeRefsToPubDev {}
@@ -95,6 +101,17 @@ void main() {
     // B is a Flutter package to cover the Flutter switch in refresh.
     File(path.join(ticketDir.path, 'B', 'pubspec.yaml'))
         .writeAsStringSync('name: B\nflutter:\n');
+    // A ready-made runtime publish config so the tests exercise `do publish`
+    // non-interactively — it reuses .gg/.gg-publish.json when present instead
+    // of invoking the interactive `do configure-publish`.
+    Directory(path.join(ticketDir.path, '.gg')).createSync();
+    File(path.join(ticketDir.path, '.gg', '.gg-publish.json'))
+        .writeAsStringSync('''
+{
+  "version_increment": "patch",
+  "merge_message": "test merge"
+}
+''');
   });
 
   tearDown(() {
@@ -135,6 +152,16 @@ void main() {
       final mockDoReviewCommand = MockDoReviewCommand();
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockSortedProcessingList = MockSortedProcessingList();
+      final mockConfigure = MockConfigurePublishCommand();
+
+      // The empty ticket has no config file, so `do publish` configures it;
+      // the mock returns an empty config without any interactive prompt.
+      when(
+        () => mockConfigure.configure(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async => gg.PublishConfig());
 
       when(
         () => mockDoReviewCommand.exec(
@@ -165,6 +192,7 @@ void main() {
             doReviewCommand: mockDoReviewCommand,
             canPublishCommand: mockCanPublishCommand,
             sortedProcessingList: mockSortedProcessingList,
+            doConfigurePublishCommand: mockConfigure,
             confirmDeleteTicket: (_) => false,
           ),
         );
@@ -195,12 +223,29 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
+      // One repo, so the review gate is reached (an empty ticket returns
+      // before it). The can-publish stub aborts the run right after the
+      // ordered calls under test.
       when(
         () => mockSortedProcessingList.get(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => <Node>[]);
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: Directory(path.join(ticketDir.path, 'A')),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
+          ),
+        ],
+      );
+      when(
+        () => mockCanPublishCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenThrow(Exception('stop after can publish'));
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
@@ -213,11 +258,16 @@ void main() {
           ),
         );
 
-      await runner.run([
-        'publish',
-        '--input',
-        ticketDir.path,
-      ]);
+      await expectLater(
+        () => runner.run(['publish', '--input', ticketDir.path]),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('stop after can publish'),
+          ),
+        ),
+      );
 
       verifyInOrder([
         () => mockDoReviewCommand.exec(
@@ -371,6 +421,7 @@ void main() {
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
         ),
       ).thenAnswer((_) async {});
 
@@ -441,7 +492,6 @@ void main() {
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
-            editMessage: (initialMessage) async => initialMessage,
             confirmDeleteTicket: (_) => true,
           ),
         );
@@ -563,6 +613,7 @@ void main() {
             verbose: any(named: 'verbose'),
             versionIncrement: any(named: 'versionIncrement'),
             askBeforePublishing: any(named: 'askBeforePublishing'),
+            resume: any(named: 'resume'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -623,7 +674,6 @@ void main() {
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
               pubDevChecker: mockPubDevChecker,
-              editMessage: (initialMessage) async => initialMessage,
               confirmDeleteTicket: (_) {
                 promptCalls++;
                 return false;
@@ -754,6 +804,7 @@ void main() {
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -819,7 +870,6 @@ void main() {
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
             npmChecker: mockNpmChecker,
-            editMessage: (initialMessage) async => initialMessage,
             confirmDeleteTicket: (_) => false,
           ),
         );
@@ -838,8 +888,19 @@ void main() {
       ).called(1);
     });
 
-    test('uses explicit get message as initial value for interactive edit',
+    test('passes a per-repo merge message + increment to gg do publish',
         () async {
+      // A per-repo override in the runtime config drives the merge message and
+      // version increment gg_one receives (no interactive editor anymore).
+      File(path.join(ticketDir.path, '.gg', '.gg-publish.json'))
+          .writeAsStringSync('''
+{
+  "repos": {
+    "A": { "version_increment": "minor", "merge_message": "per-repo msg" }
+  }
+}
+''');
+
       final mockGgDoPublish = MockGgDoPublish();
       final mockGgDoCommit = MockGgDoCommit();
       final mockGgDoPush = MockGgDoPush();
@@ -854,7 +915,6 @@ void main() {
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
-      final editedMessages = <String>[];
 
       when(
         () => mockDoReviewCommand.exec(
@@ -916,6 +976,7 @@ void main() {
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -963,10 +1024,6 @@ void main() {
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
-            editMessage: (initialMessage) async {
-              editedMessages.add(initialMessage);
-              return 'edited explicit message';
-            },
             confirmDeleteTicket: (_) => false,
           ),
         );
@@ -975,34 +1032,31 @@ void main() {
         'publish',
         '--input',
         ticketDir.path,
-        '--message',
-        'explicit message',
       ]);
 
-      expect(editedMessages, equals(<String>['explicit message']));
       verify(
         () => mockGgDoPublish.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          message: 'edited explicit message',
+          message: 'per-repo msg',
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
-          versionIncrement: any(named: 'versionIncrement'),
+          versionIncrement: 'minor',
           askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
         ),
       ).called(1);
     });
 
-    test('uses ticket description as initial value when message is null',
-        () async {
-      File(path.join(ticketDir.path, '.ticket')).writeAsStringSync(
-        jsonEncode(
-          <String, String>{
-            'issue_id': 'TICKPB',
-            'description': 'ticket description',
-          },
-        ),
-      );
+    test('falls back to the top-level merge message + increment', () async {
+      // No per-repo override: forRepo falls back to the top-level defaults.
+      File(path.join(ticketDir.path, '.gg', '.gg-publish.json'))
+          .writeAsStringSync('''
+{
+  "version_increment": "major",
+  "merge_message": "top-level msg"
+}
+''');
 
       final mockGgDoPublish = MockGgDoPublish();
       final mockGgDoCommit = MockGgDoCommit();
@@ -1018,7 +1072,6 @@ void main() {
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
-      final editedMessages = <String>[];
 
       when(
         () => mockDoReviewCommand.exec(
@@ -1080,6 +1133,7 @@ void main() {
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -1127,10 +1181,6 @@ void main() {
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
-            editMessage: (initialMessage) async {
-              editedMessages.add(initialMessage);
-              return 'edited ticket message';
-            },
             confirmDeleteTicket: (_) => false,
           ),
         );
@@ -1141,16 +1191,16 @@ void main() {
         ticketDir.path,
       ]);
 
-      expect(editedMessages, equals(<String>['ticket description']));
       verify(
         () => mockGgDoPublish.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          message: 'edited ticket message',
+          message: 'top-level msg',
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
-          versionIncrement: any(named: 'versionIncrement'),
+          versionIncrement: 'major',
           askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
         ),
       ).called(1);
     });
@@ -1248,6 +1298,7 @@ void main() {
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -1302,7 +1353,6 @@ void main() {
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
-            editMessage: (initialMessage) async => initialMessage,
             confirmDeleteTicket: (_) => false,
           ),
         );
@@ -1350,6 +1400,22 @@ void main() {
         ),
       ).thenThrow(Exception('can publish failed'));
 
+      // The repo list is resolved before the review gate now.
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: Directory(path.join(ticketDir.path, 'A')),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
+          ),
+        ],
+      );
+
       when(
         () => mockGetVersion.get(
           directory: any(named: 'directory'),
@@ -1382,7 +1448,6 @@ void main() {
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
-            editMessage: (initialMessage) async => initialMessage,
             confirmDeleteTicket: (_) => false,
           ),
         );
@@ -1483,6 +1548,7 @@ void main() {
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
         ),
       ).thenAnswer((invocation) {
         final repoDir = invocation.namedArguments[#directory] as Directory;
@@ -1547,7 +1613,6 @@ void main() {
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
-            editMessage: (initialMessage) async => initialMessage,
             confirmDeleteTicket: (_) => true,
           ),
         );
@@ -1667,6 +1732,7 @@ void main() {
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
         ),
       ).thenAnswer((_) async {});
 
@@ -1725,7 +1791,6 @@ void main() {
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
-            editMessage: (initialMessage) async => initialMessage,
             confirmDeleteTicket: (_) => true,
           ),
         );
@@ -1842,6 +1907,7 @@ void main() {
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -1874,7 +1940,6 @@ void main() {
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
-            editMessage: (initialMessage) async => initialMessage,
             confirmDeleteTicket: (_) => true,
           ),
         );
@@ -2010,6 +2075,7 @@ void main() {
             verbose: any(named: 'verbose'),
             versionIncrement: any(named: 'versionIncrement'),
             askBeforePublishing: any(named: 'askBeforePublishing'),
+            resume: any(named: 'resume'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -2050,7 +2116,6 @@ void main() {
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
               pubDevChecker: mockPubDevChecker,
-              editMessage: (initialMessage) async => initialMessage,
               confirmDeleteTicket: (_) => false,
             ),
           );
@@ -2183,6 +2248,7 @@ void main() {
             verbose: any(named: 'verbose'),
             versionIncrement: any(named: 'versionIncrement'),
             askBeforePublishing: any(named: 'askBeforePublishing'),
+            resume: any(named: 'resume'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -2223,7 +2289,6 @@ void main() {
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
               pubDevChecker: mockPubDevChecker,
-              editMessage: (initialMessage) async => initialMessage,
               confirmDeleteTicket: (_) => false,
             ),
           );
@@ -2355,6 +2420,7 @@ void main() {
             verbose: any(named: 'verbose'),
             versionIncrement: any(named: 'versionIncrement'),
             askBeforePublishing: any(named: 'askBeforePublishing'),
+            resume: any(named: 'resume'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -2410,7 +2476,6 @@ void main() {
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
               pubDevChecker: mockPubDevChecker,
-              editMessage: (initialMessage) async => initialMessage,
               confirmDeleteTicket: (_) => true,
             ),
           );
@@ -2506,6 +2571,7 @@ void main() {
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -2560,7 +2626,6 @@ void main() {
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
-            editMessage: (initialMessage) async => initialMessage,
             confirmDeleteTicket: (_) => true,
           ),
         );
@@ -2674,6 +2739,7 @@ void main() {
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -2720,7 +2786,6 @@ void main() {
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
-            editMessage: (initialMessage) async => initialMessage,
             confirmDeleteTicket: (_) => false,
           ),
         );
@@ -2800,7 +2865,6 @@ void main() {
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
             doReviewCommand: mockDoReviewCommand,
-            editMessage: (initialMessage) async => initialMessage,
             confirmDeleteTicket: (_) => false,
           ),
         );
@@ -2897,7 +2961,6 @@ void main() {
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
             doReviewCommand: mockDoReviewCommand,
-            editMessage: (initialMessage) async => initialMessage,
             confirmDeleteTicket: (_) => false,
           ),
         );
@@ -3043,6 +3106,7 @@ void main() {
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -3066,7 +3130,6 @@ void main() {
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
-            editMessage: (initialMessage) async => initialMessage,
             confirmDeleteTicket: (_) => false,
           ),
         );
@@ -3219,6 +3282,7 @@ void main() {
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -3242,7 +3306,6 @@ void main() {
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
             pubDevChecker: mockPubDevChecker,
-            editMessage: (initialMessage) async => initialMessage,
             confirmDeleteTicket: (_) => false,
           ),
         );
@@ -3308,7 +3371,6 @@ void main() {
               getVersionCommand: mockGetVersion,
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
-              editMessage: (initialMessage) async => 'merge message',
               confirmDeleteTicket: (_) => false,
             ),
           );
@@ -3324,6 +3386,7 @@ void main() {
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
         ),
       ).thenThrow(Exception('publish failed'));
     }
@@ -3574,7 +3637,50 @@ void main() {
       );
     });
 
+    test('a full restore drops the repo-level .gg/.gg-publish.json', () async {
+      // The gitignored runtime file survives `reset --hard`, but its step
+      // markers describe commits the rollback just removed.
+      final repoRuntime = File(path.join(dirA, '.gg', '.gg-publish.json'))
+        ..createSync(recursive: true);
+      repoRuntime.writeAsStringSync('''
+{
+  "version_increment": "patch",
+  "merge_message": "m",
+  "done_steps": ["prepare_version"]
+}
+''');
+      stubPublishFails();
+      stubHeadMoves('h0', 'h1');
+      when(
+        () => m(
+          'git',
+          ['reset', '--hard', 'h0'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+      await expectLater(
+        () async => buildRunner().run(
+          ['publish', '--verbose', '--input', ticketDir.path],
+        ),
+        throwsA(isA<Exception>()),
+      );
+
+      expect(repoRuntime.existsSync(), isFalse);
+    });
+
     test('keeps all commits when the version was already bumped', () async {
+      // The runtime file's steps stay real on the keep-commits path — a
+      // later --continue resumes exactly there, so the file must survive.
+      final repoRuntime = File(path.join(dirA, '.gg', '.gg-publish.json'))
+        ..createSync(recursive: true);
+      repoRuntime.writeAsStringSync('''
+{
+  "version_increment": "patch",
+  "merge_message": "m",
+  "done_steps": ["prepare_version"]
+}
+''');
       stubPublishFails();
       stubHeadMoves('h0', 'h1');
 
@@ -3593,6 +3699,8 @@ void main() {
         ),
         throwsA(isA<Exception>()),
       );
+
+      expect(repoRuntime.existsSync(), isTrue);
 
       verifyNever(
         () => m(
@@ -4107,6 +4215,697 @@ void main() {
         messages.any((msg) => msg.contains('already received the release')),
         isFalse,
       );
+    });
+  });
+
+  group('DoPublishCommand configure + resume', () {
+    late MockGgDoPublish mockGgDoPublish;
+    late MockGgDoCommit mockGgDoCommit;
+    late MockGgDoPush mockGgDoPush;
+    late MockUnlocalizeRefs mockUnlocalizeRefs;
+    late MockSortedProcessingList mockSortedProcessingList;
+    late MockProcessRunner mockProcessRunner;
+    late MockCanPublishCommand mockCanPublishCommand;
+    late MockDoReviewCommand mockDoReviewCommand;
+    late MockGetVersion mockGetVersion;
+    late MockSetRefVersion mockSetRefVersion;
+    late MockGetRefVersion mockGetRefVersion;
+    late MockPubDevChecker mockPubDevChecker;
+    late MockConfigurePublishCommand mockConfigure;
+    late File runtimeFile;
+
+    Node repoNode(String name) => Node(
+          name: name,
+          directory: Directory(path.join(ticketDir.path, name)),
+          manifest: DartPackageManifest(pubspec: Pubspec(name)),
+        );
+
+    setUp(() {
+      mockGgDoPublish = MockGgDoPublish();
+      mockGgDoCommit = MockGgDoCommit();
+      mockGgDoPush = MockGgDoPush();
+      mockUnlocalizeRefs = MockUnlocalizeRefs();
+      mockSortedProcessingList = MockSortedProcessingList();
+      mockProcessRunner = MockProcessRunner();
+      _stubPubUpgrade(mockProcessRunner);
+      _stubRepoSnapshot(mockProcessRunner);
+      mockCanPublishCommand = MockCanPublishCommand();
+      mockDoReviewCommand = MockDoReviewCommand();
+      mockGetVersion = MockGetVersion();
+      mockSetRefVersion = MockSetRefVersion();
+      mockGetRefVersion = MockGetRefVersion();
+      mockPubDevChecker = MockPubDevChecker();
+      mockConfigure = MockConfigurePublishCommand();
+      runtimeFile = File(path.join(ticketDir.path, '.gg', '.gg-publish.json'));
+
+      when(
+        () => mockDoReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          verbose: any(named: 'verbose'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockCanPublishCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async => [repoNode('A')]);
+      when(
+        () => mockUnlocalizeRefs.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGetVersion.get(directory: any(named: 'directory')),
+      ).thenAnswer((_) async => '1.0.0');
+      when(
+        () => mockGetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => mockSetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+          version: any(named: 'version'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockPubDevChecker.getPackagePublishInfo(
+          packageName: any(named: 'packageName'),
+        ),
+      ).thenAnswer(
+        (_) async => const PackagePublishInfo(
+          packageName: 'A',
+          waitsForPubDev: false,
+        ),
+      );
+    });
+
+    CommandRunner<void> buildRunner() =>
+        CommandRunner<void>('test', 'do publish ticket')
+          ..addCommand(
+            DoPublishCommand(
+              ggLog: ggLog,
+              ggDoPublish: mockGgDoPublish,
+              ggDoCommit: mockGgDoCommit,
+              ggDoPush: mockGgDoPush,
+              unlocalizeRefs: mockUnlocalizeRefs,
+              sortedProcessingList: mockSortedProcessingList,
+              processRunner: mockProcessRunner.call,
+              canPublishCommand: mockCanPublishCommand,
+              doReviewCommand: mockDoReviewCommand,
+              getVersionCommand: mockGetVersion,
+              setRefVersionCommand: mockSetRefVersion,
+              getRefVersionCommand: mockGetRefVersion,
+              pubDevChecker: mockPubDevChecker,
+              doConfigurePublishCommand: mockConfigure,
+              confirmDeleteTicket: (_) => false,
+            ),
+          );
+
+    test('a registry-visibility lookup failure does not abort the publish',
+        () async {
+      // getPackagePublishInfo is a network read; a transient failure there
+      // must not abort a run whose repo already published irreversibly.
+      when(
+        () => mockPubDevChecker.getPackagePublishInfo(
+          packageName: any(named: 'packageName'),
+        ),
+      ).thenThrow(Exception('pub.dev unreachable'));
+
+      await buildRunner().run(['publish', '--input', ticketDir.path]);
+
+      expect(
+        messages.any(
+          (m) => m.contains('Could not check registry visibility'),
+        ),
+        isTrue,
+      );
+      // The repo still published, and the run completed.
+      verify(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
+        ),
+      ).called(1);
+    });
+
+    test('--continue without a saved run throws a clear error', () async {
+      runtimeFile.deleteSync();
+      await expectLater(
+        () => buildRunner().run(
+          ['publish', '--input', ticketDir.path, '--continue'],
+        ),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Nothing to continue'),
+          ),
+        ),
+      );
+    });
+
+    test('--continue skips already-published repos and resumes the rest',
+        () async {
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async => [repoNode('A'), repoNode('B')]);
+      runtimeFile.writeAsStringSync('''
+{
+  "repos": {
+    "A": {
+      "version_increment": "patch", "merge_message": "m",
+      "status": "published"
+    },
+    "B": {
+      "version_increment": "patch", "merge_message": "m",
+      "status": "pending"
+    }
+  }
+}
+''');
+
+      await buildRunner().run(
+        ['publish', '--input', ticketDir.path, '--continue'],
+      );
+
+      // A was already published — it is skipped, only B is published.
+      expect(messages, contains('A: already published — skipping.'));
+      verify(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
+        ),
+      ).called(1);
+      // Review + can-publish are skipped when resuming.
+      verifyNever(
+        () => mockDoReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          verbose: any(named: 'verbose'),
+        ),
+      );
+    });
+
+    test('--reconfigure ignores the saved config and reconfigures', () async {
+      when(
+        () => mockConfigure.configure(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => gg.PublishConfig(
+          versionIncrement: 'patch',
+          mergeMessage: 'reconfigured',
+        ),
+      );
+
+      await buildRunner().run(
+        ['publish', '--input', ticketDir.path, '--reconfigure'],
+      );
+
+      verify(
+        () => mockConfigure.configure(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).called(1);
+    });
+
+    test('-m is forwarded to configure as the default merge message', () async {
+      // No config present → the interactive configure path runs, and -m is
+      // handed to it as the default merge message.
+      runtimeFile.deleteSync();
+      when(
+        () => mockConfigure.configure(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          defaultMergeMessage: any(named: 'defaultMergeMessage'),
+        ),
+      ).thenAnswer(
+        (_) async => gg.PublishConfig(
+          versionIncrement: 'patch',
+          mergeMessage: 'Release msg',
+        ),
+      );
+
+      await buildRunner().run(
+        ['publish', '--input', ticketDir.path, '-m', 'Release msg'],
+      );
+
+      verify(
+        () => mockConfigure.configure(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          defaultMergeMessage: 'Release msg',
+        ),
+      ).called(1);
+    });
+
+    test('reads the legacy <ticket>/.gg-publish.json when present', () async {
+      runtimeFile.deleteSync();
+      File(path.join(ticketDir.path, '.gg-publish.json')).writeAsStringSync('''
+{
+  "version_increment": "minor",
+  "merge_message": "legacy msg"
+}
+''');
+
+      await buildRunner().run(['publish', '--input', ticketDir.path]);
+
+      verify(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: 'legacy msg',
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: 'minor',
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
+        ),
+      ).called(1);
+      verifyNever(
+        () => mockConfigure.configure(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      );
+    });
+
+    test('--continue rejects a co-passed --config', () async {
+      await expectLater(
+        () => buildRunner().run([
+          'publish',
+          '--input',
+          ticketDir.path,
+          '--continue',
+          '--config',
+          'x.json',
+        ]),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('cannot be combined'),
+          ),
+        ),
+      );
+    });
+
+    test('--continue rejects --reconfigure', () async {
+      await expectLater(
+        () => buildRunner().run([
+          'publish',
+          '--input',
+          ticketDir.path,
+          '--continue',
+          '--reconfigure',
+        ]),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('cannot be combined'),
+          ),
+        ),
+      );
+    });
+
+    test('a plain re-run refuses a runtime file that still holds progress',
+        () async {
+      runtimeFile.writeAsStringSync('''
+{
+  "repos": {
+    "A": {
+      "version_increment": "patch", "merge_message": "m",
+      "status": "failed"
+    }
+  }
+}
+''');
+      await expectLater(
+        () => buildRunner().run(['publish', '--input', ticketDir.path]),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('unfinished publish left progress'),
+          ),
+        ),
+      );
+    });
+
+    test('--continue after a review failure (nothing published) re-reviews',
+        () async {
+      runtimeFile.writeAsStringSync('''
+{
+  "repos": {
+    "A": {
+      "version_increment": "patch", "merge_message": "m",
+      "status": "failed"
+    }
+  }
+}
+''');
+
+      await buildRunner().run(
+        ['publish', '--input', ticketDir.path, '--continue'],
+      );
+
+      // No repo was published yet, so review must still run.
+      verify(
+        () => mockDoReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          verbose: any(named: 'verbose'),
+        ),
+      ).called(1);
+    });
+
+    test('a fresh run passes resume: false and gitignores the runtime file',
+        () async {
+      await buildRunner().run(['publish', '--input', ticketDir.path]);
+
+      // gg_one must not silently resume on a fresh gg_multi run.
+      verify(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: false,
+        ),
+      ).called(1);
+      // The repo-level runtime file was gitignored before the pre-publish
+      // commit, so gg_one's progress never shows up as an untracked file.
+      final gitignore = File(path.join(ticketDir.path, 'A', '.gitignore'));
+      expect(gitignore.existsSync(), isTrue);
+      expect(
+        gitignore.readAsStringSync(),
+        contains('.gg/.gg-publish.json'),
+      );
+    });
+
+    test('--continue forwards resume: true to gg_one', () async {
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async => [repoNode('A'), repoNode('B')]);
+      runtimeFile.writeAsStringSync('''
+{
+  "repos": {
+    "A": {
+      "version_increment": "patch", "merge_message": "m",
+      "status": "published"
+    },
+    "B": {
+      "version_increment": "patch", "merge_message": "m",
+      "status": "failed"
+    }
+  }
+}
+''');
+
+      await buildRunner().run(
+        ['publish', '--input', ticketDir.path, '--continue'],
+      );
+
+      // Repo B is re-published in resume mode, so gg_one picks up at the
+      // first step its own .gg/.gg-publish.json marks as open.
+      verify(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: true,
+        ),
+      ).called(1);
+    });
+
+    test('--continue skips review when a failed repo has step progress',
+        () async {
+      // First-repo failure AFTER irreversible steps: ticket file holds only
+      // 'failed', but the repo-level file proves the partial publish —
+      // re-reviewing the partially merged ticket would block the resume.
+      runtimeFile.writeAsStringSync('''
+{
+  "repos": {
+    "A": {
+      "version_increment": "patch", "merge_message": "m",
+      "status": "failed"
+    }
+  }
+}
+''');
+      final repoRuntime = File(
+        path.join(ticketDir.path, 'A', '.gg', '.gg-publish.json'),
+      )..createSync(recursive: true);
+      repoRuntime.writeAsStringSync('''
+{
+  "version_increment": "patch",
+  "merge_message": "m",
+  "done_steps": ["prepare_version", "publish_registry", "merge"]
+}
+''');
+
+      await buildRunner().run(
+        ['publish', '--input', ticketDir.path, '--continue'],
+      );
+
+      verifyNever(
+        () => mockDoReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          verbose: any(named: 'verbose'),
+        ),
+      );
+    });
+
+    test('an unreadable repo progress file does not skip the review', () async {
+      runtimeFile.writeAsStringSync('''
+{
+  "repos": {
+    "A": {
+      "version_increment": "patch", "merge_message": "m",
+      "status": "failed"
+    }
+  }
+}
+''');
+      final repoRuntime = File(
+        path.join(ticketDir.path, 'A', '.gg', '.gg-publish.json'),
+      )..createSync(recursive: true);
+      repoRuntime.writeAsStringSync('{not valid json');
+
+      await buildRunner().run(
+        ['publish', '--input', ticketDir.path, '--continue'],
+      );
+
+      // An unreadable file cannot prove progress — review still runs.
+      verify(
+        () => mockDoReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          verbose: any(named: 'verbose'),
+        ),
+      ).called(1);
+    });
+
+    test('--config refuses a runtime file that still holds progress', () async {
+      runtimeFile.writeAsStringSync('''
+{
+  "repos": {
+    "A": {
+      "version_increment": "patch", "merge_message": "m",
+      "status": "published"
+    }
+  }
+}
+''');
+
+      await expectLater(
+        () => buildRunner().run([
+          'publish',
+          '--input',
+          ticketDir.path,
+          '--config',
+          'x.json',
+        ]),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('unfinished publish left progress'),
+          ),
+        ),
+      );
+      // The progress markers survive untouched.
+      expect(runtimeFile.readAsStringSync(), contains('"published"'));
+    });
+
+    test('--config passes the guard when the runtime file has no progress',
+        () async {
+      // The setUp runtime file is config-only — --config may replace it.
+      final configFile = File(path.join(ticketDir.path, 'plain.json'));
+      configFile.writeAsStringSync(
+        '{"version_increment":"major","merge_message":"plain msg"}',
+      );
+
+      await buildRunner().run([
+        'publish',
+        '--input',
+        ticketDir.path,
+        '--config',
+        'plain.json',
+      ]);
+
+      verify(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: 'plain msg',
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: 'major',
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
+        ),
+      ).called(1);
+    });
+
+    test('--config with --reconfigure discards progress and proceeds',
+        () async {
+      runtimeFile.writeAsStringSync('''
+{
+  "repos": {
+    "A": {
+      "version_increment": "patch", "merge_message": "m",
+      "status": "failed"
+    }
+  }
+}
+''');
+      final configFile = File(path.join(ticketDir.path, 'fresh.json'));
+      configFile.writeAsStringSync(
+        '{"version_increment":"minor","merge_message":"fresh msg"}',
+      );
+
+      await buildRunner().run([
+        'publish',
+        '--input',
+        ticketDir.path,
+        '--config',
+        'fresh.json',
+        '--reconfigure',
+      ]);
+
+      verify(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: 'fresh msg',
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: 'minor',
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
+        ),
+      ).called(1);
+    });
+
+    test('--reconfigure removes the repo-level runtime files', () async {
+      final repoRuntime = File(
+        path.join(ticketDir.path, 'A', '.gg', '.gg-publish.json'),
+      )..createSync(recursive: true);
+      repoRuntime.writeAsStringSync('''
+{
+  "version_increment": "patch",
+  "merge_message": "m",
+  "done_steps": ["prepare_version"]
+}
+''');
+      when(
+        () => mockConfigure.configure(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          defaultMergeMessage: any(named: 'defaultMergeMessage'),
+        ),
+      ).thenAnswer(
+        (_) async => gg.PublishConfig(
+          versionIncrement: 'patch',
+          mergeMessage: 'reconfigured',
+        ),
+      );
+
+      await buildRunner().run(
+        ['publish', '--input', ticketDir.path, '--reconfigure'],
+      );
+
+      // Stale gg_one step progress must not seed the reconfigured run.
+      expect(repoRuntime.existsSync(), isFalse);
     });
   });
 }

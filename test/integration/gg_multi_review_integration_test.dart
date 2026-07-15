@@ -393,7 +393,10 @@ void main() {
                 ggLog: ggLog,
                 ggDoPublish: gg.DoPublish(
                   ggLog: ggLog,
-                  versionSelector: versionSelector,
+                  configurePublish: gg.DoConfigurePublish(
+                    ggLog: ggLog,
+                    versionSelector: versionSelector,
+                  ),
                 ),
               ),
             );
