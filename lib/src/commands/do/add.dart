@@ -552,7 +552,7 @@ class AddCommand extends Command<dynamic> {
           ticketPath: ticketPath,
           ggLog: ggLog,
         );
-        reportLog(green('✅ $repoName'));
+        reportLog(blue('✅ $repoName'));
       }
     }
 
@@ -613,7 +613,7 @@ class AddCommand extends Command<dynamic> {
       processRunner: processRunner,
     );
 
-    ggLog(green('Added repository $repoName to ticket workspace.'));
+    ggLog(blue('Added repository $repoName to ticket workspace.'));
   }
 
   /// Prepares the master repository state before copying it into a ticket.

@@ -340,7 +340,7 @@ class DoCheckoutCommand extends Command<dynamic> {
       ggLog: ggLog,
       processRunner: processRunner,
     );
-    ggLog(green('Added $repoName on branch $branch.'));
+    ggLog(blue('Added $repoName on branch $branch.'));
     return true;
   }
 

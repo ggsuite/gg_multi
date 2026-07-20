@@ -1,5 +1,16 @@
 # Changelog
 
+## [5.9.0] - 2026-07-20
+
+### Changed
+
+- Print repos added to a ticket in blue instead of green - `gg do checkout` included
+- gg\_multi: changed references to git
+
+### Fixed
+
+- Ignore `.gg/*` instead of the whole `.gg` directory, so `.gg/.gg.json` and `.gg/.ticket.json` stay trackable
+
 ## [5.8.0] - 2026-07-20
 
 ### Added
@@ -481,6 +492,7 @@ localization commands again.
 - Remove prints
 - Remove gh pr create from review
 
+[5.9.0]: https://github.com/ggsuite/gg_multi/compare/5.8.0...5.9.0
 [5.8.0]: https://github.com/ggsuite/gg_multi/compare/5.7.1...5.8.0
 [5.7.1]: https://github.com/ggsuite/gg_multi/compare/5.7.0...5.7.1
 [5.7.0]: https://github.com/ggsuite/gg_multi/compare/5.6.0...5.7.0
