@@ -688,6 +688,7 @@ class DoPublishCommand extends DirCommand<void> {
     );
     final publishMessage = resolved.mergeMessage;
     final publishVersionIncrement = resolved.versionIncrement;
+    final publishChannel = publishConfig.channelForRepo(repoName);
 
     // gg do publish; multi flow is non-interactive (no confirm prompt).
     // On --continue, gg_one resumes at the first step its repo-level
@@ -699,6 +700,7 @@ class DoPublishCommand extends DirCommand<void> {
       deleteFeatureBranch: false,
       verbose: verbose,
       versionIncrement: publishVersionIncrement,
+      channel: publishChannel,
       askBeforePublishing: false,
       resume: resume,
     );

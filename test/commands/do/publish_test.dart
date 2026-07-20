@@ -420,6 +420,7 @@ void main() {
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
         ),
@@ -612,6 +613,7 @@ void main() {
             deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
             verbose: any(named: 'verbose'),
             versionIncrement: any(named: 'versionIncrement'),
+            channel: any(named: 'channel'),
             askBeforePublishing: any(named: 'askBeforePublishing'),
             resume: any(named: 'resume'),
           ),
@@ -803,6 +805,7 @@ void main() {
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
         ),
@@ -975,6 +978,7 @@ void main() {
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
         ),
@@ -1042,6 +1046,188 @@ void main() {
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
           versionIncrement: 'minor',
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
+        ),
+      ).called(1);
+    });
+
+    test('forwards the release channel to gg do publish', () async {
+      // Top-level channel: rc applies to repos without an override; a per-repo
+      // channel override wins for that repo.
+      File(path.join(ticketDir.path, '.gg', '.gg-publish.json'))
+          .writeAsStringSync('''
+{
+  "version_increment": "minor",
+  "merge_message": "msg",
+  "channel": "rc",
+  "repos": {
+    "B": { "channel": "stable" }
+  }
+}
+''');
+
+      final mockGgDoPublish = MockGgDoPublish();
+      final mockGgDoCommit = MockGgDoCommit();
+      final mockGgDoPush = MockGgDoPush();
+      final mockUnlocalizeRefs = MockUnlocalizeRefs();
+      final mockSortedProcessingList = MockSortedProcessingList();
+      final mockProcessRunner = MockProcessRunner();
+      _stubPubUpgrade(mockProcessRunner);
+      _stubRepoSnapshot(mockProcessRunner);
+      final mockCanPublishCommand = MockCanPublishCommand();
+      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockGetVersion = MockGetVersion();
+      final mockSetRefVersion = MockSetRefVersion();
+      final mockGetRefVersion = MockGetRefVersion();
+      final mockPubDevChecker = MockPubDevChecker();
+
+      when(
+        () => mockDoReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          verbose: any(named: 'verbose'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockCanPublishCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: Directory(path.join(ticketDir.path, 'A')),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
+          ),
+          Node(
+            name: 'B',
+            directory: Directory(path.join(ticketDir.path, 'B')),
+            manifest: DartPackageManifest(pubspec: Pubspec('B')),
+          ),
+        ],
+      );
+      when(
+        () => mockUnlocalizeRefs.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGetVersion.get(directory: any(named: 'directory')),
+      ).thenAnswer((_) async => '1.0.0');
+      when(
+        () => mockGetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => mockSetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+          version: any(named: 'version'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockPubDevChecker.getPackagePublishInfo(
+          packageName: any(named: 'packageName'),
+        ),
+      ).thenAnswer(
+        (_) async => const PackagePublishInfo(
+          packageName: 'A',
+          waitsForPubDev: false,
+        ),
+      );
+
+      final runner = CommandRunner<void>('test', 'do publish ticket')
+        ..addCommand(
+          DoPublishCommand(
+            ggLog: ggLog,
+            ggDoPublish: mockGgDoPublish,
+            ggDoCommit: mockGgDoCommit,
+            ggDoPush: mockGgDoPush,
+            unlocalizeRefs: mockUnlocalizeRefs,
+            sortedProcessingList: mockSortedProcessingList,
+            processRunner: mockProcessRunner.call,
+            canPublishCommand: mockCanPublishCommand,
+            doReviewCommand: mockDoReviewCommand,
+            getVersionCommand: mockGetVersion,
+            setRefVersionCommand: mockSetRefVersion,
+            getRefVersionCommand: mockGetRefVersion,
+            pubDevChecker: mockPubDevChecker,
+            confirmDeleteTicket: (_) => false,
+          ),
+        );
+
+      await runner.run(['publish', '--input', ticketDir.path]);
+
+      // A inherits the top-level rc channel …
+      verify(
+        () => mockGgDoPublish.exec(
+          directory: any(
+            named: 'directory',
+            that: predicate<Directory>((dir) => dir.path.endsWith('A')),
+          ),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          channel: 'rc',
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
+        ),
+      ).called(1);
+
+      // … while B's per-repo override forces stable.
+      verify(
+        () => mockGgDoPublish.exec(
+          directory: any(
+            named: 'directory',
+            that: predicate<Directory>((dir) => dir.path.endsWith('B')),
+          ),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          channel: 'stable',
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
         ),
@@ -1132,6 +1318,7 @@ void main() {
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
         ),
@@ -1297,6 +1484,7 @@ void main() {
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
         ),
@@ -1547,6 +1735,7 @@ void main() {
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
         ),
@@ -1731,6 +1920,7 @@ void main() {
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
         ),
@@ -1906,6 +2096,7 @@ void main() {
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
         ),
@@ -2074,6 +2265,7 @@ void main() {
             deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
             verbose: any(named: 'verbose'),
             versionIncrement: any(named: 'versionIncrement'),
+            channel: any(named: 'channel'),
             askBeforePublishing: any(named: 'askBeforePublishing'),
             resume: any(named: 'resume'),
           ),
@@ -2247,6 +2439,7 @@ void main() {
             deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
             verbose: any(named: 'verbose'),
             versionIncrement: any(named: 'versionIncrement'),
+            channel: any(named: 'channel'),
             askBeforePublishing: any(named: 'askBeforePublishing'),
             resume: any(named: 'resume'),
           ),
@@ -2419,6 +2612,7 @@ void main() {
             deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
             verbose: any(named: 'verbose'),
             versionIncrement: any(named: 'versionIncrement'),
+            channel: any(named: 'channel'),
             askBeforePublishing: any(named: 'askBeforePublishing'),
             resume: any(named: 'resume'),
           ),
@@ -2570,6 +2764,7 @@ void main() {
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
         ),
@@ -2738,6 +2933,7 @@ void main() {
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
         ),
@@ -3105,6 +3301,7 @@ void main() {
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
         ),
@@ -3281,6 +3478,7 @@ void main() {
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
         ),
@@ -3385,6 +3583,7 @@ void main() {
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
         ),
@@ -4306,6 +4505,7 @@ void main() {
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
         ),
@@ -4387,6 +4587,7 @@ void main() {
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
         ),
@@ -4446,6 +4647,7 @@ void main() {
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
         ),
@@ -4649,6 +4851,7 @@ void main() {
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: false,
         ),
@@ -4699,6 +4902,7 @@ void main() {
           deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
           verbose: any(named: 'verbose'),
           versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: true,
         ),

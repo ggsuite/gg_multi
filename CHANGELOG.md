@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.8.0] - 2026-07-20
+
+### Added
+
+- Add rc prerelease channel to gg do publish (channel field/flag, X.Y.Z-rc.N computation, npm --tag rc, single + multi repo)
+
+### Changed
+
+- gg\_multi: changed references to git
+
 ## [5.7.1] - 2026-07-16
 
 ### Added
@@ -471,6 +481,7 @@ localization commands again.
 - Remove prints
 - Remove gh pr create from review
 
+[5.8.0]: https://github.com/ggsuite/gg_multi/compare/5.7.1...5.8.0
 [5.7.1]: https://github.com/ggsuite/gg_multi/compare/5.7.0...5.7.1
 [5.7.0]: https://github.com/ggsuite/gg_multi/compare/5.6.0...5.7.0
 [5.6.0]: https://github.com/ggsuite/gg_multi/compare/5.5.1...5.6.0
