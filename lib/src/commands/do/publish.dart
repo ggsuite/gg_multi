@@ -216,6 +216,13 @@ class DoPublishCommand extends DirCommand<void> {
     final String? configArg = argResults?['config'] as String?;
     final String? messageArg = argResults?['message'] as String?;
 
+    // Only an explicitly passed --pr/--no-pr is forwarded to the repos; when
+    // absent, each repo's persisted .gg/.gg-publish.json (on resume) or the
+    // default (pr = true) decides.
+    final bool? prArg = (argResults?.wasParsed('pr') ?? false)
+        ? (argResults?['pr'] as bool?)
+        : null;
+
     final GgLog taskLog = verbose ? ggLog : <String>[].add;
 
     // Step 1: Detect ticket folder
@@ -336,6 +343,7 @@ class DoPublishCommand extends DirCommand<void> {
             publishConfig: publishConfig,
             configPath: configSourcePath,
             resume: continueRun,
+            pr: prArg,
             verbose: verbose,
             ggLog: ggLog,
             taskLog: taskLog,
@@ -613,6 +621,7 @@ class DoPublishCommand extends DirCommand<void> {
     required gg.PublishConfig publishConfig,
     required String configPath,
     required bool resume,
+    required bool? pr,
     required bool verbose,
     required GgLog ggLog,
     required GgLog taskLog,
@@ -703,6 +712,7 @@ class DoPublishCommand extends DirCommand<void> {
       channel: publishChannel,
       askBeforePublishing: false,
       resume: resume,
+      pr: pr,
     );
   }
 
@@ -1271,6 +1281,14 @@ class DoPublishCommand extends DirCommand<void> {
           'version_increment, plus the optional ticket-wide '
           '`delete_ticket` flag. Resolved as-given (CWD), then under the '
           'ticket directory. Copied to .gg/.gg-publish.json for the run.',
+    );
+    argParser.addFlag(
+      'pr',
+      help: 'Merge each repo through an auto-merge pull request and wait '
+          'until the provider merged it (default). --no-pr performs local '
+          'merges followed by direct pushes to main instead.',
+      defaultsTo: true,
+      negatable: true,
     );
     argParser.addFlag(
       'continue',

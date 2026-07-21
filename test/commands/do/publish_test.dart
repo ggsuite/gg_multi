@@ -423,6 +423,7 @@ void main() {
           channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
         ),
       ).thenAnswer((_) async {});
 
@@ -616,6 +617,7 @@ void main() {
             channel: any(named: 'channel'),
             askBeforePublishing: any(named: 'askBeforePublishing'),
             resume: any(named: 'resume'),
+            pr: any(named: 'pr'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -808,6 +810,7 @@ void main() {
           channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -981,6 +984,7 @@ void main() {
           channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -1048,6 +1052,7 @@ void main() {
           versionIncrement: 'minor',
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
         ),
       ).called(1);
     });
@@ -1146,6 +1151,7 @@ void main() {
           channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -1212,6 +1218,7 @@ void main() {
           channel: 'rc',
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
         ),
       ).called(1);
 
@@ -1230,6 +1237,7 @@ void main() {
           channel: 'stable',
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
         ),
       ).called(1);
     });
@@ -1321,6 +1329,7 @@ void main() {
           channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -1388,6 +1397,7 @@ void main() {
           versionIncrement: 'major',
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
         ),
       ).called(1);
     });
@@ -1487,6 +1497,7 @@ void main() {
           channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -1738,6 +1749,7 @@ void main() {
           channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
         ),
       ).thenAnswer((invocation) {
         final repoDir = invocation.namedArguments[#directory] as Directory;
@@ -1923,6 +1935,7 @@ void main() {
           channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
         ),
       ).thenAnswer((_) async {});
 
@@ -2099,6 +2112,7 @@ void main() {
           channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -2268,6 +2282,7 @@ void main() {
             channel: any(named: 'channel'),
             askBeforePublishing: any(named: 'askBeforePublishing'),
             resume: any(named: 'resume'),
+            pr: any(named: 'pr'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -2442,6 +2457,7 @@ void main() {
             channel: any(named: 'channel'),
             askBeforePublishing: any(named: 'askBeforePublishing'),
             resume: any(named: 'resume'),
+            pr: any(named: 'pr'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -2615,6 +2631,7 @@ void main() {
             channel: any(named: 'channel'),
             askBeforePublishing: any(named: 'askBeforePublishing'),
             resume: any(named: 'resume'),
+            pr: any(named: 'pr'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -2767,6 +2784,7 @@ void main() {
           channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -2936,6 +2954,7 @@ void main() {
           channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -3304,6 +3323,7 @@ void main() {
           channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -3481,6 +3501,7 @@ void main() {
           channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -3586,6 +3607,7 @@ void main() {
           channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
         ),
       ).thenThrow(Exception('publish failed'));
     }
@@ -4508,6 +4530,7 @@ void main() {
           channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -4590,6 +4613,7 @@ void main() {
           channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
         ),
       ).called(1);
     });
@@ -4650,6 +4674,7 @@ void main() {
           channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
         ),
       ).called(1);
       // Review + can-publish are skipped when resuming.
@@ -4738,6 +4763,7 @@ void main() {
           versionIncrement: 'minor',
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
         ),
       ).called(1);
       verifyNever(
@@ -4854,6 +4880,7 @@ void main() {
           channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: false,
+          pr: any(named: 'pr'),
         ),
       ).called(1);
       // The repo-level runtime file was gitignored before the pre-publish
@@ -4905,6 +4932,48 @@ void main() {
           channel: any(named: 'channel'),
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: true,
+          pr: any(named: 'pr'),
+        ),
+      ).called(1);
+    });
+
+    test('--no-pr is forwarded to gg_one', () async {
+      await buildRunner().run(
+        ['publish', '--input', ticketDir.path, '--no-pr'],
+      );
+
+      verify(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
+          pr: false,
+        ),
+      ).called(1);
+    });
+
+    test('an absent --pr flag forwards null so persisted configs win',
+        () async {
+      await buildRunner().run(['publish', '--input', ticketDir.path]);
+
+      verify(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
+          pr: null,
         ),
       ).called(1);
     });
@@ -5036,6 +5105,7 @@ void main() {
           versionIncrement: 'major',
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
         ),
       ).called(1);
     });
@@ -5076,6 +5146,7 @@ void main() {
           versionIncrement: 'minor',
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
         ),
       ).called(1);
     });
