@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [5.10.0] - 2026-07-22
 
 ### Changed
 
@@ -501,7 +501,7 @@ localization commands again.
 - Remove prints
 - Remove gh pr create from review
 
-[Unreleased]: https://github.com/ggsuite/gg_multi/compare/5.9.0...HEAD
+[5.10.0]: https://github.com/ggsuite/gg_multi/compare/5.9.0...5.10.0
 [5.9.0]: https://github.com/ggsuite/gg_multi/compare/5.8.0...5.9.0
 [5.8.0]: https://github.com/ggsuite/gg_multi/compare/5.7.1...5.8.0
 [5.7.1]: https://github.com/ggsuite/gg_multi/compare/5.7.0...5.7.1
