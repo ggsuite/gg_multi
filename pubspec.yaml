@@ -11,7 +11,7 @@ dependencies:
   path: ^1.9.1
   args: ^2.7.0
   gg_one:
-    path: ../gg_one # ^10.3.0
+    path: ../gg_one # path: ../gg_one
   gg_lang: ^0.2.3
   gg_console_colors: ^2.1.5
   gg_process: ^1.1.6
@@ -27,7 +27,8 @@ dependencies:
   gg_changelog: ^1.1.0
   interact: ^2.2.0
   recase: ^4.1.0
-  gg_localize_refs: ^2.5.2
+  gg_localize_refs:
+    path: ../gg_localize_refs # ^2.5.2
   gg_local_package_dependencies: ^1.4.0
 dev_dependencies:
   gg_capture_print: ^1.0.9
