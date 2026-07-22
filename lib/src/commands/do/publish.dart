@@ -389,6 +389,7 @@ class DoPublishCommand extends DirCommand<void> {
             final publishInfo = projectType == gg.ProjectType.typescript
                 ? await _npmChecker.getPackagePublishInfo(
                     packageName: packageName,
+                    workingDirectory: repoDir.path,
                   )
                 : await _pubDevChecker.getPackagePublishInfo(
                     packageName: packageName,
@@ -398,6 +399,7 @@ class DoPublishCommand extends DirCommand<void> {
               version: version,
               waitsForPubDev: publishInfo.waitsForPubDev,
               projectType: projectType,
+              repoDirPath: repoDir.path,
             );
           } catch (e) {
             ggLog(
@@ -1090,6 +1092,7 @@ class DoPublishCommand extends DirCommand<void> {
                 packageName: state.packageName,
                 version: state.version,
                 ggLog: ggLog,
+                workingDirectory: state.repoDirPath,
               )
             : _pubDevChecker.waitUntilVersionAvailable(
                 packageName: state.packageName,
@@ -1322,6 +1325,7 @@ class _PublishedPackageState {
     required this.version,
     required this.waitsForPubDev,
     required this.projectType,
+    required this.repoDirPath,
   });
 
   /// The public package name.
@@ -1335,6 +1339,10 @@ class _PublishedPackageState {
 
   /// The project type — selects the registry (pub.dev vs npm) to wait on.
   final gg.ProjectType projectType;
+
+  /// The repo directory — npm lookups run there so the project-level
+  /// `.npmrc` (scoped/private registries) is honored.
+  final String repoDirPath;
 }
 
 /// Mock for [DoPublishCommand]
