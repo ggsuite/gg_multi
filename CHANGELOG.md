@@ -5,6 +5,7 @@
 ### Changed
 
 - Forward --pr and --no-pr to gg\_one so ticket publishes merge via auto-merge pull requests by default
+- Update publish docs: the final merge goes through an auto-merge squash pull request by default
 
 ## [5.9.0] - 2026-07-20
 
