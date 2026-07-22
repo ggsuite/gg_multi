@@ -11,9 +11,13 @@ dependencies:
   path: ^1.9.1
   args: ^2.7.0
   gg_one:
-    path: ../gg_one # path: ../gg_one
+    git:
+      url: git@github.com:ggsuite/gg_one.git
+      ref: publish_via_pr_by_default
   gg_lang:
-    path: ../gg_lang # ^0.2.3
+    git:
+      url: https://github.com/ggsuite/gg_lang.git
+      ref: publish_via_pr_by_default
   gg_console_colors: ^2.1.5
   gg_process: ^1.1.6
   gg_args: ^2.0.4
@@ -21,7 +25,9 @@ dependencies:
   gg_log: ^1.0.6
   gg_status_printer: ^1.1.4
   gg_publish:
-    path: ../gg_publish # ^3.7.0
+    git:
+      url: git@github.com:ggsuite/gg_publish.git
+      ref: publish_via_pr_by_default
   pub_semver: ^2.2.0
   mocktail: ^1.0.5
   http: ^1.6.0
@@ -30,7 +36,9 @@ dependencies:
   interact: ^2.2.0
   recase: ^4.1.0
   gg_localize_refs:
-    path: ../gg_localize_refs # path: ../gg_localize_refs
+    git:
+      url: git@github.com:ggsuite/gg_localize_refs.git
+      ref: publish_via_pr_by_default
   gg_local_package_dependencies: ^1.4.0
 dev_dependencies:
   gg_capture_print: ^1.0.9

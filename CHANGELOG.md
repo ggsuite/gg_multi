@@ -7,6 +7,7 @@
 - Forward --pr and --no-pr to gg\_one so ticket publishes merge via auto-merge pull requests by default
 - Update publish docs: the final merge goes through an auto-merge squash pull request by default
 - Run npm registry lookups in the package directory so the project-level .npmrc with private feeds is honored
+- gg\_multi: changed references to git
 
 ## [5.9.0] - 2026-07-20
 
