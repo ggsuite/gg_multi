@@ -38,11 +38,13 @@ class NpmRegistryChecker {
   final Duration timeout;
 
   /// Returns publish info for [packageName] (whether dependents must wait for
-  /// npm availability).
+  /// npm availability). [workingDirectory] is the package directory — npm
+  /// resolves the project-level `.npmrc` (scoped/private registries) there.
   Future<PackagePublishInfo> getPackagePublishInfo({
     required String packageName,
+    String? workingDirectory,
   }) async {
-    final waiter = await _resolveWaiter();
+    final waiter = await _resolveWaiter(workingDirectory);
     return PackagePublishInfo(
       packageName: packageName,
       waitsForPubDev: await waiter.isPublished(packageName: packageName),
@@ -53,8 +55,9 @@ class NpmRegistryChecker {
   Future<bool> isVersionAvailable({
     required String packageName,
     required String version,
+    String? workingDirectory,
   }) async {
-    final waiter = await _resolveWaiter();
+    final waiter = await _resolveWaiter(workingDirectory);
     return waiter.isVersionAvailable(
       packageName: packageName,
       version: version,
@@ -66,8 +69,9 @@ class NpmRegistryChecker {
     required String packageName,
     required String version,
     required void Function(String message) ggLog,
+    String? workingDirectory,
   }) async {
-    final waiter = await _resolveWaiter();
+    final waiter = await _resolveWaiter(workingDirectory);
     await waiter.waitUntilVersionAvailable(
       packageName: packageName,
       version: version,
@@ -75,7 +79,7 @@ class NpmRegistryChecker {
   }
 
   // ...........................................................................
-  Future<RegistryWaiter> _resolveWaiter() async {
+  Future<RegistryWaiter> _resolveWaiter(String? workingDirectory) async {
     if (_waiter != null) {
       return _waiter;
     }
@@ -84,6 +88,7 @@ class NpmRegistryChecker {
     final registry = const RegistryFactory().forProjectType(
       ProjectType.typescript,
       spec: catalog.spec(ProjectType.typescript),
+      workingDirectory: workingDirectory,
     );
     return RegistryWaiter(
       registry: registry,

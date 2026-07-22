@@ -216,6 +216,13 @@ class DoPublishCommand extends DirCommand<void> {
     final String? configArg = argResults?['config'] as String?;
     final String? messageArg = argResults?['message'] as String?;
 
+    // Only an explicitly passed --pr/--no-pr is forwarded to the repos; when
+    // absent, each repo's persisted .gg/.gg-publish.json (on resume) or the
+    // default (pr = true) decides.
+    final bool? prArg = (argResults?.wasParsed('pr') ?? false)
+        ? (argResults?['pr'] as bool?)
+        : null;
+
     final GgLog taskLog = verbose ? ggLog : <String>[].add;
 
     // Step 1: Detect ticket folder
@@ -336,6 +343,7 @@ class DoPublishCommand extends DirCommand<void> {
             publishConfig: publishConfig,
             configPath: configSourcePath,
             resume: continueRun,
+            pr: prArg,
             verbose: verbose,
             ggLog: ggLog,
             taskLog: taskLog,
@@ -381,6 +389,7 @@ class DoPublishCommand extends DirCommand<void> {
             final publishInfo = projectType == gg.ProjectType.typescript
                 ? await _npmChecker.getPackagePublishInfo(
                     packageName: packageName,
+                    workingDirectory: repoDir.path,
                   )
                 : await _pubDevChecker.getPackagePublishInfo(
                     packageName: packageName,
@@ -390,6 +399,7 @@ class DoPublishCommand extends DirCommand<void> {
               version: version,
               waitsForPubDev: publishInfo.waitsForPubDev,
               projectType: projectType,
+              repoDirPath: repoDir.path,
             );
           } catch (e) {
             ggLog(
@@ -613,6 +623,7 @@ class DoPublishCommand extends DirCommand<void> {
     required gg.PublishConfig publishConfig,
     required String configPath,
     required bool resume,
+    required bool? pr,
     required bool verbose,
     required GgLog ggLog,
     required GgLog taskLog,
@@ -703,6 +714,7 @@ class DoPublishCommand extends DirCommand<void> {
       channel: publishChannel,
       askBeforePublishing: false,
       resume: resume,
+      pr: pr,
     );
   }
 
@@ -1080,6 +1092,7 @@ class DoPublishCommand extends DirCommand<void> {
                 packageName: state.packageName,
                 version: state.version,
                 ggLog: ggLog,
+                workingDirectory: state.repoDirPath,
               )
             : _pubDevChecker.waitUntilVersionAvailable(
                 packageName: state.packageName,
@@ -1273,6 +1286,14 @@ class DoPublishCommand extends DirCommand<void> {
           'ticket directory. Copied to .gg/.gg-publish.json for the run.',
     );
     argParser.addFlag(
+      'pr',
+      help: 'Merge each repo through an auto-merge pull request and wait '
+          'until the provider merged it (default). --no-pr performs local '
+          'merges followed by direct pushes to main instead.',
+      defaultsTo: true,
+      negatable: true,
+    );
+    argParser.addFlag(
       'continue',
       help: 'Resume a previously failed publish from where it stopped, '
           'reusing .gg/.gg-publish.json and skipping already-published repos.',
@@ -1304,6 +1325,7 @@ class _PublishedPackageState {
     required this.version,
     required this.waitsForPubDev,
     required this.projectType,
+    required this.repoDirPath,
   });
 
   /// The public package name.
@@ -1317,6 +1339,10 @@ class _PublishedPackageState {
 
   /// The project type — selects the registry (pub.dev vs npm) to wait on.
   final gg.ProjectType projectType;
+
+  /// The repo directory — npm lookups run there so the project-level
+  /// `.npmrc` (scoped/private registries) is honored.
+  final String repoDirPath;
 }
 
 /// Mock for [DoPublishCommand]
