@@ -21,13 +21,13 @@ import '../../backend/git_handler.dart' hide ProcessRunner;
 import '../../backend/add_repository_helper.dart';
 import '../../backend/filesystem_utils.dart';
 import '../../backend/git_platform.dart' hide ProcessRunner;
+import '../../backend/legacy_git_hooks.dart';
 import '../../backend/organization_utils.dart';
 import '../../backend/repo_folder_resolver.dart';
 import '../../backend/repo_setup.dart';
 import '../../backend/ticket_json.dart';
 import '../../backend/workspace_utils.dart';
 import 'add_deps.dart' show fetchDependencyRepoUrl;
-import 'install_git_hooks.dart';
 import 'install_gitattributes.dart' hide ProcessRunner;
 
 /// Resolves the repository URL of a hosted dependency.
@@ -263,7 +263,7 @@ class AddCommand extends Command<dynamic> {
       reportLog: ggLog,
     );
 
-    // Write config files (workspace, hooks, .gitattributes) before commit.
+    // Write config files (workspace, .gitattributes) before commit.
     await GgStatusPrinter<void>(
       message: 'Writing project config files',
       ggLog: ggLog,
@@ -890,20 +890,28 @@ class AddCommand extends Command<dynamic> {
   }
 
   /// Writes all project configuration files that depend on the set of
-  /// repositories in a ticket, such as the VS Code workspace and git hooks.
+  /// repositories in a ticket, such as the VS Code workspace and
+  /// `.gitattributes`.
+  ///
+  /// Also removes the obsolete `gg`-generated pre-push hook from every repo of
+  /// the ticket. `gg` no longer installs git hooks — pushing to `main` is
+  /// blocked by the remote and merges go through pull requests — but a hook
+  /// installed by an older `gg do add` survives in checkouts and would keep
+  /// running on every push.
   Future<void> _writeProjectConfigFiles({
     required Directory ticketDir,
     required GgLog ggLog,
   }) async {
     await _rewriteCodeWorkspace(ticketDir: ticketDir, ggLog: ggLog);
 
-    await DoInstallGitHooksCommand(
-      ggLog: ggLog,
-      sortedProcessingList: _sortedProcessingList,
-    ).exec(
+    final nodes = await _sortedProcessingList.get(
       directory: ticketDir,
       ggLog: ggLog,
     );
+
+    for (final node in nodes) {
+      removeLegacyGitHooks(repoDir: node.directory, ggLog: ggLog);
+    }
 
     await DoInstallGitattributesCommand(
       ggLog: ggLog,

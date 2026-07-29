@@ -43,7 +43,6 @@ void main() {
           'push',
           'publish',
           'review',
-          'install-git-hooks',
           'cancel-review',
         ],
       );

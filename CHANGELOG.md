@@ -13,9 +13,19 @@
 - bin test no longer expects a Windows line ending in the "Missing target parameter." message
 - Fix hanging publishing process
 
-## [5.10.1] - 2026-07-29
+## 5.11.0 - 2026-07-29
 
-## [5.10.0] - 2026-07-22
+### Changed
+
+- gg\_multi: changed references to git
+
+### Removed
+
+- Remove git hooks functionality completely because merging is done via merge requests
+
+## 5.10.1 - 2026-07-29
+
+## 5.10.0 - 2026-07-22
 
 ### Changed
 
@@ -24,7 +34,7 @@
 - Run npm registry lookups in the package directory so the project-level .npmrc with private feeds is honored
 - gg\_multi: changed references to git
 
-## [5.9.0] - 2026-07-20
+## 5.9.0 - 2026-07-20
 
 ### Changed
 
@@ -35,7 +45,7 @@
 
 - Ignore `.gg/*` instead of the whole `.gg` directory, so `.gg/.gg.json` and `.gg/.ticket.json` stay trackable
 
-## [5.8.0] - 2026-07-20
+## 5.8.0 - 2026-07-20
 
 ### Added
 
@@ -45,7 +55,7 @@
 
 - gg\_multi: changed references to git
 
-## [5.7.1] - 2026-07-16
+## 5.7.1 - 2026-07-16
 
 ### Added
 
@@ -60,7 +70,7 @@ shells. Set delete\_ticket in `.gg/.gg-publish.json` (or pass `-m` /
 - Tidy CHANGELOG Unreleased sections
 - gg\_multi: changed references to git
 
-## [5.7.0] - 2026-07-15
+## 5.7.0 - 2026-07-15
 
 ### Added
 
@@ -104,7 +114,7 @@ description. It is ignored once a config exists or is supplied via
 
 - Code-review fixes: resume-safe branch handling, progress guards for configure/--config, did-commit check and idempotent branch deletion on resume
 
-## [5.6.0] - 2026-07-13
+## 5.6.0 - 2026-07-13
 
 ### Changed
 
@@ -115,13 +125,13 @@ the failed repo — fully when nothing irreversible happened, otherwise
 keeping all commits so a re-run resumes. The shared git runner and
 snapshot capture live in `backend/git_snapshot.dart`.
 
-## [5.5.1] - 2026-07-06
+## 5.5.1 - 2026-07-06
 
 ### Changed
 
 - gg\_multi: changed references to git
 
-## [5.5.0] - 2026-07-06
+## 5.5.0 - 2026-07-06
 
 ### Added
 
@@ -160,14 +170,14 @@ the cause-less `... (pnpm install failed: )`.
 - Revert parallelization of `gg can commit` and `gg do push` (commit
 c97a31a). Restores the previous sequential implementation.
 
-## [5.3.2] - 2026-06-26
+## 5.3.2 - 2026-06-26
 
 ### Changed
 
 - Preserve dependency constraint operator (^^/\~/exact) through publish
 - gg\_multi: changed references to git
 
-## [5.3.1] - 2026-06-25
+## 5.3.1 - 2026-06-25
 
 ### Changed
 
@@ -177,7 +187,7 @@ c97a31a). Restores the previous sequential implementation.
 
 - Revert org-prefixed repo folders (ticket org\_prefix\_folders); keep gg\_cross\_language\_deps
 
-## [5.3.0] - 2026-06-19
+## 5.3.0 - 2026-06-19
 
 ### Changed
 
@@ -194,13 +204,13 @@ c97a31a). Restores the previous sequential implementation.
 - Fix non-destructive sorted processing order (no longer mutates live Node.dependencies); make do/publish dependency refresh treat bridges as TypeScript via checkProjectType, symmetric with do/review and do/cancel\_review
 - Review fixes: keep full npm-scoped names in the dependency graph so different scopes stay distinct (no false duplicate-drop / misrouted edges); surface bridges in gg ls (dart+nodejs label, list package.json deps as typescript)
 
-## [5.2.0] - 2026-06-11
+## 5.2.0 - 2026-06-11
 
 ### Changed
 
 - gg\_multi: changed references to git
 
-## [5.1.0] - 2026-06-09
+## 5.1.0 - 2026-06-09
 
 ### Changed
 
@@ -210,7 +220,7 @@ c97a31a). Restores the previous sequential implementation.
 - style: apply grace-cloud comment + 80-char limits across ticket
 - gg\_multi: changed references to git
 
-## [5.0.0] - 2026-06-08
+## 5.0.0 - 2026-06-08
 
 ### Changed
 
@@ -228,49 +238,49 @@ c97a31a). Restores the previous sequential implementation.
 - fix(do review): surface the exact failing step and underlying cause instead of only 'Failed to review in: <repo>' — errors now always log through the real output (not the quiet task log) and the thrown exception names the step (merge/can-review/localize/refresh/commit/push) plus the cause
 - fix(filesystem\_utils): skip node\_modules during recursive copy to preserve pnpm symlink graph in TS ticket repos
 
-## [4.5.2] - 2026-05-31
+## 4.5.2 - 2026-05-31
 
 ### Changed
 
 - can review fuehrt vor dem Uncommitted-Check dart pub get --offline aus (analog gg\_one can commit, mit Status-Printer)
 
-## [4.5.1] - 2026-05-31
+## 4.5.1 - 2026-05-31
 
 ### Changed
 
 - Revertiere die Parallelisierung von 'gg can commit' und 'gg do push' (Commit c97a31a). Die vorherige sequentielle Implementierung wird wiederhergestellt.
 - Update gg metadata files for revert branch
 
-## [4.5.0] - 2026-05-20
+## 4.5.0 - 2026-05-20
 
-## [4.4.0] - 2026-05-19
-
-### Changed
-
-- gg\_multi: changed references to git
-
-## [4.3.1] - 2026-05-19
+## 4.4.0 - 2026-05-19
 
 ### Changed
 
 - gg\_multi: changed references to git
 
-## [4.3.0] - 2026-05-17
+## 4.3.1 - 2026-05-19
+
+### Changed
+
+- gg\_multi: changed references to git
+
+## 4.3.0 - 2026-05-17
 
 ### Changed
 
 - parallelization
 - documentation
 
-## [4.2.0] - 2026-05-12
+## 4.2.0 - 2026-05-12
 
-## [4.1.0] - 2026-05-12
+## 4.1.0 - 2026-05-12
 
 ### Changed
 
 - gg\_multi: changed references to git
 
-## [4.0.1] - 2026-05-11
+## 4.0.1 - 2026-05-11
 
 ### Changed
 
@@ -292,30 +302,30 @@ localization commands again.
 
 - remove unlocalize step from do review command and tests
 
-## [3.1.0] - 2026-05-04
+## 3.1.0 - 2026-05-04
 
 ### Added
 
 - Add TypeScript support to do review and do cancel-review
 
-## [3.0.4] - 2026-04-29
+## 3.0.4 - 2026-04-29
 
-## [3.0.3] - 2026-04-28
+## 3.0.3 - 2026-04-28
 
 ### Fixed
 
 - Refactor \_prepareMasterRepositoryForCopy and fix git tag deletion on macOS
 
-## [3.0.2] - 2026-04-28
+## 3.0.2 - 2026-04-28
 
 ### Changed
 
 - check in kidney\_core can review, dass kein repo im main branch ist
 - Execute dart pub get after changing of pubspec.yaml in kidney\_core do publish
 
-## [3.0.1] - 2026-04-24
+## 3.0.1 - 2026-04-24
 
-## [3.0.0] - 2026-04-23
+## 3.0.0 - 2026-04-23
 
 ### Changed
 
@@ -325,23 +335,23 @@ localization commands again.
 
 - Remove --force option in do publish
 
-## [2.8.1] - 2026-04-15
+## 2.8.1 - 2026-04-15
 
-## [2.8.0] - 2026-04-14
+## 2.8.0 - 2026-04-14
 
 ### Added
 
 - Add command do claude
 
-## [2.7.2] - 2026-04-13
+## 2.7.2 - 2026-04-13
 
-## [2.7.1] - 2026-04-08
+## 2.7.1 - 2026-04-08
 
 ### Changed
 
 - Run do push before can publish in DoPublishCommand workflow
 
-## [2.7.0] - 2026-04-08
+## 2.7.0 - 2026-04-08
 
 ### Added
 
@@ -353,51 +363,51 @@ localization commands again.
 - Run merge main into feat for all repos in ticket during publish
 - Swap order of can merge and do push in can publish flow
 
-## [2.6.0] - 2026-04-07
+## 2.6.0 - 2026-04-07
 
 ### Added
 
 - Add gg merge main into feat step to can publish command
 
-## [2.5.0] - 2026-04-01
+## 2.5.0 - 2026-04-01
 
-## [2.4.2] - 2026-03-31
+## 2.4.2 - 2026-03-31
 
-## [2.4.1] - 2026-03-30
+## 2.4.1 - 2026-03-30
 
-## [2.4.0] - 2026-03-30
+## 2.4.0 - 2026-03-30
 
-## [2.3.1] - 2026-03-30
+## 2.3.1 - 2026-03-30
 
-## [2.3.0] - 2026-03-30
+## 2.3.0 - 2026-03-30
 
-## [2.2.9] - 2026-03-30
+## 2.2.9 - 2026-03-30
 
-## [2.2.8] - 2026-03-30
+## 2.2.8 - 2026-03-30
 
-## [2.2.7] - 2026-03-30
+## 2.2.7 - 2026-03-30
 
-## [2.2.6] - 2026-03-29
+## 2.2.6 - 2026-03-29
 
-## [2.2.5] - 2026-03-29
+## 2.2.5 - 2026-03-29
 
-## [2.2.4] - 2026-03-29
+## 2.2.4 - 2026-03-29
 
-## [2.2.3] - 2026-03-29
+## 2.2.3 - 2026-03-29
 
-## [2.2.2] - 2026-03-27
+## 2.2.2 - 2026-03-27
 
 ### Changed
 
 - new gg version
 
-## [2.2.1] - 2026-03-27
+## 2.2.1 - 2026-03-27
 
 ### Changed
 
 - increase gg version
 
-## [2.2.0] - 2026-03-27
+## 2.2.0 - 2026-03-27
 
 ### Changed
 
@@ -410,7 +420,7 @@ localization commands again.
 
 - remove unlocalize step from do review command and tests
 
-## [2.1.0] - 2026-03-27
+## 2.1.0 - 2026-03-27
 
 ### Added
 
@@ -421,7 +431,7 @@ localization commands again.
 - run git reset when adding repo to ticket
 - Run did commit in can publish
 
-## [2.0.1] - 2026-03-26
+## 2.0.1 - 2026-03-26
 
 ### Changed
 
@@ -432,19 +442,19 @@ localization commands again.
 
 - small fixes in tests and version upgrades
 
-## [2.0.0] - 2026-03-26
+## 2.0.0 - 2026-03-26
 
 ### Changed
 
 - Upgraded gg to 6.0.1
 
-## [1.1.0] - 2026-03-26
+## 1.1.0 - 2026-03-26
 
 ### Removed
 
 - Move add, remove, code, create, init, add\_deps to do/ directory and update imports
 
-## [1.0.0] - 2026-03-24
+## 1.0.0 - 2026-03-24
 
 ### Added
 
@@ -515,61 +525,3 @@ localization commands again.
 - Remove redundant code in appendOrganization
 - Remove prints
 - Remove gh pr create from review
-
-[5.10.1]: https://github.com/ggsuite/gg_multi/compare/5.10.0...5.10.1
-[5.10.0]: https://github.com/ggsuite/gg_multi/compare/5.9.0...5.10.0
-[5.9.0]: https://github.com/ggsuite/gg_multi/compare/5.8.0...5.9.0
-[5.8.0]: https://github.com/ggsuite/gg_multi/compare/5.7.1...5.8.0
-[5.7.1]: https://github.com/ggsuite/gg_multi/compare/5.7.0...5.7.1
-[5.7.0]: https://github.com/ggsuite/gg_multi/compare/5.6.0...5.7.0
-[5.6.0]: https://github.com/ggsuite/gg_multi/compare/5.5.1...5.6.0
-[5.5.1]: https://github.com/ggsuite/gg_multi/compare/5.5.0...5.5.1
-[5.5.0]: https://github.com/ggsuite/gg_multi/compare/5.3.2...5.5.0
-[5.3.2]: https://github.com/ggsuite/gg_multi/compare/5.3.1...5.3.2
-[5.3.1]: https://github.com/ggsuite/gg_multi/compare/5.3.0...5.3.1
-[5.3.0]: https://github.com/ggsuite/gg_multi/compare/5.2.0...5.3.0
-[5.2.0]: https://github.com/ggsuite/gg_multi/compare/5.1.0...5.2.0
-[5.1.0]: https://github.com/ggsuite/gg_multi/compare/5.0.0...5.1.0
-[5.0.0]: https://github.com/ggsuite/gg_multi/compare/4.5.2...5.0.0
-[4.5.2]: https://github.com/ggsuite/gg_multi/compare/4.5.1...4.5.2
-[4.5.1]: https://github.com/ggsuite/gg_multi/compare/4.5.0...4.5.1
-[4.5.0]: https://github.com/ggsuite/gg_multi/compare/4.4.0...4.5.0
-[4.4.0]: https://github.com/ggsuite/gg_multi/compare/4.3.1...4.4.0
-[4.3.1]: https://github.com/ggsuite/gg_multi/compare/4.3.0...4.3.1
-[4.3.0]: https://github.com/ggsuite/gg_multi/compare/4.2.0...4.3.0
-[4.2.0]: https://github.com/ggsuite/gg_multi/compare/4.1.0...4.2.0
-[4.1.0]: https://github.com/ggsuite/gg_multi/compare/4.0.1...4.1.0
-[4.0.1]: https://github.com/ggsuite/gg_multi/compare/3.1.0...4.0.1
-[3.1.0]: https://github.com/ggsuite/kidney_core/compare/3.0.4...3.1.0
-[3.0.4]: https://github.com/ggsuite/kidney_core/compare/3.0.3...3.0.4
-[3.0.3]: https://github.com/ggsuite/kidney_core/compare/3.0.2...3.0.3
-[3.0.2]: https://github.com/ggsuite/kidney_core/compare/3.0.1...3.0.2
-[3.0.1]: https://github.com/ggsuite/kidney_core/compare/3.0.0...3.0.1
-[3.0.0]: https://github.com/ggsuite/kidney_core/compare/2.8.1...3.0.0
-[2.8.1]: https://github.com/ggsuite/kidney_core/compare/2.8.0...2.8.1
-[2.8.0]: https://github.com/ggsuite/kidney_core/compare/2.7.2...2.8.0
-[2.7.2]: https://github.com/ggsuite/kidney_core/compare/2.7.1...2.7.2
-[2.7.1]: https://github.com/ggsuite/kidney_core/compare/2.7.0...2.7.1
-[2.7.0]: https://github.com/ggsuite/kidney_core/compare/2.6.0...2.7.0
-[2.6.0]: https://github.com/ggsuite/kidney_core/compare/2.5.0...2.6.0
-[2.5.0]: https://github.com/ggsuite/kidney_core/compare/2.4.2...2.5.0
-[2.4.2]: https://github.com/ggsuite/kidney_core/compare/2.4.1...2.4.2
-[2.4.1]: https://github.com/ggsuite/kidney_core/compare/2.4.0...2.4.1
-[2.4.0]: https://github.com/ggsuite/kidney_core/compare/2.3.1...2.4.0
-[2.3.1]: https://github.com/ggsuite/kidney_core/compare/2.3.0...2.3.1
-[2.3.0]: https://github.com/ggsuite/kidney_core/compare/2.2.9...2.3.0
-[2.2.9]: https://github.com/ggsuite/kidney_core/compare/2.2.8...2.2.9
-[2.2.8]: https://github.com/ggsuite/kidney_core/compare/2.2.7...2.2.8
-[2.2.7]: https://github.com/ggsuite/kidney_core/compare/2.2.6...2.2.7
-[2.2.6]: https://github.com/ggsuite/kidney_core/compare/2.2.5...2.2.6
-[2.2.5]: https://github.com/ggsuite/kidney_core/compare/2.2.4...2.2.5
-[2.2.4]: https://github.com/ggsuite/kidney_core/compare/2.2.3...2.2.4
-[2.2.3]: https://github.com/ggsuite/kidney_core/compare/2.2.2...2.2.3
-[2.2.2]: https://github.com/ggsuite/kidney_core/compare/2.2.1...2.2.2
-[2.2.1]: https://github.com/ggsuite/kidney_core/compare/2.2.0...2.2.1
-[2.2.0]: https://github.com/ggsuite/kidney_core/compare/2.1.0...2.2.0
-[2.1.0]: https://github.com/ggsuite/kidney_core/compare/2.0.1...2.1.0
-[2.0.1]: https://github.com/ggsuite/kidney_core/compare/2.0.0...2.0.1
-[2.0.0]: https://github.com/ggsuite/kidney_core/compare/1.1.0...2.0.0
-[1.1.0]: https://github.com/ggsuite/kidney_core/compare/1.0.0...1.1.0
-[1.0.0]: https://github.com/ggsuite/kidney_core/tag/%tag

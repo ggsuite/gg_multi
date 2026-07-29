@@ -52,7 +52,7 @@ gg_multi
 └── do    commit | push | publish | review | cancel-review
           add | add-deps | rm | create ticket
           init | code | claude
-          execute | install-git-hooks | install-gitattributes
+          execute | install-gitattributes
 ```
 
 All cross-repo commands run inside a ticket directory
@@ -79,7 +79,6 @@ order.
 | `gg_multi do add-deps <target>`                        | add every `dependencies` / `dev_dependencies` of `<target>` to the master workspace  |
 | `gg_multi do code`                                     | open the current ticket in VS Code                                                   |
 | `gg_multi do claude`                                   | aggregate each repo's `CLAUDE.md` into one ticket-level `CLAUDE.md`                  |
-| `gg_multi do install-git-hooks`                        | install gg's git hooks in every ticket repo                                          |
 | `gg_multi do install-gitattributes`                    | install a shared `.gitattributes` in every ticket repo                               |
 | `gg_multi do execute <cmd>`                            | run a shell command in every ticket repo                                             |
 
