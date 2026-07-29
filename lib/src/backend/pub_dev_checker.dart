@@ -21,7 +21,9 @@ class PubDevChecker {
     LanguageCatalog? catalog,
     Future<void> Function(Duration duration)? delay,
     this.pollInterval = const Duration(seconds: 15),
-    this.timeout = const Duration(minutes: 10),
+    // pub.dev can take up to ~10 minutes to make a fresh upload visible —
+    // the default leaves headroom beyond that.
+    this.timeout = const Duration(minutes: 15),
   })  : _waiter = waiter,
         _catalog = catalog,
         _delay = delay;

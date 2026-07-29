@@ -4,8 +4,9 @@
 
 ### Changed
 
-- do publish: the wait for published dependencies now announces the registry status url, reports progress while polling (via gg\_lang's RegistryWaiter logging) and no longer hangs — every registry lookup is bounded by a request timeout; the overall timeout was raised to 10 min (pub.dev) / 5 min (npm)
+- do publish: the wait for published dependencies now announces the registry status url, reports progress while polling (via gg\_lang's RegistryWaiter logging) and no longer hangs — every registry lookup is bounded by a request timeout; the overall timeout was raised to 15 min (pub.dev, which itself can take up to \~10 min) / 5 min (npm)
 - do publish: registry waits show status url and progress, never hang
+- Raise pub.dev wait timeout to 15 min (pub.dev can take \~10 min)
 
 ### Fixed
 
