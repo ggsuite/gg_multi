@@ -386,21 +386,24 @@ class DoPublishCommand extends DirCommand<void> {
 
           final projectType = _detectProjectType(repoDir);
           try {
-            final publishInfo = projectType == gg.ProjectType.typescript
-                ? await _npmChecker.getPackagePublishInfo(
-                    packageName: packageName,
-                    workingDirectory: repoDir.path,
-                  )
-                : await _pubDevChecker.getPackagePublishInfo(
-                    packageName: packageName,
-                  );
-            publishedPackages[packageName] = _PublishedPackageState(
-              packageName: packageName,
-              version: version,
-              waitsForPubDev: publishInfo.waitsForPubDev,
-              projectType: projectType,
-              repoDirPath: repoDir.path,
-            );
+            // Git-only repos (no manifest) have no registry to wait for.
+            if (projectType != gg.ProjectType.none) {
+              final publishInfo = projectType == gg.ProjectType.typescript
+                  ? await _npmChecker.getPackagePublishInfo(
+                      packageName: packageName,
+                      workingDirectory: repoDir.path,
+                    )
+                  : await _pubDevChecker.getPackagePublishInfo(
+                      packageName: packageName,
+                    );
+              publishedPackages[packageName] = _PublishedPackageState(
+                packageName: packageName,
+                version: version,
+                waitsForPubDev: publishInfo.waitsForPubDev,
+                projectType: projectType,
+                repoDirPath: repoDir.path,
+              );
+            }
           } catch (e) {
             ggLog(
               yellow(
@@ -1105,19 +1108,14 @@ class DoPublishCommand extends DirCommand<void> {
     }
   }
 
-  /// Detects the project type of [repoDir], defaulting to Dart for repos
-  /// without a recognizable manifest (so they use the pub.dev checker).
+  /// Detects the project type of [repoDir]. Repos without a recognizable
+  /// manifest resolve to [gg.ProjectType.none] — they publish to git only,
+  /// so no registry is waited for.
   ///
   /// Bridges (pubspec + package.json) resolve to TypeScript via
   /// [gg.checkProjectType] so they are published to — and waited for on — npm.
-  gg.ProjectType _detectProjectType(Directory repoDir) {
-    try {
-      return gg.checkProjectType(repoDir);
-    } catch (_) {
-      // Defensive: a repo being published always has a manifest.
-      return gg.ProjectType.dart; // coverage:ignore-line
-    }
-  }
+  gg.ProjectType _detectProjectType(Directory repoDir) =>
+      gg.checkProjectType(repoDir);
 
   /// Reads the published package name from the manifest of [repoDir]
   /// (e.g. the scoped »@org/pkg« for npm). Falls back to [fallback] (the
@@ -1144,15 +1142,9 @@ class DoPublishCommand extends DirCommand<void> {
     required String repoName,
     required GgLog ggLog,
   }) async {
-    final gg.ProjectType projectType;
-    try {
-      // Bridge repos refresh via their TypeScript package manager, like
-      // do/review and do/cancel_review (checkProjectType: bridge → TS).
-      projectType = gg.checkProjectType(repoDir);
-    } catch (_) {
-      // Repos without a recognizable manifest are skipped.
-      return;
-    }
+    // Bridge repos refresh via their TypeScript package manager, like
+    // do/review and do/cancel_review (checkProjectType: bridge → TS).
+    final projectType = gg.checkProjectType(repoDir);
 
     final String executable;
     final List<String> args;
@@ -1165,6 +1157,9 @@ class DoPublishCommand extends DirCommand<void> {
         final pm = gg.detectTypeScriptPackageManager(repoDir);
         executable = pm.executable;
         args = <String>['install'];
+      case gg.ProjectType.none:
+        // Repos without a manifest have no dependencies to refresh.
+        return;
     }
 
     // pnpm 11 blockExoticSubdeps must be off (env-var-only) for git chains.

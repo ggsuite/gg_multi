@@ -23,8 +23,10 @@ void main() {
         runInShell: true,
       );
 
+      // The line ending depends on the environment (carriage-return handling
+      // is terminal-dependent), so only the message itself is asserted.
       final expectedMessages = [
-        'Missing target parameter.\r\n',
+        'Missing target parameter.',
       ];
 
       // Concatenate stdout and stderr
