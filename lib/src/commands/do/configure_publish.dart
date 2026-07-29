@@ -4,7 +4,6 @@
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
 
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:gg_one/gg_one.dart' as gg;
@@ -18,6 +17,8 @@ import 'package:interact/interact.dart';
 import 'package:path/path.dart' as path;
 import 'package:pub_semver/pub_semver.dart';
 
+import '../../backend/message_editor_theme.dart';
+import '../../backend/ticket_json.dart';
 import '../../backend/workspace_utils.dart';
 
 /// Typedef for editing a merge message interactively.
@@ -126,7 +127,7 @@ class DoConfigurePublishCommand extends DirCommand<void> {
       }
     }
 
-    final ticketDescription = _readTicketDescription(ticketDir);
+    final ticketDescription = readTicketDescription(ticketDir);
 
     // The merge-message seed: an explicit `-m` wins, otherwise the ticket
     // description. It pre-fills the per-repo prompt and is the fallback when
@@ -194,33 +195,6 @@ class DoConfigurePublishCommand extends DirCommand<void> {
     }
   }
 
-  /// Reads the optional description from the ticket configuration file, used as
-  /// the default merge message.
-  String? _readTicketDescription(Directory ticketDir) {
-    final ticketFile = File(path.join(ticketDir.path, '.ticket'));
-    if (!ticketFile.existsSync()) {
-      return null;
-    }
-
-    final dynamic decoded;
-    try {
-      decoded = jsonDecode(ticketFile.readAsStringSync());
-    } catch (_) {
-      // A hand-edited / truncated .ticket must not crash the publish.
-      return null;
-    }
-    if (decoded is! Map<String, dynamic>) {
-      return null;
-    }
-
-    final description = decoded['description']?.toString().trim();
-    if (description == null || description.isEmpty) {
-      return null;
-    }
-
-    return description;
-  }
-
   /// Opens the default editor with [initialMessage] and returns the result.
   // coverage:ignore-start
   static Future<String?> _defaultEditMessage(String initialMessage) async {
@@ -228,11 +202,17 @@ class DoConfigurePublishCommand extends DirCommand<void> {
       'the merge message prompt',
       'pass -m <message> or provide a config file via --config',
     );
-    return Input(
-      prompt: 'Edit merge message',
-      defaultValue: initialMessage,
-      initialText: initialMessage,
-    ).interact();
+    // Only initialText, no defaultValue: the message is already in the
+    // editable buffer, so the "(…)" hint would just repeat it.
+    try {
+      return Input.withTheme(
+        theme: messageEditorTheme,
+        prompt: 'Edit merge message',
+        initialText: initialMessage,
+      ).interact();
+    } finally {
+      stdout.write(colorOff);
+    }
   }
 
   /// Asks the user whether the ticket repositories should be deleted.

@@ -97,6 +97,14 @@ Because the hook lives in the untracked `.git/hooks/`, it survives in every chec
 
 Once found, it recreates the ticket folder + root `.ticket`, clones any missing repos from their URLs, copies each into the ticket, checks out the existing feature branch, and installs deps.
 
+### `do commit` Command
+
+`DoCommitCommand` (in `lib/src/commands/do/commit.dart`) commits every ticket repo in dependency order with one shared message, delegating to gg_one's `gg do commit` per repo.
+
+**Message resolution**: an explicit `-m`/`--message` (or the `message` argument of `exec`) is used as-is. Without one, the ticket description — read from the root `.ticket` file via `readTicketDescription` (`lib/src/backend/ticket_json.dart`) — seeds the interactive editor `do configure-publish` uses for merge messages (`interact`'s `Input`, guarded by gg_one's `throwWhenNotATerminal` so headless runs fail fast instead of hanging). The edited text wins; clearing it falls back to the description. When nothing resolves (no `-m`, no description, empty edit) `null` is forwarded and gg_one decides — it only demands a message from repos that actually have something to commit, so an already-committed ticket still passes. The prompt is skipped for an empty ticket (no repos) and whenever a message was passed, so `gg_multi do commit -m …` stays non-interactive.
+
+`readTicketDescription` is the single reader of the root `.ticket` description, shared by `do commit`, `do configure-publish` and `buildTicketJson`.
+
 ### `do review` Command
 
 `DoReviewCommand` (in `lib/src/commands/do/review.dart`) prepares every ticket repo for review: merge `origin/main` into the feature branch (re-verifying with `gg can commit` when the merge moved HEAD), run `can review`, then per repo localize refs to git feature branches, refresh dependencies, force-commit, integrate the remote feature branch (`pull --rebase`, never force-push) and push.

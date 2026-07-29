@@ -110,7 +110,7 @@ TicketJson buildTicketJson({
 
   return TicketJson(
     issueId: path.basename(ticketDir.path),
-    description: _readTicketDescription(ticketDir),
+    description: readTicketDescription(ticketDir) ?? '',
     repositories: repositories,
   );
 }
@@ -151,20 +151,35 @@ void writeRootTicket(
   ).writeAsStringSync(jsonEncode(data));
 }
 
-/// Reads the `description` field from the root `.ticket` file, or returns an
-/// empty string when it is missing or malformed.
-String _readTicketDescription(Directory ticketDir) {
+/// Reads the trimmed `description` from the root `.ticket` file of [ticketDir],
+/// or returns `null` when the file is missing, is not a JSON object, is
+/// malformed, or carries an empty description.
+///
+/// The description is the human-written summary of the ticket and therefore
+/// the natural default for the messages gg writes on the user's behalf: the
+/// commit message of `do commit` and the merge messages of
+/// `do configure-publish`.
+String? readTicketDescription(Directory ticketDir) {
   final file = File(path.join(ticketDir.path, '.ticket'));
   if (!file.existsSync()) {
-    return '';
+    return null;
   }
+
+  final dynamic decoded;
   try {
-    final decoded = jsonDecode(file.readAsStringSync());
-    if (decoded is Map<String, dynamic>) {
-      return decoded['description']?.toString() ?? '';
-    }
+    decoded = jsonDecode(file.readAsStringSync());
   } catch (_) {
-    // Fall through to an empty description on a malformed .ticket.
+    // A hand-edited / truncated .ticket must not crash the caller.
+    return null;
   }
-  return '';
+  if (decoded is! Map<String, dynamic>) {
+    return null;
+  }
+
+  final description = decoded['description']?.toString().trim();
+  if (description == null || description.isEmpty) {
+    return null;
+  }
+
+  return description;
 }
