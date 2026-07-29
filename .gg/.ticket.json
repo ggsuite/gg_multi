@@ -1,0 +1,18 @@
+{
+  "issue_id": "remove_git_hooks_functionality",
+  "description": "Remove the git hooks functionality completely. Pushing to main is already blocked in the repo and merges always go through pull requests, so installing pre-push hooks is obsolete.",
+  "repositories": [
+    {
+      "name": "gg_one",
+      "url": "git@github.com:ggsuite/gg_one.git"
+    },
+    {
+      "name": "gg_multi",
+      "url": "git@github.com:ggsuite/gg_multi.git"
+    },
+    {
+      "name": "gg",
+      "url": "git@github.com:ggsuite/gg.git"
+    }
+  ]
+}
