@@ -2840,7 +2840,7 @@ version: 1.0.0
     );
 
     test(
-      'installs git hooks for repositories in ticket workspace after add',
+      'removes obsolete gg git hooks from ticket repositories after add',
       () async {
         const repoName = 'hooksRepo';
 
@@ -2850,6 +2850,25 @@ version: 1.0.0
         File(path.join(masterRepoDir.path, 'pubspec.yaml'))
             .writeAsStringSync('name: $repoName');
         Directory(path.join(masterRepoDir.path, '.git')).createSync();
+
+        // An older gg version installed a pre-push hook here. The copy into
+        // the ticket carries it along, so `do add` must clean it up.
+        Directory(path.join(masterRepoDir.path, '.git', 'hooks'))
+            .createSync(recursive: true);
+        File(path.join(masterRepoDir.path, '.git', 'hooks', 'pre-push'))
+            .writeAsStringSync(
+          '#!/bin/sh\nset -e\n\ndart run .gg/verify_push.dart',
+        );
+        Directory(path.join(masterRepoDir.path, '.gg'))
+            .createSync(recursive: true);
+        File(path.join(masterRepoDir.path, '.gg', 'verify_push.dart'))
+            .writeAsStringSync('void main() {}');
+
+        // A hook gg never generated. It proves the copy really carries
+        // .git/hooks over, so the missing pre-push below is a deletion and
+        // not just a file that never arrived.
+        File(path.join(masterRepoDir.path, '.git', 'hooks', 'pre-commit'))
+            .writeAsStringSync('#!/bin/sh\necho "my own hook"');
 
         final ticketDir = Directory(
           path.join(tempDir.path, ggMultiTicketFolder, 'TICKET-HOOKS'),
@@ -2965,8 +2984,16 @@ version: 1.0.0
           path.join(ticketRepoDir.path, '.gg', 'verify_push.dart'),
         );
 
-        expect(prePushHook.existsSync(), isTrue);
-        expect(verifyPushScript.existsSync(), isTrue);
+        expect(prePushHook.existsSync(), isFalse);
+        expect(verifyPushScript.existsSync(), isFalse);
+
+        // The user's own hook is untouched.
+        expect(
+          File(
+            path.join(ticketRepoDir.path, '.git', 'hooks', 'pre-commit'),
+          ).existsSync(),
+          isTrue,
+        );
       },
     );
 
