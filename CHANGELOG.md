@@ -1,5 +1,11 @@
 # Changelog
 
+## \[Unreleased\]
+
+### Changed
+
+- Support projects without manifest: ProjectType.none, checks skipped, version tracked as git tag only
+
 ## \[5.10.1\] - 2026-07-29
 
 ### Changed
@@ -12,6 +18,8 @@
 
 - bin test no longer expects a Windows line ending in the "Missing target parameter." message
 - Fix hanging publishing process
+
+## 5.12.0 - 2026-07-29
 
 ## 5.11.0 - 2026-07-29
 

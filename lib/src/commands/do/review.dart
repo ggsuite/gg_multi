@@ -689,17 +689,11 @@ class DoReviewCommand extends DirCommand<void> {
     required GgLog ggLog,
     required GgLog errorLog,
   }) async {
-    final gg.ProjectType projectType;
-    try {
-      // Cross-language bridge repos (pubspec.yaml + package.json + tsconfig)
-      // are refreshed via their TypeScript package manager, like a pure
-      // TypeScript repo. `checkProjectType` encodes that bridge → TypeScript
-      // rule in one place.
-      projectType = gg.checkProjectType(repoDir);
-    } catch (_) {
-      // Repos without a recognizable manifest are skipped.
-      return;
-    }
+    // Cross-language bridge repos (pubspec.yaml + package.json + tsconfig)
+    // are refreshed via their TypeScript package manager, like a pure
+    // TypeScript repo. `checkProjectType` encodes that bridge → TypeScript
+    // rule in one place.
+    final projectType = gg.checkProjectType(repoDir);
 
     final String executable;
     final List<String> args;
@@ -712,6 +706,9 @@ class DoReviewCommand extends DirCommand<void> {
         final pm = gg.detectTypeScriptPackageManager(repoDir);
         executable = pm.executable;
         args = <String>['install'];
+      case gg.ProjectType.none:
+        // Repos without a manifest have no dependencies to refresh.
+        return;
     }
 
     // Localizing to git feature branches turns dependencies between ticket

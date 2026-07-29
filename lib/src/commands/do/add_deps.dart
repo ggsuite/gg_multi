@@ -228,10 +228,8 @@ typedef ManifestDependency = ({String name, gg.ProjectType type});
       Directory(path.join(workspacePath, repoName ?? ''));
 
   final isBridge = gg.isBridgeProject(repoDir);
-  final gg.ProjectType type;
-  try {
-    type = gg.detectProjectType(repoDir);
-  } catch (_) {
+  final type = gg.detectProjectType(repoDir);
+  if (type == gg.ProjectType.none) {
     // No recognizable manifest — reuse the Dart not-found message.
     getPubspecFromWorkspace(
       targetArg: targetArg,
