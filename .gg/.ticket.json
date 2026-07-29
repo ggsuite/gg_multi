@@ -1,0 +1,14 @@
+{
+  "issue_id": "fix_publish_registry_wait",
+  "description": "gg do publish: sichtbares, nicht haengendes Warten bis die Version auf pub.dev/npm erscheint (Message + Status-URL, Timeouts, Fortschritt)",
+  "repositories": [
+    {
+      "name": "gg_multi",
+      "url": "git@github.com:ggsuite/gg_multi.git"
+    },
+    {
+      "name": "gg_version",
+      "url": "git@github.com:ggsuite/gg_version.git"
+    }
+  ]
+}
