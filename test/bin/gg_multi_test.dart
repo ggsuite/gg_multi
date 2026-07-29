@@ -23,8 +23,9 @@ void main() {
         runInShell: true,
       );
 
+      // Match independent of the platform's line ending.
       final expectedMessages = [
-        'Missing target parameter.\r\n',
+        'Missing target parameter.',
       ];
 
       // Concatenate stdout and stderr

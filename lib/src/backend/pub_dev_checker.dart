@@ -21,7 +21,7 @@ class PubDevChecker {
     LanguageCatalog? catalog,
     Future<void> Function(Duration duration)? delay,
     this.pollInterval = const Duration(seconds: 15),
-    this.timeout = const Duration(minutes: 2),
+    this.timeout = const Duration(minutes: 10),
   })  : _waiter = waiter,
         _catalog = catalog,
         _delay = delay;
@@ -60,13 +60,14 @@ class PubDevChecker {
     );
   }
 
-  /// Waits until [version] of [packageName] is visible on pub.dev.
+  /// Waits until [version] of [packageName] is visible on pub.dev. Progress
+  /// (including the pub.dev status page url) is reported through [ggLog].
   Future<void> waitUntilVersionAvailable({
     required String packageName,
     required String version,
     required void Function(String message) ggLog,
   }) async {
-    final waiter = await _resolveWaiter();
+    final waiter = await _resolveWaiter(log: ggLog);
     await waiter.waitUntilVersionAvailable(
       packageName: packageName,
       version: version,
@@ -74,19 +75,24 @@ class PubDevChecker {
   }
 
   // ...........................................................................
-  Future<RegistryWaiter> _resolveWaiter() async {
+  Future<RegistryWaiter> _resolveWaiter({
+    void Function(String message)? log,
+  }) async {
     if (_waiter != null) {
       return _waiter;
     }
     // coverage:ignore-start
     final catalog = _catalog ?? await LanguageCatalog.load();
+    final spec = catalog.spec(ProjectType.dart);
     final registry = const RegistryFactory().forProjectType(
       ProjectType.dart,
-      spec: catalog.spec(ProjectType.dart),
+      spec: spec,
     );
     return RegistryWaiter(
       registry: registry,
       registryName: 'pub.dev',
+      statusUrl: spec.registry?.statusUrl,
+      log: log,
       delay: _delay,
       pollInterval: pollInterval,
       timeout: timeout,
