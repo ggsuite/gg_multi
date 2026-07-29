@@ -1,0 +1,10 @@
+{
+  "issue_id": "04_reuse_ticket_message",
+  "description": "Reuse the ticket message as default commit message",
+  "repositories": [
+    {
+      "name": "gg_multi",
+      "url": "git@github.com:ggsuite/gg_multi.git"
+    }
+  ]
+}
