@@ -1,7 +1,6 @@
 name: gg_multi
 description: Das Herzstück der Gg Multi Suite. Fungiert als Backend und CMD-Line Tool.
 version: 5.10.1
-publish_to: none
 repository: https://github.com/ggsuite/gg_multi.git
 
 environment:
@@ -10,10 +9,7 @@ environment:
 dependencies:
   path: ^1.9.1
   args: ^2.7.0
-  gg_one:
-    git:
-      url: git@github.com:ggsuite/gg_one.git
-      ref: remove_git_hooks_functionality
+  gg_one: ^11.1.0
   gg_lang: ^0.2.7
   gg_console_colors: ^2.1.5
   gg_process: ^1.1.6
