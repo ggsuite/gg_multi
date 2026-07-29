@@ -19,6 +19,12 @@
 - bin test no longer expects a Windows line ending in the "Missing target parameter." message
 - Fix hanging publishing process
 
+## 5.12.1 - 2026-07-29
+
+### Changed
+
+- Delete ticket and remote feature branches by default
+
 ## 5.12.0 - 2026-07-29
 
 ## 5.11.0 - 2026-07-29
