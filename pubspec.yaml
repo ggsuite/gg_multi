@@ -11,7 +11,9 @@ dependencies:
   path: ^1.9.1
   args: ^2.7.0
   gg_one:
-    path: ../gg_one # ^11.0.1
+    git:
+      url: git@github.com:ggsuite/gg_one.git
+      ref: remove_git_hooks_functionality
   gg_lang: ^0.2.7
   gg_console_colors: ^2.1.5
   gg_process: ^1.1.6

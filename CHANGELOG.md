@@ -15,6 +15,10 @@
 
 ## Unreleased
 
+### Changed
+
+- gg\_multi: changed references to git
+
 ### Removed
 
 - Remove git hooks functionality completely because merging is done via merge requests
