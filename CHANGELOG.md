@@ -1,10 +1,10 @@
 # Changelog
 
-## [5.10.1] - 2026-07-29
+## \[5.10.1\] - 2026-07-29
 
 ### Changed
 
-- do publish: the wait for published dependencies now announces the registry status url, reports progress while polling (via gg_lang's RegistryWaiter logging) and no longer hangs — every registry lookup is bounded by a request timeout; the overall timeout was raised to 15 min (pub.dev, which itself can take up to \~10 min) / 5 min (npm)
+- do publish: the wait for published dependencies now announces the registry status url, reports progress while polling (via gg\_lang's RegistryWaiter logging) and no longer hangs — every registry lookup is bounded by a request timeout; the overall timeout was raised to 15 min (pub.dev, which itself can take up to \~10 min) / 5 min (npm)
 - do publish: registry waits show status url and progress, never hang
 - Raise pub.dev wait timeout to 15 min (pub.dev can take \~10 min)
 
@@ -13,21 +13,23 @@
 - bin test no longer expects a Windows line ending in the "Missing target parameter." message
 - Fix hanging publishing process
 
+## [5.10.1] - 2026-07-29
+
 ## [5.10.0] - 2026-07-22
 
 ### Changed
 
-- Forward --pr and --no-pr to gg_one so ticket publishes merge via auto-merge pull requests by default
+- Forward --pr and --no-pr to gg\_one so ticket publishes merge via auto-merge pull requests by default
 - Update publish docs: the final merge goes through an auto-merge squash pull request by default
 - Run npm registry lookups in the package directory so the project-level .npmrc with private feeds is honored
-- gg_multi: changed references to git
+- gg\_multi: changed references to git
 
 ## [5.9.0] - 2026-07-20
 
 ### Changed
 
 - Print repos added to a ticket in blue instead of green - `gg do checkout` included
-- gg_multi: changed references to git
+- gg\_multi: changed references to git
 
 ### Fixed
 
@@ -41,62 +43,62 @@
 
 ### Changed
 
-- gg_multi: changed references to git
+- gg\_multi: changed references to git
 
 ## [5.7.1] - 2026-07-16
 
 ### Added
 
 - The delete-ticket and merge-message default prompts fail fast with an
-  actionable error when stdin is not a terminal (via gg_one's
-  throwWhenNotATerminal), instead of hanging forever in CI or piped
-  shells. Set delete_ticket in `.gg/.gg-publish.json` (or pass `-m` /
-  `--config`) for headless runs.
+actionable error when stdin is not a terminal (via gg\_one's
+throwWhenNotATerminal), instead of hanging forever in CI or piped
+shells. Set delete\_ticket in `.gg/.gg-publish.json` (or pass `-m` /
+`--config`) for headless runs.
 
 ### Changed
 
 - Tidy CHANGELOG Unreleased sections
-- gg_multi: changed references to git
+- gg\_multi: changed references to git
 
 ## [5.7.0] - 2026-07-15
 
 ### Added
 
 - `do configure-publish`: new command that interactively writes
-  `<ticket>/.gg/.gg-publish.json` (per-repo version increment + merge
-  message, plus one `delete_ticket` choice). `do publish` runs it
-  automatically when started without a config, so every interactive
-  decision is made up front before the unattended publish.
+`<ticket>/.gg/.gg-publish.json` (per-repo version increment + merge
+message, plus one `delete_ticket` choice). `do publish` runs it
+automatically when started without a config, so every interactive
+decision is made up front before the unattended publish.
 - `do publish --continue`: records per-repo progress in
-  `.gg/.gg-publish.json`, skips already-published repos and resumes the
-  rest after a failure; the file is deleted on full success. Review /
-  `can publish` are re-run unless at least one repo already published.
-  Within a repo, resume: true is forwarded to gg_one's `do publish`,
-  which resumes at the first open step of its repo-level
-  `<repo>/.gg/.gg-publish.json` (done_steps) — including the version
-  tag. The full-restore rollback deletes that repo-level file (its
-  markers would be stale); the keep-commits rollback keeps it, and
-  `--reconfigure` discards ticket **and** repo-level files. Each repo's
-  `.gitignore` gets the `.gg/.gg-publish.json` entry automatically
-  before the pre-publish commit.
+`.gg/.gg-publish.json`, skips already-published repos and resumes the
+rest after a failure; the file is deleted on full success. Review /
+`can publish` are re-run unless at least one repo already published.
+Within a repo, resume: true is forwarded to gg\_one's `do publish`,
+which resumes at the first open step of its repo-level
+`<repo>/.gg/.gg-publish.json` (done\_steps) — including the version
+tag. The full-restore rollback deletes that repo-level file (its
+markers would be stale); the keep-commits rollback keeps it, and
+`--reconfigure` discards ticket **and** repo-level files. Each repo's
+`.gitignore` gets the `.gg/.gg-publish.json` entry automatically
+before the pre-publish commit.
 - `do publish --reconfigure`: discards an existing `.gg/.gg-publish.json`
-  and reconfigures interactively.
+and reconfigures interactively.
 - Code-review hardening: `--continue` also skips review/can-publish when
-  a failed repo's own step file proves irreversible progress (first-repo
-  failure after registry publish/merge no longer blocks the resume);
-  `--config` and `do configure-publish` refuse to clobber a runtime file
-  that still holds progress markers.
+a failed repo's own step file proves irreversible progress (first-repo
+failure after registry publish/merge no longer blocks the resume);
+`--config` and `do configure-publish` refuse to clobber a runtime file
+that still holds progress markers.
 
 ### Changed
 
 - `do publish --message` / `-m` is kept, with refined meaning: it is the
-  default merge message used only when the `.gg/.gg-publish.json` is
-  written interactively (a fresh run or `--reconfigure`). It seeds every
-  repo's merge-message prompt and takes precedence over the ticket
-  description. It is ignored once a config exists or is supplied via
-  `--config`. `do configure-publish` accepts the same `-m`.
+default merge message used only when the `.gg/.gg-publish.json` is
+written interactively (a fresh run or `--reconfigure`). It seeds every
+repo's merge-message prompt and takes precedence over the ticket
+description. It is ignored once a config exists or is supplied via
+`--config`. `do configure-publish` accepts the same `-m`.
 - Tidy CHANGELOGs: single Unreleased section and chronological order
-- gg_multi: changed references to git
+- gg\_multi: changed references to git
 
 ### Fixed
 
@@ -107,35 +109,35 @@
 ### Changed
 
 - `do review` and `do publish` now roll back the repository state when
-  they fail, restoring the snapshot taken before the run. `do review`
-  restores every changed, not-yet-pushed repo; `do publish` restores only
-  the failed repo — fully when nothing irreversible happened, otherwise
-  keeping all commits so a re-run resumes. The shared git runner and
-  snapshot capture live in `backend/git_snapshot.dart`.
+they fail, restoring the snapshot taken before the run. `do review`
+restores every changed, not-yet-pushed repo; `do publish` restores only
+the failed repo — fully when nothing irreversible happened, otherwise
+keeping all commits so a re-run resumes. The shared git runner and
+snapshot capture live in `backend/git_snapshot.dart`.
 
 ## [5.5.1] - 2026-07-06
 
 ### Changed
 
-- gg_multi: changed references to git
+- gg\_multi: changed references to git
 
 ## [5.5.0] - 2026-07-06
 
 ### Added
 
 - Org-prefixed repo folders: repos newly added to the master workspace
-  are cloned into `<org>_<repo>` (Dart) / `<org>-<repo>` (TypeScript)
-  folders, so same-named repos from different organizations can coexist.
-  Existing unprefixed folders keep working: `do add`, `do rm`, ticket
-  copies and transitive-dep cloning now resolve repos by folder name,
-  manifest package name or git remote URL (`RepoFolderResolver`).
+are cloned into `<org>_<repo>` (Dart) / `<org>-<repo>` (TypeScript)
+folders, so same-named repos from different organizations can coexist.
+Existing unprefixed folders keep working: `do add`, `do rm`, ticket
+copies and transitive-dep cloning now resolve repos by folder name,
+manifest package name or git remote URL (`RepoFolderResolver`).
 - `do add <name>` now tries the known organizations from `.organizations`
-  first and uses the bare `<name>/<name>` guess only as a last resort, so
-  a plain add clones straight from the right org without a failed attempt.
+first and uses the bare `<name>/<name>` guess only as a last resort, so
+a plain add clones straight from the right org without a failed attempt.
 - `can publish` now runs `gg can publish` for every repo in the ticket
-  (feature branch, CHANGELOG, pana, npm authentication), so publish
-  blockers — like a missing npm login for an npm-published package —
-  surface up front instead of as a cryptic 404 mid-publish.
+(feature branch, CHANGELOG, pana, npm authentication), so publish
+blockers — like a missing npm login for an npm-published package —
+surface up front instead of as a cryptic 404 mid-publish.
 
 ### Changed
 
@@ -145,68 +147,68 @@
 
 - fix(org-add): handle missing GitHub CLI gracefully and fall back to https clone url when sshUrl is empty (code-review)
 - `do review` (and therefore `do publish`) now disables pnpm 11's
-  `blockExoticSubdeps` while refreshing dependencies, so the transitive
-  git-referenced dependency chain that localizing to git feature branches
-  creates installs instead of failing with `ERR_PNPM_EXOTIC_SUBDEP`. This
-  matches the fix `do publish` already applied to its own refresh step.
+`blockExoticSubdeps` while refreshing dependencies, so the transitive
+git-referenced dependency chain that localizing to git feature branches
+creates installs instead of failing with `ERR_PNPM_EXOTIC_SUBDEP`. This
+matches the fix `do publish` already applied to its own refresh step.
 - `do review` now surfaces a failed install's output from stdout when
-  stderr is empty (pnpm writes its errors to stdout), instead of throwing
-  the cause-less `... (pnpm install failed: )`.
+stderr is empty (pnpm writes its errors to stdout), instead of throwing
+the cause-less `... (pnpm install failed: )`.
 
 ### Reverted
 
 - Revert parallelization of `gg can commit` and `gg do push` (commit
-  c97a31a). Restores the previous sequential implementation.
+c97a31a). Restores the previous sequential implementation.
 
 ## [5.3.2] - 2026-06-26
 
 ### Changed
 
 - Preserve dependency constraint operator (^^/\~/exact) through publish
-- gg_multi: changed references to git
+- gg\_multi: changed references to git
 
 ## [5.3.1] - 2026-06-25
 
 ### Changed
 
-- gg_multi: changed references to git
+- gg\_multi: changed references to git
 
 ### Fixed
 
-- Revert org-prefixed repo folders (ticket org_prefix_folders); keep gg_cross_language_deps
+- Revert org-prefixed repo folders (ticket org\_prefix\_folders); keep gg\_cross\_language\_deps
 
 ## [5.3.0] - 2026-06-19
 
 ### Changed
 
 - Build dependency graph across Dart and TypeScript bridge repos
-- Treat dart-typescript bridge repos as TypeScript for can/do review (npm install, skip dart pub get); export isBridgeProject from gg_one
-- Introduce checkProjectType() as single source of truth for bridge->TypeScript check rule; add .example() real-instance factories & P:\programs\flutter/bin/internal/exit_with_errorlevel.bat
+- Treat dart-typescript bridge repos as TypeScript for can/do review (npm install, skip dart pub get); export isBridgeProject from gg\_one
+- Introduce checkProjectType() as single source of truth for bridge->TypeScript check rule; add .example() real-instance factories & P:\programs\flutter/bin/internal/exit\_with\_errorlevel.bat
 - Treat bridge repos as both Dart and TypeScript in do add-deps: getManifestDependenciesFromWorkspace now unions both manifests, tagging each dependency with its registry (pub.dev vs npm) so a bridge's deps are cloned from the correct source
 - Publish bridges as TypeScript: pnpm-aware publish, dual-manifest version bump, non-swallowed publish errors, idempotent resume, review skips merged repos, link: for local TS deps, package.json scripts check
-- gg_multi: changed references to git
+- gg\_multi: changed references to git
 
 ### Fixed
 
-- Fix bridge handling: cancel_review now runs npm install for bridges (symmetric to do/review); repo_folder_resolver names bridge clone folders TypeScript-style (hyphen) via checkProjectType
-- Fix non-destructive sorted processing order (no longer mutates live Node.dependencies); make do/publish dependency refresh treat bridges as TypeScript via checkProjectType, symmetric with do/review and do/cancel_review
+- Fix bridge handling: cancel\_review now runs npm install for bridges (symmetric to do/review); repo\_folder\_resolver names bridge clone folders TypeScript-style (hyphen) via checkProjectType
+- Fix non-destructive sorted processing order (no longer mutates live Node.dependencies); make do/publish dependency refresh treat bridges as TypeScript via checkProjectType, symmetric with do/review and do/cancel\_review
 - Review fixes: keep full npm-scoped names in the dependency graph so different scopes stay distinct (no false duplicate-drop / misrouted edges); surface bridges in gg ls (dart+nodejs label, list package.json deps as typescript)
 
 ## [5.2.0] - 2026-06-11
 
 ### Changed
 
-- gg_multi: changed references to git
+- gg\_multi: changed references to git
 
 ## [5.1.0] - 2026-06-09
 
 ### Changed
 
 - feat(ts): version-pinned git deps via #semver: + tag-push for npm/pnpm
-- gg_multi: changed references to git
-- refactor(ts): trim comments to grace-cloud style limits + do_maintain layout
+- gg\_multi: changed references to git
+- refactor(ts): trim comments to grace-cloud style limits + do\_maintain layout
 - style: apply grace-cloud comment + 80-char limits across ticket
-- gg_multi: changed references to git
+- gg\_multi: changed references to git
 
 ## [5.0.0] - 2026-06-08
 
@@ -214,23 +216,23 @@
 
 - feat(do review): integrate the remote feature branch before pushing to avoid non-fast-forward rejections; on a real rebase conflict it aborts cleanly and fails with an actionable message (never force-pushes)
 - feat(do review): after merging origin/main, re-run 'gg can commit' for any repo whose HEAD moved, to catch merges that silently corrupt a manifest (e.g. duplicate keys) before localizing/committing/pushing; aborts early with a clear message
-- feat(do add): auto-clone transitive deps into master before graph build & P:\programs\flutter/bin/internal/exit_with_errorlevel.bat
-- gg_multi: changed references to git
-- feat(do_publish): default askBeforePublishing=false in multi-publish for non-interactive runs
-- gg_multi: changed references to git
-- gg_multi: changed references to git
+- feat(do add): auto-clone transitive deps into master before graph build & P:\programs\flutter/bin/internal/exit\_with\_errorlevel.bat
+- gg\_multi: changed references to git
+- feat(do\_publish): default askBeforePublishing=false in multi-publish for non-interactive runs
+- gg\_multi: changed references to git
+- gg\_multi: changed references to git
 
 ### Fixed
 
-- feat: language-aware add/publish via gg_lang (NpmRegistryChecker + RegistryWaiter, manifest-name resolution for scoped packages); exclude fixture sub-packages from analysis and load them via relative imports
+- feat: language-aware add/publish via gg\_lang (NpmRegistryChecker + RegistryWaiter, manifest-name resolution for scoped packages); exclude fixture sub-packages from analysis and load them via relative imports
 - fix(do review): surface the exact failing step and underlying cause instead of only 'Failed to review in: <repo>' — errors now always log through the real output (not the quiet task log) and the thrown exception names the step (merge/can-review/localize/refresh/commit/push) plus the cause
-- fix(filesystem_utils): skip node_modules during recursive copy to preserve pnpm symlink graph in TS ticket repos
+- fix(filesystem\_utils): skip node\_modules during recursive copy to preserve pnpm symlink graph in TS ticket repos
 
 ## [4.5.2] - 2026-05-31
 
 ### Changed
 
-- can review fuehrt vor dem Uncommitted-Check dart pub get --offline aus (analog gg_one can commit, mit Status-Printer)
+- can review fuehrt vor dem Uncommitted-Check dart pub get --offline aus (analog gg\_one can commit, mit Status-Printer)
 
 ## [4.5.1] - 2026-05-31
 
@@ -245,13 +247,13 @@
 
 ### Changed
 
-- gg_multi: changed references to git
+- gg\_multi: changed references to git
 
 ## [4.3.1] - 2026-05-19
 
 ### Changed
 
-- gg_multi: changed references to git
+- gg\_multi: changed references to git
 
 ## [4.3.0] - 2026-05-17
 
@@ -266,25 +268,25 @@
 
 ### Changed
 
-- gg_multi: changed references to git
+- gg\_multi: changed references to git
 
 ## [4.0.1] - 2026-05-11
 
 ### Changed
 
-- gg_multi: changed references to git
+- gg\_multi: changed references to git
 - Gg Multi: changed references to pub.dev
 - **BREAKING**: Renamed package from `kidney_core` to `gg_multi`.
-  Repository moved to https://github.com/ggsuite/gg\_multi. Update
-  `dependencies:` entries and `import 'package:kidney_core/...'`
-  statements to `import 'package:gg_multi/...'`. The executable is now
-  `gg_multi` (previously `kidney_core`).
+Repository moved to https://github.com/ggsuite/gg\_multi. Update
+`dependencies:` entries and `import 'package:kidney_core/...'`
+statements to `import 'package:gg_multi/...'`. The executable is now
+`gg_multi` (previously `kidney_core`).
 - **BREAKING**: Replaced dependency `gg ^7.0.5` with `gg_one ^8.0.0`
-  (the `gg` package itself was renamed to `gg_one` upstream).
+(the `gg` package itself was renamed to `gg_one` upstream).
 - Renamed status marker file `.kidney_status` to `.gg_multi_status`.
-  Existing checked-out workspaces must rename the file or run the
-  localization commands again.
-- Upgrade gg_localize_refs version
+Existing checked-out workspaces must rename the file or run the
+localization commands again.
+- Upgrade gg\_localize\_refs version
 
 ### Removed
 
@@ -308,8 +310,8 @@
 
 ### Changed
 
-- check in kidney_core can review, dass kein repo im main branch ist
-- Execute dart pub get after changing of pubspec.yaml in kidney_core do publish
+- check in kidney\_core can review, dass kein repo im main branch ist
+- Execute dart pub get after changing of pubspec.yaml in kidney\_core do publish
 
 ## [3.0.1] - 2026-04-24
 
@@ -401,7 +403,7 @@
 
 - Run git and dart commands in shell for add command and tests
 - Kidney: changed references to pub.dev
-- Upgrade gg_localize_refs version
+- Upgrade gg\_localize\_refs version
 - Run git commands always in shell
 
 ### Removed
@@ -440,7 +442,7 @@
 
 ### Removed
 
-- Move add, remove, code, create, init, add_deps to do/ directory and update imports
+- Move add, remove, code, create, init, add\_deps to do/ directory and update imports
 
 ## [1.0.0] - 2026-03-24
 
@@ -456,7 +458,7 @@
 - Add tests for create ticket
 - Add function defaultKidneyWorkspacePath
 - Add force flag correctly to AddCommand
-- Add command kidney_core list tickets
+- Add command kidney\_core list tickets
 - add support in add command for multiple repos
 - Add constants.dart and change master folder to .master
 - Add tests for creation of .organizations
@@ -469,7 +471,7 @@
 - add tests for kidney add
 - add tests for do publish
 - Add VS Code workspace file generation to kidney add command
-- Add test for kidney_core can review command failure handling
+- Add test for kidney\_core can review command failure handling
 - add tests for quiet taskLog behavior when verbose is false
 
 ### Changed
@@ -485,23 +487,23 @@
 - code command does not require argument if executed in ticket directory
 - change to relative path outputs in log
 - suggest cd command to user when new ticket created
-- change parameter projectName to project_name in .organizations json file
+- change parameter projectName to project\_name in .organizations json file
 - extractOrganizationFromUrl works with azure dev ops urls
 - extract repo name of azure dev ops urls correctly
-- Write kidney_status file
+- Write kidney\_status file
 - Abort directly if a command fails in do review
 - Execute gg do commit after localizing in kidney add
 - Pass gitRef param to \_localizeRefs.get in DoReviewCommand and tests
 - open ticket as VSCode workspace file instead of individual repos
-- Switch gg_localize_refs dependency to use GitHub repo
+- Switch gg\_localize\_refs dependency to use GitHub repo
 - Update integration test and add sample folder metadata files
 - Update .gg.json with new canCommit success hash value
-- Refactor install_git_hooks to simplify error handling logic
+- Refactor install\_git\_hooks to simplify error handling logic
 - Enforce pre-push commit checks only on main/master branches
 - log git and pub commands with darkGray instead of green
 - Refactor Node to use manifest field instead of pubspec in tests
-- Switch gg_localize_refs dependency from path to git URL
-- Update gg_publish to version 3.2.0 in pubspec.yaml
+- Switch gg\_localize\_refs dependency from path to git URL
+- Update gg\_publish to version 3.2.0 in pubspec.yaml
 - Update gg and related deps to latest pub versions in pubspec.yaml
 - Update version and repository URL in pubspec.yaml
 - Update canCheckout hash in .gg.json to match other actions
@@ -514,6 +516,7 @@
 - Remove prints
 - Remove gh pr create from review
 
+[5.10.1]: https://github.com/ggsuite/gg_multi/compare/5.10.0...5.10.1
 [5.10.0]: https://github.com/ggsuite/gg_multi/compare/5.9.0...5.10.0
 [5.9.0]: https://github.com/ggsuite/gg_multi/compare/5.8.0...5.9.0
 [5.8.0]: https://github.com/ggsuite/gg_multi/compare/5.7.1...5.8.0
