@@ -23,8 +23,7 @@ void main() {
         runInShell: true,
       );
 
-      // The line ending depends on the environment (carriage-return handling
-      // is terminal-dependent), so only the message itself is asserted.
+      // Match independent of the platform's line ending.
       final expectedMessages = [
         'Missing target parameter.',
       ];

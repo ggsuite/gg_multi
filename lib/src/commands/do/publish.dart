@@ -1083,26 +1083,21 @@ class DoPublishCommand extends DirCommand<void> {
         continue;
       }
 
-      final registryName =
-          state.projectType == gg.ProjectType.typescript ? 'npm' : 'pub.dev';
-      await GgStatusPrinter<void>(
-        message: 'Waiting for ${state.packageName} '
-            '^${state.version} to appear on $registryName',
-        ggLog: ggLog,
-      ).run(
-        () async => state.projectType == gg.ProjectType.typescript
-            ? _npmChecker.waitUntilVersionAvailable(
-                packageName: state.packageName,
-                version: state.version,
-                ggLog: ggLog,
-                workingDirectory: state.repoDirPath,
-              )
-            : _pubDevChecker.waitUntilVersionAvailable(
-                packageName: state.packageName,
-                version: state.version,
-                ggLog: ggLog,
-              ),
-      );
+      // The checkers announce the wait themselves (incl. the registry's
+      // status page url), report progress while polling and fail with a
+      // bounded timeout instead of hanging.
+      await (state.projectType == gg.ProjectType.typescript
+          ? _npmChecker.waitUntilVersionAvailable(
+              packageName: state.packageName,
+              version: state.version,
+              ggLog: ggLog,
+              workingDirectory: state.repoDirPath,
+            )
+          : _pubDevChecker.waitUntilVersionAvailable(
+              packageName: state.packageName,
+              version: state.version,
+              ggLog: ggLog,
+            ));
 
       confirmedPubDevVersions.add(cacheKey);
     }
