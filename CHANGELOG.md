@@ -11,6 +11,7 @@
 ### Fixed
 
 - bin test no longer expects a Windows line ending in the "Missing target parameter." message
+- Fix hanging publishing process
 
 ## [5.10.0] - 2026-07-22
 
