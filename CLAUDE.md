@@ -65,6 +65,7 @@ The tool manages two levels of workspace:
 | `list_backend.dart` | Lists repos/orgs/deps with metadata |
 | `add_repository_helper.dart` | Logic for adding repos to a workspace. Accepts a repo URL/`owner/repo`/name, or an **org** URL (`github.com/<org>` or the browser form `github.com/orgs/<org>`) to clone every repo of that org. |
 | `pub_dev_checker.dart` | Checks published versions on pub.dev |
+| `legacy_git_hooks.dart` | Deletes the obsolete `gg`-generated `pre-push` hook (and its `.gg/verify_push.dart`) from a repo. `gg` no longer installs hooks — see *No git hooks* below. |
 | `constants.dart` | Directory name constants (`.master`, `tickets`) |
 
 ### `do claude` Command
@@ -80,9 +81,15 @@ The tool manages two levels of workspace:
 
 `do add` writes a pretty-printed `.gg/.ticket.json` into **every** repo of a ticket (overwriting on each `add` so it stays current). It holds `issue_id`, `description` and the full list of repos with their git URLs, and is whitelisted in each repo's `.gitignore` (`!.gg/.ticket.json`) so it travels with the feature branch. `gg_one do merge` removes it again before merging so it never reaches `main`. Logic lives in `lib/src/backend/ticket_json.dart`.
 
+### No git hooks
+
+`gg` does **not** install git hooks. An earlier version made `do add` write a `pre-push` hook that ran `dart run .gg/verify_push.dart` and refused a push to `main`/`master` unless `gg did commit` reported a clean tree. Pushing to `main` is blocked by the remote and every change lands through a pull request, so the hook only duplicated a rule the server already enforces.
+
+Because the hook lives in the untracked `.git/hooks/`, it survives in every checkout that ever ran an older `do add`. `removeLegacyGitHooks` (in `lib/src/backend/legacy_git_hooks.dart`) therefore deletes it — plus the `.gg/verify_push.dart` it invoked — from every ticket repo on each `do add`. A `pre-push` hook that does *not* reference `.gg/verify_push.dart` is the user's own and is left alone. Both files are untracked (`.git/hooks` is never tracked, `.gg/verify_push.dart` falls under the `.gg/*` gitignore rule), so the cleanup never dirties the working tree and needs no commit.
+
 ### `do checkout` Command
 
-`DoCheckoutCommand` (in `lib/src/commands/do/checkout.dart`) reproduces a whole ticket from a single `.gg/.ticket.json` marker (e.g. one another person created) — its repositories on their feature branch, not a byte-identical clone of a fresh `do add` (no git-hook/`.gitattributes` reinstall). `gg do checkout <X>` resolves `<X>` in three modes:
+`DoCheckoutCommand` (in `lib/src/commands/do/checkout.dart`) reproduces a whole ticket from a single `.gg/.ticket.json` marker (e.g. one another person created) — its repositories on their feature branch, not a byte-identical clone of a fresh `do add` (no `.gitattributes` reinstall). `gg do checkout <X>` resolves `<X>` in three modes:
 
 1. **Inside a `.master` repo** → `<X>` is the ticket name, read from that repo's `origin/<X>` branch.
 2. **`<X>` is a known `.master` repo** → fetch it and pick a ticket branch interactively.
