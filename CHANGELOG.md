@@ -1,5 +1,20 @@
 # Changelog
 
+## \[5.10.1\] - 2026-07-29
+
+### Changed
+
+- do publish: the wait for published dependencies now announces the registry status url, reports progress while polling (via gg\_lang's RegistryWaiter logging) and no longer hangs — every registry lookup is bounded by a request timeout; the overall timeout was raised to 15 min (pub.dev, which itself can take up to \~10 min) / 5 min (npm)
+- do publish: registry waits show status url and progress, never hang
+- Raise pub.dev wait timeout to 15 min (pub.dev can take \~10 min)
+
+### Fixed
+
+- bin test no longer expects a Windows line ending in the "Missing target parameter." message
+- Fix hanging publishing process
+
+## [5.10.1] - 2026-07-29
+
 ## [5.10.0] - 2026-07-22
 
 ### Changed
@@ -501,6 +516,7 @@ localization commands again.
 - Remove prints
 - Remove gh pr create from review
 
+[5.10.1]: https://github.com/ggsuite/gg_multi/compare/5.10.0...5.10.1
 [5.10.0]: https://github.com/ggsuite/gg_multi/compare/5.9.0...5.10.0
 [5.9.0]: https://github.com/ggsuite/gg_multi/compare/5.8.0...5.9.0
 [5.8.0]: https://github.com/ggsuite/gg_multi/compare/5.7.1...5.8.0

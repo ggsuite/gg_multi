@@ -22,7 +22,7 @@ class NpmRegistryChecker {
     LanguageCatalog? catalog,
     Future<void> Function(Duration duration)? delay,
     this.pollInterval = const Duration(seconds: 5),
-    this.timeout = const Duration(minutes: 2),
+    this.timeout = const Duration(minutes: 5),
   })  : _waiter = waiter,
         _catalog = catalog,
         _delay = delay;
@@ -64,14 +64,15 @@ class NpmRegistryChecker {
     );
   }
 
-  /// Waits until [version] of [packageName] is visible on npm.
+  /// Waits until [version] of [packageName] is visible on npm. Progress
+  /// (including the npm status page url) is reported through [ggLog].
   Future<void> waitUntilVersionAvailable({
     required String packageName,
     required String version,
     required void Function(String message) ggLog,
     String? workingDirectory,
   }) async {
-    final waiter = await _resolveWaiter(workingDirectory);
+    final waiter = await _resolveWaiter(workingDirectory, log: ggLog);
     await waiter.waitUntilVersionAvailable(
       packageName: packageName,
       version: version,
@@ -79,20 +80,26 @@ class NpmRegistryChecker {
   }
 
   // ...........................................................................
-  Future<RegistryWaiter> _resolveWaiter(String? workingDirectory) async {
+  Future<RegistryWaiter> _resolveWaiter(
+    String? workingDirectory, {
+    void Function(String message)? log,
+  }) async {
     if (_waiter != null) {
       return _waiter;
     }
     // coverage:ignore-start
     final catalog = _catalog ?? await LanguageCatalog.load();
+    final spec = catalog.spec(ProjectType.typescript);
     final registry = const RegistryFactory().forProjectType(
       ProjectType.typescript,
-      spec: catalog.spec(ProjectType.typescript),
+      spec: spec,
       workingDirectory: workingDirectory,
     );
     return RegistryWaiter(
       registry: registry,
       registryName: 'npm',
+      statusUrl: spec.registry?.statusUrl,
+      log: log,
       delay: _delay,
       pollInterval: pollInterval,
       timeout: timeout,
