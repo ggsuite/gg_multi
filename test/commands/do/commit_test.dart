@@ -26,6 +26,8 @@ void main() {
   late Directory ticketsDir;
   late Directory ticketDir;
   final messages = <String>[];
+  final committedMessages = <String?>[];
+  final capturedInitials = <String>[];
 
   setUpAll(() {
     registerFallbackValue(FakeDirectory());
@@ -33,8 +35,35 @@ void main() {
 
   void ggLog(String msg) => messages.add(rmConsoleColors(msg));
 
+  /// A [gg.DoCommit] stub recording the message it was called with.
+  MockGgDoCommit recordingDoCommit() {
+    final mock = MockGgDoCommit();
+    when(
+      () => mock.exec(
+        directory: any(named: 'directory'),
+        ggLog: any(named: 'ggLog'),
+        message: any(named: 'message'),
+        logType: any(named: 'logType'),
+        updateChangeLog: any(named: 'updateChangeLog'),
+        force: any(named: 'force'),
+      ),
+    ).thenAnswer((invocation) async {
+      committedMessages.add(invocation.namedArguments[#message] as String?);
+    });
+    return mock;
+  }
+
+  /// An [EditMessage] stub recording what it was shown and returning [result]
+  /// (the unchanged initial message when [result] is null).
+  EditMessage editMessage([String? result]) => (initial) async {
+        capturedInitials.add(initial);
+        return result ?? initial;
+      };
+
   setUp(() {
     messages.clear();
+    committedMessages.clear();
+    capturedInitials.clear();
     tempDir = Directory.systemTemp.createTempSync('do_commit_ticket_test_');
     ticketsDir = Directory(path.join(tempDir.path, 'tickets'))..createSync();
     ticketDir = Directory(path.join(ticketsDir.path, 'TICKC'))..createSync();
@@ -185,6 +214,117 @@ void main() {
       );
       expect(messages, contains('❌ Commit failed in:'));
       expect(messages.any((m) => m.contains(' - B')), isTrue);
+    });
+  });
+
+  group('commit message default from .ticket', () {
+    /// Runs `do commit` on [ticketDir], optionally with `-m` [message].
+    Future<void> run({String? message, EditMessage? edit}) async {
+      final runner = CommandRunner<void>('test', 'do commit ticket')
+        ..addCommand(
+          DoCommitCommand(
+            ggLog: ggLog,
+            ggDoCommit: recordingDoCommit(),
+            editMessage: edit ?? editMessage(),
+          ),
+        );
+      await runner.run([
+        'commit',
+        '--input',
+        ticketDir.path,
+        if (message != null) ...['--message', message],
+      ]);
+    }
+
+    test('reuses the ticket description when no message is given', () async {
+      File(path.join(ticketDir.path, '.ticket'))
+          .writeAsStringSync('{"description": "Ticket desc"}');
+
+      await run();
+
+      // The description pre-filled the editor and reached every repo.
+      expect(capturedInitials, ['Ticket desc']);
+      expect(committedMessages, ['Ticket desc', 'Ticket desc']);
+    });
+
+    test('commits the edited message', () async {
+      File(path.join(ticketDir.path, '.ticket'))
+          .writeAsStringSync('{"description": "Ticket desc"}');
+
+      await run(edit: editMessage('Edited message'));
+
+      expect(committedMessages, ['Edited message', 'Edited message']);
+    });
+
+    test('falls back to the description when the edit is cleared', () async {
+      File(path.join(ticketDir.path, '.ticket'))
+          .writeAsStringSync('{"description": "Ticket desc"}');
+
+      await run(edit: editMessage('   '));
+
+      expect(committedMessages, ['Ticket desc', 'Ticket desc']);
+    });
+
+    test('does not offer an edit when -m is given', () async {
+      File(path.join(ticketDir.path, '.ticket'))
+          .writeAsStringSync('{"description": "Ticket desc"}');
+
+      await run(message: '  Explicit message  ');
+
+      expect(capturedInitials, isEmpty);
+      expect(committedMessages, ['Explicit message', 'Explicit message']);
+    });
+
+    test('offers an empty edit when there is no .ticket description', () async {
+      await run();
+
+      expect(capturedInitials, ['']);
+      // Neither -m nor a description nor an edit: gg do commit decides, and
+      // only complains about repos that actually have something to commit.
+      expect(committedMessages, [null, null]);
+    });
+
+    test('passes no message when the edit stays empty', () async {
+      await run(edit: editMessage('  '));
+
+      expect(committedMessages, [null, null]);
+    });
+
+    test('does not offer an edit when the ticket has no repos', () async {
+      final emptyTicket = Directory(path.join(ticketsDir.path, 'EMPTY'))
+        ..createSync();
+      File(path.join(emptyTicket.path, '.ticket'))
+          .writeAsStringSync('{"description": "Ticket desc"}');
+
+      final runner = CommandRunner<void>('test', 'do commit ticket')
+        ..addCommand(
+          DoCommitCommand(
+            ggLog: ggLog,
+            ggDoCommit: recordingDoCommit(),
+            editMessage: editMessage(),
+          ),
+        );
+      await runner.run(['commit', '--input', emptyTicket.path]);
+
+      expect(messages, contains('⚠️ No repos in this ticket'));
+      expect(capturedInitials, isEmpty);
+    });
+
+    test('exec forwards the message without offering an edit', () async {
+      final command = DoCommitCommand(
+        ggLog: ggLog,
+        ggDoCommit: recordingDoCommit(),
+        editMessage: editMessage(),
+      );
+
+      await command.exec(
+        directory: ticketDir,
+        ggLog: ggLog,
+        message: 'From code',
+      );
+
+      expect(capturedInitials, isEmpty);
+      expect(committedMessages, ['From code', 'From code']);
     });
   });
 }

@@ -319,6 +319,16 @@ Was passiert dabei grob?
 
 So kannst du mit einem Befehl alle relevanten Repositories eines Tickets konsistent mit der gleichen commit-Message committen, statt in jedem Repo einzeln `gg do commit` auszuführen.
 
+Lässt du `-m` weg, verwendet Gg Multi die Ticket-Beschreibung aus der `.ticket`-Datei als Commit-Message und bietet sie – genau wie beim Publish die Merge-Message – zum Bearbeiten an:
+
+```bash
+cd tickets/PROJ-123
+gg_multi do commit
+# Edit commit message (Kurzbeschreibung des Tickets) ›
+```
+
+Die bearbeitete Message gilt dann für alle Repositories des Tickets. Löschst du sie komplett, wird wieder die Ticket-Beschreibung verwendet. Für nicht-interaktive Läufe (CI, Skripte) gibst du die Message weiterhin mit `-m` an – dann erscheint kein Editor.
+
 ### 9.3 Prüfen und ausführen von Pushes: `gg_multi can push` und `gg_multi do push`
 
 Analog zu `can/do commit` gibt es im Ticketkontext auch `can push` und `do push`:

@@ -12,9 +12,15 @@ import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:interact/interact.dart';
 import 'package:path/path.dart' as path;
 
+import '../../backend/message_editor_theme.dart';
+import '../../backend/ticket_json.dart';
 import '../../backend/workspace_utils.dart';
+
+/// Typedef for editing the commit message interactively.
+typedef EditMessage = Future<String?> Function(String initialMessage);
 
 /// Command to commit changes across all repositories in the current ticket.
 class DoCommitCommand extends DirCommand<void> {
@@ -27,9 +33,11 @@ class DoCommitCommand extends DirCommand<void> {
     gg.CanCommit? ggCanCommit,
     gg.DoCommit? ggDoCommit,
     SortedProcessingList? sortedProcessingList,
+    EditMessage? editMessage,
   })  : _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
         _sortedProcessingList =
-            sortedProcessingList ?? SortedProcessingList(ggLog: ggLog) {
+            sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
+        _editMessage = editMessage ?? _defaultEditMessage {
     _addArgs();
   }
 
@@ -40,6 +48,9 @@ class DoCommitCommand extends DirCommand<void> {
 
   /// Sorted processing of repositories within a ticket
   final SortedProcessingList _sortedProcessingList;
+
+  /// Opens an interactive editor for the commit message.
+  final EditMessage _editMessage;
 
   @override
   Future<void> exec({
@@ -89,6 +100,11 @@ class DoCommitCommand extends DirCommand<void> {
       return;
     }
 
+    // Without an explicit -m the ticket description becomes the commit
+    // message — offered in the same editor `do publish` uses for its merge
+    // messages, so it can be adjusted before it is applied to every repo.
+    message = await _resolveMessage(message: message, ticketDir: ticketDir);
+
     // Iterate over each repository and perform the commit
     final failedRepos = <String>[];
     for (final node in nodes) {
@@ -122,6 +138,53 @@ class DoCommitCommand extends DirCommand<void> {
     }
   }
 
+  /// Returns the commit message used for every repository of the ticket.
+  ///
+  /// An explicit [message] (`-m`) is taken as-is. Without one the ticket
+  /// description seeds the interactive message editor — the same prompt
+  /// `do publish` offers for merge messages — and the edited text wins;
+  /// clearing it falls back to the description.
+  ///
+  /// Returns `null` when nothing could be resolved (no `-m`, no description
+  /// and an empty edit). `gg do commit` then reports the missing message
+  /// itself, but only for repos that actually have something to commit — so a
+  /// ticket that is already committed still passes without a message.
+  Future<String?> _resolveMessage({
+    required String? message,
+    required Directory ticketDir,
+  }) async {
+    final explicit = message?.trim();
+    if (explicit != null && explicit.isNotEmpty) {
+      return explicit;
+    }
+
+    final description = readTicketDescription(ticketDir) ?? '';
+    final edited = (await _editMessage(description) ?? '').trim();
+    final resolved = edited.isEmpty ? description : edited;
+    return resolved.isEmpty ? null : resolved;
+  }
+
+  /// Opens the default editor with [initialMessage] and returns the result.
+  // coverage:ignore-start
+  static Future<String?> _defaultEditMessage(String initialMessage) async {
+    gg.throwWhenNotATerminal(
+      'the commit message prompt',
+      'pass -m <message>',
+    );
+    // Only initialText, no defaultValue: the message is already in the
+    // editable buffer, so the "(…)" hint would just repeat it.
+    try {
+      return Input.withTheme(
+        theme: messageEditorTheme,
+        prompt: 'Edit commit message',
+        initialText: initialMessage,
+      ).interact();
+    } finally {
+      stdout.write(colorOff);
+    }
+  }
+  // coverage:ignore-end
+
   // Adds command line arguments
   void _addArgs() {
     argParser.addFlag(
@@ -135,7 +198,8 @@ class DoCommitCommand extends DirCommand<void> {
     argParser.addOption(
       'message',
       abbr: 'm',
-      help: 'The commit message and log entry.',
+      help: 'The commit message and log entry. Without it, the ticket '
+          'description is offered for editing and used instead.',
     );
   }
 }

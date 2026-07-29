@@ -104,7 +104,7 @@ when a repo is in a bad state.
 
 | Command                              | Purpose                                                                              |
 | ------------------------------------ | ------------------------------------------------------------------------------------ |
-| `gg_multi do commit -m <message>`    | commit every ticket repo with the same message                                       |
+| `gg_multi do commit [-m <message>]`  | commit every ticket repo with the same message (defaults to the ticket description)  |
 | `gg_multi do push [--force]`         | push every ticket repo                                                               |
 | `gg_multi do review`                 | unlocalise → localise as Git refs → `pub upgrade` → commit → push, for every repo    |
 | `gg_multi do cancel-review`          | revert a review and return to local working mode                                     |
@@ -197,6 +197,15 @@ gg_multi do commit -m 'Simplify login flow'
 `can commit` runs the per-repo check pipeline in dependency order and
 aborts on the first failure; `do commit` then commits each repo with
 the same message.
+
+Without `-m`, `do commit` reuses the ticket description from the
+`.ticket` file and opens it in the same editor `do publish` uses for its
+merge messages — so you can adjust it before it is applied to every repo:
+
+```bash
+gg_multi do commit
+# Edit commit message (Simplify login flow) ›
+```
 
 ### 6. Push
 
