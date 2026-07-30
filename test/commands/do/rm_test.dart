@@ -397,6 +397,73 @@ void main() {
       });
     });
 
+    group('organization folders', () {
+      // Creates `<workspace>/<org>/<repo>` as a package folder.
+      Directory makeOrgRepo(Directory workspace, String org, String repo) {
+        final dir = Directory(path.join(workspace.path, org, repo))
+          ..createSync(recursive: true);
+        File(path.join(dir.path, 'pubspec.yaml'))
+            .writeAsStringSync('name: $repo\nversion: 1.0.0\n');
+        return dir;
+      }
+
+      test('deletes a repo from its org folder in master', () async {
+        final repo = makeOrgRepo(masterWs, 'ggsuite', 'project');
+
+        await runnerAt(tempDir.path).run(['rm', 'project']);
+
+        expect(repo.existsSync(), isFalse);
+        // The organization folder is gone with its last repo.
+        expect(
+          Directory(path.join(masterWs.path, 'ggsuite')).existsSync(),
+          isFalse,
+        );
+      });
+
+      test('keeps the org folder while it holds other repos', () async {
+        final repo = makeOrgRepo(masterWs, 'ggsuite', 'project');
+        makeOrgRepo(masterWs, 'ggsuite', 'other');
+
+        await runnerAt(tempDir.path).run(['rm', 'project']);
+
+        expect(repo.existsSync(), isFalse);
+        expect(
+          Directory(path.join(masterWs.path, 'ggsuite')).existsSync(),
+          isTrue,
+        );
+      });
+
+      test('finds a ticket that holds the repo in an org folder', () async {
+        final masterRepo = makeOrgRepo(masterWs, 'ggsuite', 'shared');
+        final alphaDir = Directory(path.join(ticketsRoot.path, 'alpha'))
+          ..createSync();
+        makeOrgRepo(alphaDir, 'ggsuite', 'shared');
+
+        await runnerAt(tempDir.path).run(['rm', 'shared']);
+
+        expect(masterRepo.existsSync(), isTrue);
+        expect(messages, contains(' - alpha'));
+      });
+
+      test('deletes a repo from its org folder in a ticket', () async {
+        final alphaDir = Directory(path.join(ticketsRoot.path, 'alpha'))
+          ..createSync();
+        final repo = makeOrgRepo(alphaDir, 'ggsuite', 'foo');
+
+        await runnerAt(alphaDir.path).run(['rm', 'foo']);
+
+        expect(repo.existsSync(), isFalse);
+        expect(
+          Directory(path.join(alphaDir.path, 'ggsuite')).existsSync(),
+          isFalse,
+        );
+        expect(
+          messages,
+          contains('Deleted repository foo from ticket alpha.'),
+        );
+      });
+    });
+
     test('throws UsageException when missing target argument', () async {
       expect(
         () => runnerAt(tempDir.path).run(['rm']),

@@ -238,5 +238,226 @@ void main() {
         expect(RepoFolderResolver.urlIdentity('gg_foo'), isNull);
       });
     });
+
+    group('organization folders', () {
+      // Creates `<workspace>/<org>/<repo>` with a git remote of that org.
+      Directory makeOrgRepo(String org, String repo, {String? pubspecName}) =>
+          makeRepo(
+            path.join(org, repo),
+            pubspecName: pubspecName,
+            remoteUrl: 'https://github.com/$org/$repo.git',
+          );
+
+      group('repoDirs', () {
+        test('lists the repos of every organization folder', () {
+          final a = makeOrgRepo('ggsuite', 'gg_foo', pubspecName: 'gg_foo');
+          final b = makeOrgRepo('tssuite', 'ts_foo', pubspecName: 'ts_foo');
+
+          expect(
+            RepoFolderResolver.repoDirs(workspace.path).map((d) => d.path),
+            <String>[a.path, b.path],
+          );
+        });
+
+        test('lists repos that still sit directly in the workspace', () {
+          final flat = makeRepo('gg_flat', pubspecName: 'gg_flat');
+          final nested = makeOrgRepo('ggsuite', 'gg_foo');
+
+          expect(
+            RepoFolderResolver.repoDirs(workspace.path).map((d) => d.path),
+            unorderedEquals(<String>[flat.path, nested.path]),
+          );
+        });
+
+        test('does not descend into a repository', () {
+          // A package inside a repo (`example/`) is no workspace repo.
+          final repo = makeRepo('gg_foo', pubspecName: 'gg_foo');
+          makeRepo(path.join('gg_foo', 'example'), pubspecName: 'gg_foo_ex');
+
+          expect(
+            RepoFolderResolver.repoDirs(workspace.path).map((d) => d.path),
+            <String>[repo.path],
+          );
+        });
+
+        test('skips hidden folders', () {
+          makeRepo(path.join('.gg', 'cached'), pubspecName: 'cached');
+          expect(RepoFolderResolver.repoDirs(workspace.path), isEmpty);
+        });
+
+        test('returns an empty list when the workspace does not exist', () {
+          expect(
+            RepoFolderResolver.repoDirs(path.join(workspace.path, 'nope')),
+            isEmpty,
+          );
+        });
+      });
+
+      group('resolve', () {
+        test('finds a repo inside its organization folder', () {
+          final dir = makeOrgRepo('ggsuite', 'gg_foo', pubspecName: 'gg_foo');
+          expect(
+            RepoFolderResolver.resolve(
+              workspacePath: workspace.path,
+              repoName: 'gg_foo',
+            )?.path,
+            dir.path,
+          );
+        });
+
+        test('finds a repo by its package name inside an org folder', () {
+          final dir = makeOrgRepo(
+            'ggsuite',
+            'ggsuite_gg_foo',
+            pubspecName: 'gg_foo',
+          );
+          expect(
+            RepoFolderResolver.resolve(
+              workspacePath: workspace.path,
+              repoName: 'gg_foo',
+            )?.path,
+            dir.path,
+          );
+        });
+
+        test('never returns an organization folder', () {
+          // An organization whose name is also a repo name of another org.
+          makeOrgRepo('ggsuite', 'gg_foo');
+          final repo = makeOrgRepo('other', 'ggsuite');
+          expect(
+            RepoFolderResolver.resolve(
+              workspacePath: workspace.path,
+              repoName: 'ggsuite',
+            )?.path,
+            repo.path,
+          );
+        });
+      });
+
+      test('resolveByRemoteUrl finds a repo inside an org folder', () {
+        final dir = makeOrgRepo('ggsuite', 'gg_foo');
+        expect(
+          RepoFolderResolver.resolveByRemoteUrl(
+            workspacePath: workspace.path,
+            repoUrl: 'git@github.com:ggsuite/gg_foo.git',
+          )?.path,
+          dir.path,
+        );
+      });
+
+      group('destination', () {
+        test('puts a repo into the folder of its organization', () {
+          expect(
+            RepoFolderResolver.destination(
+              workspacePath: workspace.path,
+              repoUrl: 'https://github.com/ggsuite/gg_foo.git',
+              repoName: 'gg_foo',
+            ),
+            path.join(workspace.path, 'ggsuite', 'gg_foo'),
+          );
+        });
+
+        test('reads the organization from an Azure url', () {
+          expect(
+            RepoFolderResolver.destination(
+              workspacePath: workspace.path,
+              repoUrl: 'git@ssh.dev.azure.com:v3/myorg/myproj/repo.git',
+              repoName: 'repo',
+            ),
+            path.join(workspace.path, 'myorg', 'repo'),
+          );
+        });
+
+        test('keeps a repo flat when the url names no organization', () {
+          // A single path segment is the repository, not an organization.
+          expect(
+            RepoFolderResolver.destination(
+              workspacePath: workspace.path,
+              repoUrl: 'https://host/gg_foo.git',
+              repoName: 'gg_foo',
+            ),
+            path.join(workspace.path, 'gg_foo'),
+          );
+        });
+      });
+
+      group('removeEmptyOrgFolder', () {
+        test('deletes the organization folder when it became empty', () {
+          final repo = makeOrgRepo('ggsuite', 'gg_foo');
+          repo.deleteSync(recursive: true);
+
+          RepoFolderResolver.removeEmptyOrgFolder(
+            workspacePath: workspace.path,
+            repoDir: repo,
+          );
+
+          expect(
+            Directory(path.join(workspace.path, 'ggsuite')).existsSync(),
+            isFalse,
+          );
+        });
+
+        test('keeps the organization folder while it holds repos', () {
+          final repo = makeOrgRepo('ggsuite', 'gg_foo');
+          makeOrgRepo('ggsuite', 'gg_bar');
+          repo.deleteSync(recursive: true);
+
+          RepoFolderResolver.removeEmptyOrgFolder(
+            workspacePath: workspace.path,
+            repoDir: repo,
+          );
+
+          expect(
+            Directory(path.join(workspace.path, 'ggsuite')).existsSync(),
+            isTrue,
+          );
+        });
+
+        test('does nothing for a repo directly in the workspace', () {
+          final repo = makeRepo('gg_foo', pubspecName: 'gg_foo');
+          repo.deleteSync(recursive: true);
+
+          RepoFolderResolver.removeEmptyOrgFolder(
+            workspacePath: workspace.path,
+            repoDir: repo,
+          );
+
+          expect(workspace.existsSync(), isTrue);
+        });
+
+        test('does nothing when the organization folder is gone', () {
+          final repo = makeOrgRepo('ggsuite', 'gg_foo');
+          Directory(path.join(workspace.path, 'ggsuite'))
+              .deleteSync(recursive: true);
+
+          RepoFolderResolver.removeEmptyOrgFolder(
+            workspacePath: workspace.path,
+            repoDir: repo,
+          );
+
+          expect(workspace.existsSync(), isTrue);
+        });
+      });
+
+      test('relativePath is the location within the workspace', () {
+        final nested = makeOrgRepo('ggsuite', 'gg_foo');
+        final flat = makeRepo('gg_flat', pubspecName: 'gg_flat');
+
+        expect(
+          RepoFolderResolver.relativePath(
+            workspacePath: workspace.path,
+            repoDir: nested,
+          ),
+          path.join('ggsuite', 'gg_foo'),
+        );
+        expect(
+          RepoFolderResolver.relativePath(
+            workspacePath: workspace.path,
+            repoDir: flat,
+          ),
+          'gg_flat',
+        );
+      });
+    });
   });
 }

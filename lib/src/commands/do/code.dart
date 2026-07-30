@@ -12,6 +12,7 @@ import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 import '../../backend/constants.dart';
+import '../../backend/repo_folder_resolver.dart';
 import '../../backend/workspace_utils.dart';
 import '../../backend/vscode_launcher.dart';
 import 'package:path/path.dart' as p;
@@ -100,7 +101,13 @@ class CodeCommand extends Command<void> {
     }
 
     if (repoName != null) {
-      final repoDir = Directory(path.join(ticketDir.path, repoName));
+      // The repo is looked up in the whole ticket, so `<ticket>/<repo>` finds
+      // it inside its organization folder too.
+      final repoDir = RepoFolderResolver.resolve(
+            workspacePath: ticketDir.path,
+            repoName: repoName,
+          ) ??
+          Directory(path.join(ticketDir.path, repoName));
       if (!repoDir.existsSync()) {
         ggLog(
           red(

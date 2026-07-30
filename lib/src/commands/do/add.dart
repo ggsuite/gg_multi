@@ -26,6 +26,7 @@ import '../../backend/organization_utils.dart';
 import '../../backend/repo_folder_resolver.dart';
 import '../../backend/repo_setup.dart';
 import '../../backend/ticket_json.dart';
+import '../../backend/workspace_migration.dart';
 import '../../backend/workspace_utils.dart';
 import 'add_deps.dart' show fetchDependencyRepoUrl;
 import 'install_gitattributes.dart' hide ProcessRunner;
@@ -144,6 +145,16 @@ class AddCommand extends Command<dynamic> {
     final String? ticketPath = WorkspaceUtils.detectTicketPath(executionPath);
     final bool verbose = argResults!['verbose'] as bool? ?? false;
 
+    // Maintenance: a workspace created before gg grouped its repositories by
+    // organization still holds them flat. Move them first, so everything
+    // below sees a single layout.
+    migrateToOrgFolders(workspacePath: masterWorkspacePath, ggLog: ggLog);
+    if (ticketPath != null) {
+      // The ticket is re-localized at the end of this run, which repairs the
+      // relative path references the move invalidates.
+      migrateToOrgFolders(workspacePath: ticketPath, ggLog: ggLog);
+    }
+
     // If not in a ticket workspace: keep original behaviour (no graph logic).
     if (ticketPath == null) {
       await runWithLimit(
@@ -220,8 +231,7 @@ class AddCommand extends Command<dynamic> {
     }
 
     // Additional endpoints from existing ticket repositories -----------------
-    final existingTicketRepos =
-        ticketDir.listSync(recursive: false).whereType<Directory>();
+    final existingTicketRepos = RepoFolderResolver.repoDirs(ticketPath);
 
     for (final repoDir in existingTicketRepos) {
       final repoName = RepoFolderResolver.packageName(repoDir) ??
@@ -313,8 +323,7 @@ class AddCommand extends Command<dynamic> {
     final hostedLookupCache = <String, String?>{};
 
     while (true) {
-      final existingDirs =
-          masterDir.listSync(recursive: false).whereType<Directory>().toList();
+      final existingDirs = RepoFolderResolver.repoDirs(masterWorkspacePath);
 
       // Known names: folder basenames plus manifest package names, so that
       // a cross-language bridge repo (whose folder name differs from its
@@ -579,9 +588,13 @@ class AddCommand extends Command<dynamic> {
       return;
     }
 
-    // The ticket copy keeps the folder name used in the master workspace.
-    final folderName = path.basename(srcDir.path);
-    final destDir = Directory(path.join(ticketPath, folderName));
+    // The ticket copy keeps the location the repo has in the master
+    // workspace, i.e. `<ticket>/<org>/<repo>`.
+    final relativePath = RepoFolderResolver.relativePath(
+      workspacePath: masterWorkspacePath,
+      repoDir: srcDir,
+    );
+    final destDir = Directory(path.join(ticketPath, relativePath));
     if (destDir.existsSync() && destDir.listSync().isNotEmpty) {
       ggLog(darkGray('$repoName already exists in ticket workspace.'));
       return;
@@ -895,15 +908,17 @@ class AddCommand extends Command<dynamic> {
       ggLog: ggLog,
     );
 
-    final folderNames = <String>{};
+    // The entries are relative to the ticket root, so a repo inside an
+    // organization folder is listed as `<org>/<repo>`.
+    final folderPaths = <String>{
+      for (final node in nodes)
+        RepoFolderResolver.relativePath(
+          workspacePath: ticketDir.path,
+          repoDir: node.directory,
+        ),
+    };
 
-    for (final node in nodes) {
-      final repoDir = node.directory;
-      final name = path.basename(repoDir.path);
-      folderNames.add(name);
-    }
-
-    writeCodeWorkspaceFile(ticketDir, folderNames.toList());
+    writeCodeWorkspaceFile(ticketDir, folderPaths.toList());
   }
 
   /// Writes all project configuration files that depend on the set of

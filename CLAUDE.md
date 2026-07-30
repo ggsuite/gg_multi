@@ -53,6 +53,37 @@ The tool manages two levels of workspace:
 
 `WorkspaceUtils.detectTicketPath()` (in `lib/src/backend/workspace_utils.dart`) navigates up the directory tree to locate which context the CLI is running in.
 
+### Organization folders
+
+Both workspaces group their repositories by the organization of the repo's git URL:
+
+```
+<root>/.master/<org>/<repo>          e.g. .master/ggsuite/gg_multi
+<root>/tickets/<ticket>/<org>/<repo> e.g. tickets/33_org_folders/ggsuite/gg_multi
+```
+
+Without the org level, two organizations owning a repo of the same name would collide in one flat folder. The ticket mirrors the master layout, so a repo has the same relative path in both.
+
+`RepoFolderResolver` (in `lib/src/backend/repo_folder_resolver.dart`) owns the layout:
+
+| Member | Role |
+|--------|------|
+| `destination(workspacePath, repoUrl, repoName)` | Where a repo is cloned to. `organizationOf(url)` returns the org only when the URL carries **both** an org and a repo — `https://host/repo.git` has a single segment and that is the repo, so such a repo stays flat. |
+| `repoDirs(workspacePath)` | All repos of a workspace. A direct child is an *organization folder* when it is no repo itself (`isRepoDir`: `.git`, `pubspec.yaml` or `package.json`) but holds at least one — so a repo is never descended into and its inner packages (`example/`, fixtures) stay invisible. Hidden folders are skipped. |
+| `resolve(workspacePath, repoName)` | Finds a repo anywhere in the workspace: exact path, then folder name, then manifest package name. Never returns an organization folder. |
+| `relativePath(workspacePath, repoDir)` | `<org>/<repo>` — used for the ticket copy destination and the `.code-workspace` entries (written with forward slashes). |
+| `removeEmptyOrgFolder(...)` | Drops an organization folder that lost its last repo. |
+
+Repositories that still sit directly in the workspace keep working everywhere; `migrateToOrgFolders` (below) moves them.
+
+The two graph builders gg_multi delegates to know the layout as well: `Graph`/`SortedProcessingList` (gg_local_package_dependencies) descend into grouping folders, and `MultiLanguageGraph` (gg_localize_refs) resolves the workspace root one level up when the repo sits in an organization folder, so path refs across organizations are localized. Both changes are backwards compatible with a flat workspace.
+
+### Maintenance: migrating an old workspace
+
+`migrateToOrgFolders` (in `lib/src/backend/workspace_migration.dart`) recognizes a workspace created before the org folders existed — its repositories lie flat in it — and renames each into `<workspace>/<org>/<repo>`, with the org read from the repo's git remote. It returns the moved repo names, is a no-op once everything is nested, and skips (with a message) a repo whose organization is unknown or whose target folder is taken, so a half-migrated workspace never loses a repo.
+
+It runs at the start of `do add` (master **and** ticket) and of `do checkout` (master only, the ticket it builds is fresh). Moving a ticket repo invalidates the relative path refs between the ticket repos — `do add` repairs them in its closing re-localization pass, which is why the ticket is only migrated there.
+
 ### Backend Modules (`lib/src/backend/`)
 
 | Module | Role |
@@ -63,7 +94,9 @@ The tool manages two levels of workspace:
 | `ticket_json.dart` | Reads/writes/parses the per-repo `.gg/.ticket.json` ticket marker |
 | `git_platform.dart` | Git-platform abstraction. `GitHubPlatform.fetchOrgRepos` lists an org's repos via the **GitHub CLI** (`gh repo list --json name,sshUrl,url`), `AzureDevOpsPlatform` via `az repos list`. Using the CLIs reuses the caller's existing auth so **private** orgs work (an unauthenticated REST call only ever sees public repos); cloning then uses each repo's ssh url. Both require the respective CLI for org-add and emit an install hint otherwise. |
 | `list_backend.dart` | Lists repos/orgs/deps with metadata |
-| `add_repository_helper.dart` | Logic for adding repos to a workspace. Accepts a repo URL/`owner/repo`/name, or an **org** URL (`github.com/<org>` or the browser form `github.com/orgs/<org>`) to clone every repo of that org. |
+| `add_repository_helper.dart` | Logic for adding repos to a workspace. Accepts a repo URL/`owner/repo`/name, or an **org** URL (`github.com/<org>` or the browser form `github.com/orgs/<org>`) to clone every repo of that org. Clones into `<workspace>/<org>/<repo>`; an existing copy is looked up across the whole workspace, so a repo that is still flat is not cloned a second time. |
+| `repo_folder_resolver.dart` | The `<workspace>/<org>/<repo>` layout: listing, resolving, destination — see *Organization folders* below |
+| `workspace_migration.dart` | Moves the repos of an old flat workspace into their organization folders — see *Maintenance* below |
 | `pub_dev_checker.dart` | Checks published versions on pub.dev |
 | `legacy_git_hooks.dart` | Deletes the obsolete `gg`-generated `pre-push` hook (and its `.gg/verify_push.dart`) from a repo. `gg` no longer installs hooks — see *No git hooks* below. |
 | `constants.dart` | Directory name constants (`.master`, `tickets`) |
@@ -91,15 +124,15 @@ Because the hook lives in the untracked `.git/hooks/`, it survives in every chec
 
 `DoCheckoutCommand` (in `lib/src/commands/do/checkout.dart`) reproduces a whole ticket from a single `.gg/.ticket.json` marker (e.g. one another person created) — its repositories on their feature branch, not a byte-identical clone of a fresh `do add` (no `.gitattributes` reinstall). `gg do checkout <X>` resolves `<X>` in three modes:
 
-1. **Inside a `.master` repo** → `<X>` is the ticket name, read from that repo's `origin/<X>` branch.
+1. **Inside a `.master` repo** → `<X>` is the ticket name, read from that repo's `origin/<X>` branch. The repo is found one *or* two levels below the master workspace, so running inside `.master/<org>/<repo>` counts.
 2. **`<X>` is a known `.master` repo** → fetch it and pick a ticket branch interactively.
 3. **Otherwise** → `<X>` is a ticket name, searched across all `.master` repos.
 
-Once found, it recreates the ticket folder + root `.ticket`, clones any missing repos from their URLs, copies each into the ticket, checks out the existing feature branch, and installs deps.
+Once found, it recreates the ticket folder + root `.ticket`, clones any missing repos from their URLs (into `<master>/<org>/<repo>`), copies each into the matching `<ticket>/<org>/<repo>`, checks out the existing feature branch, and installs deps.
 
 ### `do rm` Command
 
-`RemoveCommand` (in `lib/src/commands/do/rm.dart`) deletes a single repo folder. From the workspace root it deletes the master copy only when no ticket still references the repo, otherwise it lists the offending tickets. From inside a ticket it deletes that ticket's copy only — master and sibling tickets are never touched.
+`RemoveCommand` (in `lib/src/commands/do/rm.dart`) deletes a single repo folder. From the workspace root it deletes the master copy only when no ticket still references the repo, otherwise it lists the offending tickets. From inside a ticket it deletes that ticket's copy only — master and sibling tickets are never touched. The repo is addressed by its plain name and resolved inside its organization folder; an organization folder that loses its last repo is removed with it.
 
 **`.ticket.json` upkeep**: after a ticket-scoped deletion the `.gg/.ticket.json` marker of every remaining repo is rewritten without the deleted repo (`issue_id`/`description` come from the root `.ticket` via `buildTicketJson`, same as `do add`). Only repos that already carry a marker are touched, so a ticket that never saw a `do add` does not gain one. The marker is written but neither staged nor committed — the next `do add`/`do commit` picks it up.
 

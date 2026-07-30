@@ -74,7 +74,8 @@ void main() {
 
         // The URL should have the trailing '#' removed and appended with .git
         const expectedRepoUrl = 'http://github.com/user/repo.git';
-        final expectedDestination = path.join(workspacePath, 'repo');
+        // The repo lands in the folder of the organization of its URL.
+        final expectedDestination = path.join(workspacePath, 'user', 'repo');
 
         // Verify cloneRepo was called with correct parameters
         verify(
@@ -105,7 +106,7 @@ void main() {
           force: false,
         );
 
-        final expectedDestination = path.join(workspacePath, 'repo');
+        final expectedDestination = path.join(workspacePath, 'user', 'repo');
         verify(() => mockGitCloner.cloneRepo(targetArg, expectedDestination))
             .called(1);
         expect(logs, anyElement(contains('repo from $targetArg')));
@@ -152,7 +153,7 @@ void main() {
         for (final repo in repoList) {
           final repoName = repo.name;
           final cloneUrl = repo.httpsUrl;
-          final destination = path.join(workspacePath, repoName);
+          final destination = path.join(workspacePath, 'myorg', repoName);
           verify(() => mockGitCloner.cloneRepo(cloneUrl, destination))
               .called(1);
           expect(logs, anyElement(contains('$repoName from $cloneUrl')));
@@ -249,7 +250,7 @@ void main() {
         verify(
           () => mockGitCloner.cloneRepo(
             'git@github.com:myorg/repo1.git',
-            path.join(workspacePath, 'repo1'),
+            path.join(workspacePath, 'myorg', 'repo1'),
           ),
         ).called(1);
       });
@@ -399,7 +400,7 @@ void main() {
         for (final repo in repoList) {
           final repoName = repo.name;
           final cloneUrl = repo.httpsUrl;
-          final destination = path.join(workspacePath, repoName);
+          final destination = path.join(workspacePath, 'myorg', repoName);
           verify(() => mockGitCloner.cloneRepo(cloneUrl, destination))
               .called(1);
           expect(logs, anyElement(contains('$repoName from $cloneUrl')));
@@ -562,7 +563,7 @@ void main() {
           force: false,
         );
 
-        final expectedDestination = path.join(workspacePath, 'repo');
+        final expectedDestination = path.join(workspacePath, 'user', 'repo');
         verify(() => mockGitCloner.cloneRepo(targetArg, expectedDestination))
             .called(1);
         expect(logs, anyElement(contains('repo from $targetArg')));
@@ -584,7 +585,11 @@ void main() {
         force: false,
       );
 
-      final expectedDestination = path.join(workspacePath, 'project123');
+      final expectedDestination = path.join(
+        workspacePath,
+        'goeranhegenberg',
+        'project123',
+      );
       verify(() => mockGitCloner.cloneRepo(targetArg, expectedDestination))
           .called(1);
       expect(logs, anyElement(contains('project123 from $targetArg')));
@@ -606,7 +611,7 @@ void main() {
         );
 
         const expectedRepoUrl = 'https://github.com/user/repo.git';
-        final expectedDestination = path.join(workspacePath, 'repo');
+        final expectedDestination = path.join(workspacePath, 'user', 'repo');
         verify(
           () => mockGitCloner.cloneRepo(
             expectedRepoUrl,
@@ -633,7 +638,7 @@ void main() {
         );
 
         const expectedRepoUrl = 'https://github.com/repo/repo.git';
-        final expectedDestination = path.join(workspacePath, 'repo');
+        final expectedDestination = path.join(workspacePath, 'repo', 'repo');
         verify(
           () => mockGitCloner.cloneRepo(
             expectedRepoUrl,
@@ -757,7 +762,14 @@ void main() {
       const repoName = 'test';
       const primaryUrl = 'https://github.com/$repoName/$repoName.git';
       const fallbackUrl = '$fallbackOrgUrl/$repoName.git';
-      final destination = path.join(workspacePath, repoName);
+      // The primary URL guesses the repo name as organization, the fallback
+      // URL names the real one — each clone goes to its own org folder.
+      final primaryDestination = path.join(workspacePath, repoName, repoName);
+      final fallbackDestination = path.join(
+        workspacePath,
+        fallbackOrgName,
+        repoName,
+      );
 
       final mockGitCloner = MockGitCloner();
       // First attempt fails (default github)
@@ -784,8 +796,10 @@ void main() {
       );
 
       // Assert: fallbackUrl was used
-      verify(() => mockGitCloner.cloneRepo(primaryUrl, destination)).called(1);
-      verify(() => mockGitCloner.cloneRepo(fallbackUrl, destination)).called(1);
+      verify(() => mockGitCloner.cloneRepo(primaryUrl, primaryDestination))
+          .called(1);
+      verify(() => mockGitCloner.cloneRepo(fallbackUrl, fallbackDestination))
+          .called(1);
       // The repo was reported as added from the fallback URL
       expect(
         logs,

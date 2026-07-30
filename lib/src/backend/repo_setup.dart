@@ -60,11 +60,20 @@ Future<void> installRepoDependencies({
 }
 
 /// Writes the VS Code `.code-workspace` file for [ticketDir] with one folder
-/// entry per repository in [repoNames] (deduplicated, insertion order kept).
-void writeCodeWorkspaceFile(Directory ticketDir, List<String> repoNames) {
-  final folders = repoNames
+/// entry per repository in [repoPaths] (deduplicated, insertion order kept).
+///
+/// Each entry is the path of the repository relative to [ticketDir], i.e.
+/// `<org>/<repo>`. It is always written with forward slashes — VS Code
+/// understands those on every platform, a Windows separator would end up
+/// escaped in the JSON.
+void writeCodeWorkspaceFile(Directory ticketDir, List<String> repoPaths) {
+  final folders = repoPaths
       .toSet()
-      .map<Map<String, String>>((name) => <String, String>{'path': name})
+      .map<Map<String, String>>(
+        (repoPath) => <String, String>{
+          'path': path.posix.joinAll(path.split(repoPath)),
+        },
+      )
       .toList();
   final ticketName = path.basename(ticketDir.path);
   final file = File(path.join(ticketDir.path, '$ticketName.code-workspace'));

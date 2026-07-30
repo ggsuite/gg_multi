@@ -275,6 +275,9 @@ void main() {
             gitCloner: mockGitCloner,
             gitHubPlatform: mockGitHubPlatform,
             masterWorkspacePath: masterWorkspacePath,
+            // Without an execution path the command would resolve the ticket
+            // of the checkout the tests run in and modify it.
+            executionPath: tempDir.path,
             ggDoCommit: mockDoCommit,
           ),
         );
@@ -341,6 +344,9 @@ void main() {
           ggLog: ggLog,
           gitCloner: mockGitCloner,
           masterWorkspacePath: masterWorkspacePath,
+          // Without an execution path the command would resolve the ticket of
+          // the checkout the tests run in and modify it.
+          executionPath: tempDir.path,
           ggDoCommit: mockDoCommit,
         ),
       );
@@ -3256,5 +3262,176 @@ version: 1.0.0
         expect(order, ['backup', 'localize']);
       },
     );
+
+    group('organization folders', () {
+      // A process runner that answers every git/dart call successfully.
+      MockProcessRunner anyProcessRunner() {
+        final mockProc = MockProcessRunner();
+        when(
+          () => mockProc(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+        return mockProc;
+      }
+
+      MockGgDoCommit anyDoCommit() {
+        final mockDoCommit = MockGgDoCommit();
+        when(
+          () => mockDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            logType: any(named: 'logType'),
+            updateChangeLog: any(named: 'updateChangeLog'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+        return mockDoCommit;
+      }
+
+      // Creates a master repo at [relativePath] carrying a git remote.
+      Directory makeMasterRepo(String relativePath, String remoteUrl) {
+        final dir = Directory(path.join(masterWorkspacePath, relativePath))
+          ..createSync(recursive: true);
+        File(path.join(dir.path, 'pubspec.yaml')).writeAsStringSync(
+          'name: ${path.basename(relativePath)}\nversion: 1.0.0\n',
+        );
+        final gitDir = Directory(path.join(dir.path, '.git'))..createSync();
+        File(path.join(gitDir.path, 'config')).writeAsStringSync(
+          '[remote "origin"]\n\turl = $remoteUrl\n',
+        );
+        return dir;
+      }
+
+      Directory makeTicketDir(String name) => Directory(
+            path.join(tempDir.path, ggMultiTicketFolder, name),
+          )..createSync(recursive: true);
+
+      test('copies a master repo into its org folder of the ticket', () async {
+        makeMasterRepo(
+          path.join('ggsuite', 'gg_foo'),
+          'https://github.com/ggsuite/gg_foo.git',
+        );
+        final ticketDir = makeTicketDir('TICKET_ORG');
+
+        createRunner(
+          executionPath: ticketDir.path,
+          processRunner: anyProcessRunner().call,
+          ggDoCommit: anyDoCommit(),
+        );
+
+        await runner.run(['add', 'gg_foo']);
+
+        expect(
+          Directory(
+            path.join(ticketDir.path, 'ggsuite', 'gg_foo'),
+          ).existsSync(),
+          isTrue,
+        );
+
+        // The VS Code workspace addresses the repo through its org folder,
+        // always with forward slashes.
+        final ws = jsonDecode(
+          File(
+            path.join(ticketDir.path, 'TICKET_ORG.code-workspace'),
+          ).readAsStringSync(),
+        ) as Map<String, dynamic>;
+        final paths = (ws['folders'] as List<dynamic>)
+            .cast<Map<String, dynamic>>()
+            .map((f) => f['path'] as String)
+            .toSet();
+        expect(paths, <String>{'ggsuite/gg_foo'});
+      });
+
+      test('moves the repos of an old master into their org folders', () async {
+        makeMasterRepo('gg_foo', 'https://github.com/ggsuite/gg_foo.git');
+        final ticketDir = makeTicketDir('TICKET_MIGRATE');
+
+        createRunner(
+          executionPath: ticketDir.path,
+          processRunner: anyProcessRunner().call,
+          ggDoCommit: anyDoCommit(),
+        );
+
+        await runner.run(['add', 'gg_foo']);
+
+        expect(
+          Directory(
+            path.join(masterWorkspacePath, 'ggsuite', 'gg_foo'),
+          ).existsSync(),
+          isTrue,
+        );
+        expect(
+          Directory(path.join(masterWorkspacePath, 'gg_foo')).existsSync(),
+          isFalse,
+        );
+        expect(
+          Directory(
+            path.join(ticketDir.path, 'ggsuite', 'gg_foo'),
+          ).existsSync(),
+          isTrue,
+        );
+        expect(logMessages, contains('✓ ggsuite/gg_foo'));
+      });
+
+      test('moves the repos of an old ticket into their org folders', () async {
+        makeMasterRepo(
+          path.join('ggsuite', 'gg_foo'),
+          'https://github.com/ggsuite/gg_foo.git',
+        );
+        final ticketDir = makeTicketDir('TICKET_OLD');
+
+        // The ticket still holds its copy directly in the ticket folder.
+        final oldCopy = Directory(path.join(ticketDir.path, 'gg_foo'))
+          ..createSync(recursive: true);
+        File(path.join(oldCopy.path, 'pubspec.yaml'))
+            .writeAsStringSync('name: gg_foo\nversion: 1.0.0\n');
+        final gitDir = Directory(path.join(oldCopy.path, '.git'))..createSync();
+        File(path.join(gitDir.path, 'config')).writeAsStringSync(
+          '[remote "origin"]\n\turl = https://github.com/ggsuite/gg_foo.git\n',
+        );
+        File(path.join(oldCopy.path, 'marker.txt')).writeAsStringSync('keep');
+
+        createRunner(
+          executionPath: ticketDir.path,
+          processRunner: anyProcessRunner().call,
+          ggDoCommit: anyDoCommit(),
+        );
+
+        await runner.run(['add', 'gg_foo']);
+
+        // The existing copy is moved, not replaced by a fresh one.
+        expect(
+          File(
+            path.join(ticketDir.path, 'ggsuite', 'gg_foo', 'marker.txt'),
+          ).readAsStringSync(),
+          'keep',
+        );
+        expect(
+          Directory(path.join(ticketDir.path, 'gg_foo')).existsSync(),
+          isFalse,
+        );
+      });
+
+      test('does not clone a repo again that sits in an org folder', () async {
+        makeMasterRepo(
+          path.join('ggsuite', 'gg_foo'),
+          'https://github.com/ggsuite/gg_foo.git',
+        );
+
+        createRunner(
+          executionPath: Directory.systemTemp.createTempSync('no_ticket_').path,
+        );
+
+        await runner.run(['add', 'https://github.com/ggsuite/gg_foo.git']);
+
+        verifyNever(() => mockGitCloner.cloneRepo(any(), any()));
+        expect(logMessages, contains('gg_foo already added.'));
+      });
+    });
   });
 }

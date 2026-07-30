@@ -50,7 +50,8 @@ Future<void> addRepositoryHelper({
   azureDevOpsPlatform ??= AzureDevOpsPlatform();
   // coverage:ignore-end
   // ---------------------------------------------------------------------------
-  /// Attempts to clone [repoUrl] as [repoName] into [workspacePath].
+  /// Attempts to clone [repoUrl] as [repoName] into the organization folder
+  /// of [workspacePath] the URL points at (`<workspace>/<org>/<repo>`).
   /// If [allowFallback] is true and cloning fails, tries each known
   /// organization from .organizations file as a fallback.
   Future<void> attemptClone(
@@ -58,11 +59,15 @@ Future<void> addRepositoryHelper({
     String repoName, {
     bool allowFallback = false,
   }) async {
-    final destination = path.join(workspacePath, repoName);
-    final destDir = Directory(destination);
+    // The repository is looked up in the whole workspace, so one that still
+    // sits directly in it is not cloned a second time into its org folder.
+    final existing = RepoFolderResolver.resolve(
+      workspacePath: workspacePath,
+      repoName: repoName,
+    );
 
     // If repository folder already exists and is not empty ....................
-    if (destDir.existsSync() && destDir.listSync().isNotEmpty) {
+    if (existing != null && existing.listSync().isNotEmpty) {
       if (!force) {
         if (logIfAlreadyAdded) {
           ggLog(darkGray('$repoName already added.'));
@@ -72,9 +77,19 @@ Future<void> addRepositoryHelper({
         }
         return;
       } else {
-        await destDir.delete(recursive: true);
+        await existing.delete(recursive: true);
+        RepoFolderResolver.removeEmptyOrgFolder(
+          workspacePath: workspacePath,
+          repoDir: existing,
+        );
       }
     }
+
+    final destination = RepoFolderResolver.destination(
+      workspacePath: workspacePath,
+      repoUrl: repoUrl,
+      repoName: repoName,
+    );
 
     // Try to clone the repository ............................................
     try {
@@ -100,7 +115,16 @@ Future<void> addRepositoryHelper({
         final baseUrl = org.url.endsWith('/') ? org.url : '${org.url}/';
         final fallbackUrl = '$baseUrl$repoName.git';
         try {
-          await gitCloner.cloneRepo(fallbackUrl, destination);
+          // The fallback URL names another organization than the one guessed
+          // from the target, so the destination is recomputed from it.
+          await gitCloner.cloneRepo(
+            fallbackUrl,
+            RepoFolderResolver.destination(
+              workspacePath: workspacePath,
+              repoUrl: fallbackUrl,
+              repoName: repoName,
+            ),
+          );
           ggLog(darkGray('✓ $repoName from $fallbackUrl'));
           try {
             OrganizationUtils.appendOrganization(workspacePath, fallbackUrl);

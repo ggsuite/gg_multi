@@ -107,6 +107,10 @@ class RemoveCommand extends Command<void> {
     _throwIfLinkingOtherRepos(repoName, ticketRepoDir, nodes);
 
     ticketRepoDir.deleteSync(recursive: true);
+    RepoFolderResolver.removeEmptyOrgFolder(
+      workspacePath: rootPath,
+      repoDir: ticketRepoDir,
+    );
     ggLog(
       green(
         'Deleted repository $repoName from ticket '
@@ -224,6 +228,10 @@ class RemoveCommand extends Command<void> {
 
     if (ticketsContainingRepo.isEmpty) {
       masterRepoDir.deleteSync(recursive: true);
+      RepoFolderResolver.removeEmptyOrgFolder(
+        workspacePath: path.join(rootPath, ggMultiMasterFolder),
+        repoDir: masterRepoDir,
+      );
       ggLog(green('Deleted repository $repoName from master workspace.'));
       return;
     }

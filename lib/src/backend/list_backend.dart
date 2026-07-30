@@ -9,6 +9,8 @@ import 'dart:io';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:path/path.dart' as p;
 
+import 'repo_folder_resolver.dart';
+
 /// A class holding repository information.
 class RepoInfo {
   /// Constructor
@@ -116,17 +118,15 @@ Future<RepoInfo> getRepoInfo(String repoPath) async {
 }
 
 /// Returns list of repository information for repos in [masterWorkspacePath].
+///
+/// The repositories inside the organization folders are covered as well as
+/// the ones that still sit directly in the workspace.
 Future<List<RepoInfo>> getAllRepoInfos(
   String masterWorkspacePath,
 ) async {
   final infos = <RepoInfo>[];
-  final masterDir = Directory(masterWorkspacePath);
-  if (await masterDir.exists()) {
-    final dirs = masterDir.listSync().whereType<Directory>();
-    for (final d in dirs) {
-      final info = await getRepoInfo(d.path);
-      infos.add(info);
-    }
+  for (final d in RepoFolderResolver.repoDirs(masterWorkspacePath)) {
+    infos.add(await getRepoInfo(d.path));
   }
   return infos;
 }
