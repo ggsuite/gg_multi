@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.12.10 - 2026-07-30
+
+### Changed
+
+- Improve main merging behavior
+
 ## 5.12.9 - 2026-07-30
 
 ### Removed

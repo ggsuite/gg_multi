@@ -327,6 +327,59 @@ void main() {
       );
     });
 
+    test('surfaces a merge conflict of do review unwrapped', () async {
+      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockCanPublishCommand = MockCanPublishCommand();
+
+      when(
+        () => mockDoReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          verbose: any(named: 'verbose'),
+        ),
+      ).thenThrow(
+        MergeConflictException(
+          'Merging origin/main into A produced conflicts. Resolve them, '
+          'then run: gg do commit -m"Merge main" --no-log',
+        ),
+      );
+
+      final runner = CommandRunner<void>('test', 'do publish ticket')
+        ..addCommand(
+          DoPublishCommand(
+            ggLog: ggLog,
+            doReviewCommand: mockDoReviewCommand,
+            canPublishCommand: mockCanPublishCommand,
+            confirmDeleteTicket: (_) => false,
+          ),
+        );
+
+      await expectLater(
+        () async => await runner.run([
+          'publish',
+          '--input',
+          ticketDir.path,
+        ]),
+        throwsA(
+          isA<MergeConflictException>().having(
+            (e) => e.toString(),
+            'message',
+            allOf(
+              contains('gg do commit -m"Merge main" --no-log'),
+              isNot(contains('gg_multi do review failed')),
+            ),
+          ),
+        ),
+      );
+
+      verifyNever(
+        () => mockCanPublishCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      );
+    });
+
     test('publishes all repos successfully and deletes them from ticket',
         () async {
       final mockGgDoPublish = MockGgDoPublish();
