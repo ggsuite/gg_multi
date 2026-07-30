@@ -1,5 +1,16 @@
 # Changelog
 
+## 5.12.6 - 2026-07-30
+
+### Fixed
+
+- Stale `.gg/.gg-publish.json` publish progress is no longer carried from the
+master workspace into ticket copies: `copyDirectory` skips the file and
+`do add` deletes a leftover from the master repo before copying. Such a
+leftover made a fresh `gg do publish` in the new ticket abort with
+»An unfinished publish left progress …«.
+- Fix publishing error
+
 ## 5.12.5 - 2026-07-30
 
 ### Changed
