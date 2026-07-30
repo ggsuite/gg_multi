@@ -1213,9 +1213,21 @@ class DoPublishCommand extends DirCommand<void> {
     );
 
     if (result.exitCode != 0) {
+      // The branch might have been deleted already, e.g. directly on GitHub.
+      // Then there is nothing left to do and nothing to complain about.
+      final stderr = '${result.stderr}';
+      if (stderr.contains('remote ref does not exist')) {
+        ggLog(
+          yellow(
+            'Remote branch $branchName for $repoName is already deleted.',
+          ),
+        );
+        return;
+      }
+
       throw Exception(
         'Failed to delete remote branch $branchName for $repoName: '
-        '${result.stderr}',
+        '$stderr',
       );
     }
 

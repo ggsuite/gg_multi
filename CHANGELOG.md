@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Don't fail when repo is already deleted on merging
+
 ## 5.12.6 - 2026-07-30
 
 ### Fixed
