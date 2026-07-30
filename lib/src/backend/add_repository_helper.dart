@@ -9,13 +9,50 @@ import 'dart:io';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:gg_multi/src/backend/url_parser.dart';
+import 'package:gg_one/gg_one.dart' as gg;
+import 'package:interact/interact.dart';
 import 'package:path/path.dart' as path;
 import 'git_handler.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'git_platform.dart';
+import 'organization.dart';
 import 'organization_utils.dart';
 import 'repo_folder_resolver.dart';
 import 'repository.dart';
+
+/// Lets the user pick the organization a repository named [repoName] should
+/// be taken from. Returns null when the selection was cancelled.
+typedef SelectOrganization = Future<Organization?> Function(
+  String repoName,
+  List<Organization> organizations,
+);
+
+/// Returns the clone url of [repoName] within [org].
+String repoUrlOfOrganization(Organization org, String repoName) {
+  final baseUrl = org.url.endsWith('/') ? org.url : '${org.url}/';
+  return '$baseUrl$repoName.git';
+}
+
+/// Asks the user which organization a repository should be taken from.
+// coverage:ignore-start
+Future<Organization?> defaultSelectOrganization(
+  String repoName,
+  List<Organization> organizations,
+) async {
+  gg.throwWhenNotATerminal(
+    'the organization prompt',
+    'pass the full repository url instead of the plain name "$repoName"',
+  );
+  final index = Select(
+    prompt: '$repoName exists in several organizations. Which one?',
+    options: <String>[
+      for (final org in organizations) '${org.name}/$repoName',
+    ],
+    initialIndex: 0,
+  ).interact();
+  return organizations[index];
+}
+// coverage:ignore-end
 
 /// Helper function to add a repository given a target argument.
 /// It supports various formats like URLs, SSH links, and plain names.
@@ -23,7 +60,7 @@ import 'repository.dart';
 ///
 /// The [force] parameter determines whether an existing cloned
 /// repository should be overwritten. If false and the destination
-/// already exists and is not empty, the function logs "repo already added."
+/// already exists and is not empty, the function reports it as already added.
 ///
 /// The [logIfAlreadyAdded] parameter controls whether the "already added"
 /// message is logged when a repository is skipped because it's already
@@ -34,6 +71,10 @@ import 'repository.dart';
 /// ensured to be present (either cloned or detected as already cloned).  This
 /// makes it easy to plug-in additional behaviour (e.g. copy the repo to a
 /// ticket workspace) without touching the core cloning logic.
+///
+/// A plain repository name can exist in more than one of the known
+/// organizations. Every organization is asked whether it owns it, and when
+/// several do, [selectOrganization] lets the user pick one.
 Future<void> addRepositoryHelper({
   required String targetArg,
   required GgLog ggLog,
@@ -44,10 +85,12 @@ Future<void> addRepositoryHelper({
   bool force = false,
   bool logIfAlreadyAdded = true,
   Future<void> Function(String repoName)? onRepoAdded,
+  SelectOrganization? selectOrganization,
 }) async {
   // coverage:ignore-start
   gitHubPlatform ??= GitHubPlatform();
   azureDevOpsPlatform ??= AzureDevOpsPlatform();
+  selectOrganization ??= defaultSelectOrganization;
   // coverage:ignore-end
   // ---------------------------------------------------------------------------
   /// Attempts to clone [repoUrl] as [repoName] into the organization folder
@@ -70,7 +113,7 @@ Future<void> addRepositoryHelper({
     if (existing != null && existing.listSync().isNotEmpty) {
       if (!force) {
         if (logIfAlreadyAdded) {
-          ggLog(darkGray('$repoName already added.'));
+          ggLog(darkGray('✓ $repoName (already added).'));
         }
         if (onRepoAdded != null) {
           await onRepoAdded(repoName);
@@ -112,8 +155,7 @@ Future<void> addRepositoryHelper({
       final orgs = OrganizationUtils.readOrganizations(workspacePath);
       bool anySuccess = false;
       for (final org in orgs) {
-        final baseUrl = org.url.endsWith('/') ? org.url : '${org.url}/';
-        final fallbackUrl = '$baseUrl$repoName.git';
+        final fallbackUrl = repoUrlOfOrganization(org, repoName);
         try {
           // The fallback URL names another organization than the one guessed
           // from the target, so the destination is recomputed from it.
@@ -256,10 +298,87 @@ Future<void> addRepositoryHelper({
     await attemptClone(repoUrl, repoName);
   } else {
     // plain repo name ---------------------------------------------------------
+    // The name alone does not say which organization is meant, so every known
+    // one is asked whether it owns a repository of that name. A repo that is
+    // already in the workspace is left to attemptClone, which reports it —
+    // no remote is asked and nothing is prompted for.
+    final present = RepoFolderResolver.resolve(
+      workspacePath: workspacePath,
+      repoName: targetArg,
+    );
+    final alreadyAdded =
+        !force && present != null && present.listSync().isNotEmpty;
+
+    final owners = alreadyAdded
+        ? const <Organization>[]
+        : await organizationsOwningRepo(
+            repoName: targetArg,
+            workspacePath: workspacePath,
+            gitCloner: gitCloner,
+          );
+
+    if (owners.length > 1) {
+      final chosen = await selectOrganization(targetArg, owners);
+      if (chosen == null) {
+        ggLog(yellow('No organization chosen for $targetArg.'));
+        return;
+      }
+      await attemptClone(
+        repoUrlOfOrganization(chosen, targetArg),
+        targetArg,
+      );
+      return;
+    }
+
+    if (owners.length == 1) {
+      await attemptClone(
+        repoUrlOfOrganization(owners.first, targetArg),
+        targetArg,
+      );
+      return;
+    }
+
+    // No known organization owns it: guess `github.com/<name>/<name>` and
+    // fall back to trying the known organizations in turn.
     final String repoUrl = 'https://github.com/$targetArg/$targetArg.git';
     final String repoName = extractRepoName(repoUrl) ?? 'unknown_repo';
     await attemptClone(repoUrl, repoName, allowFallback: true);
   }
+}
+
+/// Returns the known organizations of [workspacePath] that own a repository
+/// named [repoName], in the order they are registered.
+///
+/// Returns an empty list when fewer than two organizations are known — then
+/// there is nothing to choose and the caller's cheaper fallback path does the
+/// job without asking a remote.
+Future<List<Organization>> organizationsOwningRepo({
+  required String repoName,
+  required String workspacePath,
+  required GitHandler gitCloner,
+}) async {
+  final orgs = OrganizationUtils.readOrganizations(workspacePath);
+  if (orgs.length < 2) {
+    return const <Organization>[];
+  }
+
+  // The remotes are asked in parallel, but the result keeps the order of the
+  // organizations so the selection is stable across runs.
+  final owns = List<bool>.filled(orgs.length, false);
+  await runWithLimit(
+    List<int>.generate(orgs.length, (i) => i),
+    4,
+    (index) async {
+      owns[index] = await gitCloner.remoteExists(
+        repoUrlOfOrganization(orgs[index], repoName),
+      );
+    },
+  );
+
+  return <Organization>[
+    for (var i = 0; i < orgs.length; i++)
+      if (owns[i]) orgs[i],
+  ];
 }
 
 /// Processes [items] with [task], running up to [maxParallel] tasks at a time.

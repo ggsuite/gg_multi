@@ -64,6 +64,16 @@ void main() {
       expect(result.repo, 'myrepo');
     });
 
+    test('parses the https ssh.dev.azure.com:v3 form gg builds itself', () {
+      // The `:v3` is no port, so the URL never parses as a Uri.
+      const url = 'https://ssh.dev.azure.com:v3/myorg/myproj/myrepo.git';
+      final result = parser.parse(url);
+      expect(result.platformType, 'azure');
+      expect(result.org, 'myorg');
+      expect(result.project, 'myproj');
+      expect(result.repo, 'myrepo');
+    });
+
     test('parses HTTP Azure URL with insufficient segments as unknown', () {
       const url = 'https://ssh.dev.azure.com/v3/myorg/';
       final result = parser.parse(url);
@@ -195,8 +205,41 @@ void main() {
         expect(result.repo, null);
       });
 
+      // `_git` separates the project from the repository, so the clone URL
+      // Azure DevOps hands out is `<org>/<project>/_git/<repo>`.
       test('parses Azure HTTP URL with _git', () {
-        const url = 'https://ssh.dev.azure.com/myorg/_git/myproj/myrepo.git';
+        const url = 'https://dev.azure.com/myorg/myproj/_git/myrepo';
+        final result = parser.parseHttp(url);
+        expect(result.platformType, 'azure');
+        expect(result.org, 'myorg');
+        expect(result.project, 'myproj');
+        expect(result.repo, 'myrepo');
+      });
+
+      test('parses the Azure HTTP clone URL carrying the user info', () {
+        // `az repos list` reports the remote url with the account in front.
+        const url = 'https://myorg@dev.azure.com/myorg/myproj/_git/myrepo';
+        final result = parser.parseHttp(url);
+        expect(result.platformType, 'azure');
+        expect(result.org, 'myorg');
+        expect(result.project, 'myproj');
+        expect(result.repo, 'myrepo');
+      });
+
+      test('parses the Azure shortcut where project and repo are equal', () {
+        // Azure accepts `<org>/_git/<repo>` when the project is named like
+        // the repository.
+        const url = 'https://dev.azure.com/myorg/_git/myrepo';
+        final result = parser.parseHttp(url);
+        expect(result.platformType, 'azure');
+        expect(result.org, 'myorg');
+        expect(result.project, 'myrepo');
+        expect(result.repo, 'myrepo');
+      });
+
+      test('parses the legacy visualstudio.com URL', () {
+        // The organization sits in the subdomain of the legacy host.
+        const url = 'https://myorg.visualstudio.com/myproj/_git/myrepo';
         final result = parser.parseHttp(url);
         expect(result.platformType, 'azure');
         expect(result.org, 'myorg');
@@ -205,7 +248,7 @@ void main() {
       });
 
       test('parses Azure HTTP URL with _git and without repo', () {
-        const url = 'https://ssh.dev.azure.com/myorg/_git/myproj';
+        const url = 'https://dev.azure.com/myorg/myproj/_git';
         final result = parser.parseHttp(url);
         expect(result.platformType, 'azure');
         expect(result.org, 'myorg');

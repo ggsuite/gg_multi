@@ -124,6 +124,19 @@ void main() {
       );
     });
 
+    test('falls back to the ticket folder when there is no repo', () {
+      // An empty folder list would open a window showing nothing at all.
+      final ticketDir = Directory(path.join(tmp.path, 'empty_ticket'))
+        ..createSync();
+      writeCodeWorkspaceFile(ticketDir, const <String>[]);
+      expect(
+        File(
+          path.join(ticketDir.path, 'empty_ticket.code-workspace'),
+        ).readAsStringSync(),
+        '{"folders":[{"path":"."}]}\n',
+      );
+    });
+
     test('writes org folder entries with forward slashes', () {
       // VS Code understands forward slashes on every platform, a Windows
       // separator would end up escaped in the JSON.

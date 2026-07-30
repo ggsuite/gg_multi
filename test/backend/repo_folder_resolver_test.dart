@@ -357,14 +357,27 @@ void main() {
           );
         });
 
-        test('reads the organization from an Azure url', () {
+        test('uses the project of an Azure url, not the account', () {
+          // Azure DevOps scopes repo names to the project, so the project is
+          // the folder that keeps two same-named repos apart.
           expect(
             RepoFolderResolver.destination(
               workspacePath: workspace.path,
               repoUrl: 'git@ssh.dev.azure.com:v3/myorg/myproj/repo.git',
               repoName: 'repo',
             ),
-            path.join(workspace.path, 'myorg', 'repo'),
+            path.join(workspace.path, 'myproj', 'repo'),
+          );
+        });
+
+        test('uses the project of an Azure clone url', () {
+          expect(
+            RepoFolderResolver.destination(
+              workspacePath: workspace.path,
+              repoUrl: 'https://dev.azure.com/myorg/myproj/_git/repo',
+              repoName: 'repo',
+            ),
+            path.join(workspace.path, 'myproj', 'repo'),
           );
         });
 

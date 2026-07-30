@@ -43,12 +43,17 @@ class UrlParser {
     }
 
     // Detect platform based on format
-    if (cleaned.startsWith('git@ssh.dev.azure.com:')) {
+    if (cleaned.startsWith('git@$_azureSshHost:')) {
       return parseAzure(cleaned);
     } else if (cleaned.startsWith('git@')) {
       return parseGitHubSsh(cleaned);
     } else if (Uri.tryParse(cleaned)?.scheme.startsWith('http') ?? false) {
       return parseHttp(cleaned);
+    } else if (cleaned.contains(_azureSshHost)) {
+      // `https://ssh.dev.azure.com:v3/<org>/<project>/<repo>` — the form gg
+      // builds itself. Its `:v3` is no port, so it never parses as a Uri and
+      // would otherwise fall through to the plain-name branch.
+      return parseAzure(cleaned);
     } else if (cleaned.contains('/')) {
       return parseUsernameRepo(cleaned);
     } else {
@@ -56,20 +61,90 @@ class UrlParser {
     }
   }
 
+  /// The host of the Azure DevOps git endpoint.
+  static const String _azureSshHost = 'ssh.dev.azure.com';
+
   /// Internal helper to parse Azure URLs. Not intended for external use.
+  ///
+  /// Handles `git@ssh.dev.azure.com:v3/<org>/<project>/<repo>` and the
+  /// `https://ssh.dev.azure.com:v3/<org>/<project>/<repo>` form gg builds
+  /// itself. Everything after the host is read as
+  /// `v3 / <org> / <project> / <repo>`; without a project the URL names no
+  /// repository location and is reported as unknown.
   ParseResult parseAzure(String url) {
-    final afterColon = url.split(':').skip(1).join(':');
-    final segments = afterColon.split('/');
+    final afterHost = url.split(_azureSshHost).last;
+    final segments =
+        afterHost.split(RegExp(r'[:/]')).where((s) => s.isNotEmpty).toList();
     if (segments.length >= 3) {
       return ParseResult(
         org: segments[1],
         project: segments[2],
-        repo: segments.length > 3 ? segments[3].replaceAll('.git', '') : null,
+        repo: segments.length > 3 ? _withoutGitSuffix(segments[3]) : null,
         platformType: 'azure',
       );
     }
     return ParseResult(platformType: 'unknown');
   }
+
+  /// Internal helper to parse Azure DevOps web URLs. Not for external use.
+  ///
+  /// Covers every shape Azure DevOps hands out:
+  /// * `dev.azure.com/<org>/<project>` — the project overview,
+  /// * `dev.azure.com/<org>/<project>/_git/<repo>` — the clone URL,
+  /// * `dev.azure.com/v3/<org>/<project>/<repo>`,
+  /// * `<org>.visualstudio.com/<project>/_git/<repo>` — the legacy host, which
+  ///   carries the organization in its subdomain,
+  /// * `dev.azure.com/<org>/_git/<repo>` — the shortcut Azure accepts when the
+  ///   project is named like the repository, so both are that one name.
+  ///
+  /// `_git` is the marker Azure puts between the project and the repository;
+  /// what follows it is therefore the repository, never the project.
+  ParseResult _parseAzureHttp(Uri uri, List<String> segments) {
+    final host = uri.host.toLowerCase();
+    const legacyHostSuffix = '.visualstudio.com';
+    final orgFromHost = host.endsWith(legacyHostSuffix)
+        ? host.substring(0, host.length - legacyHostSuffix.length)
+        : null;
+
+    var rest = segments;
+    if (rest.isNotEmpty && (rest.first == 'v3' || rest.first == 'v4')) {
+      rest = rest.sublist(1);
+    }
+
+    String? org = orgFromHost;
+    if (org == null && rest.isNotEmpty) {
+      org = rest.first;
+      rest = rest.sublist(1);
+    }
+
+    final gitIndex = rest.indexOf('_git');
+    if (gitIndex >= 0) {
+      final repo = gitIndex + 1 < rest.length
+          ? _withoutGitSuffix(rest[gitIndex + 1])
+          : null;
+      return ParseResult(
+        org: org,
+        // Nothing in front of `_git` means the shortcut form, where the
+        // project carries the name of the repository.
+        project: gitIndex > 0 ? rest[gitIndex - 1] : repo,
+        repo: repo,
+        platformType: 'azure',
+      );
+    }
+
+    return ParseResult(
+      org: org,
+      project: rest.isNotEmpty ? rest.first : null,
+      repo: rest.length > 1 ? _withoutGitSuffix(rest[1]) : null,
+      platformType: 'azure',
+    );
+  }
+
+  /// Returns [segment] without a trailing `.git`. Only the suffix is removed,
+  /// so a repository whose name contains `.git` keeps it.
+  static String _withoutGitSuffix(String segment) => segment.endsWith('.git')
+      ? segment.substring(0, segment.length - '.git'.length)
+      : segment;
 
   /// Internal helper to parse GitHub SSH URLs. Not intended for external use.
   ParseResult parseGitHubSsh(String url) {
@@ -90,39 +165,16 @@ class UrlParser {
     final uri = Uri.tryParse(url);
     if (uri == null) return ParseResult(platformType: 'unknown');
     final host = uri.host.toLowerCase();
-    final platform = host.contains('azure')
+    // `visualstudio.com` is the legacy host of Azure DevOps.
+    final platform = host.contains('azure') || host.endsWith('visualstudio.com')
         ? 'azure'
         : (host.contains('github') ? 'github' : 'unknown');
     final segments =
         uri.pathSegments.where((s) => s.trim().isNotEmpty).toList();
-    if (segments.isEmpty) return ParseResult(platformType: platform);
     if (platform == 'azure') {
-      if (segments[0] == 'v3' || segments[0] == 'v4') {
-        // Azure-specific: skip 'v3'
-        return ParseResult(
-          org: segments.length > 1 ? segments[1] : null,
-          project: segments.length > 2 ? segments[2] : null,
-          repo: segments.length > 3 ? segments[3].replaceAll('.git', '') : null,
-          platformType: 'azure',
-        );
-      } else if (segments[1] == '_git') {
-        // Azure with '_git' in the path
-        return ParseResult(
-          org: segments[0],
-          project: segments.length > 2 ? segments[2] : null,
-          repo: segments.length > 3 ? segments[3].replaceAll('.git', '') : null,
-          platformType: 'azure',
-        );
-      } else {
-        // Azure without 'v3'
-        return ParseResult(
-          org: segments[0],
-          project: segments.length > 1 ? segments[1] : null,
-          repo: segments.length > 2 ? segments[2].replaceAll('.git', '') : null,
-          platformType: 'azure',
-        );
-      }
+      return _parseAzureHttp(uri, segments);
     }
+    if (segments.isEmpty) return ParseResult(platformType: platform);
     // GitHub organization landing URL: `github.com/orgs/<org>` points at an
     // organization, not a repository (`orgs` is a reserved GitHub path and
     // can never be an account name). Report it as an org without a repo so
@@ -136,7 +188,7 @@ class UrlParser {
     }
     return ParseResult(
       org: segments[0],
-      repo: segments.length > 1 ? segments[1].replaceAll('.git', '') : null,
+      repo: segments.length > 1 ? _withoutGitSuffix(segments[1]) : null,
       platformType: platform,
     );
   }

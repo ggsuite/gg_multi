@@ -46,6 +46,25 @@ class GitHandler {
     }
   }
 
+  /// Returns true when [repoUrl] points at a git repository the caller can
+  /// reach. Used to find out which organizations own a repository of a given
+  /// name without cloning any of them.
+  ///
+  /// `ls-remote` is asked without `--exit-code`, so a repository that exists
+  /// but is still empty counts as present too.
+  Future<bool> remoteExists(String repoUrl) async {
+    try {
+      final result = await processRunner(
+        'git',
+        <String>['ls-remote', repoUrl],
+      );
+      return result.exitCode == 0;
+    } catch (_) {
+      // A missing git binary must not look like a missing repository.
+      return false;
+    }
+  }
+
   /// Checks out a new branch [branchName] in the repository at [repoPath].
   /// Throws an exception if the checkout fails.
   Future<void> checkoutBranch(String branchName, String repoPath) async {

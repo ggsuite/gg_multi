@@ -68,13 +68,21 @@ Without the org level, two organizations owning a repo of the same name would co
 
 | Member | Role |
 |--------|------|
-| `destination(workspacePath, repoUrl, repoName)` | Where a repo is cloned to. `organizationOf(url)` returns the org only when the URL carries **both** an org and a repo — `https://host/repo.git` has a single segment and that is the repo, so such a repo stays flat. |
+| `destination(workspacePath, repoUrl, repoName)` | Where a repo is cloned to. `organizationOf(url)` needs a repo in the URL — `https://host/repo.git` has a single segment and that is the repo, so such a repo stays flat. On **Azure DevOps it returns the project**, not the account Azure calls the organization: repo names are unique per project, so `dev.azure.com/mhk-carat/ds_cdm` groups under `ds_cdm`. |
 | `repoDirs(workspacePath)` | All repos of a workspace. A direct child is an *organization folder* when it is no repo itself (`isRepoDir`: `.git`, `pubspec.yaml` or `package.json`) but holds at least one — so a repo is never descended into and its inner packages (`example/`, fixtures) stay invisible. Hidden folders are skipped. |
 | `resolve(workspacePath, repoName)` | Finds a repo anywhere in the workspace: exact path, then folder name, then manifest package name. Never returns an organization folder. |
 | `relativePath(workspacePath, repoDir)` | `<org>/<repo>` — used for the ticket copy destination and the `.code-workspace` entries (written with forward slashes). |
 | `removeEmptyOrgFolder(...)` | Drops an organization folder that lost its last repo. |
 
 Repositories that still sit directly in the workspace keep working everywhere; `migrateToOrgFolders` (below) moves them.
+
+`UrlParser` is what makes the folder correct, so it covers every shape the platforms hand out — for Azure that is `dev.azure.com/<org>/<project>`, `.../<org>/<project>/_git/<repo>` (what `az repos list` reports), the `<org>/_git/<repo>` shortcut where project and repo share a name, `v3/<org>/<project>/<repo>` on the ssh host (including the unparsable-as-Uri `https://ssh.dev.azure.com:v3/…` form gg builds itself), and the legacy `<org>.visualstudio.com/<project>/_git/<repo>`. `_git` is Azure's separator between project and repository, so what follows it is never the project.
+
+### Ambiguous plain repo names
+
+`gg do add <repoName>` names no organization, and the same name can exist in several of them. `organizationsOwningRepo` therefore asks every organization from `.organizations` whether it owns that repo (`GitHandler.remoteExists` → `git ls-remote`, in parallel, result kept in registration order). With more than one owner, `selectOrganization` — the injectable prompt, `defaultSelectOrganization` by default — offers `<org>/<repo>` via interact's `Select`, the same cursor-key prompt `do configure-publish` uses for the version increment. One owner clones straight away, none falls back to the old behaviour (guess `github.com/<name>/<name>`, then try each organization in turn).
+
+No remote is asked when fewer than two organizations are known or when the repo is already in the workspace, so the common case stays offline. Headless runs fail fast through gg_one's `throwWhenNotATerminal` instead of hanging on the prompt.
 
 The two graph builders gg_multi delegates to know the layout as well: `Graph`/`SortedProcessingList` (gg_local_package_dependencies) descend into grouping folders, and `MultiLanguageGraph` (gg_localize_refs) resolves the workspace root one level up when the repo sits in an organization folder, so path refs across organizations are localized. Both changes are backwards compatible with a flat workspace.
 
@@ -119,6 +127,10 @@ It runs at the start of `do add` (master **and** ticket) and of `do checkout` (m
 `gg` does **not** install git hooks. An earlier version made `do add` write a `pre-push` hook that ran `dart run .gg/verify_push.dart` and refused a push to `main`/`master` unless `gg did commit` reported a clean tree. Pushing to `main` is blocked by the remote and every change lands through a pull request, so the hook only duplicated a rule the server already enforces.
 
 Because the hook lives in the untracked `.git/hooks/`, it survives in every checkout that ever ran an older `do add`. `removeLegacyGitHooks` (in `lib/src/backend/legacy_git_hooks.dart`) therefore deletes it — plus the `.gg/verify_push.dart` it invoked — from every ticket repo on each `do add`. A `pre-push` hook that does *not* reference `.gg/verify_push.dart` is the user's own and is left alone. Both files are untracked (`.git/hooks` is never tracked, `.gg/verify_push.dart` falls under the `.gg/*` gitignore rule), so the cleanup never dirties the working tree and needs no commit.
+
+### `do create ticket` Command
+
+`TicketCommand` (in `lib/src/commands/do/create/ticket.dart`) creates `tickets/<issue-id>/` with the root `.ticket` file and the VS Code workspace `<issue-id>.code-workspace`, so `do code <ticket>` opens something before the first `do add`. A ticket without repos gets the ticket folder itself (`{"path": "."}`) as its single entry — `writeCodeWorkspaceFile` never writes an empty folder list, because VS Code then shows a window with nothing in it and no way to add the first folder. `do add` rewrites the file with one `<org>/<repo>` entry per repository.
 
 ### `do checkout` Command
 

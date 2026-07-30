@@ -122,18 +122,24 @@ class RepoFolderResolver {
         : path.join(workspacePath, org, repoName);
   }
 
-  /// Returns the organization [repoUrl] belongs to, or null when the URL
-  /// names no organization.
+  /// Returns the organization folder [repoUrl] belongs to, or null when the
+  /// URL names none.
   ///
-  /// Both an organization and a repository must be present: a URL like
-  /// `https://host/repo.git` carries a single path segment, and that segment
-  /// is the repository, not an organization.
+  /// A repository must be present: a URL like `https://host/repo.git` carries
+  /// a single path segment, and that segment is the repository, not an
+  /// organization.
+  ///
+  /// On Azure DevOps the folder is the **project**, not the account Azure
+  /// calls the organization: repository names are unique per project, so two
+  /// projects of one account can each own a `common` repo — exactly the
+  /// collision the folders exist to prevent. Everywhere else the folder is
+  /// the organization.
   static String? organizationOf(String repoUrl) {
     final parsed = const UrlParser().parse(repoUrl);
-    if (parsed.org == null || parsed.repo == null) {
+    if (parsed.repo == null) {
       return null;
     }
-    return parsed.org;
+    return parsed.project ?? parsed.org;
   }
 
   /// Deletes the organization folder [repoDir] was located in when the

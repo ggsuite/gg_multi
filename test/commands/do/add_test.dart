@@ -372,7 +372,7 @@ void main() {
         ]);
 
         verifyNever(() => mockGitCloner.cloneRepo(any(), any()));
-        expect(logMessages, contains('$repoName already added.'));
+        expect(logMessages, contains('✓ $repoName (already added).'));
       },
     );
 
@@ -3430,7 +3430,7 @@ version: 1.0.0
         await runner.run(['add', 'https://github.com/ggsuite/gg_foo.git']);
 
         verifyNever(() => mockGitCloner.cloneRepo(any(), any()));
-        expect(logMessages, contains('gg_foo already added.'));
+        expect(logMessages, contains('✓ gg_foo (already added).'));
       });
     });
   });

@@ -54,8 +54,10 @@ class AddCommand extends Command<dynamic> {
     BackupPublishTo? backupPublishTo,
     Graph? graph,
     FetchRepoUrl? fetchRepoUrl,
+    SelectOrganization? selectOrganization,
     // coverage:ignore-start
-  })  : gitCloner = gitCloner ?? GitHandler(),
+  })  : _selectOrganization = selectOrganization ?? defaultSelectOrganization,
+        gitCloner = gitCloner ?? GitHandler(),
         gitHubPlatform = gitHubPlatform ?? GitHubPlatform(),
         processRunner = processRunner ?? Process.run,
         executionPath = executionPath ?? Directory.current.path,
@@ -124,6 +126,9 @@ class AddCommand extends Command<dynamic> {
   /// Resolves a hosted-dep repo URL; tests inject stubs (incl. throwing).
   final FetchRepoUrl _fetchRepoUrl;
 
+  /// Asks which organization a plain repo name refers to when several own it.
+  final SelectOrganization _selectOrganization;
+
   @override
   String get name => 'add';
 
@@ -168,6 +173,7 @@ class AddCommand extends Command<dynamic> {
           workspacePath: masterWorkspacePath,
           force: force,
           logIfAlreadyAdded: true,
+          selectOrganization: _selectOrganization,
         ),
       );
       return;
@@ -193,6 +199,7 @@ class AddCommand extends Command<dynamic> {
         force: force,
         // When inside a ticket we do not spam "already added" messages.
         logIfAlreadyAdded: false,
+        selectOrganization: _selectOrganization,
         // We intentionally do not copy here; we copy after graph processing.
       ),
     );
@@ -423,6 +430,7 @@ class AddCommand extends Command<dynamic> {
             gitHubPlatform: gitHubPlatform,
             workspacePath: masterWorkspacePath,
             logIfAlreadyAdded: false,
+            selectOrganization: _selectOrganization,
           );
         } catch (_) {
           // Swallow: addRepositoryHelper already logged the failure.

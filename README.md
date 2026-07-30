@@ -152,12 +152,24 @@ from different organizations coexist on disk. A ticket mirrors the
 master layout, so a repo has the same relative path in both, and the
 `.code-workspace` file lists its folders as `<org>/<repo>`.
 
+On **Azure DevOps the folder is the project**, not the account Azure
+calls the organization: repository names are unique per project, so two
+projects of one account can each own a `common` repo. Adding
+`https://dev.azure.com/mhk-carat/ds_cdm` therefore puts its repos into
+`ds_cdm/`.
+
 You address a repo by its plain name everywhere — `gg_multi do add
 gg_test`, `gg_multi do rm gg_test`, `gg_multi do code PROJ-123/gg_test`
 — gg_multi finds it in whichever organization folder it sits. A repo is
 resolved by exact folder name first, then by the package name in its
 manifest, then by its git remote URL. An organization folder that loses
 its last repo is removed.
+
+When you add a repo by its plain name and several known organizations
+own a repo of that name, gg_multi lists them and lets you pick one with
+the cursor keys. It asks nothing when only one organization owns it,
+when only one organization is known at all, or when the repo is already
+in the workspace.
 
 Workspaces created before this layout hold their repos directly in
 `.master/` (and in the ticket). `gg_multi do add` and `gg_multi do

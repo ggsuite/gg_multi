@@ -66,8 +66,13 @@ Future<void> installRepoDependencies({
 /// `<org>/<repo>`. It is always written with forward slashes — VS Code
 /// understands those on every platform, a Windows separator would end up
 /// escaped in the JSON.
+///
+/// A ticket without repositories — a freshly created one — gets the ticket
+/// folder itself as its single entry. An empty folder list would open a
+/// window showing nothing at all, and VS Code offers no way to add the first
+/// folder from there.
 void writeCodeWorkspaceFile(Directory ticketDir, List<String> repoPaths) {
-  final folders = repoPaths
+  final folders = (repoPaths.isEmpty ? const <String>['.'] : repoPaths)
       .toSet()
       .map<Map<String, String>>(
         (repoPath) => <String, String>{
