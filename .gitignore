@@ -21,6 +21,5 @@ build
 !.gg/.gg.json
 
 # Local cross-repo dev override (not for commit)
-pubspec_overrides.yaml
 !.gg/.ticket.json
 .gg/.gg-publish.json

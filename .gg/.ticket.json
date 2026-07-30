@@ -1,0 +1,14 @@
+{
+  "issue_id": "16_remove_sand_clocks_when_adding_repos",
+  "description": "Remove doublicate cli output when adding organisations",
+  "repositories": [
+    {
+      "name": "gg_multi",
+      "url": "git@github.com:ggsuite/gg_multi.git"
+    },
+    {
+      "name": "gg",
+      "url": "git@github.com:ggsuite/gg.git"
+    }
+  ]
+}
