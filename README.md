@@ -17,9 +17,10 @@ executable for direct use and in CI/CD pipelines.
 ## What gg_multi gives you
 
 - A persistent master workspace under `.master/` containing every
-  registered repo and organisation.
+  registered repo and organisation, grouped as `.master/<org>/<repo>`.
 - Per-ticket workspaces under `tickets/<id>/` that hold scoped clones
-  of the repos you need for one feature.
+  of the repos you need for one feature, in the same `<org>/<repo>`
+  layout.
 - Automatic dependency resolution: every cross-repo command runs in
   dependency order so downstream packages see consistent upstream
   state.
@@ -84,9 +85,11 @@ order.
 
 `gg_multi do add` is context-aware:
 
-- run from the workspace root: the repo is cloned into `.master/`,
+- run from the workspace root: the repo is cloned into
+  `.master/<org>/`,
 - run from inside a ticket (`tickets/<id>/`): the repo is also
-  copied into the ticket and its local dependencies are pulled in.
+  copied into `tickets/<id>/<org>/` and its local dependencies are
+  pulled in.
 
 ### `gg_multi can` — preflight checks
 
@@ -121,33 +124,62 @@ when a repo is in a bad state.
 
 ```
 my_project/
-├── .master/                # every registered repo (managed by gg_multi)
-│   ├── gg/
-│   ├── gg_multi/
-│   └── …
+├── .master/                    # every registered repo (managed by gg_multi)
+│   ├── ggsuite/                # one folder per organization
+│   │   ├── gg/
+│   │   └── gg_multi/
+│   └── acme/
+│       └── app_core/
 └── tickets/
-    └── PROJ-123/           # one ticket workspace
-        ├── .ticket         # JSON with id + description
-        ├── app_core/       # ticket-scoped clone
-        └── ui_core/
+    └── PROJ-123/               # one ticket workspace
+        ├── .ticket             # JSON with id + description
+        ├── ggsuite/
+        │   └── gg_multi/       # ticket-scoped clone
+        └── acme/
+            └── app_core/
 ```
 
 `WorkspaceUtils.detectTicketPath()` walks up the directory tree from
 wherever you invoke `gg_multi` to find the matching workspace, so the
 commands work from any sub-directory inside it.
 
-### Org-prefixed repo folders
+### Organization folders
 
-Repos newly added to `.master/` are cloned into a folder named after
-their organization: `<org>_<repo>` for Dart repos (for example
-`ggsuite_gg_test`) and `<org>-<repo>` for TypeScript repos. This lets
-same-named repos from different organizations coexist on disk. Folders
-created before this convention keep their plain repo name and continue
-to work: commands resolve a repo by exact folder name first, then by
-the package name in its manifest, then by its git remote URL. Ticket
-copies always reuse the folder name of the master clone. Note that two
-packages with the same *manifest* name still collide in the dependency
-graph — the prefix only solves the on-disk collision.
+Every repo lives in a folder named after the organization of its git
+URL — `.master/ggsuite/gg_multi` for
+`https://github.com/ggsuite/gg_multi.git`. This lets same-named repos
+from different organizations coexist on disk. A ticket mirrors the
+master layout, so a repo has the same relative path in both, and the
+`.code-workspace` file lists its folders as `<org>/<repo>`.
+
+On **Azure DevOps the folder is the project**, not the account Azure
+calls the organization: repository names are unique per project, so two
+projects of one account can each own a `common` repo. Adding
+`https://dev.azure.com/mhk-carat/ds_cdm` therefore puts its repos into
+`ds_cdm/`.
+
+You address a repo by its plain name everywhere — `gg_multi do add
+gg_test`, `gg_multi do rm gg_test`, `gg_multi do code PROJ-123/gg_test`
+— gg_multi finds it in whichever organization folder it sits. A repo is
+resolved by exact folder name first, then by the package name in its
+manifest, then by its git remote URL. An organization folder that loses
+its last repo is removed.
+
+When you add a repo by its plain name and several known organizations
+own a repo of that name, gg_multi lists them and lets you pick one with
+the cursor keys. It asks nothing when only one organization owns it,
+when only one organization is known at all, or when the repo is already
+in the workspace.
+
+Workspaces created before this layout hold their repos directly in
+`.master/` (and in the ticket). `gg_multi do add` and `gg_multi do
+checkout` move them into their organization folder as a first step,
+reading the organization from each repo's git remote; a repo whose
+organization cannot be determined stays where it is and keeps working.
+
+Note that two packages with the same *manifest* name still collide in
+the dependency graph — the organization folder only solves the on-disk
+collision.
 
 ## Step-by-step: working on a ticket end-to-end
 

@@ -121,7 +121,7 @@ gg_multi add https://github.com/meine-org
 Was passiert?
 
 - Gg Multi erkennt, dass es sich um eine Organisations- oder Projektadresse handelt.
-- Alle Repositories dieser Gruppe werden in `.master` geklont.
+- Alle Repositories dieser Gruppe werden in `.master/<organisation>` geklont, also zum Beispiel nach `.master/meine-org/app_core`.
 
 ### 4.2 Einzelne Repositories hinzufügen
 
@@ -156,9 +156,11 @@ Nach `gg_multi init` und den ersten `add` Befehlen sieht eine typische Struktur 
 ```text
 mein_projekt/
   .master/
-    app_core/
-    ui_core/
-    shared_widgets/
+    meine-org/
+      app_core/
+      ui_core/
+    andere-org/
+      shared_widgets/
   tickets/
     (noch leer)
 ```
@@ -167,6 +169,20 @@ mein_projekt/
 - `tickets` ist der Bereich für deine Ticket Workspaces. Für jedes Ticket wird hier ein eigener Unterordner angelegt.
 
 Wichtig: Ob Gg Multi im Master Kontext oder im Ticket Kontext arbeitet, hängt vom aktuellen Arbeitsverzeichnis ab. Befehle aus einem Ticketordner heraus verhalten sich anders als Befehle aus dem Projekt- oder Masterordner.
+
+### 5.1 Organisationsordner
+
+Jedes Repository liegt in einem Ordner, der nach der Organisation aus seiner Git URL benannt ist — `https://github.com/meine-org/app_core.git` landet also unter `.master/meine-org/app_core`. Dadurch können gleichnamige Repositories aus verschiedenen Organisationen nebeneinander existieren. Ticketordner haben denselben Aufbau, ein Repository hat also im Master Workspace und im Ticket denselben relativen Pfad.
+
+Bei **Azure DevOps ist der Ordner das Projekt**, nicht die Organisation: Reponamen sind dort pro Projekt eindeutig, zwei Projekte einer Organisation können also je ein `common` enthalten. `https://dev.azure.com/meine-org/mein-projekt` legt seine Repositories daher unter `mein-projekt/` ab.
+
+In den Befehlen gibst du weiterhin nur den Reponamen an (`gg_multi add app_core`, `gg_multi rm app_core`) — Gg Multi findet das Repository in jedem Organisationsordner.
+
+Gibst du beim Hinzufügen nur den Reponamen an und mehrere bekannte Organisationen besitzen ein Repository dieses Namens, zeigt Gg Multi eine Auswahl an, in der du mit den Pfeiltasten die richtige Organisation wählst. Gefragt wird nur, wenn es wirklich mehrdeutig ist.
+
+### 5.2 Wartung: alte Workspaces umziehen
+
+Workspaces, die vor den Organisationsordnern angelegt wurden, haben ihre Repositories direkt in `.master` bzw. im Ticketordner liegen. `gg_multi add` und `gg_multi checkout` verschieben sie als ersten Schritt in ihren Organisationsordner. Die Organisation wird dabei aus dem Git Remote des jeweiligen Repositories gelesen; lässt sie sich nicht bestimmen, bleibt das Repository liegen und funktioniert unverändert weiter.
 
 ---
 
@@ -187,6 +203,7 @@ Was passiert?
 
 - Unter `tickets/PROJ-123/` wird ein neuer Ordner angelegt.
 - Darin wird eine Datei `.ticket` mit der Ticket ID und der Beschreibung im JSON Format gespeichert.
+- Ebenfalls wird die VS Code Datei `PROJ-123.code-workspace` angelegt. Solange das Ticket noch keine Repositories enthält, verweist sie auf den Ticketordner selbst; `gg_multi add` trägt danach je einen Eintrag pro Repository ein.
 
 Empfohlener nächster Schritt:
 
@@ -215,7 +232,7 @@ Wenn die Repositories bereits in `.master` vorhanden sind, reicht es im Ticketko
 
 Gg Multi
 
-- kopiert die Repositories aus `.master` in den Ticketordner,
+- kopiert die Repositories aus `.master` in den Ticketordner, und zwar in denselben Organisationsordner, in dem sie im Master Workspace liegen (`tickets/PROJ-123/meine-org/app_core`),
 - legt für jedes kopierte Repository einen Branch mit dem Ticketnamen an (hier `PROJ-123`),
 - führt in jedem Repository `dart pub get` aus, sofern eine `pubspec.yaml` vorhanden ist.
 

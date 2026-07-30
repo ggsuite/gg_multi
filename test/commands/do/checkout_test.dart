@@ -560,5 +560,113 @@ void main() {
         expect(logged('Added repo_a on branch feat_x'), isTrue);
       });
     });
+
+    group('organization folders', () {
+      // Creates `<master>/<org>/<repo>` with a git remote of that org.
+      Directory makeOrgRepo(String org, String repo) {
+        final d = Directory(path.join(masterPath, org, repo))
+          ..createSync(recursive: true);
+        final gitDir = Directory(path.join(d.path, '.git'))..createSync();
+        File(path.join(gitDir.path, 'config')).writeAsStringSync(
+          '[remote "origin"]\n\turl = https://github.com/$org/$repo.git\n',
+        );
+        File(path.join(d.path, 'pubspec.yaml')).writeAsStringSync('name: x\n');
+        return d;
+      }
+
+      test('reproduces the ticket with its organization folders', () async {
+        makeOrgRepo('ggsuite', 'repo_a');
+
+        await runCmd(build(executionPath: tempDir.path), ['feat_x']);
+
+        final ticketDir = Directory(
+          path.join(tempDir.path, 'tickets', 'feat_x'),
+        );
+        expect(
+          copyCalls,
+          [path.join(ticketDir.path, 'ggsuite', 'repo_a')],
+        );
+
+        // The VS Code workspace addresses the repo through its org folder.
+        final ws = jsonDecode(
+          File(
+            path.join(ticketDir.path, 'feat_x.code-workspace'),
+          ).readAsStringSync(),
+        ) as Map<String, dynamic>;
+        expect(
+          (ws['folders'] as List<dynamic>)
+              .cast<Map<String, dynamic>>()
+              .map((f) => f['path'] as String),
+          <String>['ggsuite/repo_a'],
+        );
+      });
+
+      test('clones a missing repo into its organization folder', () async {
+        stubShowFile(
+          ticketJsonStr(
+            repos: <Map<String, String>>[
+              <String, String>{
+                'name': 'repo_a',
+                'url': 'https://github.com/ggsuite/repo_a.git',
+              },
+            ],
+          ),
+        );
+        // A second repo makes the command find a master repo to read the
+        // marker from without providing repo_a itself.
+        final other = makeOrgRepo('ggsuite', 'repo_b');
+
+        await runCmd(build(executionPath: other.path), ['feat_x']);
+
+        verify(
+          () => gitHandler.cloneRepo(
+            'https://github.com/ggsuite/repo_a.git',
+            path.join(masterPath, 'ggsuite', 'repo_a'),
+          ),
+        ).called(1);
+      });
+
+      test('moves the repos of an old master into their org folders', () async {
+        final flat = Directory(path.join(masterPath, 'repo_a'))
+          ..createSync(recursive: true);
+        final gitDir = Directory(path.join(flat.path, '.git'))..createSync();
+        File(path.join(gitDir.path, 'config')).writeAsStringSync(
+          '[remote "origin"]\n\turl = https://github.com/ggsuite/repo_a.git\n',
+        );
+        File(path.join(flat.path, 'pubspec.yaml'))
+            .writeAsStringSync('name: x\n');
+
+        await runCmd(build(executionPath: tempDir.path), ['feat_x']);
+
+        expect(
+          Directory(path.join(masterPath, 'ggsuite', 'repo_a')).existsSync(),
+          isTrue,
+        );
+        expect(
+          Directory(path.join(masterPath, 'repo_a')).existsSync(),
+          isFalse,
+        );
+      });
+
+      test('detects the master repo the command runs in', () async {
+        // Executed inside `<master>/<org>/<repo>`, the argument is the ticket
+        // name, so the marker is read from that repo instead of searching.
+        final repoA = makeOrgRepo('ggsuite', 'repo_a');
+
+        await runCmd(
+          build(executionPath: path.join(repoA.path, 'lib')),
+          ['feat_x'],
+        );
+
+        verifyNever(
+          () => remoteBranchExists.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            branch: any(named: 'branch'),
+          ),
+        );
+        expect(logged('Checked out ticket feat_x'), isTrue);
+      });
+    });
   });
 }

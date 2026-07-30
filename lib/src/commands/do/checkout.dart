@@ -19,6 +19,7 @@ import '../../backend/git_handler.dart' hide ProcessRunner;
 import '../../backend/repo_folder_resolver.dart';
 import '../../backend/repo_setup.dart';
 import '../../backend/ticket_json.dart';
+import '../../backend/workspace_migration.dart';
 import '../../backend/workspace_utils.dart';
 
 /// Lets the user pick one branch from [branches]; returns null on cancel.
@@ -119,6 +120,10 @@ class DoCheckoutCommand extends Command<dynamic> {
       throw UsageException('Missing ticket or repository name.', usage);
     }
     final arg = argResults!.rest.first;
+
+    // Maintenance: move the repositories of an old master workspace into
+    // their organization folders before resolving anything.
+    migrateToOrgFolders(workspacePath: masterWorkspacePath, ggLog: ggLog);
 
     // Mode 1: executed inside a master repo → arg is the ticket name.
     final currentRepo = _currentMasterRepoPath();
@@ -257,13 +262,17 @@ class DoCheckoutCommand extends Command<dynamic> {
         failed.add(repo.name);
         continue;
       }
-      final ok = await _setupTicketRepo(
+      final repoPath = await _setupTicketRepo(
         ticketDir: ticketDir,
         masterRepoDir: masterRepoDir,
         branch: ticketName,
         repoName: repo.name,
       );
-      (ok ? succeeded : failed).add(repo.name);
+      if (repoPath == null) {
+        failed.add(repo.name);
+      } else {
+        succeeded.add(repoPath);
+      }
     }
 
     // The workspace lists only the repos that were actually checked out.
@@ -298,7 +307,11 @@ class DoCheckoutCommand extends Command<dynamic> {
     if (repo.url.isEmpty) {
       return null;
     }
-    final target = path.join(masterWorkspacePath, repo.name);
+    final target = RepoFolderResolver.destination(
+      workspacePath: masterWorkspacePath,
+      repoUrl: repo.url,
+      repoName: repo.name,
+    );
     try {
       await gitHandler.cloneRepo(repo.url, target);
     } catch (e) {
@@ -311,14 +324,21 @@ class DoCheckoutCommand extends Command<dynamic> {
   // ...........................................................................
   /// Copies [masterRepoDir] into the ticket (when not already present) and
   /// checks out the existing feature [branch] there, then installs deps.
-  /// Returns true when the branch was checked out, false on failure.
-  Future<bool> _setupTicketRepo({
+  /// Returns the path of the repo relative to the ticket root, or null when
+  /// the branch could not be checked out.
+  Future<String?> _setupTicketRepo({
     required Directory ticketDir,
     required Directory masterRepoDir,
     required String branch,
     required String repoName,
   }) async {
-    final destDir = Directory(path.join(ticketDir.path, repoName));
+    // The ticket mirrors the layout of the master workspace, so the repo ends
+    // up in the organization folder it has there.
+    final relativePath = RepoFolderResolver.relativePath(
+      workspacePath: masterWorkspacePath,
+      repoDir: masterRepoDir,
+    );
+    final destDir = Directory(path.join(ticketDir.path, relativePath));
 
     if (!(destDir.existsSync() && destDir.listSync().isNotEmpty)) {
       // Fetch the master clone so its `origin/<branch>` is available in the
@@ -331,7 +351,7 @@ class DoCheckoutCommand extends Command<dynamic> {
       await _checkout.get(directory: destDir, ggLog: ggLog, branch: branch);
     } catch (e) {
       ggLog(red('Failed to checkout $branch in $repoName: $e'));
-      return false;
+      return null;
     }
 
     await installRepoDependencies(
@@ -341,33 +361,43 @@ class DoCheckoutCommand extends Command<dynamic> {
       processRunner: processRunner,
     );
     ggLog(blue('Added $repoName on branch $branch.'));
-    return true;
+    return relativePath;
   }
 
   // ...........................................................................
   /// Returns the path of the `.master` repository that contains
   /// [executionPath], or null when the command is not run inside one.
+  ///
+  /// The repository is either a direct child of the master workspace or sits
+  /// one level deeper inside its organization folder, so the first two
+  /// segments below the workspace are checked.
   String? _currentMasterRepoPath() {
     final master = path.normalize(masterWorkspacePath);
     final exec = path.normalize(executionPath);
     if (exec == master || !path.isWithin(master, exec)) {
       return null;
     }
-    final first = path.split(path.relative(exec, from: master)).first;
-    final repoPath = path.join(master, first);
-    return Directory(repoPath).existsSync() ? repoPath : null;
+    final segments = path.split(path.relative(exec, from: master));
+    var repoPath = path.join(master, segments.first);
+    if (!Directory(repoPath).existsSync()) {
+      return null;
+    }
+    if (RepoFolderResolver.isOrgFolder(Directory(repoPath))) {
+      if (segments.length < 2) {
+        return null;
+      }
+      repoPath = path.join(repoPath, segments[1]);
+      if (!Directory(repoPath).existsSync()) {
+        return null;
+      }
+    }
+    return repoPath;
   }
 
   // ...........................................................................
-  /// Lists the git repositories directly inside the master workspace.
+  /// Lists the git repositories of the master workspace.
   List<Directory> _listMasterRepos() {
-    final masterDir = Directory(masterWorkspacePath);
-    if (!masterDir.existsSync()) {
-      return <Directory>[];
-    }
-    return masterDir
-        .listSync()
-        .whereType<Directory>()
+    return RepoFolderResolver.repoDirs(masterWorkspacePath)
         .where((d) => Directory(path.join(d.path, '.git')).existsSync())
         .toList();
   }

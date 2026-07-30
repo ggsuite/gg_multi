@@ -74,7 +74,8 @@ void main() {
 
         // The URL should have the trailing '#' removed and appended with .git
         const expectedRepoUrl = 'http://github.com/user/repo.git';
-        final expectedDestination = path.join(workspacePath, 'repo');
+        // The repo lands in the folder of the organization of its URL.
+        final expectedDestination = path.join(workspacePath, 'user', 'repo');
 
         // Verify cloneRepo was called with correct parameters
         verify(
@@ -105,7 +106,7 @@ void main() {
           force: false,
         );
 
-        final expectedDestination = path.join(workspacePath, 'repo');
+        final expectedDestination = path.join(workspacePath, 'user', 'repo');
         verify(() => mockGitCloner.cloneRepo(targetArg, expectedDestination))
             .called(1);
         expect(logs, anyElement(contains('repo from $targetArg')));
@@ -152,7 +153,7 @@ void main() {
         for (final repo in repoList) {
           final repoName = repo.name;
           final cloneUrl = repo.httpsUrl;
-          final destination = path.join(workspacePath, repoName);
+          final destination = path.join(workspacePath, 'myorg', repoName);
           verify(() => mockGitCloner.cloneRepo(cloneUrl, destination))
               .called(1);
           expect(logs, anyElement(contains('$repoName from $cloneUrl')));
@@ -249,7 +250,7 @@ void main() {
         verify(
           () => mockGitCloner.cloneRepo(
             'git@github.com:myorg/repo1.git',
-            path.join(workspacePath, 'repo1'),
+            path.join(workspacePath, 'myorg', 'repo1'),
           ),
         ).called(1);
       });
@@ -399,7 +400,9 @@ void main() {
         for (final repo in repoList) {
           final repoName = repo.name;
           final cloneUrl = repo.httpsUrl;
-          final destination = path.join(workspacePath, repoName);
+          // On Azure DevOps the repo names are scoped to the project, so the
+          // project is the folder that keeps them apart.
+          final destination = path.join(workspacePath, 'myproj', repoName);
           verify(() => mockGitCloner.cloneRepo(cloneUrl, destination))
               .called(1);
           expect(logs, anyElement(contains('$repoName from $cloneUrl')));
@@ -562,7 +565,7 @@ void main() {
           force: false,
         );
 
-        final expectedDestination = path.join(workspacePath, 'repo');
+        final expectedDestination = path.join(workspacePath, 'user', 'repo');
         verify(() => mockGitCloner.cloneRepo(targetArg, expectedDestination))
             .called(1);
         expect(logs, anyElement(contains('repo from $targetArg')));
@@ -584,7 +587,12 @@ void main() {
         force: false,
       );
 
-      final expectedDestination = path.join(workspacePath, 'project123');
+      // The Azure project — here named like the repo — is the folder.
+      final expectedDestination = path.join(
+        workspacePath,
+        'project123',
+        'project123',
+      );
       verify(() => mockGitCloner.cloneRepo(targetArg, expectedDestination))
           .called(1);
       expect(logs, anyElement(contains('project123 from $targetArg')));
@@ -606,7 +614,7 @@ void main() {
         );
 
         const expectedRepoUrl = 'https://github.com/user/repo.git';
-        final expectedDestination = path.join(workspacePath, 'repo');
+        final expectedDestination = path.join(workspacePath, 'user', 'repo');
         verify(
           () => mockGitCloner.cloneRepo(
             expectedRepoUrl,
@@ -633,7 +641,7 @@ void main() {
         );
 
         const expectedRepoUrl = 'https://github.com/repo/repo.git';
-        final expectedDestination = path.join(workspacePath, 'repo');
+        final expectedDestination = path.join(workspacePath, 'repo', 'repo');
         verify(
           () => mockGitCloner.cloneRepo(
             expectedRepoUrl,
@@ -742,7 +750,7 @@ void main() {
         );
 
         verifyNever(() => mockGitCloner.cloneRepo(any(), any()));
-        expect(logs, contains('repo already added.'));
+        expect(logs, contains('✓ repo (already added).'));
       });
     });
 
@@ -757,7 +765,14 @@ void main() {
       const repoName = 'test';
       const primaryUrl = 'https://github.com/$repoName/$repoName.git';
       const fallbackUrl = '$fallbackOrgUrl/$repoName.git';
-      final destination = path.join(workspacePath, repoName);
+      // The primary URL guesses the repo name as organization, the fallback
+      // URL names the real one — each clone goes to its own org folder.
+      final primaryDestination = path.join(workspacePath, repoName, repoName);
+      final fallbackDestination = path.join(
+        workspacePath,
+        fallbackOrgName,
+        repoName,
+      );
 
       final mockGitCloner = MockGitCloner();
       // First attempt fails (default github)
@@ -784,8 +799,10 @@ void main() {
       );
 
       // Assert: fallbackUrl was used
-      verify(() => mockGitCloner.cloneRepo(primaryUrl, destination)).called(1);
-      verify(() => mockGitCloner.cloneRepo(fallbackUrl, destination)).called(1);
+      verify(() => mockGitCloner.cloneRepo(primaryUrl, primaryDestination))
+          .called(1);
+      verify(() => mockGitCloner.cloneRepo(fallbackUrl, fallbackDestination))
+          .called(1);
       // The repo was reported as added from the fallback URL
       expect(
         logs,
@@ -830,6 +847,158 @@ void main() {
         contains('Failed to clone repository $repoName '
             'from any known organizations.'),
       );
+    });
+
+    group('plain name owned by several organizations', () {
+      const repoName = 'shared_repo';
+      const urlA = 'https://github.com/orgA/$repoName.git';
+      const urlB = 'https://github.com/orgB/$repoName.git';
+
+      /// Registers [names] as known organizations of the workspace.
+      void writeOrganizations(List<String> names) {
+        File(path.join(workspacePath, '.organizations')).writeAsStringSync(
+          jsonEncode(<String, String>{
+            for (final name in names) name: 'https://github.com/$name',
+          }),
+        );
+      }
+
+      /// A cloner whose remotes in [owningUrls] answer, all others do not.
+      MockGitCloner clonerOwning(Set<String> owningUrls) {
+        final cloner = MockGitCloner();
+        when(() => cloner.remoteExists(any())).thenAnswer(
+          (i) async => owningUrls.contains(
+            i.positionalArguments.first as String,
+          ),
+        );
+        when(() => cloner.cloneRepo(any(), any())).thenAnswer((_) async {});
+        return cloner;
+      }
+
+      test('asks which organization is meant and clones from it', () async {
+        writeOrganizations(<String>['orgA', 'orgB']);
+        final mockGitCloner = clonerOwning(<String>{urlA, urlB});
+
+        List<String>? offered;
+        await addRepositoryHelper(
+          targetArg: repoName,
+          ggLog: ggLog,
+          gitCloner: mockGitCloner,
+          workspacePath: workspacePath,
+          selectOrganization: (name, orgs) async {
+            expect(name, repoName);
+            offered = orgs.map((o) => o.name).toList();
+            return orgs.last;
+          },
+        );
+
+        // Both owners are offered, in the order they are registered.
+        expect(offered, <String>['orgA', 'orgB']);
+        verify(
+          () => mockGitCloner.cloneRepo(
+            urlB,
+            path.join(workspacePath, 'orgB', repoName),
+          ),
+        ).called(1);
+      });
+
+      test('does not ask when only one organization owns the repo', () async {
+        writeOrganizations(<String>['orgA', 'orgB']);
+        final mockGitCloner = clonerOwning(<String>{urlB});
+
+        var asked = false;
+        await addRepositoryHelper(
+          targetArg: repoName,
+          ggLog: ggLog,
+          gitCloner: mockGitCloner,
+          workspacePath: workspacePath,
+          selectOrganization: (name, orgs) async {
+            asked = true;
+            return orgs.first;
+          },
+        );
+
+        expect(asked, isFalse);
+        verify(
+          () => mockGitCloner.cloneRepo(
+            urlB,
+            path.join(workspacePath, 'orgB', repoName),
+          ),
+        ).called(1);
+      });
+
+      test('stops when the selection is cancelled', () async {
+        writeOrganizations(<String>['orgA', 'orgB']);
+        final mockGitCloner = clonerOwning(<String>{urlA, urlB});
+
+        await addRepositoryHelper(
+          targetArg: repoName,
+          ggLog: ggLog,
+          gitCloner: mockGitCloner,
+          workspacePath: workspacePath,
+          selectOrganization: (name, orgs) async => null,
+        );
+
+        verifyNever(() => mockGitCloner.cloneRepo(any(), any()));
+        expect(logs, contains('No organization chosen for $repoName.'));
+      });
+
+      test('guesses and falls back when no known organization owns it',
+          () async {
+        writeOrganizations(<String>['orgA', 'orgB']);
+        final mockGitCloner = clonerOwning(<String>{});
+
+        await addRepositoryHelper(
+          targetArg: repoName,
+          ggLog: ggLog,
+          gitCloner: mockGitCloner,
+          workspacePath: workspacePath,
+          selectOrganization: (name, orgs) async => orgs.first,
+        );
+
+        // The github.com/<name>/<name> guess is tried first.
+        verify(
+          () => mockGitCloner.cloneRepo(
+            'https://github.com/$repoName/$repoName.git',
+            path.join(workspacePath, repoName, repoName),
+          ),
+        ).called(1);
+      });
+
+      test('asks no remote when a single organization is known', () async {
+        writeOrganizations(<String>['orgA']);
+        final mockGitCloner = clonerOwning(<String>{urlA});
+
+        await addRepositoryHelper(
+          targetArg: repoName,
+          ggLog: ggLog,
+          gitCloner: mockGitCloner,
+          workspacePath: workspacePath,
+        );
+
+        verifyNever(() => mockGitCloner.remoteExists(any()));
+      });
+
+      test('asks no remote when the repo is already added', () async {
+        writeOrganizations(<String>['orgA', 'orgB']);
+        final mockGitCloner = clonerOwning(<String>{urlA, urlB});
+        final repoDir = Directory(
+          path.join(workspacePath, 'orgA', repoName),
+        )..createSync(recursive: true);
+        File(path.join(repoDir.path, 'pubspec.yaml'))
+            .writeAsStringSync('name: $repoName\n');
+
+        await addRepositoryHelper(
+          targetArg: repoName,
+          ggLog: ggLog,
+          gitCloner: mockGitCloner,
+          workspacePath: workspacePath,
+        );
+
+        verifyNever(() => mockGitCloner.remoteExists(any()));
+        verifyNever(() => mockGitCloner.cloneRepo(any(), any()));
+        expect(logs, contains('✓ $repoName (already added).'));
+      });
     });
   });
 
@@ -947,7 +1116,7 @@ void main() {
       isTrue,
       reason: 'onRepoAdded should be executed when repo already exists.',
     );
-    expect(logs, contains('$repoName already added.'));
+    expect(logs, contains('✓ $repoName (already added).'));
     verifyNever(() => mockGitCloner.cloneRepo(any(), any()));
   });
 

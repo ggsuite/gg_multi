@@ -12,6 +12,7 @@ import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 import '../../../backend/constants.dart';
+import '../../../backend/repo_setup.dart';
 import '../../../backend/ticket_json.dart';
 import '../../../backend/workspace_utils.dart';
 import 'package:path/path.dart' as p;
@@ -104,6 +105,11 @@ class TicketCommand extends DirCommand<void> {
       issueId: issueId,
       description: description,
     );
+
+    // Write the VS Code workspace so `do code <ticket>` opens the fresh
+    // ticket right away. It holds the ticket folder itself until `do add`
+    // rewrites it with one entry per repository.
+    writeCodeWorkspaceFile(Directory(ticketsPath), const <String>[]);
 
     ggLog('✅ Created ticket $issueId');
     ggLog(

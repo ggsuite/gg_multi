@@ -60,11 +60,25 @@ Future<void> installRepoDependencies({
 }
 
 /// Writes the VS Code `.code-workspace` file for [ticketDir] with one folder
-/// entry per repository in [repoNames] (deduplicated, insertion order kept).
-void writeCodeWorkspaceFile(Directory ticketDir, List<String> repoNames) {
-  final folders = repoNames
+/// entry per repository in [repoPaths] (deduplicated, insertion order kept).
+///
+/// Each entry is the path of the repository relative to [ticketDir], i.e.
+/// `<org>/<repo>`. It is always written with forward slashes — VS Code
+/// understands those on every platform, a Windows separator would end up
+/// escaped in the JSON.
+///
+/// A ticket without repositories — a freshly created one — gets the ticket
+/// folder itself as its single entry. An empty folder list would open a
+/// window showing nothing at all, and VS Code offers no way to add the first
+/// folder from there.
+void writeCodeWorkspaceFile(Directory ticketDir, List<String> repoPaths) {
+  final folders = (repoPaths.isEmpty ? const <String>['.'] : repoPaths)
       .toSet()
-      .map<Map<String, String>>((name) => <String, String>{'path': name})
+      .map<Map<String, String>>(
+        (repoPath) => <String, String>{
+          'path': path.posix.joinAll(path.split(repoPath)),
+        },
+      )
       .toList();
   final ticketName = path.basename(ticketDir.path);
   final file = File(path.join(ticketDir.path, '$ticketName.code-workspace'));

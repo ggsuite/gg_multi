@@ -123,5 +123,33 @@ void main() {
         '{"folders":[{"path":"a"},{"path":"b"}]}\n',
       );
     });
+
+    test('falls back to the ticket folder when there is no repo', () {
+      // An empty folder list would open a window showing nothing at all.
+      final ticketDir = Directory(path.join(tmp.path, 'empty_ticket'))
+        ..createSync();
+      writeCodeWorkspaceFile(ticketDir, const <String>[]);
+      expect(
+        File(
+          path.join(ticketDir.path, 'empty_ticket.code-workspace'),
+        ).readAsStringSync(),
+        '{"folders":[{"path":"."}]}\n',
+      );
+    });
+
+    test('writes org folder entries with forward slashes', () {
+      // VS Code understands forward slashes on every platform, a Windows
+      // separator would end up escaped in the JSON.
+      final ticketDir = Directory(path.join(tmp.path, 'org_ticket'))
+        ..createSync();
+      writeCodeWorkspaceFile(ticketDir, [path.join('ggsuite', 'gg_foo')]);
+      final file = File(
+        path.join(ticketDir.path, 'org_ticket.code-workspace'),
+      );
+      expect(
+        file.readAsStringSync(),
+        '{"folders":[{"path":"ggsuite/gg_foo"}]}\n',
+      );
+    });
   });
 }

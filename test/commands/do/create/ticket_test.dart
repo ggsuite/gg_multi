@@ -100,6 +100,32 @@ void main() {
       );
     });
 
+    test('writes a VS Code workspace holding the ticket folder', () async {
+      // `do code` must open something useful before the first `do add`.
+      const issueId = 'CDM-129';
+
+      await runner.run([
+        'ticket',
+        '--input',
+        tempDir.path,
+        issueId,
+        '-m',
+        'Fresh ticket',
+      ]);
+
+      final wsFile = File(
+        path.join(tempDir.path, 'tickets', issueId, '$issueId.code-workspace'),
+      );
+      expect(wsFile.existsSync(), isTrue);
+      final ws = jsonDecode(wsFile.readAsStringSync()) as Map<String, dynamic>;
+      expect(
+        (ws['folders'] as List<dynamic>)
+            .cast<Map<String, dynamic>>()
+            .map((f) => f['path'] as String),
+        <String>['.'],
+      );
+    });
+
     test(
         'creates relative paths based on execution directory when already '
         'inside tickets folder', () async {

@@ -203,6 +203,26 @@ void main() {
         var names = infos.map((repo) => repo.name).toSet();
         expect(names, containsAll(['repo1', 'repo2', 'repo3']));
       });
+
+      test('lists the repos inside the organization folders', () async {
+        // `<master>/<org>/<repo>` is the layout of a migrated workspace.
+        final masterWorkspace = Directory(p.join(tempDir.path, 'org_master'))
+          ..createSync();
+        final repo = Directory(p.join(masterWorkspace.path, 'org1', 'repo1'))
+          ..createSync(recursive: true);
+        File(p.join(repo.path, 'pubspec.yaml'))
+            .writeAsStringSync('name: repo1\nversion: 2.0.0');
+        Directory(p.join(repo.path, '.git')).createSync();
+        File(p.join(repo.path, '.git', 'config'))
+            .writeAsStringSync('url = git@github.com:org1/repo1.git');
+
+        var infos = await getAllRepoInfos(masterWorkspace.path);
+
+        expect(infos, hasLength(1));
+        expect(infos.first.name, 'repo1');
+        expect(infos.first.organization, 'org1');
+        expect(infos.first.version, 'v.2.0.0');
+      });
     });
   });
 }

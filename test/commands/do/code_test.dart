@@ -157,6 +157,23 @@ void main() {
       );
     });
 
+    test('opens a repo that sits in an organization folder', () async {
+      // `<ticket>/<repo>` addresses the repo wherever it is in the ticket.
+      final tdir = Directory(
+        path.join(tempRoot.path, ggMultiTicketFolder, 'T_ORG'),
+      )..createSync(recursive: true);
+      final r = Directory(path.join(tdir.path, 'ggsuite', 'OrgRepo'))
+        ..createSync(recursive: true);
+      File(path.join(r.path, 'pubspec.yaml'))
+          .writeAsStringSync('name: OrgRepo');
+
+      await runner.run(<String>['code', 'T_ORG/OrgRepo']);
+
+      expect(launched.length, 1);
+      expect(launched[0][1], r.path);
+      expect(messages.last, contains('Opened OrgRepo at'));
+    });
+
     test('logs error when specified repo missing', () async {
       Directory(
         path.join(tempRoot.path, ggMultiTicketFolder, 'T4'),

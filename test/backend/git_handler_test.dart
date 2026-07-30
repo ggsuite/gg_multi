@@ -199,6 +199,39 @@ void main() {
       ).called(1);
     });
 
+    group('remoteExists', () {
+      test('is true when git can list the remote', () async {
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['ls-remote', 'https://github.com/org/repo.git'],
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'hash\tHEAD', ''));
+
+        expect(
+          await gitHandler.remoteExists('https://github.com/org/repo.git'),
+          isTrue,
+        );
+      });
+
+      test('is false when the remote is not reachable', () async {
+        when(
+          () => mockProcessRunner('git', ['ls-remote', 'https://x/none.git']),
+        ).thenAnswer((_) async => ProcessResult(0, 128, '', 'not found'));
+
+        expect(await gitHandler.remoteExists('https://x/none.git'), isFalse);
+      });
+
+      test('is false when git cannot be run at all', () async {
+        // A missing git binary must not look like a missing repository.
+        when(
+          () => mockProcessRunner('git', ['ls-remote', 'https://x/none.git']),
+        ).thenThrow(const ProcessException('git', <String>[]));
+
+        expect(await gitHandler.remoteExists('https://x/none.git'), isFalse);
+      });
+    });
+
     test('throws when checkout branch fails', () async {
       when(
         () => mockProcessRunner(
