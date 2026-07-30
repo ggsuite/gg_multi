@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- »gg do rm« deletes repos from ticket
+
 ## 5.12.6 - 2026-07-30
 
 ### Fixed
