@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 5.12.3 - 2026-07-30
+
 ### Removed
 
 - Remove doublicate cli output when adding organisations
