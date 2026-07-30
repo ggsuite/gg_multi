@@ -223,10 +223,10 @@ class DoConfigurePublishCommand extends DirCommand<void> {
     );
     final selected = Select(
       prompt: 'Delete ticket $ticketName and remove remote feature branches?',
-      options: ['No', 'Yes'],
-      initialIndex: 1,
+      options: ['Yes', 'No'],
+      initialIndex: 0,
     ).interact();
-    return selected == 1;
+    return selected == 0;
   }
   // coverage:ignore-end
 

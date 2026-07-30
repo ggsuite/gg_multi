@@ -44,6 +44,22 @@ Future<ProcessResult> _defaultProcessRunner(
     );
 // coverage:ignore-end
 
+/// Thrown when merging `origin/main` into a feature branch ends in conflicts.
+///
+/// The conflicts are deliberately left in the working tree so the user can
+/// resolve them; therefore the review must *not* roll the repositories back
+/// when this is thrown.
+class MergeConflictException implements Exception {
+  /// Constructor
+  MergeConflictException(this.message);
+
+  /// The error message.
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 /// Snapshot of a repository's git state taken before the review mutates it.
 class _RepoSnapshot {
   _RepoSnapshot({
@@ -223,6 +239,10 @@ class DoReviewCommand extends DirCommand<void> {
           errorLog: errorLog,
         ),
       );
+    } on MergeConflictException {
+      // The conflicting merge must survive: the user resolves it in the
+      // working tree and commits. A rollback would throw that work away.
+      rethrow;
     } catch (_) {
       // Bring the repos back to the state saved above, then surface the
       // review failure as the primary error.
@@ -263,6 +283,14 @@ class DoReviewCommand extends DirCommand<void> {
       try {
         headBeforeMerge = await _gitHead(repoDir);
 
+        // Make sure `origin/main` points to the remote's current main. Without
+        // this the merge below would silently merge a stale main.
+        await _runGit(
+          <String>['fetch', 'origin', 'main'],
+          repoDir: repoDir,
+          allowFailure: true,
+        );
+
         final result = await _processRunner(
           'git',
           <String>['merge', 'origin/main'],
@@ -273,6 +301,22 @@ class DoReviewCommand extends DirCommand<void> {
           final stderrStr = result.stderr?.toString() ?? '';
           final stdoutStr = result.stdout?.toString() ?? '';
           final errMsg = stderrStr.isNotEmpty ? stderrStr : stdoutStr;
+
+          // Conflicts are not an error the review can fix — the merge stays in
+          // the working tree and the user resolves it.
+          final conflicts = await _conflictingFiles(repoDir);
+          if (conflicts.isNotEmpty) {
+            _reportMergeConflicts(
+              repoName: repoName,
+              conflicts: conflicts,
+              errorLog: errorLog,
+            );
+            throw MergeConflictException(
+              'Merging origin/main into $repoName produced conflicts. '
+              'Resolve them, then run: gg do commit -m"Merge main" --no-log',
+            );
+          }
+
           throw Exception(errMsg);
         }
 
@@ -281,6 +325,8 @@ class DoReviewCommand extends DirCommand<void> {
             'Merged main into $repoName for ticket $ticketName.',
           ),
         );
+      } on MergeConflictException {
+        rethrow;
       } catch (e) {
         errorLog(
           red(
@@ -323,6 +369,36 @@ class DoReviewCommand extends DirCommand<void> {
         }
       }
     }
+  }
+
+  /// Returns the files [repoDir] currently has merge conflicts in.
+  Future<List<String>> _conflictingFiles(Directory repoDir) async {
+    final out = await _runGit(
+      <String>['diff', '--name-only', '--diff-filter=U'],
+      repoDir: repoDir,
+      allowFailure: true,
+    );
+    return out
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+  }
+
+  /// Tells the user which files conflict and how to continue.
+  void _reportMergeConflicts({
+    required String repoName,
+    required List<String> conflicts,
+    required GgLog errorLog,
+  }) {
+    errorLog(yellow('Please resolve merge conflicts:'));
+    for (final file in conflicts) {
+      errorLog(' - ${blue('$repoName/$file')}');
+    }
+    errorLog(
+      yellow('After merging execute: ') +
+          blue('gg do commit -m"Merge main" --no-log'),
+    );
   }
 
   /// Returns the current `HEAD` commit hash of [repoDir].

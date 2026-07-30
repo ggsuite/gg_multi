@@ -115,9 +115,11 @@ Once found, it recreates the ticket folder + root `.ticket`, clones any missing 
 
 ### `do review` Command
 
-`DoReviewCommand` (in `lib/src/commands/do/review.dart`) prepares every ticket repo for review: merge `origin/main` into the feature branch (re-verifying with `gg can commit` when the merge moved HEAD), run `can review`, then per repo localize refs to git feature branches, refresh dependencies, force-commit, integrate the remote feature branch (`pull --rebase`, never force-push) and push.
+`DoReviewCommand` (in `lib/src/commands/do/review.dart`) prepares every ticket repo for review: fetch + merge `origin/main` into the feature branch (`git fetch origin main` first, so a main that moved on the remote is really merged; re-verifying with `gg can commit` when the merge moved HEAD), run `can review`, then per repo localize refs to git feature branches, refresh dependencies, force-commit, integrate the remote feature branch (`pull --rebase`, never force-push) and push.
 
 Before touching anything it snapshots every repo (branch — the commit hash when HEAD is detached, HEAD, `status --porcelain`, plus a `git stash push --include-untracked` commit that captures tracked changes, the staged/unstaged split *and* untracked files, immediately re-applied so the working tree is unchanged). **If any step fails, the changed repos are rolled back to that snapshot** (`merge --abort` → `rebase --abort` → `checkout <branch>` if needed → `reset --hard <head>` → `stash apply --index`); unchanged repos are skipped. Already-pushed repos are **left as-is, not reset** — resetting local behind the pushed commit would desync them and make the next run rebase onto it; they are reported instead, and the next `do review` run integrates those remote commits via the `pull --rebase` step. If the restore itself fails, a manual-recovery hint with the checkout/reset commands *and the stash hash* is logged and the original review error stays the primary one.
+
+**Merge conflicts are not a rollback case.** When merging `origin/main` leaves conflicts (`git diff --name-only --diff-filter=U` is non-empty), the review logs `Please resolve merge conflicts:`, the conflicting files, and `After merging execute: gg do commit -m"Merge main" --no-log`, then throws `MergeConflictException`. That exception bypasses the rollback (and is rethrown unwrapped by `do publish`), so the half-merged working tree survives for the user to resolve. Every other merge failure keeps the old behaviour: wrapped error + full rollback.
 
 ### `do configure-publish` Command
 

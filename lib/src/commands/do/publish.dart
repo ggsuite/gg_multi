@@ -297,6 +297,10 @@ class DoPublishCommand extends DirCommand<void> {
           ggLog: ggLog,
           verbose: verbose,
         );
+      } on MergeConflictException {
+        // Conflicts are resolved by the user; the message the review printed
+        // is the actionable one, so do not bury it in a publish error.
+        rethrow;
       } catch (e) {
         throw Exception('gg_multi do review failed: $e');
       }
@@ -1263,10 +1267,10 @@ class DoPublishCommand extends DirCommand<void> {
     );
     final selected = Select(
       prompt: 'Delete ticket $ticketName and remove remote feature branches?',
-      options: ['No', 'Yes'],
-      initialIndex: 1,
+      options: ['Yes', 'No'],
+      initialIndex: 0,
     ).interact();
-    return selected == 1;
+    return selected == 0;
   }
   // coverage:ignore-end
 

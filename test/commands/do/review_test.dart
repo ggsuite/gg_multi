@@ -48,12 +48,32 @@ class MockProcessRunner extends Mock {
   });
 }
 
+/// Stubs the `git fetch origin main` the merge step runs before merging, and
+/// the conflict lookup that follows a failed merge (no conflicts by default).
+void stubGitFetchMain(MockProcessRunner m) {
+  when(
+    () => m(
+      'git',
+      ['fetch', 'origin', 'main'],
+      workingDirectory: any(named: 'workingDirectory'),
+    ),
+  ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+  when(
+    () => m(
+      'git',
+      ['diff', '--name-only', '--diff-filter=U'],
+      workingDirectory: any(named: 'workingDirectory'),
+    ),
+  ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+}
+
 /// Stubs `git rev-parse HEAD` on [m] to return a constant value, so the merge
 /// step sees an unchanged HEAD and skips the post-merge `gg can commit`
 /// verification. Also stubs the branch and status calls of the pre-review
 /// snapshot, so the state save sees a clean repo and a rollback after a
 /// failure skips it as unchanged.
 void stubGitHeadUnchanged(MockProcessRunner m) {
+  stubGitFetchMain(m);
   when(
     () => m(
       'git',
@@ -422,6 +442,114 @@ void main() {
         ),
       );
     });
+
+    test(
+      'asks the user to resolve merge conflicts and keeps the merge',
+      () async {
+        final mockSortedProcessingList = MockSortedProcessingList();
+        final mockUnlocalizeRefs = MockUnlocalizeRefs();
+        final mockLocalizeRefsToGit = MockLocalizeRefsToGit();
+        final mockCanReviewCommand = MockCanReviewCommand();
+        final mockGgDoCommit = MockGgDoCommit();
+        final mockGgDoPush = MockGgDoPush();
+        final mockProcessRunner = MockProcessRunner();
+        stubGitHeadUnchanged(mockProcessRunner);
+
+        when(
+          () => mockSortedProcessingList.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            Node(
+              name: 'A',
+              directory: Directory(path.join(ticketDir.path, 'A')),
+              manifest: DartPackageManifest(pubspec: Pubspec('A')),
+            ),
+          ],
+        );
+
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['merge', 'origin/main'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer(
+          (_) async => ProcessResult(
+            1,
+            1,
+            'CONFLICT (content): Merge conflict in CHANGELOG.md',
+            '',
+          ),
+        );
+
+        // The conflicting files reported by git.
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['diff', '--name-only', '--diff-filter=U'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer(
+          (_) async => ProcessResult(0, 0, 'CHANGELOG.md\n.gg/.gg.json\n', ''),
+        );
+
+        final runner = CommandRunner<void>('test', 'do review ticket')
+          ..addCommand(
+            DoReviewCommand(
+              ggLog: ggLog,
+              canReviewCommand: mockCanReviewCommand,
+              unlocalizeRefs: mockUnlocalizeRefs,
+              localizeRefsToGit: mockLocalizeRefsToGit,
+              sortedProcessingList: mockSortedProcessingList,
+              ggDoCommit: mockGgDoCommit,
+              ggDoPush: mockGgDoPush,
+              processRunner: mockProcessRunner.call,
+            ),
+          );
+
+        await expectLater(
+          () async => runner.run([
+            'review',
+            '--verbose',
+            '--input',
+            ticketDir.path,
+          ]),
+          throwsA(
+            isA<MergeConflictException>().having(
+              (e) => e.toString(),
+              'message',
+              contains('gg do commit -m"Merge main" --no-log'),
+            ),
+          ),
+        );
+
+        expect(messages, contains('Please resolve merge conflicts:'));
+        expect(messages, contains(' - A/CHANGELOG.md'));
+        expect(messages, contains(' - A/.gg/.gg.json'));
+        expect(
+          messages,
+          contains(
+            'After merging execute: gg do commit -m"Merge main" --no-log',
+          ),
+        );
+
+        // The conflicting merge is kept — no rollback, no "merge --abort".
+        verifyNever(
+          () => mockProcessRunner(
+            'git',
+            ['merge', '--abort'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        );
+        expect(
+          messages.any((m) => m.contains('Restoring the state')),
+          isFalse,
+        );
+      },
+    );
 
     test(
       'logs and throws when gg_multi can review fails',
@@ -1941,6 +2069,7 @@ void main() {
         final mockGgDoPush = MockGgDoPush();
         final mockGgCanCommit = MockGgCanCommit();
         final mockProcessRunner = MockProcessRunner();
+        stubGitFetchMain(mockProcessRunner);
 
         // HEAD moves during the merge → the post-merge verification runs.
         // Call 0 is the pre-review snapshot, call 1 the pre-merge hash.
@@ -2094,6 +2223,7 @@ void main() {
         final mockGgDoPush = MockGgDoPush();
         final mockGgCanCommit = MockGgCanCommit();
         final mockProcessRunner = MockProcessRunner();
+        stubGitFetchMain(mockProcessRunner);
 
         // Call 0 is the pre-review snapshot, call 1 the pre-merge hash.
         var headCalls = 0;
@@ -2317,6 +2447,7 @@ void main() {
       mockGgDoPush = MockGgDoPush();
       mockGgCanCommit = MockGgCanCommit();
       m = MockProcessRunner();
+      stubGitFetchMain(m);
 
       when(
         () => mockCanReviewCommand.exec(
