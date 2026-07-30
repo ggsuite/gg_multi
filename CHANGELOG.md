@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.12.9 - 2026-07-30
+
+### Removed
+
+- Remove gg_multi_ui - heavy dependency from gg_multi
+
 ## 5.12.8 - 2026-07-30
 
 ### Changed
