@@ -9,7 +9,6 @@ import 'dart:io';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:gg_multi/src/backend/url_parser.dart';
-import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 import 'git_handler.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
@@ -79,11 +78,8 @@ Future<void> addRepositoryHelper({
 
     // Try to clone the repository ............................................
     try {
-      await GgStatusPrinter<void>(
-        message: '${cyan(repoName)} from $repoUrl',
-        ggLog: ggLog,
-        useCarriageReturn: false,
-      ).run(() => gitCloner.cloneRepo(repoUrl, destination));
+      await gitCloner.cloneRepo(repoUrl, destination);
+      ggLog(darkGray('✓ $repoName from $repoUrl'));
       try {
         OrganizationUtils.appendOrganization(workspacePath, repoUrl);
       } catch (_) {
@@ -104,11 +100,8 @@ Future<void> addRepositoryHelper({
         final baseUrl = org.url.endsWith('/') ? org.url : '${org.url}/';
         final fallbackUrl = '$baseUrl$repoName.git';
         try {
-          await GgStatusPrinter<void>(
-            message: '${cyan(repoName)} from $fallbackUrl',
-            ggLog: ggLog,
-            useCarriageReturn: false,
-          ).run(() => gitCloner.cloneRepo(fallbackUrl, destination));
+          await gitCloner.cloneRepo(fallbackUrl, destination);
+          ggLog(darkGray('✓ $repoName from $fallbackUrl'));
           try {
             OrganizationUtils.appendOrganization(workspacePath, fallbackUrl);
           } catch (_) {}
@@ -167,6 +160,7 @@ Future<void> addRepositoryHelper({
           );
           return;
         }
+        ggLog(darkGray('Cloning repos ...'));
         await runWithLimit(
           repos,
           4,
@@ -200,6 +194,7 @@ Future<void> addRepositoryHelper({
           );
           return;
         }
+        ggLog(darkGray('Cloning repos ...'));
         await runWithLimit(
           repos,
           4,

@@ -159,6 +159,53 @@ void main() {
         }
       });
 
+      test(
+        'Logs one header and exactly one success line per repo',
+        () async {
+          // Repos of an organization are cloned in parallel. The output must
+          // therefore be a single header plus one line per repo - a
+          // progress-then-done printer would interleave into duplicates.
+          const targetArg = 'http://github.com/myorg';
+          final mockGitCloner = MockGitCloner();
+          when(() => mockGitCloner.cloneRepo(any(), any()))
+              .thenAnswer((_) async {});
+
+          final repoList = <Repository>[
+            const Repository(
+              name: 'repo1',
+              httpsUrl: 'https://github.com/myorg/repo1.git',
+            ),
+            const Repository(
+              name: 'repo2',
+              httpsUrl: 'https://github.com/myorg/repo2.git',
+            ),
+          ];
+
+          final mockGitHubPlatform = MockGitHubPlatform();
+          when(
+            () => mockGitHubPlatform.fetchOrgRepos(
+              any(),
+              client: any(named: 'client'),
+            ),
+          ).thenAnswer((_) async => repoList);
+
+          await addRepositoryHelper(
+            targetArg: targetArg,
+            ggLog: ggLog,
+            gitCloner: mockGitCloner,
+            gitHubPlatform: mockGitHubPlatform,
+            workspacePath: workspacePath,
+            force: false,
+          );
+
+          expect(logs, [
+            'Cloning repos ...',
+            '✓ repo1 from https://github.com/myorg/repo1.git',
+            '✓ repo2 from https://github.com/myorg/repo2.git',
+          ]);
+        },
+      );
+
       test('Treats /orgs/<org> URL as organization and clones repos', () async {
         // The GitHub browser URL for an organization overview page carries an
         // extra `orgs` path segment; it must still be recognised as an org.

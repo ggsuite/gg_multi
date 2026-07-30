@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Don't show duplicate output when adding repos
+
 ## 5.12.4 - 2026-07-30
 
 ## 5.12.3 - 2026-07-30
