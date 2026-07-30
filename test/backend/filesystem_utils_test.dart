@@ -76,6 +76,37 @@ void main() {
       );
 
       test(
+        'skips .gg on every level by default',
+        () async {
+          // Arrange – a repo-like source with publish progress inside .gg.
+          final ggDir = Directory(path.join(sourceDir.path, '.gg'));
+          await ggDir.create(recursive: true);
+
+          final publishProgress = File(
+            path.join(ggDir.path, '.gg-publish.json'),
+          );
+          await publishProgress.writeAsString('{"done_steps":["merge"]}');
+
+          final ggJson = File(path.join(ggDir.path, '.gg.json'));
+          await ggJson.writeAsString('{}');
+
+          // Act.
+          await copyDirectory(sourceDir, destinationDir);
+
+          // Assert – the publish progress must not travel with the copy,
+          // its sibling .gg.json must.
+          final copiedProgress = File(
+            path.join(destinationDir.path, '.gg', '.gg-publish.json'),
+          );
+          final copiedGgJson = File(
+            path.join(destinationDir.path, '.gg', '.gg.json'),
+          );
+          expect(copiedProgress.existsSync(), isFalse);
+          expect(copiedGgJson.existsSync(), isTrue);
+        },
+      );
+
+      test(
         'throws ArgumentError when source does not exist',
         () async {
           final nonExisting = Directory(

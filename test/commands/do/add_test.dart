@@ -543,6 +543,154 @@ dev_dependencies:
     );
 
     test(
+      'removes stale publish progress from the master repo before the copy',
+      () async {
+        const repoName = 'staleProgressRepo';
+        final repoDir = Directory(
+          path.join(masterWorkspacePath, repoName),
+        )..createSync(recursive: true);
+        File(path.join(repoDir.path, 'target.txt'))
+            .writeAsStringSync('content');
+        const pubspecContent = '''
+name: project123
+version: 1.0.0
+dependencies:
+  json_dart: ^3.5.2
+dev_dependencies:
+  json_serializer: ^1.4.2
+''';
+        final pubspecFile = File(path.join(repoDir.path, 'pubspec.yaml'));
+        pubspecFile.writeAsStringSync(pubspecContent);
+
+        // A leftover runtime file of an aborted publish: it is gitignored,
+        // so none of the git operations preparing the master repo removes
+        // it — carried into a ticket it would block the next publish there.
+        final ggDir = Directory(path.join(repoDir.path, '.gg'))
+          ..createSync(recursive: true);
+        File(path.join(ggDir.path, '.gg-publish.json')).writeAsStringSync(
+          '{"done_steps":["prepare_version","publish_registry"]}',
+        );
+        File(path.join(ggDir.path, '.gg.json')).writeAsStringSync('{}');
+
+        final ticketDir = Directory(
+          path.join(tempDir.path, ggMultiTicketFolder, 'TICKET'),
+        )..createSync(recursive: true);
+
+        final mockDoCommit = MockGgDoCommit();
+        when(
+          () => mockDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            logType: any(named: 'logType'),
+            updateChangeLog: any(named: 'updateChangeLog'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+
+        final mockProc = MockProcessRunner();
+        when(
+          () => mockProc(
+            'git',
+            ['add', '-f', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+        when(
+          () => mockProc(
+            'git',
+            ['fetch'],
+            workingDirectory: repoDir.path,
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+        when(
+          () => mockProc(
+            'git',
+            ['reset', '--hard', 'origin/main'],
+            workingDirectory: repoDir.path,
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+        when(
+          () => mockProc(
+            'git',
+            ['tag', '-l'],
+            workingDirectory: repoDir.path,
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+        when(
+          () => mockProc(
+            'git',
+            ['fetch', '--tags'],
+            workingDirectory: repoDir.path,
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+        when(
+          () => mockProc(
+            'git',
+            ['fetch', '--prune', '--tags'],
+            workingDirectory: repoDir.path,
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+        when(
+          () => mockProc(
+            'dart',
+            ['pub', 'get'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+        when(
+          () => mockProc(
+            'dart',
+            ['pub', 'upgrade'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+
+        createRunner(
+          executionPath: ticketDir.path,
+          ggDoCommit: mockDoCommit,
+          processRunner: mockProc.call,
+        );
+
+        await runner.run(['add', '--verbose', repoName]);
+
+        // The stale file is gone from the master repo …
+        expect(
+          File(path.join(ggDir.path, '.gg-publish.json')).existsSync(),
+          isFalse,
+        );
+        expect(
+          logMessages.any(
+            (m) => m.contains('Removed stale publish progress'),
+          ),
+          isTrue,
+        );
+
+        // … and never reached the ticket copy. Its sibling .gg.json did.
+        expect(
+          File(
+            path.join(ticketDir.path, repoName, '.gg', '.gg-publish.json'),
+          ).existsSync(),
+          isFalse,
+        );
+        expect(
+          File(
+            path.join(ticketDir.path, repoName, '.gg', '.gg.json'),
+          ).existsSync(),
+          isTrue,
+        );
+      },
+    );
+
+    test(
       'transitive scan clones a GitDependency declared in an existing '
       'repo via the org-fallback URL',
       () async {
