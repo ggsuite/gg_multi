@@ -97,6 +97,14 @@ Because the hook lives in the untracked `.git/hooks/`, it survives in every chec
 
 Once found, it recreates the ticket folder + root `.ticket`, clones any missing repos from their URLs, copies each into the ticket, checks out the existing feature branch, and installs deps.
 
+### `do rm` Command
+
+`RemoveCommand` (in `lib/src/commands/do/rm.dart`) deletes a single repo folder. From the workspace root it deletes the master copy only when no ticket still references the repo, otherwise it lists the offending tickets. From inside a ticket it deletes that ticket's copy only — master and sibling tickets are never touched.
+
+**`.ticket.json` upkeep**: after a ticket-scoped deletion the `.gg/.ticket.json` marker of every remaining repo is rewritten without the deleted repo (`issue_id`/`description` come from the root `.ticket` via `buildTicketJson`, same as `do add`). Only repos that already carry a marker are touched, so a ticket that never saw a `do add` does not gain one. The marker is written but neither staged nor committed — the next `do add`/`do commit` picks it up.
+
+**Dependency-chain guard**: a ticket-scoped `rm` refuses to delete a repo that *links* two other repos of the ticket — one that has both a dependent and a dependency inside the ticket (`a → b → c`, removing `b`). The offending edges are listed and an exception is thrown, so the chain cannot be torn apart; remove the dependents first. Repos at either end of a chain (no dependents, or no dependencies within the ticket) and folders that are no package at all delete without complaint. The graph comes from `SortedProcessingList` (injectable for tests) over the ticket folder.
+
 ### `do commit` Command
 
 `DoCommitCommand` (in `lib/src/commands/do/commit.dart`) commits every ticket repo in dependency order with one shared message, delegating to gg_one's `gg do commit` per repo.

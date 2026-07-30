@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.12.8 - 2026-07-30
+
+### Changed
+
+- »gg do rm« deletes repos from ticket
+
 ## 5.12.7 - 2026-07-30
 
 ### Changed
