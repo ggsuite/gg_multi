@@ -1,0 +1,10 @@
+{
+  "issue_id": "33_org_folders",
+  "description": "Organization folders",
+  "repositories": [
+    {
+      "name": "gg_multi",
+      "url": "git@github.com:ggsuite/gg_multi.git"
+    }
+  ]
+}
