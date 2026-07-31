@@ -12,6 +12,7 @@ import 'package:gg_multi/src/backend/url_parser.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 import 'package:interact/interact.dart';
 import 'package:path/path.dart' as path;
+import 'duplicate_package_name_checker.dart';
 import 'git_handler.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'git_platform.dart';
@@ -135,58 +136,70 @@ Future<void> addRepositoryHelper({
     );
 
     // Try to clone the repository ............................................
+    ({String directory, String url})? cloned;
     try {
       await gitCloner.cloneRepo(repoUrl, destination);
-      ggLog(darkGray('✓ $repoName from $repoUrl'));
-      try {
-        OrganizationUtils.appendOrganization(workspacePath, repoUrl);
-      } catch (_) {
-        // Swallow errors: organization info shouldn't block the core flow
-      }
-      if (onRepoAdded != null) {
-        await onRepoAdded(repoName);
-      }
-      return;
+      cloned = (directory: destination, url: repoUrl);
     } catch (e) {
       if (!allowFallback) {
         rethrow;
       }
       // Attempt fallback: try each known organization from .organizations
       final orgs = OrganizationUtils.readOrganizations(workspacePath);
-      bool anySuccess = false;
       for (final org in orgs) {
         final fallbackUrl = repoUrlOfOrganization(org, repoName);
+        // The fallback URL names another organization than the one guessed
+        // from the target, so the destination is recomputed from it.
+        final fallbackDestination = RepoFolderResolver.destination(
+          workspacePath: workspacePath,
+          repoUrl: fallbackUrl,
+          repoName: repoName,
+        );
         try {
-          // The fallback URL names another organization than the one guessed
-          // from the target, so the destination is recomputed from it.
-          await gitCloner.cloneRepo(
-            fallbackUrl,
-            RepoFolderResolver.destination(
-              workspacePath: workspacePath,
-              repoUrl: fallbackUrl,
-              repoName: repoName,
-            ),
-          );
-          ggLog(darkGray('✓ $repoName from $fallbackUrl'));
-          try {
-            OrganizationUtils.appendOrganization(workspacePath, fallbackUrl);
-          } catch (_) {}
-          if (onRepoAdded != null) {
-            await onRepoAdded(repoName);
-          }
-          anySuccess = true;
+          await gitCloner.cloneRepo(fallbackUrl, fallbackDestination);
+          cloned = (directory: fallbackDestination, url: fallbackUrl);
           break;
         } catch (_) {
           // Continue trying next
         }
       }
-      if (!anySuccess) {
+      if (cloned == null) {
         ggLog(
           red('Failed to clone repository '
               '$repoName from any known organizations.'),
         );
+        return;
       }
-      return;
+    }
+
+    // A package name must be unique within the workspace .....................
+    final clonedDir = Directory(cloned.directory);
+    try {
+      throwOnDuplicatePackageName(
+        workspacePath: workspacePath,
+        repoDir: clonedDir,
+      );
+    } catch (_) {
+      // A rejected repository must not stay behind: the clone above is the
+      // only thing that put it into the workspace, so it is undone here.
+      if (clonedDir.existsSync()) {
+        clonedDir.deleteSync(recursive: true);
+      }
+      RepoFolderResolver.removeEmptyOrgFolder(
+        workspacePath: workspacePath,
+        repoDir: clonedDir,
+      );
+      rethrow;
+    }
+
+    ggLog(darkGray('✓ $repoName from ${cloned.url}'));
+    try {
+      OrganizationUtils.appendOrganization(workspacePath, cloned.url);
+    } catch (_) {
+      // Swallow errors: organization info shouldn't block the core flow
+    }
+    if (onRepoAdded != null) {
+      await onRepoAdded(repoName);
     }
   }
 

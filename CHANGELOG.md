@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Throw on duplicate package names when adding repositories
+
 ## 7.0.1 - 2026-07-31
 
 ### Changed

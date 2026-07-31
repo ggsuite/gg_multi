@@ -14,6 +14,7 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_multi/src/backend/constants.dart';
+import 'package:gg_multi/src/backend/duplicate_package_name_checker.dart';
 import 'package:gg_multi/src/backend/git_platform.dart' hide ProcessRunner;
 import 'package:gg_multi/src/backend/organization.dart';
 import 'package:mocktail/mocktail.dart';
@@ -774,6 +775,54 @@ dev_dependencies:
             any(),
           ),
         ).called(1);
+      },
+    );
+
+    test(
+      'transitive scan reports a dependency whose package name is taken',
+      () async {
+        // A colliding package name must not be swallowed like an unreachable
+        // dependency: `_cloneMissingTransitiveDeps` rethrows it.
+        const existingRepoName = 'tx_dup_existing';
+        const gitDepName = 'tx_dup_dep';
+        final existingRepoDir = Directory(
+          path.join(masterWorkspacePath, existingRepoName),
+        )..createSync(recursive: true);
+        File(
+          path.join(existingRepoDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync(
+          'name: $existingRepoName\n'
+          'version: 1.0.0\n'
+          'dependencies:\n'
+          '  $gitDepName:\n'
+          '    git:\n'
+          '      url: https://github.com/some_org/$gitDepName.git\n',
+        );
+
+        // The dependency brings the package name of the existing repo.
+        when(
+          () => mockGitCloner.cloneRepo(
+            'https://github.com/$gitDepName/$gitDepName.git',
+            any(),
+          ),
+        ).thenAnswer((invocation) async {
+          final destination = invocation.positionalArguments[1] as String;
+          Directory(destination).createSync(recursive: true);
+          File(path.join(destination, 'pubspec.yaml')).writeAsStringSync(
+            'name: $existingRepoName\nversion: 1.0.0\n',
+          );
+        });
+
+        final ticketDir = Directory(
+          path.join(tempDir.path, ggMultiTicketFolder, 'TX_DUP_TICKET'),
+        )..createSync(recursive: true);
+
+        createRunner(executionPath: ticketDir.path);
+
+        await expectLater(
+          runner.run(['add', existingRepoName]),
+          throwsA(isA<DuplicatePackageNameException>()),
+        );
       },
     );
 

@@ -86,6 +86,16 @@ No remote is asked when fewer than two organizations are known or when the repo 
 
 The two graph builders gg_multi delegates to know the layout as well: `Graph`/`SortedProcessingList` (gg_local_package_dependencies) descend into grouping folders, and `MultiLanguageGraph` (gg_localize_refs) resolves the workspace root one level up when the repo sits in an organization folder, so path refs across organizations are localized. Both changes are backwards compatible with a flat workspace.
 
+### Unique package names
+
+Organization folders keep two repos of the same *folder* name apart, but not two repos declaring the same *package* name — and a package name is what the dependency graph, `RepoFolderResolver.resolve` and the ref localization look up by. A second owner of a name silently makes those lookups pick the wrong repo.
+
+`throwOnDuplicatePackageName` (in `lib/src/backend/duplicate_package_name_checker.dart`) therefore runs in `attemptClone`, the single funnel every `gg do add org|repo` goes through, right after a repo landed in the workspace and before it is registered. On a collision the clone is deleted again (plus the organization folder it created), and a `DuplicatePackageNameException` naming both repos is thrown — so the package never enters the master workspace.
+
+`declaredPackageNames` reads *both* manifests, so a cross-language repo is checked on both sides. Names are compared per ecosystem (`dart:<name>`, `npm:<name>`) and npm names keep their scope: a Dart `foo` and an npm `foo` live in different registries, and `@a/foo` and `@b/foo` are two packages — none of those is a collision.
+
+`_cloneMissingTransitiveDeps` rethrows this exception instead of swallowing it like an unreachable dependency: a colliding name is a defect of the workspace, and continuing would build a graph that cannot be resolved by package name.
+
 ### Maintenance: migrating an old workspace
 
 `migrateToOrgFolders` (in `lib/src/backend/workspace_migration.dart`) recognizes a workspace created before the org folders existed — its repositories lie flat in it — and renames each into `<workspace>/<org>/<repo>`, with the org read from the repo's git remote. It returns the moved repo names, is a no-op once everything is nested, and skips (with a message) a repo whose organization is unknown or whose target folder is taken, so a half-migrated workspace never loses a repo.
@@ -103,6 +113,7 @@ It runs at the start of `do add` (master **and** ticket) and of `do checkout` (m
 | `git_platform.dart` | Git-platform abstraction. `GitHubPlatform.fetchOrgRepos` lists an org's repos via the **GitHub CLI** (`gh repo list --json name,sshUrl,url`), `AzureDevOpsPlatform` via `az repos list`. Using the CLIs reuses the caller's existing auth so **private** orgs work (an unauthenticated REST call only ever sees public repos); cloning then uses each repo's ssh url. Both require the respective CLI for org-add and emit an install hint otherwise. |
 | `list_backend.dart` | Lists repos/orgs/deps with metadata |
 | `add_repository_helper.dart` | Logic for adding repos to a workspace. Accepts a repo URL/`owner/repo`/name, or an **org** URL (`github.com/<org>` or the browser form `github.com/orgs/<org>`) to clone every repo of that org. Clones into `<workspace>/<org>/<repo>`; an existing copy is looked up across the whole workspace, so a repo that is still flat is not cloned a second time. |
+| `duplicate_package_name_checker.dart` | Rejects a repo that brings a package name another repo already owns — see *Unique package names* below |
 | `repo_folder_resolver.dart` | The `<workspace>/<org>/<repo>` layout: listing, resolving, destination — see *Organization folders* below |
 | `workspace_migration.dart` | Moves the repos of an old flat workspace into their organization folders — see *Maintenance* below |
 | `pub_dev_checker.dart` | Checks published versions on pub.dev |

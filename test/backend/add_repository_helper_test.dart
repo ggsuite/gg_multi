@@ -14,6 +14,7 @@ import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 
 import 'package:gg_multi/src/backend/add_repository_helper.dart';
+import 'package:gg_multi/src/backend/duplicate_package_name_checker.dart';
 import 'package:gg_multi/src/backend/git_handler.dart';
 import 'package:gg_multi/src/backend/repository.dart';
 
@@ -1157,6 +1158,127 @@ void main() {
           'https://github.com/fresh_repo/fresh_repo.git',
         ),
       ),
+    );
+  });
+
+  group('duplicate package names', () {
+    /// Stubs [cloner] so that a clone really creates the destination folder
+    /// with a `pubspec.yaml` declaring [packageName].
+    void stubCloneCreating(MockGitCloner cloner, String packageName) {
+      when(() => cloner.cloneRepo(any(), any())).thenAnswer((invocation) async {
+        final destination = invocation.positionalArguments[1] as String;
+        Directory(destination).createSync(recursive: true);
+        File(path.join(destination, 'pubspec.yaml'))
+            .writeAsStringSync('name: $packageName\nversion: 1.0.0\n');
+      });
+    }
+
+    /// Creates `<workspace>/<org>/<repo>` declaring [packageName].
+    void createRepo(String org, String repo, String packageName) {
+      final dir = Directory(path.join(workspacePath, org, repo))
+        ..createSync(recursive: true);
+      File(path.join(dir.path, 'pubspec.yaml'))
+          .writeAsStringSync('name: $packageName\nversion: 1.0.0\n');
+    }
+
+    test('adds the repository when its package name is unique', () async {
+      final mockGitCloner = MockGitCloner();
+      stubCloneCreating(mockGitCloner, 'package_b');
+      createRepo('org_a', 'repo_a', 'package_a');
+
+      await addRepositoryHelper(
+        targetArg: 'https://github.com/org_b/repo_b',
+        ggLog: ggLog,
+        gitCloner: mockGitCloner,
+        workspacePath: workspacePath,
+      );
+
+      expect(
+        Directory(path.join(workspacePath, 'org_b', 'repo_b')).existsSync(),
+        isTrue,
+      );
+      expect(logs, anyElement(contains('repo_b from')));
+    });
+
+    test(
+      'throws and removes the clone when the package name is taken',
+      () async {
+        final mockGitCloner = MockGitCloner();
+        stubCloneCreating(mockGitCloner, 'package');
+        createRepo('org_a', 'repo_a', 'package');
+
+        await expectLater(
+          addRepositoryHelper(
+            targetArg: 'https://github.com/org_b/repo_b',
+            ggLog: ggLog,
+            gitCloner: mockGitCloner,
+            workspacePath: workspacePath,
+          ),
+          throwsA(
+            isA<DuplicatePackageNameException>()
+                .having((e) => e.packageName, 'packageName', 'package'),
+          ),
+        );
+
+        // The rejected repository must not stay in the workspace, and the
+        // organization folder created for it must not linger either.
+        expect(
+          Directory(path.join(workspacePath, 'org_b', 'repo_b')).existsSync(),
+          isFalse,
+        );
+        expect(
+          Directory(path.join(workspacePath, 'org_b')).existsSync(),
+          isFalse,
+        );
+        expect(logs, isNot(anyElement(contains('repo_b from'))));
+      },
+    );
+
+    test(
+      'throws when a repository cloned from a fallback organization '
+      'brings a taken package name',
+      () async {
+        createRepo('org_a', 'repo_a', 'package');
+        File(path.join(workspacePath, '.organizations')).writeAsStringSync(
+          jsonEncode([
+            {'name': 'org_b', 'url': 'https://github.com/org_b'},
+          ]),
+        );
+
+        final mockGitCloner = MockGitCloner();
+        when(
+          () => mockGitCloner.cloneRepo(
+            'https://github.com/repo_b/repo_b.git',
+            any(),
+          ),
+        ).thenThrow(Exception('not found'));
+        when(
+          () => mockGitCloner.cloneRepo(
+            'https://github.com/org_b/repo_b.git',
+            any(),
+          ),
+        ).thenAnswer((invocation) async {
+          final destination = invocation.positionalArguments[1] as String;
+          Directory(destination).createSync(recursive: true);
+          File(path.join(destination, 'pubspec.yaml'))
+              .writeAsStringSync('name: package\nversion: 1.0.0\n');
+        });
+
+        await expectLater(
+          addRepositoryHelper(
+            targetArg: 'repo_b',
+            ggLog: ggLog,
+            gitCloner: mockGitCloner,
+            workspacePath: workspacePath,
+          ),
+          throwsA(isA<DuplicatePackageNameException>()),
+        );
+
+        expect(
+          Directory(path.join(workspacePath, 'org_b')).existsSync(),
+          isFalse,
+        );
+      },
     );
   });
 }

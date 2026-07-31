@@ -19,6 +19,7 @@ import 'package:pubspec_parse/pubspec_parse.dart';
 
 import '../../backend/git_handler.dart' hide ProcessRunner;
 import '../../backend/add_repository_helper.dart';
+import '../../backend/duplicate_package_name_checker.dart';
 import '../../backend/filesystem_utils.dart';
 import '../../backend/git_platform.dart' hide ProcessRunner;
 import '../../backend/legacy_git_hooks.dart';
@@ -432,6 +433,11 @@ class AddCommand extends Command<dynamic> {
             logIfAlreadyAdded: false,
             selectOrganization: _selectOrganization,
           );
+        } on DuplicatePackageNameException {
+          // A colliding package name is a defect of the workspace, not a dep
+          // that happens to be unreachable: report it instead of continuing
+          // with a graph that cannot be resolved by package name.
+          rethrow;
         } catch (_) {
           // Swallow: addRepositoryHelper already logged the failure.
         }
