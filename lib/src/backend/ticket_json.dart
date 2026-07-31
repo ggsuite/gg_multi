@@ -7,12 +7,21 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:path/path.dart' as path;
+import 'package:pub_semver/pub_semver.dart';
 
+import '../gg_multi_version.dart';
 import 'repo_folder_resolver.dart';
 
 /// Relative path of the ticket marker inside a repository.
 const String ticketJsonRelativePath = '.gg/.ticket.json';
+
+/// The version of the gg CLI that stamps and checks `.ticket.json` markers.
+///
+/// The `gg` package overwrites this with its own version at startup. When
+/// gg_multi runs standalone the gg_multi version is used as a fallback.
+String ggCliVersion = ggMultiVersion;
 
 /// One repository entry of a [TicketJson] marker.
 class TicketRepo {
@@ -47,19 +56,24 @@ class TicketJson {
     required this.issueId,
     required this.description,
     required this.repositories,
+    this.ggVersion = '',
   });
 
   /// Parses a [TicketJson] from a JSON string. Throws [FormatException] when
-  /// the source is not a JSON object.
+  /// the source is not a JSON object and [Exception] when the marker was
+  /// written by a newer gg than [ggCliVersion].
   factory TicketJson.fromJsonString(String source) {
     final decoded = jsonDecode(source);
     if (decoded is! Map<String, dynamic>) {
       throw const FormatException('Invalid .ticket.json: expected an object.');
     }
+    final ggVersion = decoded['gg_version']?.toString() ?? '';
+    _checkGgVersion(ggVersion);
     final repos = decoded['repositories'];
     return TicketJson(
       issueId: decoded['issue_id']?.toString() ?? '',
       description: decoded['description']?.toString() ?? '',
+      ggVersion: ggVersion,
       repositories: repos is List
           ? repos
               .whereType<Map<String, dynamic>>()
@@ -78,6 +92,10 @@ class TicketJson {
   /// All repositories that belong to the ticket.
   final List<TicketRepo> repositories;
 
+  /// The version of the gg CLI that wrote the marker.
+  /// Empty for markers written before gg started stamping its version.
+  final String ggVersion;
+
   /// Renders a pretty (multi-line) JSON string for good readability, ending
   /// with a trailing newline.
   String toPrettyJson() {
@@ -85,9 +103,34 @@ class TicketJson {
     final map = <String, Object?>{
       'issue_id': issueId,
       'description': description,
+      'gg_version': ggVersion,
       'repositories': repositories.map((r) => r.toJson()).toList(),
     };
     return '${encoder.convert(map)}\n';
+  }
+
+  /// Throws when [ggCliVersion] is older than the [required] version a marker
+  /// was written with. Legacy markers (empty version) and unparseable
+  /// versions never block loading.
+  static void _checkGgVersion(String required) {
+    if (required.isEmpty) {
+      return;
+    }
+    final Version own;
+    final Version req;
+    try {
+      own = Version.parse(ggCliVersion);
+      req = Version.parse(required);
+    } on FormatException {
+      return;
+    }
+    if (own < req) {
+      throw Exception(
+        'This ticket was written with gg $required, '
+        'but only gg $ggCliVersion is installed.\n'
+        'Please update gg: ${blue('dart pub global activate gg')}',
+      );
+    }
   }
 }
 
@@ -112,6 +155,7 @@ TicketJson buildTicketJson({
     issueId: path.basename(ticketDir.path),
     description: readTicketDescription(ticketDir) ?? '',
     repositories: repositories,
+    ggVersion: ggCliVersion,
   );
 }
 
