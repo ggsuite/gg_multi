@@ -1,0 +1,14 @@
+{
+  "issue_id": "39_rename_exec_into_maintain",
+  "description": "Rename exec into maintain",
+  "repositories": [
+    {
+      "name": "gg_multi",
+      "url": "git@github.com:ggsuite/gg_multi.git"
+    },
+    {
+      "name": "gg",
+      "url": "git@github.com:ggsuite/gg.git"
+    }
+  ]
+}
