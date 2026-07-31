@@ -1,0 +1,19 @@
+{
+  "issue_id": "45_auto_merge_changelog",
+  "description": "Auto merge CHANGELOG.md",
+  "gg_version": "14.0.1",
+  "repositories": [
+    {
+      "name": "gg_merge",
+      "url": "git@github.com:ggsuite/gg_merge.git"
+    },
+    {
+      "name": "gg_one",
+      "url": "git@github.com:ggsuite/gg_one.git"
+    },
+    {
+      "name": "gg_multi",
+      "url": "git@github.com:ggsuite/gg_multi.git"
+    }
+  ]
+}
