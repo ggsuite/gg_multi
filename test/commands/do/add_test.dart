@@ -523,7 +523,7 @@ dev_dependencies:
           () => mockDoCommit.exec(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
-            message: 'gg_multi: changed references to path',
+            message: '#gg: changed references to path',
             logType: any(named: 'logType'),
             updateChangeLog: any(named: 'updateChangeLog'),
             force: true,

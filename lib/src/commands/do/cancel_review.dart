@@ -159,7 +159,7 @@ class DoCancelReviewCommand extends DirCommand<void> {
         await _ggDoCommit.exec(
           directory: repoDir,
           ggLog: ggLog,
-          message: 'gg_multi: changed references to local',
+          message: '#gg: changed references to local',
           force: true,
         );
         ggLog(green('Committed $repoName'));

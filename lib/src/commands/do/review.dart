@@ -667,7 +667,7 @@ class DoReviewCommand extends DirCommand<void> {
         await _ggDoCommit.exec(
           directory: repoDir,
           ggLog: ggLog,
-          message: 'gg_multi: changed references to git',
+          message: '#gg: changed references to git',
           force: true,
         );
         ggLog(green('Committed $repoName'));

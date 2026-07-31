@@ -18,7 +18,6 @@ build
 # descends into an excluded directory, so the »!«-negations below would
 # have no effect and .gg/.gg.json would never reach CI.
 .gg/*
-!.gg/.gg.json
 !.gg/gg.json
 
 # Local cross-repo dev override (not for commit)

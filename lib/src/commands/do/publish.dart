@@ -21,6 +21,7 @@ import 'package:path/path.dart' as path;
 import '../../backend/git_snapshot.dart' as git_snapshot;
 import '../../backend/npm_registry_checker.dart';
 import '../../backend/pub_dev_checker.dart';
+import '../../backend/publish_skip_check.dart';
 import '../../backend/workspace_utils.dart';
 import '../../commands/can/publish.dart';
 import 'configure_publish.dart' show DoConfigurePublishCommand;
@@ -111,6 +112,7 @@ class DoPublishCommand extends DirCommand<void> {
     GetRefVersion? getRefVersionCommand,
     PubDevChecker? pubDevChecker,
     NpmRegistryChecker? npmChecker,
+    PublishSkipCheck? publishSkipCheck,
     DoConfigurePublishCommand? doConfigurePublishCommand,
     gg.EnsurePublishConfigIgnored? ensureIgnored,
     ConfirmDeleteTicket? confirmDeleteTicket,
@@ -129,6 +131,7 @@ class DoPublishCommand extends DirCommand<void> {
         _getRefVersion = getRefVersionCommand ?? GetRefVersion(ggLog: ggLog),
         _pubDevChecker = pubDevChecker ?? PubDevChecker(),
         _npmChecker = npmChecker ?? NpmRegistryChecker(),
+        _publishSkipCheck = publishSkipCheck ?? PublishSkipCheck(),
         _doConfigurePublishCommand = doConfigurePublishCommand ??
             DoConfigurePublishCommand(ggLog: ggLog),
         _ensureIgnored =
@@ -178,6 +181,9 @@ class DoPublishCommand extends DirCommand<void> {
   /// Checks whether versions are visible on npm (TypeScript packages).
   final NpmRegistryChecker _npmChecker;
 
+  /// Decides whether an unchanged repo needs to be published at all.
+  final PublishSkipCheck _publishSkipCheck;
+
   /// Interactively builds the `.gg/gg-publish.json` config when the publish
   /// is started without one.
   final DoConfigurePublishCommand _doConfigurePublishCommand;
@@ -213,6 +219,7 @@ class DoPublishCommand extends DirCommand<void> {
     verbose ??= argResults?['verbose'] as bool? ?? false;
     final continueRun = argResults?['continue'] as bool? ?? false;
     final reconfigure = argResults?['reconfigure'] as bool? ?? false;
+    final publishUnchanged = argResults?['publish-unchanged'] as bool? ?? false;
     final String? configArg = argResults?['config'] as String?;
     final String? messageArg = argResults?['message'] as String?;
 
@@ -314,6 +321,7 @@ class DoPublishCommand extends DirCommand<void> {
 
     final publishedPackages = <String, _PublishedPackageState>{};
     final confirmedPubDevVersions = <String>{};
+    final skippedRepos = <String>[];
 
     // Map of reference name to version captured from repos processed so far.
     final refVersions = <String, String>{};
@@ -326,7 +334,30 @@ class DoPublishCommand extends DirCommand<void> {
       final alreadyPublished =
           continueRun && publishConfig.statusForRepo(repoName) == 'published';
 
-      if (!alreadyPublished) {
+      // A repo without manual changes whose dependencies all stay inside
+      // their published constraints needs no release. The decision is made
+      // fresh on every run — also on --continue, where a repo marked
+      // 'skipped' earlier is re-evaluated instead of trusted, so commits
+      // added after a failed run are never lost to a stale marker.
+      final skipDecision = (!alreadyPublished && !publishUnchanged)
+          ? await _publishSkipCheck.get(repo: repo, refVersions: refVersions)
+          : null;
+
+      if (alreadyPublished) {
+        ggLog('${cyan(repoName)}: already published — skipping.');
+      } else if (skipDecision?.skip ?? false) {
+        ggLog(
+          '${cyan(repoName)}: ${yellow('not published')} — '
+          '${skipDecision!.reason}.',
+        );
+        publishConfig = publishConfig.withRepoStatus(repoName, 'skipped');
+        await publishConfig.save(file: runtimeFile);
+        skippedRepos.add(repoName);
+      } else {
+        if (skipDecision != null) {
+          taskLog('$repoName: publishing — ${skipDecision.reason}.');
+        }
+
         await _waitForPublishedDependenciesIfNeeded(
           currentRepo: repo,
           publishedPackages: publishedPackages,
@@ -373,8 +404,6 @@ class DoPublishCommand extends DirCommand<void> {
         publishConfig = publishConfig.withRepoStatus(repoName, 'published');
         await publishConfig.save(file: runtimeFile);
         taskLog(green('$repoName: published successfully.'));
-      } else {
-        ggLog('${cyan(repoName)}: already published — skipping.');
       }
 
       // Capture the published version + registry visibility so later repos
@@ -422,6 +451,16 @@ class DoPublishCommand extends DirCommand<void> {
       } catch (e) {
         throw Exception('Failed to get version of $repoName: $e');
       }
+    }
+
+    // Report the repos the run left unpublished on purpose, so a shorter
+    // publish never looks like repos were forgotten.
+    if (skippedRepos.isNotEmpty) {
+      ggLog(
+        yellow(
+          'Not published because unchanged: ${skippedRepos.join(', ')}',
+        ),
+      );
     }
 
     // Step 5: All repos published — the resume anchor is no longer needed.
@@ -691,7 +730,7 @@ class DoPublishCommand extends DirCommand<void> {
     await _ggDoCommit.exec(
       directory: repoDir,
       ggLog: taskLog,
-      message: 'Gg Multi: changed references to pub.dev',
+      message: '#gg: changed references to pub.dev',
       force: true,
     );
 
@@ -1329,6 +1368,14 @@ class DoPublishCommand extends DirCommand<void> {
       'continue',
       help: 'Resume a previously failed publish from where it stopped, '
           'reusing .gg/gg-publish.json and skipping already-published repos.',
+      defaultsTo: false,
+      negatable: false,
+    );
+    argParser.addFlag(
+      'publish-unchanged',
+      help: 'Publish every repo of the ticket even when it is unchanged. '
+          'By default a repo is skipped when it has no manual changes and '
+          'no dependency moved outside its published version constraint.',
       defaultsTo: false,
       negatable: false,
     );

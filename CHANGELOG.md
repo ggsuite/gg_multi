@@ -1,5 +1,14 @@
 # Changelog
 
+## 7.0.0 - 2026-07-31
+
+### Changed
+
+- Do not publish unchanged packages: skip repos without manual changes when no dependency outgrew its published constraint
+- Prefix all gg-generated commit messages with "#gg: "; the unchanged-repo check treats such commits as not user generated
+- Treat gg-labeled commits touching non-gg files as manual changes so force-committed user work blocks the skip
+- Do not update unchanged packages
+
 ## 6.0.4 - 2026-07-31
 
 ### Changed
