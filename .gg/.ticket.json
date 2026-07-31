@@ -1,0 +1,10 @@
+{
+  "issue_id": "34_print_fail_reason",
+  "description": "Print publish fail reason to console",
+  "repositories": [
+    {
+      "name": "gg_multi",
+      "url": "git@github.com:ggsuite/gg_multi.git"
+    }
+  ]
+}
