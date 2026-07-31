@@ -288,7 +288,9 @@ changed packages in the dependency chain. Before publishing a repo,
    repo's published constraint cannot absorb (e.g. a whole-number/major
    bump such as `1.x` → `2.0.0`, or `0.3.x` → `0.4.0` for `^0.3.0`)?
 2. If not: does the repo contain manual changes — commits not generated
-   by gg itself, or uncommitted edits?
+   by gg itself, or uncommitted edits? Commit messages starting with
+   `#gg: ` (and the exact bookkeeping messages of older gg versions)
+   count as gg-generated; everything else counts as manual.
 
 When neither is the case, the repo is left unpublished and marked
 `skipped`; dependents keep resolving against its already-published

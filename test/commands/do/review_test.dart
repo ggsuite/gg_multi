@@ -344,7 +344,7 @@ void main() {
           () => mockGgDoCommit.exec(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
-            message: 'gg_multi: changed references to git',
+            message: '#gg: changed references to git',
             force: any(named: 'force'),
           ),
         ).called(greaterThan(0));

@@ -893,7 +893,7 @@ class AddCommand extends Command<dynamic> {
         await _ggDoCommit.exec(
           directory: repoDir,
           ggLog: ggLog,
-          message: 'gg_multi: changed references to path',
+          message: '#gg: changed references to path',
           force: true,
           updateChangeLog: false,
         );

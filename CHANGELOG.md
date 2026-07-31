@@ -5,6 +5,7 @@
 ### Changed
 
 - Do not publish unchanged packages: skip repos without manual changes when no dependency outgrew its published constraint
+- Prefix all gg-generated commit messages with &quot;#gg: &quot;; the unchanged-repo check treats such commits as not user generated
 
 ## 6.0.4 - 2026-07-31
 

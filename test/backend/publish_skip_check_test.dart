@@ -135,19 +135,19 @@ void main() {
           dir,
           'pubspec_overrides.yaml',
           'dependency_overrides: {}\n',
-          'gg_multi: changed references to path',
+          '#gg: changed references to path',
         );
         await commitFile(
           dir,
           'pubspec.yaml',
           'name: a\nversion: 1.0.0\npublish_to: none\n',
-          'gg_multi: changed references to git',
+          '#gg: changed references to git',
         );
         await commitFile(
           dir,
           'pubspec.yaml',
           'name: a\nversion: 1.0.0\n',
-          'Gg Multi: changed references to pub.dev',
+          '#gg: changed references to pub.dev',
         );
 
         final decision = await check.get(
@@ -159,6 +159,60 @@ void main() {
           decision.reason,
           contains('no dependency needs a constraint update'),
         );
+      });
+
+      test('treats any »#gg: «-prefixed commit as generated', () async {
+        final dir = await createRepo('a');
+        await git(dir, ['checkout', '-b', 'feat']);
+        await commitFile(
+          dir,
+          'refs.txt',
+          'refs',
+          '#gg: some future bookkeeping step',
+        );
+
+        final decision = await check.get(
+          repo: node('a', dir),
+          refVersions: {},
+        );
+        expect(decision.skip, isTrue);
+      });
+
+      test('still recognizes legacy gg commit messages', () async {
+        // Tickets created by a gg without the »#gg: « prefix carry the old
+        // bookkeeping subjects — they must not count as manual changes.
+        final dir = await createRepo('a');
+        await git(dir, ['checkout', '-b', 'feat']);
+        await commitFile(
+          dir,
+          'a.txt',
+          'a',
+          'gg_multi: changed references to path',
+        );
+        await commitFile(
+          dir,
+          'b.txt',
+          'b',
+          'gg_multi: changed references to git',
+        );
+        await commitFile(
+          dir,
+          'c.txt',
+          'c',
+          'gg_multi: changed references to local',
+        );
+        await commitFile(
+          dir,
+          'd.txt',
+          'd',
+          'Gg Multi: changed references to pub.dev',
+        );
+
+        final decision = await check.get(
+          repo: node('a', dir),
+          refVersions: {},
+        );
+        expect(decision.skip, isTrue);
       });
 
       test('publishes when the feature branch has a manual commit', () async {
@@ -199,7 +253,7 @@ void main() {
           dir,
           'refs.txt',
           'refs',
-          'gg_multi: changed references to git',
+          '#gg: changed references to git',
         );
         // Let main advance and merge it back into feat — the merge commit
         // (two parents) must not count as a manual change.
@@ -222,7 +276,7 @@ void main() {
           dir,
           'refs.txt',
           'refs',
-          'gg_multi: changed references to git',
+          '#gg: changed references to git',
         );
 
         final decision = await check.get(
@@ -243,7 +297,7 @@ void main() {
           dir,
           'refs.txt',
           'refs',
-          'gg_multi: changed references to git',
+          '#gg: changed references to git',
         );
 
         final decision = await check.get(
@@ -766,7 +820,7 @@ void main() {
           dir,
           'refs.txt',
           'refs',
-          'gg_multi: changed references to git',
+          '#gg: changed references to git',
         );
         final repo = node('b', dir);
         repo.dependencies['a'] = node('a', depDir);

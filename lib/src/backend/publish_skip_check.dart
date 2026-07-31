@@ -71,12 +71,18 @@ class PublishSkipCheck {
   /// Runs the git commands used to inspect the repository history.
   final ProcessRunner _processRunner;
 
-  /// Commit subjects gg's ticket tooling creates on a feature branch. Only
-  /// these exact subjects are treated as generated — everything else counts
-  /// as a manual change, so unclassifiable commits are never lost by a skip.
-  static const Set<String> ggGeneratedCommitMessages = {
+  /// Every commit message gg generates itself starts with this prefix.
+  /// Subjects carrying it are treated as not user generated.
+  static const String ggCommitPrefix = '#gg: ';
+
+  /// Commit subjects gg versions before the »#gg: « prefix created on a
+  /// feature branch. They are still treated as generated so tickets started
+  /// with an older gg keep skipping correctly. Everything else counts as a
+  /// manual change — unclassifiable commits are never lost by a skip.
+  static const Set<String> legacyGgCommitMessages = {
     'gg_multi: changed references to path',
     'gg_multi: changed references to git',
+    'gg_multi: changed references to local',
     'Gg Multi: changed references to pub.dev',
   };
 
@@ -365,7 +371,7 @@ class PublishSkipCheck {
         if (subject.isEmpty) {
           continue;
         }
-        if (!ggGeneratedCommitMessages.contains(subject)) {
+        if (!_isGgGenerated(subject)) {
           return 'the repo contains the manual commit »$subject«';
         }
       }
@@ -376,6 +382,14 @@ class PublishSkipCheck {
       return 'the git history could not be inspected ($e)';
     }
   }
+
+  // ...........................................................................
+  /// Whether [subject] is a commit message gg generated itself — it carries
+  /// the [ggCommitPrefix], or it is one of the exact bookkeeping subjects
+  /// older gg versions used ([legacyGgCommitMessages]).
+  bool _isGgGenerated(String subject) =>
+      subject.startsWith(ggCommitPrefix) ||
+      legacyGgCommitMessages.contains(subject);
 
   // ...........................................................................
   /// The ref the feature branch is compared against — the remote main branch

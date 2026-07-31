@@ -730,7 +730,7 @@ class DoPublishCommand extends DirCommand<void> {
     await _ggDoCommit.exec(
       directory: repoDir,
       ggLog: taskLog,
-      message: 'Gg Multi: changed references to pub.dev',
+      message: '#gg: changed references to pub.dev',
       force: true,
     );
 

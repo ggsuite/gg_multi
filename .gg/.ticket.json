@@ -3,6 +3,10 @@
   "description": "Do not update unchanged packages",
   "repositories": [
     {
+      "name": "gg_merge",
+      "url": "git@github.com:ggsuite/gg_merge.git"
+    },
+    {
       "name": "gg_one",
       "url": "git@github.com:ggsuite/gg_one.git"
     },

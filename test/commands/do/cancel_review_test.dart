@@ -181,7 +181,7 @@ void main() {
         () => mockGgDoCommit.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          message: 'gg_multi: changed references to local',
+          message: '#gg: changed references to local',
           force: true,
         ),
       ).called(2);
