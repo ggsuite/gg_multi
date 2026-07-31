@@ -1,6 +1,6 @@
 {
   "issue_id": "40_do_not_publish_unchanged_packages",
-  "description": "Do not update unchanged packages",
+  "description": "Do not publish unchanged packages",
   "repositories": [
     {
       "name": "gg_merge",
