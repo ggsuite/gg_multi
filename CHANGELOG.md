@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Do not publish unchanged packages: skip repos without manual changes when no dependency outgrew its published constraint
+
 ## 6.0.4 - 2026-07-31
 
 ### Changed

@@ -278,6 +278,25 @@ gg_multi do publish
 Publish is meant to be triggered manually by a human after review
 approval.
 
+#### Unchanged repos are not published
+
+Many repos are only part of a ticket because they sit *between* two
+changed packages in the dependency chain. Before publishing a repo,
+`do publish` therefore checks:
+
+1. Did a dependency published earlier in the run receive a version the
+   repo's published constraint cannot absorb (e.g. a whole-number/major
+   bump such as `1.x` → `2.0.0`, or `0.3.x` → `0.4.0` for `^0.3.0`)?
+2. If not: does the repo contain manual changes — commits not generated
+   by gg itself, or uncommitted edits?
+
+When neither is the case, the repo is left unpublished and marked
+`skipped`; dependents keep resolving against its already-published
+version. Anything undecidable errs toward publishing, and on
+`--continue` a previously skipped repo is re-checked instead of
+trusted. Pass `--publish-unchanged` to force the old behaviour and
+publish every repo of the ticket.
+
 #### Configuration up front, and resuming after a failure
 
 `gg_multi do publish` gathers **all** interactive input before the long,

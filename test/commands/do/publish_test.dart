@@ -15,6 +15,7 @@ import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_multi/src/backend/npm_registry_checker.dart';
 import 'package:gg_multi/src/backend/pub_dev_checker.dart';
+import 'package:gg_multi/src/backend/publish_skip_check.dart';
 import 'package:gg_multi/src/commands/do/configure_publish.dart'
     show DoConfigurePublishCommand;
 import 'package:gg_multi/src/commands/do/push.dart';
@@ -73,6 +74,8 @@ class MockPubDevChecker extends Mock implements PubDevChecker {}
 class MockNpmRegistryChecker extends Mock implements NpmRegistryChecker {}
 
 class FakeDirectory extends Fake implements Directory {}
+
+class FakeNode extends Fake implements Node {}
 
 class MockDirectory extends Mock implements Directory {}
 
@@ -5585,6 +5588,387 @@ void main() {
 
       // Stale gg_one step progress must not seed the reconfigured run.
       expect(repoRuntime.existsSync(), isFalse);
+    });
+  });
+
+  group('DoPublishCommand skip unchanged repos', () {
+    late MockGgDoPublish mockGgDoPublish;
+    late MockGgDoCommit mockGgDoCommit;
+    late MockGgDoPush mockGgDoPush;
+    late MockUnlocalizeRefs mockUnlocalizeRefs;
+    late MockSortedProcessingList mockSortedProcessingList;
+    late MockProcessRunner mockProcessRunner;
+    late MockCanPublishCommand mockCanPublishCommand;
+    late MockDoReviewCommand mockDoReviewCommand;
+    late MockGetVersion mockGetVersion;
+    late MockSetRefVersion mockSetRefVersion;
+    late MockGetRefVersion mockGetRefVersion;
+    late MockPubDevChecker mockPubDevChecker;
+    late MockPublishSkipCheck mockSkipCheck;
+
+    setUpAll(() {
+      registerFallbackValue(FakeNode());
+      registerFallbackValue(<String, String>{});
+    });
+
+    setUp(() {
+      mockGgDoPublish = MockGgDoPublish();
+      mockGgDoCommit = MockGgDoCommit();
+      mockGgDoPush = MockGgDoPush();
+      mockUnlocalizeRefs = MockUnlocalizeRefs();
+      mockSortedProcessingList = MockSortedProcessingList();
+      mockProcessRunner = MockProcessRunner();
+      _stubPubUpgrade(mockProcessRunner);
+      _stubRepoSnapshot(mockProcessRunner);
+      mockCanPublishCommand = MockCanPublishCommand();
+      mockDoReviewCommand = MockDoReviewCommand();
+      mockGetVersion = MockGetVersion();
+      mockSetRefVersion = MockSetRefVersion();
+      mockGetRefVersion = MockGetRefVersion();
+      mockPubDevChecker = MockPubDevChecker();
+      mockSkipCheck = MockPublishSkipCheck();
+
+      when(
+        () => mockDoReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          verbose: any(named: 'verbose'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockCanPublishCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: Directory(path.join(ticketDir.path, 'A')),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
+          ),
+          Node(
+            name: 'B',
+            directory: Directory(path.join(ticketDir.path, 'B')),
+            manifest: DartPackageManifest(pubspec: Pubspec('B')),
+          ),
+        ],
+      );
+
+      when(
+        () => mockUnlocalizeRefs.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockGgDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockGetVersion.get(
+          directory: any(named: 'directory'),
+        ),
+      ).thenAnswer((_) async => '1.0.0');
+
+      when(
+        () => mockGetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+        ),
+      ).thenAnswer(
+        (invocation) async =>
+            invocation.namedArguments[#ref] == 'A' ? '^0.9.0' : null,
+      );
+
+      when(
+        () => mockSetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+          version: any(named: 'version'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockPubDevChecker.getPackagePublishInfo(
+          packageName: any(named: 'packageName'),
+        ),
+      ).thenAnswer(
+        (invocation) async {
+          final packageName = invocation.namedArguments[#packageName] as String;
+          return PackagePublishInfo(
+            packageName: packageName,
+            waitsForPubDev: true,
+          );
+        },
+      );
+
+      when(
+        () => mockPubDevChecker.waitUntilVersionAvailable(
+          packageName: any(named: 'packageName'),
+          version: any(named: 'version'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+    });
+
+    /// Builds the command under test with all mocks wired up.
+    CommandRunner<void> buildRunner() =>
+        CommandRunner<void>('test', 'do publish ticket')
+          ..addCommand(
+            DoPublishCommand(
+              ggLog: ggLog,
+              ggDoPublish: mockGgDoPublish,
+              ggDoCommit: mockGgDoCommit,
+              ggDoPush: mockGgDoPush,
+              unlocalizeRefs: mockUnlocalizeRefs,
+              sortedProcessingList: mockSortedProcessingList,
+              processRunner: mockProcessRunner.call,
+              canPublishCommand: mockCanPublishCommand,
+              doReviewCommand: mockDoReviewCommand,
+              getVersionCommand: mockGetVersion,
+              setRefVersionCommand: mockSetRefVersion,
+              getRefVersionCommand: mockGetRefVersion,
+              pubDevChecker: mockPubDevChecker,
+              publishSkipCheck: mockSkipCheck,
+              confirmDeleteTicket: (_) => false,
+            ),
+          );
+
+    /// Stubs the skip check: [skipped] repos skip, all others publish.
+    void stubSkipCheck(Set<String> skipped) {
+      when(
+        () => mockSkipCheck.get(
+          repo: any(named: 'repo'),
+          refVersions: any(named: 'refVersions'),
+        ),
+      ).thenAnswer((invocation) async {
+        final repo = invocation.namedArguments[#repo] as Node;
+        return skipped.contains(repo.name)
+            ? const PublishSkipDecision(
+                skip: true,
+                reason: 'no dependency needs a constraint update '
+                    'and there are no manual changes',
+              )
+            : const PublishSkipDecision(
+                skip: false,
+                reason: 'the repo contains the manual commit »Fix bug«',
+              );
+      });
+    }
+
+    test('skips an unchanged repo and still propagates its version', () async {
+      stubSkipCheck({'A'});
+
+      await buildRunner().run(['publish', '--input', ticketDir.path]);
+
+      // A is reported as skipped, in the repo line and in the summary.
+      expect(
+        messages.any(
+          (m) => m.contains(
+            'A: not published — no dependency needs a constraint update',
+          ),
+        ),
+        isTrue,
+      );
+      expect(
+        messages,
+        contains('Not published because unchanged: A'),
+      );
+
+      // Only B was published.
+      final publishedDirs = verify(
+        () => mockGgDoPublish.exec(
+          directory: captureAny(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
+        ),
+      ).captured.cast<Directory>();
+      expect(publishedDirs, hasLength(1));
+      expect(path.basename(publishedDirs.single.path), 'B');
+
+      // The version of the skipped repo A still reached dependent B.
+      verify(
+        () => mockSetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: 'A',
+          version: '1.0.0',
+        ),
+      ).called(1);
+
+      // The full run succeeded, so the resume anchor is gone again.
+      expect(
+        File(path.join(ticketDir.path, '.gg', 'gg-publish.json')).existsSync(),
+        isFalse,
+      );
+    });
+
+    test('--publish-unchanged publishes every repo unchecked', () async {
+      stubSkipCheck({'A', 'B'});
+
+      await buildRunner().run(
+        ['publish', '--input', ticketDir.path, '--publish-unchanged'],
+      );
+
+      verifyNever(
+        () => mockSkipCheck.get(
+          repo: any(named: 'repo'),
+          refVersions: any(named: 'refVersions'),
+        ),
+      );
+
+      final publishedDirs = verify(
+        () => mockGgDoPublish.exec(
+          directory: captureAny(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
+        ),
+      ).captured.cast<Directory>();
+      expect(
+        publishedDirs.map((d) => path.basename(d.path)),
+        ['A', 'B'],
+      );
+    });
+
+    test('a later failure persists the skipped marker', () async {
+      stubSkipCheck({'A'});
+
+      when(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
+        ),
+      ).thenThrow(Exception('registry down'));
+
+      await expectLater(
+        () => buildRunner().run(['publish', '--input', ticketDir.path]),
+        throwsA(isA<Exception>()),
+      );
+
+      // The runtime file survives the failure and holds both markers —
+      // and gg_one's config loader accepts the skipped status.
+      final runtimeFile = File(
+        path.join(ticketDir.path, '.gg', 'gg-publish.json'),
+      );
+      expect(runtimeFile.existsSync(), isTrue);
+      final config = gg.PublishConfig.load(
+        configArg: runtimeFile.path,
+        fallbackDir: ticketDir.path,
+      );
+      expect(config.statusForRepo('A'), 'skipped');
+      expect(config.statusForRepo('B'), 'failed');
+    });
+
+    test('--continue re-evaluates a previously skipped repo', () async {
+      // A previous run skipped A and published B, then the user added a
+      // manual commit to A. The resume must publish A instead of trusting
+      // the stale marker.
+      File(path.join(ticketDir.path, '.gg', 'gg-publish.json'))
+          .writeAsStringSync('''
+{
+  "version_increment": "patch",
+  "merge_message": "test merge",
+  "repos": {
+    "A": { "status": "skipped" },
+    "B": { "status": "published" }
+  }
+}
+''');
+      stubSkipCheck(const {});
+
+      await buildRunner().run(
+        ['publish', '--input', ticketDir.path, '--continue'],
+      );
+
+      // The skip check ran exactly once — for A; B was short-circuited by
+      // its published marker.
+      final checkedRepos = verify(
+        () => mockSkipCheck.get(
+          repo: captureAny(named: 'repo'),
+          refVersions: any(named: 'refVersions'),
+        ),
+      ).captured.cast<Node>();
+      expect(checkedRepos.map((n) => n.name), ['A']);
+
+      final publishedDirs = verify(
+        () => mockGgDoPublish.exec(
+          directory: captureAny(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
+        ),
+      ).captured.cast<Directory>();
+      expect(publishedDirs.map((d) => path.basename(d.path)), ['A']);
+
+      expect(
+        messages,
+        contains('B: already published — skipping.'),
+      );
     });
   });
 }
