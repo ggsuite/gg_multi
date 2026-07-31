@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Print »waiting until ... appears on pub.dev only one time
+
 ## 6.0.1 - 2026-07-31
 
 ### Changed
