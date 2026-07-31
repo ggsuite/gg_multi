@@ -1,7 +1,6 @@
 name: gg_multi
 description: Das Herzstück der Gg Multi Suite. Fungiert als Backend und CMD-Line Tool.
 version: 7.0.1
-publish_to: none
 repository: https://github.com/ggsuite/gg_multi.git
 
 environment:
@@ -10,10 +9,7 @@ environment:
 dependencies:
   path: ^1.9.1
   args: ^2.7.0
-  gg_one:
-    git:
-      url: git@github.com:ggsuite/gg_one.git
-      ref: 42_do_not_publish_ticket_json
+  gg_one: ^12.0.1
   gg_lang: ^0.3.1
   gg_console_colors: ^2.1.5
   gg_args: ^2.0.5
