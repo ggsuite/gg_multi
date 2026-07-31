@@ -112,10 +112,11 @@ class RemoveCommand extends Command<void> {
       repoDir: ticketRepoDir,
     );
     ggLog(
-      green(
-        'Deleted repository $repoName from ticket '
-        '${path.basename(rootPath)}.',
-      ),
+      darkGray('Deleted repository ') +
+          green(repoName) +
+          darkGray(' from ticket ') +
+          green(path.basename(rootPath)) +
+          darkGray('.'),
     );
 
     _updateTicketJson(ticketRepoDir, nodes);

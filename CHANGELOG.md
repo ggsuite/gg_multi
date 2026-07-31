@@ -1,5 +1,11 @@
 # Changelog
 
+## 6.0.2 - 2026-07-31
+
+### Changed
+
+- Colorize 'Deleted repository from ticket message'
+
 ## 6.0.1 - 2026-07-31
 
 ### Changed
