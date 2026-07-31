@@ -21,7 +21,7 @@ import 'do/commit.dart';
 import 'do/push.dart';
 import 'do/publish.dart';
 import 'do/review.dart';
-import 'do/execute.dart';
+import 'do/maintain.dart';
 import 'do/install_gitattributes.dart';
 
 /// Command to perform actions such as committing
@@ -52,7 +52,7 @@ class Do extends Command<void> {
     addSubcommand(DoConfigurePublishCommand(ggLog: ggLog));
     addSubcommand(DoReviewCommand(ggLog: ggLog));
     addSubcommand(DoCancelReviewCommand(ggLog: ggLog));
-    addSubcommand(DoExecuteCommand(ggLog: ggLog));
+    addSubcommand(MaintainCommand(ggLog: ggLog));
     addSubcommand(DoInstallGitattributesCommand(ggLog: ggLog));
     addSubcommand(DoClaudeCommand(ggLog: ggLog));
     addSubcommand(AddDepsCommand(ggLog: ggLog));

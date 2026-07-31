@@ -7,12 +7,12 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg_multi/src/commands/do/execute.dart';
+import 'package:gg_multi/src/commands/do/maintain/exec.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 
-import '../../rm_console_colors_helper.dart';
+import '../../../rm_console_colors_helper.dart';
 
 class MockProcessRunner extends Mock {
   Future<ProcessResult> call(
@@ -38,7 +38,7 @@ void main() {
 
   setUp(() {
     messages.clear();
-    tempDir = Directory.systemTemp.createTempSync('do_execute_ticket_test_');
+    tempDir = Directory.systemTemp.createTempSync('do_maintain_exec_test_');
     ticketsDir = Directory(path.join(tempDir.path, 'tickets'))..createSync();
     ticketDir = Directory(path.join(ticketsDir.path, 'TICKX'))..createSync();
     // Create repositories with pubspec.yaml so SortedProcessingList finds them
@@ -56,15 +56,14 @@ void main() {
 
   group('DoExecuteCommand (ticket-wide)', () {
     test('fails outside any ticket folder', () async {
-      final runner = CommandRunner<void>('test', 'do execute ticket')
+      final runner = CommandRunner<void>('test', 'do maintain exec ticket')
         ..addCommand(
           DoExecuteCommand(
             ggLog: ggLog,
           ),
         );
       await expectLater(
-        () async =>
-            await runner.run(['execute', '--input', tempDir.path, 'echo']),
+        () async => await runner.run(['exec', '--input', tempDir.path, 'echo']),
         throwsA(
           isA<Exception>().having(
             (e) => e.toString(),
@@ -80,11 +79,11 @@ void main() {
     });
 
     test('throws UsageException when missing command parameter', () async {
-      final runner = CommandRunner<void>('test', 'do execute usage')
+      final runner = CommandRunner<void>('test', 'do maintain exec usage')
         ..addCommand(DoExecuteCommand(ggLog: ggLog));
 
       await expectLater(
-        () async => await runner.run(['execute', '--input', ticketDir.path]),
+        () async => await runner.run(['exec', '--input', ticketDir.path]),
         throwsA(isA<UsageException>()),
       );
     });
@@ -92,13 +91,13 @@ void main() {
     test('logs when there are no repositories', () async {
       final emptyTicket = Directory(path.join(ticketsDir.path, 'EMPTY'))
         ..createSync();
-      final runner = CommandRunner<void>('test', 'do execute ticket')
+      final runner = CommandRunner<void>('test', 'do maintain exec ticket')
         ..addCommand(
           DoExecuteCommand(
             ggLog: ggLog,
           ),
         );
-      await runner.run(['execute', '--input', emptyTicket.path, 'echo', 'x']);
+      await runner.run(['exec', '--input', emptyTicket.path, 'echo', 'x']);
       expect(
         messages,
         contains('⚠️ No repos in this ticket'),
@@ -115,14 +114,14 @@ void main() {
         ),
       ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
 
-      final runner = CommandRunner<void>('test', 'do execute ticket')
+      final runner = CommandRunner<void>('test', 'do maintain exec ticket')
         ..addCommand(
           DoExecuteCommand(
             ggLog: ggLog,
             processRunner: mockRunner.call,
           ),
         );
-      await runner.run(['execute', '--input', ticketDir.path, 'echo', 'hi']);
+      await runner.run(['exec', '--input', ticketDir.path, 'echo', 'hi']);
 
       // Verify calls for both repos with correct working directories
       verify(
@@ -167,7 +166,7 @@ void main() {
         return ProcessResult(2, 0, 'ok', '');
       });
 
-      final runner = CommandRunner<void>('test', 'do execute ticket')
+      final runner = CommandRunner<void>('test', 'do maintain exec ticket')
         ..addCommand(
           DoExecuteCommand(
             ggLog: ggLog,
@@ -177,7 +176,7 @@ void main() {
 
       await expectLater(
         () async =>
-            await runner.run(['execute', '--input', ticketDir.path, 'echo']),
+            await runner.run(['exec', '--input', ticketDir.path, 'echo']),
         throwsA(isA<Exception>()),
       );
 
