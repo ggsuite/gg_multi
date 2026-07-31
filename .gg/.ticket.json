@@ -1,0 +1,11 @@
+{
+  "issue_id": "44_throw_on_duplicate_package_names",
+  "description": "Throw on duplicate package names",
+  "gg_version": "7.0.1",
+  "repositories": [
+    {
+      "name": "gg_multi",
+      "url": "git@github.com:ggsuite/gg_multi.git"
+    }
+  ]
+}
