@@ -6,3 +6,5 @@
 dependency_overrides:
   gg_localize_refs:
     path: ../gg_localize_refs
+  gg_one:
+    path: ../gg_one
