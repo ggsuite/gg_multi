@@ -352,11 +352,13 @@ class DoPublishCommand extends DirCommand<void> {
             ggLog: ggLog,
             taskLog: taskLog,
           );
-        } catch (_) {
-          // Record the failure so `--continue` resumes here, restore the repo
-          // towards its pre-publish state, then surface the failure.
+        } catch (e) {
+          // Record the failure so `--continue` resumes here, report why,
+          // restore the repo towards its pre-publish state, then surface the
+          // failure.
           publishConfig = publishConfig.withRepoStatus(repoName, 'failed');
           await publishConfig.save(file: runtimeFile);
+          _logPublishFailure(repoName: repoName, error: e, ggLog: ggLog);
           await _restoreRepoStateOnFailure(
             snapshot: snapshot,
             ggLog: ggLog,
@@ -863,6 +865,30 @@ class DoPublishCommand extends DirCommand<void> {
         'published): $e',
       );
     }
+  }
+
+  /// Prints why publishing [repoName] failed, right where `failed` is recorded
+  /// in the ticket's `.gg/.gg-publish.json`. Without it the reason only shows
+  /// up at the very end of the run, below the rollback output — and the
+  /// per-repo detail gg_one logs is swallowed entirely without `--verbose`.
+  void _logPublishFailure({
+    required String repoName,
+    required Object error,
+    required GgLog ggLog,
+  }) {
+    final reason = error.toString().replaceAll('Exception: ', '').trim();
+    ggLog(
+      red(
+        '❌ Publishing $repoName failed'
+        '${reason.isEmpty ? '.' : ':\n$reason'}',
+      ),
+    );
+    ggLog(
+      yellow(
+        'The publish is marked as »failed«. Fix the problem and resume it '
+        'with ${blue('gg do publish --continue')}.',
+      ),
+    );
   }
 
   /// Restores the repository after a failed publish. Never throws — the
