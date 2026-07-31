@@ -81,16 +81,23 @@ void main() {
   late Directory ticketsDir;
   late Directory ticketDir;
   final messages = <String>[];
+  // The same messages with their color codes intact, for tests that assert
+  // how a message is highlighted.
+  final coloredMessages = <String>[];
 
   setUpAll(() {
     registerFallbackValue(FakeDirectory());
   });
 
   // Collects log messages while removing color codes.
-  void ggLog(String msg) => messages.add(rmConsoleColors(msg));
+  void ggLog(String msg) {
+    coloredMessages.add(msg);
+    messages.add(rmConsoleColors(msg));
+  }
 
   setUp(() {
     messages.clear();
+    coloredMessages.clear();
     tempDir = Directory.systemTemp.createTempSync('do_publish_ticket_test_');
     ticketsDir = Directory(path.join(tempDir.path, 'tickets'))..createSync();
     ticketDir = Directory(path.join(ticketsDir.path, 'TICKPB'))..createSync();
@@ -1890,6 +1897,36 @@ void main() {
             contains('Exception: Publish failed for B'),
           ),
         ),
+      );
+
+      // The reason is printed where »failed« is written into the config,
+      // i.e. before the rollback output that would otherwise bury it.
+      final reasonIndex = messages.indexWhere(
+        (m) => m.contains('❌ Publishing B failed'),
+      );
+      expect(reasonIndex, isNonNegative);
+      expect(messages[reasonIndex], contains('Publish failed for B'));
+      // »Exception: « is stripped — the reason itself is the message.
+      expect(messages[reasonIndex], isNot(contains('Exception:')));
+
+      final hintIndex = messages.indexWhere(
+        (m) => m.contains('gg do publish --continue'),
+      );
+      expect(hintIndex, reasonIndex + 1);
+      expect(messages[hintIndex], contains('marked as »failed«'));
+
+      final restoreIndex = messages.indexWhere(
+        (m) => m.contains('Restoring B after the failed publish'),
+      );
+      expect(restoreIndex, isNonNegative);
+      expect(reasonIndex, lessThan(restoreIndex));
+
+      // The reason is red, the hint yellow with the command in blue.
+      expect(coloredMessages[reasonIndex], startsWith('\x1B[31m'));
+      expect(coloredMessages[hintIndex], startsWith('\x1B[33m'));
+      expect(
+        coloredMessages[hintIndex],
+        contains('\x1B[34mgg do publish --continue'),
       );
 
       // Repos must still exist in the ticket after a failed publish.

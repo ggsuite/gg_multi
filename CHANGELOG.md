@@ -6,6 +6,18 @@
 
 - Don't hide files in .gg folder
 
+## 6.0.2 - 2026-07-31
+
+### Changed
+
+- Colorize 'Deleted repository from ticket message'
+
+## 6.0.1 - 2026-07-31
+
+### Changed
+
+- Print publish fail reason to console
+
 ## 6.0.0 - 2026-07-31
 
 ### Changed
@@ -41,10 +53,10 @@
 ### Fixed
 
 - Stale `.gg/.gg-publish.json` publish progress is no longer carried from the
-master workspace into ticket copies: `copyDirectory` skips the file and
-`do add` deletes a leftover from the master repo before copying. Such a
-leftover made a fresh `gg do publish` in the new ticket abort with
-»An unfinished publish left progress …«.
+  master workspace into ticket copies: `copyDirectory` skips the file and
+  `do add` deletes a leftover from the master repo before copying. Such a
+  leftover made a fresh `gg do publish` in the new ticket abort with
+  »An unfinished publish left progress …«.
 - Fix publishing error
 
 ## 5.12.5 - 2026-07-30
@@ -131,10 +143,10 @@ leftover made a fresh `gg do publish` in the new ticket abort with
 ### Added
 
 - The delete-ticket and merge-message default prompts fail fast with an
-actionable error when stdin is not a terminal (via gg_one's
-throwWhenNotATerminal), instead of hanging forever in CI or piped
-shells. Set delete_ticket in `.gg/.gg-publish.json` (or pass `-m` /
-`--config`) for headless runs.
+  actionable error when stdin is not a terminal (via gg_one's
+  throwWhenNotATerminal), instead of hanging forever in CI or piped
+  shells. Set delete_ticket in `.gg/.gg-publish.json` (or pass `-m` /
+  `--config`) for headless runs.
 
 ### Changed
 
@@ -146,38 +158,38 @@ shells. Set delete_ticket in `.gg/.gg-publish.json` (or pass `-m` /
 ### Added
 
 - `do configure-publish`: new command that interactively writes
-`<ticket>/.gg/.gg-publish.json` (per-repo version increment + merge
-message, plus one `delete_ticket` choice). `do publish` runs it
-automatically when started without a config, so every interactive
-decision is made up front before the unattended publish.
+  `<ticket>/.gg/.gg-publish.json` (per-repo version increment + merge
+  message, plus one `delete_ticket` choice). `do publish` runs it
+  automatically when started without a config, so every interactive
+  decision is made up front before the unattended publish.
 - `do publish --continue`: records per-repo progress in
-`.gg/.gg-publish.json`, skips already-published repos and resumes the
-rest after a failure; the file is deleted on full success. Review /
-`can publish` are re-run unless at least one repo already published.
-Within a repo, resume: true is forwarded to gg_one's `do publish`,
-which resumes at the first open step of its repo-level
-`<repo>/.gg/.gg-publish.json` (done_steps) — including the version
-tag. The full-restore rollback deletes that repo-level file (its
-markers would be stale); the keep-commits rollback keeps it, and
-`--reconfigure` discards ticket **and** repo-level files. Each repo's
-`.gitignore` gets the `.gg/.gg-publish.json` entry automatically
-before the pre-publish commit.
+  `.gg/.gg-publish.json`, skips already-published repos and resumes the
+  rest after a failure; the file is deleted on full success. Review /
+  `can publish` are re-run unless at least one repo already published.
+  Within a repo, resume: true is forwarded to gg_one's `do publish`,
+  which resumes at the first open step of its repo-level
+  `<repo>/.gg/.gg-publish.json` (done_steps) — including the version
+  tag. The full-restore rollback deletes that repo-level file (its
+  markers would be stale); the keep-commits rollback keeps it, and
+  `--reconfigure` discards ticket **and** repo-level files. Each repo's
+  `.gitignore` gets the `.gg/.gg-publish.json` entry automatically
+  before the pre-publish commit.
 - `do publish --reconfigure`: discards an existing `.gg/.gg-publish.json`
-and reconfigures interactively.
+  and reconfigures interactively.
 - Code-review hardening: `--continue` also skips review/can-publish when
-a failed repo's own step file proves irreversible progress (first-repo
-failure after registry publish/merge no longer blocks the resume);
-`--config` and `do configure-publish` refuse to clobber a runtime file
-that still holds progress markers.
+  a failed repo's own step file proves irreversible progress (first-repo
+  failure after registry publish/merge no longer blocks the resume);
+  `--config` and `do configure-publish` refuse to clobber a runtime file
+  that still holds progress markers.
 
 ### Changed
 
 - `do publish --message` / `-m` is kept, with refined meaning: it is the
-default merge message used only when the `.gg/.gg-publish.json` is
-written interactively (a fresh run or `--reconfigure`). It seeds every
-repo's merge-message prompt and takes precedence over the ticket
-description. It is ignored once a config exists or is supplied via
-`--config`. `do configure-publish` accepts the same `-m`.
+  default merge message used only when the `.gg/.gg-publish.json` is
+  written interactively (a fresh run or `--reconfigure`). It seeds every
+  repo's merge-message prompt and takes precedence over the ticket
+  description. It is ignored once a config exists or is supplied via
+  `--config`. `do configure-publish` accepts the same `-m`.
 - Tidy CHANGELOGs: single Unreleased section and chronological order
 - gg_multi: changed references to git
 
@@ -190,11 +202,11 @@ description. It is ignored once a config exists or is supplied via
 ### Changed
 
 - `do review` and `do publish` now roll back the repository state when
-they fail, restoring the snapshot taken before the run. `do review`
-restores every changed, not-yet-pushed repo; `do publish` restores only
-the failed repo — fully when nothing irreversible happened, otherwise
-keeping all commits so a re-run resumes. The shared git runner and
-snapshot capture live in `backend/git_snapshot.dart`.
+  they fail, restoring the snapshot taken before the run. `do review`
+  restores every changed, not-yet-pushed repo; `do publish` restores only
+  the failed repo — fully when nothing irreversible happened, otherwise
+  keeping all commits so a re-run resumes. The shared git runner and
+  snapshot capture live in `backend/git_snapshot.dart`.
 
 ## 5.5.1 - 2026-07-06
 
@@ -207,18 +219,18 @@ snapshot capture live in `backend/git_snapshot.dart`.
 ### Added
 
 - Org-prefixed repo folders: repos newly added to the master workspace
-are cloned into `<org>_<repo>` (Dart) / `<org>-<repo>` (TypeScript)
-folders, so same-named repos from different organizations can coexist.
-Existing unprefixed folders keep working: `do add`, `do rm`, ticket
-copies and transitive-dep cloning now resolve repos by folder name,
-manifest package name or git remote URL (`RepoFolderResolver`).
+  are cloned into `<org>_<repo>` (Dart) / `<org>-<repo>` (TypeScript)
+  folders, so same-named repos from different organizations can coexist.
+  Existing unprefixed folders keep working: `do add`, `do rm`, ticket
+  copies and transitive-dep cloning now resolve repos by folder name,
+  manifest package name or git remote URL (`RepoFolderResolver`).
 - `do add <name>` now tries the known organizations from `.organizations`
-first and uses the bare `<name>/<name>` guess only as a last resort, so
-a plain add clones straight from the right org without a failed attempt.
+  first and uses the bare `<name>/<name>` guess only as a last resort, so
+  a plain add clones straight from the right org without a failed attempt.
 - `can publish` now runs `gg can publish` for every repo in the ticket
-(feature branch, CHANGELOG, pana, npm authentication), so publish
-blockers — like a missing npm login for an npm-published package —
-surface up front instead of as a cryptic 404 mid-publish.
+  (feature branch, CHANGELOG, pana, npm authentication), so publish
+  blockers — like a missing npm login for an npm-published package —
+  surface up front instead of as a cryptic 404 mid-publish.
 
 ### Changed
 
@@ -228,18 +240,18 @@ surface up front instead of as a cryptic 404 mid-publish.
 
 - fix(org-add): handle missing GitHub CLI gracefully and fall back to https clone url when sshUrl is empty (code-review)
 - `do review` (and therefore `do publish`) now disables pnpm 11's
-`blockExoticSubdeps` while refreshing dependencies, so the transitive
-git-referenced dependency chain that localizing to git feature branches
-creates installs instead of failing with `ERR_PNPM_EXOTIC_SUBDEP`. This
-matches the fix `do publish` already applied to its own refresh step.
+  `blockExoticSubdeps` while refreshing dependencies, so the transitive
+  git-referenced dependency chain that localizing to git feature branches
+  creates installs instead of failing with `ERR_PNPM_EXOTIC_SUBDEP`. This
+  matches the fix `do publish` already applied to its own refresh step.
 - `do review` now surfaces a failed install's output from stdout when
-stderr is empty (pnpm writes its errors to stdout), instead of throwing
-the cause-less `... (pnpm install failed: )`.
+  stderr is empty (pnpm writes its errors to stdout), instead of throwing
+  the cause-less `... (pnpm install failed: )`.
 
 ### Reverted
 
 - Revert parallelization of `gg can commit` and `gg do push` (commit
-c97a31a). Restores the previous sequential implementation.
+  c97a31a). Restores the previous sequential implementation.
 
 ## 5.3.2 - 2026-06-26
 
@@ -358,15 +370,15 @@ c97a31a). Restores the previous sequential implementation.
 - gg_multi: changed references to git
 - Gg Multi: changed references to pub.dev
 - **BREAKING**: Renamed package from `kidney_core` to `gg_multi`.
-Repository moved to https://github.com/ggsuite/gg_multi. Update
-`dependencies:` entries and `import 'package:kidney_core/...'`
-statements to `import 'package:gg_multi/...'`. The executable is now
-`gg_multi` (previously `kidney_core`).
+  Repository moved to https://github.com/ggsuite/gg_multi. Update
+  `dependencies:` entries and `import 'package:kidney_core/...'`
+  statements to `import 'package:gg_multi/...'`. The executable is now
+  `gg_multi` (previously `kidney_core`).
 - **BREAKING**: Replaced dependency `gg ^7.0.5` with `gg_one ^8.0.0`
-(the `gg` package itself was renamed to `gg_one` upstream).
+  (the `gg` package itself was renamed to `gg_one` upstream).
 - Renamed status marker file `.kidney_status` to `.gg_multi_status`.
-Existing checked-out workspaces must rename the file or run the
-localization commands again.
+  Existing checked-out workspaces must rename the file or run the
+  localization commands again.
 - Upgrade gg_localize_refs version
 
 ### Removed
@@ -385,7 +397,7 @@ localization commands again.
 
 ### Fixed
 
-- Refactor _prepareMasterRepositoryForCopy and fix git tag deletion on macOS
+- Refactor \_prepareMasterRepositoryForCopy and fix git tag deletion on macOS
 
 ## 3.0.2 - 2026-04-28
 
@@ -574,7 +586,7 @@ localization commands again.
 - Write kidney_status file
 - Abort directly if a command fails in do review
 - Execute gg do commit after localizing in kidney add
-- Pass gitRef param to _localizeRefs.get in DoReviewCommand and tests
+- Pass gitRef param to \_localizeRefs.get in DoReviewCommand and tests
 - open ticket as VSCode workspace file instead of individual repos
 - Switch gg_localize_refs dependency to use GitHub repo
 - Update integration test and add sample folder metadata files
