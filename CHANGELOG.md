@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Removed
+
+- Introduce .trash for published tickets and removed repos
+
 ## 7.0.1 - 2026-07-31
 
 ### Changed

@@ -21,6 +21,10 @@ executable for direct use and in CI/CD pipelines.
 - Per-ticket workspaces under `tickets/<id>/` that hold scoped clones
   of the repos you need for one feature, in the same `<org>/<repo>`
   layout.
+- A trash under `.trash/<id>/`: when a ticket is published, its repos
+  and its `.code-workspace` file are moved there instead of being
+  deleted, so nothing you forgot to commit is lost. Emptying it is up
+  to you.
 - Automatic dependency resolution: every cross-repo command runs in
   dependency order so downstream packages see consistent upstream
   state.
@@ -131,13 +135,18 @@ my_project/
 │   │   └── gg_multi/
 │   └── acme/
 │       └── app_core/
-└── tickets/
-    └── PROJ-123/               # one ticket workspace
-        ├── .ticket             # JSON with id + description
-        ├── ggsuite/
-        │   └── gg_multi/       # ticket-scoped clone
-        └── acme/
-            └── app_core/
+├── tickets/
+│   └── PROJ-123/               # one ticket workspace
+│       ├── .ticket             # JSON with id + description
+│       ├── ggsuite/
+│       │   └── gg_multi/       # ticket-scoped clone
+│       └── acme/
+│           └── app_core/
+└── .trash/
+    └── PROJ-123/               # what `do publish` removed from the ticket
+        ├── PROJ-123.code-workspace
+        └── ggsuite/
+            └── gg_multi/
 ```
 
 `WorkspaceUtils.detectTicketPath()` walks up the directory tree from

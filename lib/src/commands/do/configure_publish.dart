@@ -24,14 +24,11 @@ import '../../backend/workspace_utils.dart';
 /// Typedef for editing a merge message interactively.
 typedef EditMessage = Future<String?> Function(String initialMessage);
 
-/// Typedef for asking whether the ticket should be deleted after publishing.
-typedef ConfirmDeleteTicket = bool Function(String ticketName);
-
 /// Interactively builds the `.gg/gg-publish.json` publish configuration for
 /// the current ticket, asking for the version increment and merge message of
-/// every repo up front plus a single `delete_ticket` choice. `do publish` runs
-/// this automatically when no configuration is supplied, so all decisions are
-/// made before the long (unattended) publish starts.
+/// every repo up front. `do publish` runs this automatically when no
+/// configuration is supplied, so all decisions are made before the long
+/// (unattended) publish starts.
 class DoConfigurePublishCommand extends DirCommand<void> {
   /// Constructor
   DoConfigurePublishCommand({
@@ -43,14 +40,11 @@ class DoConfigurePublishCommand extends DirCommand<void> {
     GetVersion? getVersionCommand,
     gg.VersionSelector? versionSelector,
     EditMessage? editMessage,
-    ConfirmDeleteTicket? confirmDeleteTicket,
   })  : _sortedProcessingList =
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
         _getVersion = getVersionCommand ?? GetVersion(ggLog: ggLog),
         _versionSelector = versionSelector ?? gg.VersionSelector(),
-        _editMessage = editMessage ?? _defaultEditMessage,
-        _confirmDeleteTicket =
-            confirmDeleteTicket ?? _defaultConfirmDeleteTicket {
+        _editMessage = editMessage ?? _defaultEditMessage {
     _addArgs();
   }
 
@@ -65,9 +59,6 @@ class DoConfigurePublishCommand extends DirCommand<void> {
 
   /// Opens an interactive editor for a repo's merge message.
   final EditMessage _editMessage;
-
-  /// Asks the user whether the ticket should be deleted after publishing.
-  final ConfirmDeleteTicket _confirmDeleteTicket;
 
   /// Returns the `.gg/gg-publish.json` file for [ticketDir].
   static File configFileFor(Directory ticketDir) =>
@@ -86,8 +77,7 @@ class DoConfigurePublishCommand extends DirCommand<void> {
   }
 
   /// Builds the publish configuration for the ticket containing [directory],
-  /// writes it to `<ticket>/.gg/gg-publish.json` and returns it. Pass
-  /// [deleteTicket] to skip the interactive delete-ticket prompt.
+  /// writes it to `<ticket>/.gg/gg-publish.json` and returns it.
   ///
   /// [defaultMergeMessage] (typically from `-m`) is the default merge message:
   /// it pre-fills every repo's merge-message prompt and is the fallback when
@@ -96,7 +86,6 @@ class DoConfigurePublishCommand extends DirCommand<void> {
   Future<gg.PublishConfig> configure({
     required Directory directory,
     required GgLog ggLog,
-    bool? deleteTicket,
     String? defaultMergeMessage,
   }) async {
     final String? ticketPath = WorkspaceUtils.detectTicketPath(
@@ -107,7 +96,6 @@ class DoConfigurePublishCommand extends DirCommand<void> {
     }
 
     final ticketDir = Directory(ticketPath);
-    final ticketName = path.basename(ticketDir.path);
 
     // Never clobber the progress of an unfinished publish — rewriting the
     // file would silently discard the per-repo status markers, so a later
@@ -171,9 +159,10 @@ class DoConfigurePublishCommand extends DirCommand<void> {
       );
     }
 
-    final delete = deleteTicket ?? _confirmDeleteTicket(ticketName);
-
-    final config = gg.PublishConfig(deleteTicket: delete, repos: repos);
+    // Whether the ticket is cleaned up is no longer a question: `do publish`
+    // always moves the published repos to <root>/.trash and removes the
+    // ticket folder, so nothing is asked and nothing is stored here.
+    final config = gg.PublishConfig(repos: repos);
     final file = configFileFor(ticketDir);
     await config.save(file: file);
     ggLog(green('Wrote publish configuration to ${file.path}'));
@@ -215,19 +204,6 @@ class DoConfigurePublishCommand extends DirCommand<void> {
     }
   }
 
-  /// Asks the user whether the ticket repositories should be deleted.
-  static bool _defaultConfirmDeleteTicket(String ticketName) {
-    gg.throwWhenNotATerminal(
-      'the delete-ticket prompt',
-      'set delete_ticket in .gg/gg-publish.json (or --config)',
-    );
-    final selected = Select(
-      prompt: 'Delete ticket $ticketName and remove remote feature branches?',
-      options: ['Yes', 'No'],
-      initialIndex: 0,
-    ).interact();
-    return selected == 0;
-  }
   // coverage:ignore-end
 
   /// Adds command line arguments.

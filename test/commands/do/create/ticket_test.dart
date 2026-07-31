@@ -67,6 +67,12 @@ void main() {
       );
       expect(ticketDir.existsSync(), isTrue);
 
+      // Every ticket gets its trash folder right away.
+      expect(
+        Directory(path.join(tempDir.path, '.trash', issueId)).existsSync(),
+        isTrue,
+      );
+
       final ticketFile = File(
         path.join(
           ticketDir.path,

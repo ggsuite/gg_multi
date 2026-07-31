@@ -9,3 +9,6 @@ const String ggMultiMasterFolder = '.master';
 
 /// The folder where tickets are stored
 const String ggMultiTicketFolder = 'tickets';
+
+/// The trash folder beside `.master` that holds removed tickets and repos
+const String ggMultiTrashFolder = '.trash';
