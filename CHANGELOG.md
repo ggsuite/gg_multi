@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Fix gg do rm repo does not work only work in ticket root but not when in one of the subfolders
+
 ## 7.0.1 - 2026-07-31
 
 ### Changed
