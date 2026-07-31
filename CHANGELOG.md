@@ -1,5 +1,11 @@
 # Changelog
 
+## 6.0.3 - 2026-07-31
+
+### Changed
+
+- Rename exec into maintain
+
 ## 6.0.2 - 2026-07-31
 
 ### Changed

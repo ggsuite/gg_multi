@@ -13,7 +13,7 @@ import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 
-import '../../backend/workspace_utils.dart';
+import '../../../backend/workspace_utils.dart';
 
 /// Typedef for running processes (for injection & tests).
 typedef ProcessRunner = Future<ProcessResult> Function(
@@ -28,7 +28,7 @@ class DoExecuteCommand extends DirCommand<void> {
   /// Constructor
   DoExecuteCommand({
     required super.ggLog,
-    super.name = 'execute',
+    super.name = 'exec',
     super.description =
         'Executes a command in all repositories in the current ticket.',
     SortedProcessingList? sortedProcessingList,
