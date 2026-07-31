@@ -12,7 +12,13 @@ import 'package:path/path.dart' as path;
 import 'repo_folder_resolver.dart';
 
 /// Relative path of the ticket marker inside a repository.
-const String ticketJsonRelativePath = '.gg/.ticket.json';
+const String ticketJsonRelativePath = '.gg/ticket.json';
+
+/// The marker path of the days before the files inside `.gg` were unhidden.
+///
+/// Feature branches pushed back then still carry it, so everything that only
+/// *reads* a marker has to accept it.
+const String legacyTicketJsonRelativePath = '.gg/.ticket.json';
 
 /// One repository entry of a [TicketJson] marker.
 class TicketRepo {
@@ -35,7 +41,7 @@ class TicketRepo {
   Map<String, String> toJson() => <String, String>{'name': name, 'url': url};
 }
 
-/// The content of a `.gg/.ticket.json` marker: the ticket id, its description
+/// The content of a `.gg/ticket.json` marker: the ticket id, its description
 /// and the full list of repositories (with git URLs) that make up the ticket.
 ///
 /// `gg do add` writes this marker into every repository of a ticket so the
@@ -115,7 +121,7 @@ TicketJson buildTicketJson({
   );
 }
 
-/// Writes (overwriting) the `.gg/.ticket.json` marker into every repository in
+/// Writes (overwriting) the `.gg/ticket.json` marker into every repository in
 /// [repoDirs]. The same [ticket] is written everywhere.
 ///
 /// The `.gg/` folder is git-ignored (and gg re-appends that ignore on every
@@ -132,7 +138,7 @@ void writeTicketJsonToRepos({
     if (!ggDir.existsSync()) {
       ggDir.createSync(recursive: true);
     }
-    File(path.join(ggDir.path, '.ticket.json')).writeAsStringSync(content);
+    File(path.join(ggDir.path, 'ticket.json')).writeAsStringSync(content);
   }
 }
 

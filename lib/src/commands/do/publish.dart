@@ -178,11 +178,11 @@ class DoPublishCommand extends DirCommand<void> {
   /// Checks whether versions are visible on npm (TypeScript packages).
   final NpmRegistryChecker _npmChecker;
 
-  /// Interactively builds the `.gg/.gg-publish.json` config when the publish
+  /// Interactively builds the `.gg/gg-publish.json` config when the publish
   /// is started without one.
   final DoConfigurePublishCommand _doConfigurePublishCommand;
 
-  /// Adds the repo-level `.gg/.gg-publish.json` to each repo's `.gitignore`
+  /// Adds the repo-level `.gg/gg-publish.json` to each repo's `.gitignore`
   /// before the pre-publish commit, so gg_one's runtime file rides along.
   final gg.EnsurePublishConfigIgnored _ensureIgnored;
 
@@ -217,7 +217,7 @@ class DoPublishCommand extends DirCommand<void> {
     final String? messageArg = argResults?['message'] as String?;
 
     // Only an explicitly passed --pr/--no-pr is forwarded to the repos; when
-    // absent, each repo's persisted .gg/.gg-publish.json (on resume) or the
+    // absent, each repo's persisted .gg/gg-publish.json (on resume) or the
     // default (pr = true) decides.
     final bool? prArg = (argResults?.wasParsed('pr') ?? false)
         ? (argResults?['pr'] as bool?)
@@ -239,7 +239,7 @@ class DoPublishCommand extends DirCommand<void> {
 
     // Step 2: Resolve the publish configuration up front so the rest of the
     // run is non-interactive. Precedence: --continue > --config > the runtime
-    // .gg/.gg-publish.json > the legacy <ticket>/.gg-publish.json > an
+    // .gg/gg-publish.json > the legacy <ticket>/.gg-publish.json > an
     // interactive `do configure-publish`.
     final resolved = await _resolvePublishConfig(
       ticketDir: ticketDir,
@@ -280,7 +280,7 @@ class DoPublishCommand extends DirCommand<void> {
 
     // Step 3: Review + validate. Skipped when genuinely resuming a run that
     // already made irreversible progress: a repo finished ('published'), or
-    // a repo's own .gg/.gg-publish.json records completed publish steps —
+    // a repo's own .gg/gg-publish.json records completed publish steps —
     // e.g. the FIRST repo failed after its registry publish or merge.
     // Re-reviewing such a partially merged ticket would fail ("nothing to
     // merge") and permanently block the resume. A `--continue` after a
@@ -602,7 +602,7 @@ class DoPublishCommand extends DirCommand<void> {
     }
   }
 
-  /// Whether [repoDir]'s own `.gg/.gg-publish.json` records completed publish
+  /// Whether [repoDir]'s own `.gg/gg-publish.json` records completed publish
   /// steps — i.e. gg_one already did irreversible work in that repo.
   bool _repoHasStepProgress(Directory repoDir) {
     final file = gg.DoConfigurePublish.configFileFor(repoDir);
@@ -710,7 +710,7 @@ class DoPublishCommand extends DirCommand<void> {
 
     // gg do publish; multi flow is non-interactive (no confirm prompt).
     // On --continue, gg_one resumes at the first step its repo-level
-    // .gg/.gg-publish.json marks as not done yet.
+    // .gg/gg-publish.json marks as not done yet.
     await _ggDoPublish.exec(
       directory: repoDir,
       ggLog: ggLog,
@@ -1019,7 +1019,7 @@ class DoPublishCommand extends DirCommand<void> {
     // Nothing irreversible happened — restore the full snapshot.
     await _runGit(<String>['reset', '--hard', s.head], repoDir: repoDir);
 
-    // gg_one's runtime .gg/.gg-publish.json is gitignored and survives the
+    // gg_one's runtime .gg/gg-publish.json is gitignored and survives the
     // reset — but its step markers describe commits that were just rolled
     // back, so they must not seed a later resume. Drop the file; the
     // keep-commits path above keeps it because there the steps stay real.
@@ -1263,7 +1263,7 @@ class DoPublishCommand extends DirCommand<void> {
   static bool _defaultConfirmDeleteTicket(String ticketName) {
     gg.throwWhenNotATerminal(
       'the delete-ticket prompt',
-      'set delete_ticket in .gg/.gg-publish.json (or --config)',
+      'set delete_ticket in .gg/gg-publish.json (or --config)',
     );
     final selected = Select(
       prompt: 'Delete ticket $ticketName and remove remote feature branches?',
@@ -1279,7 +1279,7 @@ class DoPublishCommand extends DirCommand<void> {
     argParser.addOption(
       'message',
       abbr: 'm',
-      help: 'Default merge message used only when the .gg/.gg-publish.json is '
+      help: 'Default merge message used only when the .gg/gg-publish.json is '
           'written interactively (a fresh run or --reconfigure). It seeds '
           'every repo\'s merge-message prompt. Ignored when a config already '
           'exists or is supplied via --config.',
@@ -1289,7 +1289,7 @@ class DoPublishCommand extends DirCommand<void> {
       help: 'Path to a .gg-publish.json file with per-repo merge_message + '
           'version_increment, plus the optional ticket-wide '
           '`delete_ticket` flag. Resolved as-given (CWD), then under the '
-          'ticket directory. Copied to .gg/.gg-publish.json for the run.',
+          'ticket directory. Copied to .gg/gg-publish.json for the run.',
     );
     argParser.addFlag(
       'pr',
@@ -1302,13 +1302,13 @@ class DoPublishCommand extends DirCommand<void> {
     argParser.addFlag(
       'continue',
       help: 'Resume a previously failed publish from where it stopped, '
-          'reusing .gg/.gg-publish.json and skipping already-published repos.',
+          'reusing .gg/gg-publish.json and skipping already-published repos.',
       defaultsTo: false,
       negatable: false,
     );
     argParser.addFlag(
       'reconfigure',
-      help: 'Ignore an existing .gg/.gg-publish.json and configure the '
+      help: 'Ignore an existing .gg/gg-publish.json and configure the '
           'publish again via do configure-publish.',
       defaultsTo: false,
       negatable: true,

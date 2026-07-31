@@ -661,21 +661,58 @@ class AddCommand extends Command<dynamic> {
       ggLog: ggLog,
     );
 
-    // The runtime progress of a publish (.gg/.gg-publish.json) is gitignored,
+    // The runtime progress of a publish (.gg/gg-publish.json) is gitignored,
     // so the reset above never removes it. It records the progress of a
     // publish of ANOTHER branch and must not linger in the master workspace —
-    // and never reach a ticket copy (copyDirectory skips it too).
-    final stalePublishProgress = File(
-      path.join(repoDir.path, '.gg', '.gg-publish.json'),
-    );
-    if (stalePublishProgress.existsSync()) {
-      stalePublishProgress.deleteSync();
-      ggLog(
-        yellow(
-          'Removed stale publish progress '
-          '(.gg/.gg-publish.json) in $repoName.',
-        ),
+    // and never reach a ticket copy (copyDirectory skips it too). The hidden
+    // name of the days before the files inside `.gg` were unhidden counts as
+    // stale progress just the same.
+    for (final name in const ['gg-publish.json', '.gg-publish.json']) {
+      final stalePublishProgress = File(
+        path.join(repoDir.path, '.gg', name),
       );
+      if (stalePublishProgress.existsSync()) {
+        stalePublishProgress.deleteSync();
+        ggLog(
+          yellow(
+            'Removed stale publish progress '
+            '(.gg/$name) in $repoName.',
+          ),
+        );
+      }
+    }
+  }
+
+  /// Untracks and deletes the hidden `.gg/.ticket.json` an earlier gg version
+  /// force-added. A no-op when the repo never carried one — which is why the
+  /// `git rm` only runs once the file has actually been seen.
+  Future<void> _removeLegacyTicketJson({
+    required Directory repoDir,
+    required String repoName,
+    required GgLog ggLog,
+  }) async {
+    final legacy = File(path.join(repoDir.path, legacyTicketJsonRelativePath));
+    if (!legacy.existsSync()) {
+      return;
+    }
+
+    await _runGit(
+      repoDir: repoDir,
+      arguments: const [
+        'rm',
+        '-f',
+        '--ignore-unmatch',
+        legacyTicketJsonRelativePath,
+      ],
+      successMessage: 'Removed $legacyTicketJsonRelativePath in $repoName.',
+      failureLabel: 'git rm $legacyTicketJsonRelativePath in $repoName',
+      ggLog: ggLog,
+    );
+
+    // `git rm` removes the tracked copy; an untracked leftover is deleted
+    // here, so the marker is gone either way.
+    if (legacy.existsSync()) {
+      legacy.deleteSync();
     }
   }
 
@@ -877,14 +914,23 @@ class AddCommand extends Command<dynamic> {
         upgradeDart: true,
       );
 
+      // A branch that was created before the files inside `.gg` were unhidden
+      // has the marker tracked under its old name. Dropping it here keeps one
+      // marker per branch — the new one written above.
+      await _removeLegacyTicketJson(
+        repoDir: repoDir,
+        repoName: repoName,
+        ggLog: ggLog,
+      );
+
       // Force-stage the ticket marker: `.gg/` is gitignored, so a plain
       // `git add .` would skip it. Force-adding makes it a tracked file that
       // travels with the feature branch.
       await _runGit(
         repoDir: repoDir,
-        arguments: const ['add', '-f', '.gg/.ticket.json'],
-        successMessage: 'Staged .gg/.ticket.json in $repoName.',
-        failureLabel: 'git add -f .gg/.ticket.json in $repoName',
+        arguments: const ['add', '-f', '.gg/ticket.json'],
+        successMessage: 'Staged .gg/ticket.json in $repoName.',
+        failureLabel: 'git add -f .gg/ticket.json in $repoName',
         ggLog: ggLog,
       );
 

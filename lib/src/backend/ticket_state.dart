@@ -31,9 +31,14 @@ class TicketState {
 
   /// Files that are excluded from the per-repo hash so that updating
   /// generated/state files does not invalidate the cache.
+  ///
+  /// The hidden `.gg/.gg.json` of the days before the files inside `.gg` were
+  /// unhidden is listed too: a repository being migrated carries both for one
+  /// commit and must not look changed because of it.
   static const List<String> ignoreFiles = <String>[
     '.gg/',
     '.gg.json',
+    '.gg/gg.json',
     '.gg/.gg.json',
     'CHANGELOG.md',
   ];

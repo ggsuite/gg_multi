@@ -493,7 +493,7 @@ void main() {
             workingDirectory: any(named: 'workingDirectory'),
           ),
         ).thenAnswer(
-          (_) async => ProcessResult(0, 0, 'CHANGELOG.md\n.gg/.gg.json\n', ''),
+          (_) async => ProcessResult(0, 0, 'CHANGELOG.md\n.gg/gg.json\n', ''),
         );
 
         final runner = CommandRunner<void>('test', 'do review ticket')
@@ -528,7 +528,7 @@ void main() {
 
         expect(messages, contains('Please resolve merge conflicts:'));
         expect(messages, contains(' - A/CHANGELOG.md'));
-        expect(messages, contains(' - A/.gg/.gg.json'));
+        expect(messages, contains(' - A/.gg/gg.json'));
         expect(
           messages,
           contains(

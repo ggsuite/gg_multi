@@ -180,7 +180,7 @@ void main() {
     );
 
     File markerOf(Directory repo) =>
-        File(path.join(repo.path, '.gg', '.ticket.json'));
+        File(path.join(repo.path, '.gg', 'ticket.json'));
 
     test('creates .gg and writes the pretty marker', () {
       final repo = makeDir('fresh');

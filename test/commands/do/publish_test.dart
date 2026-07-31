@@ -102,10 +102,10 @@ void main() {
     File(path.join(ticketDir.path, 'B', 'pubspec.yaml'))
         .writeAsStringSync('name: B\nflutter:\n');
     // A ready-made runtime publish config so the tests exercise `do publish`
-    // non-interactively — it reuses .gg/.gg-publish.json when present instead
+    // non-interactively — it reuses .gg/gg-publish.json when present instead
     // of invoking the interactive `do configure-publish`.
     Directory(path.join(ticketDir.path, '.gg')).createSync();
-    File(path.join(ticketDir.path, '.gg', '.gg-publish.json'))
+    File(path.join(ticketDir.path, '.gg', 'gg-publish.json'))
         .writeAsStringSync('''
 {
   "version_increment": "patch",
@@ -958,7 +958,7 @@ void main() {
         () async {
       // A per-repo override in the runtime config drives the merge message and
       // version increment gg_one receives (no interactive editor anymore).
-      File(path.join(ticketDir.path, '.gg', '.gg-publish.json'))
+      File(path.join(ticketDir.path, '.gg', 'gg-publish.json'))
           .writeAsStringSync('''
 {
   "repos": {
@@ -1120,7 +1120,7 @@ void main() {
     test('forwards the release channel to gg do publish', () async {
       // Top-level channel: rc applies to repos without an override; a per-repo
       // channel override wins for that repo.
-      File(path.join(ticketDir.path, '.gg', '.gg-publish.json'))
+      File(path.join(ticketDir.path, '.gg', 'gg-publish.json'))
           .writeAsStringSync('''
 {
   "version_increment": "minor",
@@ -1304,7 +1304,7 @@ void main() {
 
     test('falls back to the top-level merge message + increment', () async {
       // No per-repo override: forRepo falls back to the top-level defaults.
-      File(path.join(ticketDir.path, '.gg', '.gg-publish.json'))
+      File(path.join(ticketDir.path, '.gg', 'gg-publish.json'))
           .writeAsStringSync('''
 {
   "version_increment": "major",
@@ -4225,10 +4225,10 @@ void main() {
       );
     });
 
-    test('a full restore drops the repo-level .gg/.gg-publish.json', () async {
+    test('a full restore drops the repo-level .gg/gg-publish.json', () async {
       // The gitignored runtime file survives `reset --hard`, but its step
       // markers describe commits the rollback just removed.
-      final repoRuntime = File(path.join(dirA, '.gg', '.gg-publish.json'))
+      final repoRuntime = File(path.join(dirA, '.gg', 'gg-publish.json'))
         ..createSync(recursive: true);
       repoRuntime.writeAsStringSync('''
 {
@@ -4260,7 +4260,7 @@ void main() {
     test('keeps all commits when the version was already bumped', () async {
       // The runtime file's steps stay real on the keep-commits path — a
       // later --continue resumes exactly there, so the file must survive.
-      final repoRuntime = File(path.join(dirA, '.gg', '.gg-publish.json'))
+      final repoRuntime = File(path.join(dirA, '.gg', 'gg-publish.json'))
         ..createSync(recursive: true);
       repoRuntime.writeAsStringSync('''
 {
@@ -4844,7 +4844,7 @@ void main() {
       mockGetRefVersion = MockGetRefVersion();
       mockPubDevChecker = MockPubDevChecker();
       mockConfigure = MockConfigurePublishCommand();
-      runtimeFile = File(path.join(ticketDir.path, '.gg', '.gg-publish.json'));
+      runtimeFile = File(path.join(ticketDir.path, '.gg', 'gg-publish.json'));
 
       when(
         () => mockDoReviewCommand.exec(
@@ -5256,7 +5256,7 @@ void main() {
       expect(gitignore.existsSync(), isTrue);
       expect(
         gitignore.readAsStringSync(),
-        contains('.gg/.gg-publish.json'),
+        contains('.gg/gg-publish.json'),
       );
     });
 
@@ -5287,7 +5287,7 @@ void main() {
       );
 
       // Repo B is re-published in resume mode, so gg_one picks up at the
-      // first step its own .gg/.gg-publish.json marks as open.
+      // first step its own .gg/gg-publish.json marks as open.
       verify(
         () => mockGgDoPublish.exec(
           directory: any(named: 'directory'),
@@ -5361,7 +5361,7 @@ void main() {
 }
 ''');
       final repoRuntime = File(
-        path.join(ticketDir.path, 'A', '.gg', '.gg-publish.json'),
+        path.join(ticketDir.path, 'A', '.gg', 'gg-publish.json'),
       )..createSync(recursive: true);
       repoRuntime.writeAsStringSync('''
 {
@@ -5396,7 +5396,7 @@ void main() {
 }
 ''');
       final repoRuntime = File(
-        path.join(ticketDir.path, 'A', '.gg', '.gg-publish.json'),
+        path.join(ticketDir.path, 'A', '.gg', 'gg-publish.json'),
       )..createSync(recursive: true);
       repoRuntime.writeAsStringSync('{not valid json');
 
@@ -5520,7 +5520,7 @@ void main() {
 
     test('--reconfigure removes the repo-level runtime files', () async {
       final repoRuntime = File(
-        path.join(ticketDir.path, 'A', '.gg', '.gg-publish.json'),
+        path.join(ticketDir.path, 'A', '.gg', 'gg-publish.json'),
       )..createSync(recursive: true);
       repoRuntime.writeAsStringSync('''
 {

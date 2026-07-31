@@ -28,7 +28,7 @@ typedef BranchSelector = Future<String?> Function(List<String> branches);
 /// Copies a directory tree; injectable for tests.
 typedef CopyDirectory = Future<void> Function(Directory src, Directory dest);
 
-/// Reproduces a whole ticket from a single `.gg/.ticket.json` marker.
+/// Reproduces a whole ticket from a single `.gg/ticket.json` marker.
 ///
 /// `gg multi do checkout <X>` resolves [X] in three modes:
 /// * executed inside a `.master` repo → [X] is the ticket name, read from that
@@ -101,7 +101,7 @@ class DoCheckoutCommand extends Command<dynamic> {
 
   @override
   String get description =>
-      'Reproduces a ticket from its .gg/.ticket.json marker by checking out '
+      'Reproduces a ticket from its .gg/ticket.json marker by checking out '
       'the feature branch in every repository of the ticket.';
 
   // coverage:ignore-start
@@ -210,11 +210,19 @@ class DoCheckoutCommand extends Command<dynamic> {
     if (!alreadyFetched) {
       await _fetch.get(directory: dir, ggLog: ggLog);
     }
-    final content = await _showFile.get(
+    // A branch pushed before the files inside `.gg` were unhidden carries the
+    // marker under its old, hidden name — it still describes a valid ticket.
+    var content = await _showFile.get(
       directory: dir,
       ggLog: ggLog,
       ref: 'origin/$branch',
       filePath: ticketJsonRelativePath,
+    );
+    content ??= await _showFile.get(
+      directory: dir,
+      ggLog: ggLog,
+      ref: 'origin/$branch',
+      filePath: legacyTicketJsonRelativePath,
     );
     if (content == null) {
       throw Exception(

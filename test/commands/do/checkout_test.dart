@@ -10,6 +10,7 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:gg_git/gg_git.dart' as gg_git;
 import 'package:gg_multi/src/backend/git_handler.dart';
+import 'package:gg_multi/src/backend/ticket_json.dart';
 import 'package:gg_multi/src/commands/do/checkout.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
@@ -376,9 +377,38 @@ void main() {
           runCmd(build(executionPath: repoA.path), ['feat_x']),
           throwsA(
             predicate(
-              (e) => e.toString().contains('Could not read .gg/.ticket.json'),
+              (e) => e.toString().contains('Could not read .gg/ticket.json'),
             ),
           ),
+        );
+      });
+
+      test('falls back to the hidden marker of an older branch', () async {
+        // A feature branch pushed before the files inside .gg were unhidden
+        // carries `.gg/.ticket.json` — it still describes a valid ticket.
+        final repoA = makeMasterRepo('repo_a');
+        when(
+          () => showFile.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            ref: any(named: 'ref'),
+            filePath: ticketJsonRelativePath,
+          ),
+        ).thenAnswer((_) async => null);
+        when(
+          () => showFile.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            ref: any(named: 'ref'),
+            filePath: legacyTicketJsonRelativePath,
+          ),
+        ).thenAnswer((_) async => ticketJsonStr());
+
+        await runCmd(build(executionPath: repoA.path), ['feat_x']);
+
+        expect(
+          ticketDirOf('feat_x').existsSync(),
+          isTrue,
         );
       });
 
@@ -389,7 +419,7 @@ void main() {
           runCmd(build(executionPath: repoA.path), ['feat_x']),
           throwsA(
             predicate(
-              (e) => e.toString().contains('Invalid .gg/.ticket.json'),
+              (e) => e.toString().contains('Invalid .gg/ticket.json'),
             ),
           ),
         );

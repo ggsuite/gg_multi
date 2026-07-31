@@ -34,8 +34,15 @@ typedef ProcessRunner = Future<ProcessResult> Function(
 /// - The `merge=ours` rules ensure that generated/state files are not
 ///   merged textually but kept from the current branch.
 const String gitattributesRequiredLines = '* text=auto eol=lf\n'
-    '.gg/.gg.json merge=ours\n'
+    '.gg/gg.json merge=ours\n'
     'pubspec.lock merge=ours';
+
+/// Lines earlier gg versions wrote that are superseded by
+/// [gitattributesRequiredLines]. They are dropped instead of kept, so a
+/// repository does not accumulate a rule for a file that no longer exists.
+const List<String> gitattributesObsoleteLines = <String>[
+  '.gg/.gg.json merge=ours',
+];
 
 /// Ensures a `.gitattributes` file containing all
 /// [gitattributesRequiredLines] exists in every repository of the current
@@ -137,13 +144,25 @@ class DoInstallGitattributesCommand extends DirCommand<void> {
         ggLog('Created .gitattributes in $repoName.');
       } else {
         final existing = await attributesFile.readAsString();
-        final existingLines =
-            const LineSplitter().convert(existing).map((l) => l.trim()).toSet();
+        final keptLines = const LineSplitter()
+            .convert(existing)
+            .where((l) => !gitattributesObsoleteLines.contains(l.trim()))
+            .toList();
+        final droppedObsolete =
+            keptLines.length != const LineSplitter().convert(existing).length;
 
+        final existingLines = keptLines.map((l) => l.trim()).toSet();
         final missingLines =
             requiredLines.where((l) => !existingLines.contains(l)).toList();
 
-        if (missingLines.isNotEmpty) {
+        if (droppedObsolete) {
+          // The obsolete rules are removed in place, so the file has to be
+          // rewritten rather than appended to.
+          await attributesFile.writeAsString(
+            '${[...keptLines, ...missingLines].join('\n')}\n',
+          );
+          ggLog('Updated .gitattributes in $repoName.');
+        } else if (missingLines.isNotEmpty) {
           final needsLeadingNewline =
               existing.isNotEmpty && !existing.endsWith('\n');
           final prefix = needsLeadingNewline ? '\n' : '';

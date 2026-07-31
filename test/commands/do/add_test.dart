@@ -436,7 +436,7 @@ dev_dependencies:
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -444,7 +444,7 @@ dev_dependencies:
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -539,7 +539,7 @@ dev_dependencies:
 
         // The ticket marker is written into the repo's .gg folder.
         final ticketJson = File(
-          path.join(ticketDir.path, repoName, '.gg', '.ticket.json'),
+          path.join(ticketDir.path, repoName, '.gg', 'ticket.json'),
         );
         expect(ticketJson.existsSync(), isTrue);
         final markerContent = ticketJson.readAsStringSync();
@@ -573,10 +573,14 @@ dev_dependencies:
         // it — carried into a ticket it would block the next publish there.
         final ggDir = Directory(path.join(repoDir.path, '.gg'))
           ..createSync(recursive: true);
-        File(path.join(ggDir.path, '.gg-publish.json')).writeAsStringSync(
+        File(path.join(ggDir.path, 'gg-publish.json')).writeAsStringSync(
           '{"done_steps":["prepare_version","publish_registry"]}',
         );
-        File(path.join(ggDir.path, '.gg.json')).writeAsStringSync('{}');
+        // The same leftover under the hidden name an earlier gg version used.
+        File(path.join(ggDir.path, '.gg-publish.json')).writeAsStringSync(
+          '{"done_steps":["prepare_version"]}',
+        );
+        File(path.join(ggDir.path, 'gg.json')).writeAsStringSync('{}');
 
         final ticketDir = Directory(
           path.join(tempDir.path, ggMultiTicketFolder, 'TICKET'),
@@ -598,7 +602,7 @@ dev_dependencies:
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -668,7 +672,11 @@ dev_dependencies:
 
         await runner.run(['add', '--verbose', repoName]);
 
-        // The stale file is gone from the master repo …
+        // The stale files are gone from the master repo …
+        expect(
+          File(path.join(ggDir.path, 'gg-publish.json')).existsSync(),
+          isFalse,
+        );
         expect(
           File(path.join(ggDir.path, '.gg-publish.json')).existsSync(),
           isFalse,
@@ -683,13 +691,13 @@ dev_dependencies:
         // … and never reached the ticket copy. Its sibling .gg.json did.
         expect(
           File(
-            path.join(ticketDir.path, repoName, '.gg', '.gg-publish.json'),
+            path.join(ticketDir.path, repoName, '.gg', 'gg-publish.json'),
           ).existsSync(),
           isFalse,
         );
         expect(
           File(
-            path.join(ticketDir.path, repoName, '.gg', '.gg.json'),
+            path.join(ticketDir.path, repoName, '.gg', 'gg.json'),
           ).existsSync(),
           isTrue,
         );
@@ -725,7 +733,7 @@ dev_dependencies:
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -733,7 +741,7 @@ dev_dependencies:
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -804,7 +812,7 @@ dev_dependencies:
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -812,7 +820,7 @@ dev_dependencies:
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -897,7 +905,7 @@ dev_dependencies:
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -905,7 +913,7 @@ dev_dependencies:
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -984,7 +992,7 @@ dev_dependencies:
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -992,7 +1000,7 @@ dev_dependencies:
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -1053,7 +1061,7 @@ version: 1.0.0
       when(
         () => mockProc(
           'git',
-          ['add', '-f', '.gg/.ticket.json'],
+          ['add', '-f', '.gg/ticket.json'],
           workingDirectory: any(named: 'workingDirectory'),
           runInShell: any(named: 'runInShell'),
         ),
@@ -1165,7 +1173,7 @@ version: 1.0.0
       when(
         () => mockProc(
           'git',
-          ['add', '-f', '.gg/.ticket.json'],
+          ['add', '-f', '.gg/ticket.json'],
           workingDirectory: any(named: 'workingDirectory'),
           runInShell: any(named: 'runInShell'),
         ),
@@ -1471,7 +1479,7 @@ version: 1.0.0
         when(
           () => mockProcessRunner(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -1524,6 +1532,68 @@ version: 1.0.0
           logMessages,
           contains('Executed dart pub get in $repoName.'),
         );
+      });
+
+      test('untracks the hidden ticket marker of an older checkout', () async {
+        // A ticket workspace created before the files inside .gg were
+        // unhidden carries `.gg/.ticket.json` as a tracked file. A re-run of
+        // `do add` writes the new marker — the old one has to go, or the
+        // branch would travel with two.
+        File(
+          path.join(repoDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync('name: pubgetRepo');
+        final ticketRepoDir = Directory(path.join(ticketDir.path, repoName))
+          ..createSync(recursive: true);
+        File(
+          path.join(ticketRepoDir.path, 'pubspec.yaml'),
+        ).writeAsStringSync('name: pubgetRepo');
+        final legacyMarker =
+            File(path.join(ticketRepoDir.path, '.gg', '.ticket.json'))
+              ..createSync(recursive: true)
+              ..writeAsStringSync('{"issue_id":"old"}');
+
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['rm', '-f', '--ignore-unmatch', '.gg/.ticket.json'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+        when(
+          () => mockProcessRunner(
+            'dart',
+            ['pub', 'get'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+        when(
+          () => mockProcessRunner(
+            'dart',
+            ['pub', 'upgrade'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+
+        await runner.run(['add', '--verbose', repoName]);
+
+        expect(legacyMarker.existsSync(), isFalse);
+        expect(
+          File(
+            path.join(ticketRepoDir.path, '.gg', 'ticket.json'),
+          ).existsSync(),
+          isTrue,
+        );
+        verify(
+          () => mockProcessRunner(
+            'git',
+            ['rm', '-f', '--ignore-unmatch', '.gg/.ticket.json'],
+            workingDirectory: ticketRepoDir.path,
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).called(1);
       });
 
       test('logs error if dart pub get fails', () async {
@@ -1645,7 +1715,7 @@ version: 1.0.0
           when(
             () => mockProc(
               'git',
-              ['add', '-f', '.gg/.ticket.json'],
+              ['add', '-f', '.gg/ticket.json'],
               workingDirectory: any(named: 'workingDirectory'),
               runInShell: any(named: 'runInShell'),
             ),
@@ -1653,7 +1723,7 @@ version: 1.0.0
           when(
             () => mockProc(
               'git',
-              ['add', '-f', '.gg/.ticket.json'],
+              ['add', '-f', '.gg/ticket.json'],
               workingDirectory: any(named: 'workingDirectory'),
               runInShell: any(named: 'runInShell'),
             ),
@@ -1661,7 +1731,7 @@ version: 1.0.0
           when(
             () => mockProc(
               'git',
-              ['add', '-f', '.gg/.ticket.json'],
+              ['add', '-f', '.gg/ticket.json'],
               workingDirectory: any(named: 'workingDirectory'),
               runInShell: any(named: 'runInShell'),
             ),
@@ -1747,7 +1817,7 @@ version: 1.0.0
           when(
             () => mockProc(
               'git',
-              ['add', '-f', '.gg/.ticket.json'],
+              ['add', '-f', '.gg/ticket.json'],
               workingDirectory: any(named: 'workingDirectory'),
               runInShell: any(named: 'runInShell'),
             ),
@@ -1755,7 +1825,7 @@ version: 1.0.0
           when(
             () => mockProc(
               'git',
-              ['add', '-f', '.gg/.ticket.json'],
+              ['add', '-f', '.gg/ticket.json'],
               workingDirectory: any(named: 'workingDirectory'),
               runInShell: any(named: 'runInShell'),
             ),
@@ -1763,7 +1833,7 @@ version: 1.0.0
           when(
             () => mockProc(
               'git',
-              ['add', '-f', '.gg/.ticket.json'],
+              ['add', '-f', '.gg/ticket.json'],
               workingDirectory: any(named: 'workingDirectory'),
               runInShell: any(named: 'runInShell'),
             ),
@@ -1828,7 +1898,7 @@ version: 1.0.0
           when(
             () => mockProc(
               'git',
-              ['add', '-f', '.gg/.ticket.json'],
+              ['add', '-f', '.gg/ticket.json'],
               workingDirectory: any(named: 'workingDirectory'),
               runInShell: any(named: 'runInShell'),
             ),
@@ -1836,7 +1906,7 @@ version: 1.0.0
           when(
             () => mockProc(
               'git',
-              ['add', '-f', '.gg/.ticket.json'],
+              ['add', '-f', '.gg/ticket.json'],
               workingDirectory: any(named: 'workingDirectory'),
               runInShell: any(named: 'runInShell'),
             ),
@@ -1844,7 +1914,7 @@ version: 1.0.0
           when(
             () => mockProc(
               'git',
-              ['add', '-f', '.gg/.ticket.json'],
+              ['add', '-f', '.gg/ticket.json'],
               workingDirectory: any(named: 'workingDirectory'),
               runInShell: any(named: 'runInShell'),
             ),
@@ -1937,7 +2007,7 @@ version: 1.0.0
       when(
         () => mockProc(
           'git',
-          ['add', '-f', '.gg/.ticket.json'],
+          ['add', '-f', '.gg/ticket.json'],
           workingDirectory: any(named: 'workingDirectory'),
           runInShell: any(named: 'runInShell'),
         ),
@@ -2422,7 +2492,7 @@ version: 1.0.0
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -2430,7 +2500,7 @@ version: 1.0.0
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -2518,7 +2588,7 @@ version: 1.0.0
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -2526,7 +2596,7 @@ version: 1.0.0
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -2636,7 +2706,7 @@ version: 1.0.0
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -2644,7 +2714,7 @@ version: 1.0.0
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -2741,7 +2811,7 @@ version: 1.0.0
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -2749,7 +2819,7 @@ version: 1.0.0
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -2886,7 +2956,7 @@ version: 1.0.0
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -2894,7 +2964,7 @@ version: 1.0.0
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -3032,7 +3102,7 @@ version: 1.0.0
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -3040,7 +3110,7 @@ version: 1.0.0
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -3213,7 +3283,7 @@ version: 1.0.0
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),
@@ -3221,7 +3291,7 @@ version: 1.0.0
         when(
           () => mockProc(
             'git',
-            ['add', '-f', '.gg/.ticket.json'],
+            ['add', '-f', '.gg/ticket.json'],
             workingDirectory: any(named: 'workingDirectory'),
             runInShell: any(named: 'runInShell'),
           ),

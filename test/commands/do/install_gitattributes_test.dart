@@ -163,7 +163,7 @@ void main() {
       );
       const original = '# header\n'
           '* text=auto eol=lf\n'
-          '.gg/.gg.json merge=ours\n'
+          '.gg/gg.json merge=ours\n'
           'pubspec.lock merge=ours\n';
       file.writeAsStringSync(original);
       final originalMtime = file.lastModifiedSync();
@@ -192,6 +192,34 @@ void main() {
       );
     });
 
+    test('replaces the rule for the hidden state file', () async {
+      // A repository set up before the files inside .gg were unhidden carries
+      // a merge=ours rule for a file that no longer exists.
+      final fileA = File(path.join(ticketDir.path, 'A', '.gitattributes'))
+        ..writeAsStringSync(
+          '* text=auto eol=lf\n'
+          '.gg/.gg.json merge=ours\n'
+          'pubspec.lock merge=ours\n',
+        );
+
+      final runner = CommandRunner<void>('test', 'do install-gitattributes')
+        ..addCommand(newCommand());
+
+      await runner.run(<String>[
+        'install-gitattributes',
+        '--input',
+        ticketDir.path,
+      ]);
+
+      expect(
+        fileA.readAsStringSync(),
+        '* text=auto eol=lf\n'
+        'pubspec.lock merge=ours\n'
+        '.gg/gg.json merge=ours\n',
+      );
+      expect(messages, contains('Updated .gitattributes in A.'));
+    });
+
     test('appends only the missing rules', () async {
       final fileA = File(
         path.join(ticketDir.path, 'A', '.gitattributes'),
@@ -211,14 +239,14 @@ void main() {
         fileA.readAsStringSync(),
         '*.png binary\n'
         '* text=auto eol=lf\n'
-        '.gg/.gg.json merge=ours\n'
+        '.gg/gg.json merge=ours\n'
         'pubspec.lock merge=ours\n',
       );
       expect(
         fileB.readAsStringSync(),
         '*.png binary\n'
         '* text=auto eol=lf\n'
-        '.gg/.gg.json merge=ours\n'
+        '.gg/gg.json merge=ours\n'
         'pubspec.lock merge=ours\n',
       );
       expect(messages, contains('Updated .gitattributes in A.'));

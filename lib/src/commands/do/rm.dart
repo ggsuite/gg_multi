@@ -171,7 +171,7 @@ class RemoveCommand extends Command<void> {
   }
 
   // ...........................................................................
-  /// Rewrites the `.gg/.ticket.json` marker of the repos that remain in the
+  /// Rewrites the `.gg/ticket.json` marker of the repos that remain in the
   /// ticket so the deleted repo no longer shows up in their repository list.
   ///
   /// Only repos that already carry a marker are updated — a ticket that never
@@ -184,9 +184,16 @@ class RemoveCommand extends Command<void> {
           node.directory,
     ];
 
+    // A repo checked out before the files inside `.gg` were unhidden still
+    // carries the marker under its old name — it counts as "has a marker",
+    // and writeTicketJsonToRepos then writes the current one next to it.
     final withMarker = [
       for (final dir in remaining)
-        if (File(path.join(dir.path, '.gg', '.ticket.json')).existsSync()) dir,
+        if (File(path.join(dir.path, ticketJsonRelativePath)).existsSync() ||
+            File(
+              path.join(dir.path, legacyTicketJsonRelativePath),
+            ).existsSync())
+          dir,
     ];
     if (withMarker.isEmpty) {
       return;

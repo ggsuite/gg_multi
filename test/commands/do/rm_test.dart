@@ -246,12 +246,12 @@ void main() {
       });
     });
 
-    group('.ticket.json', () {
+    group('ticket.json', () {
       late Directory alphaDir;
       late Directory a;
       late Directory b;
 
-      // Writes a package folder plus its `.gg/.ticket.json` marker.
+      // Writes a package folder plus its `.gg/ticket.json` marker.
       Directory makePackage(Directory parent, String name) {
         final dir = Directory(path.join(parent.path, name))
           ..createSync(recursive: true);
@@ -262,7 +262,7 @@ void main() {
 
       void writeMarker(Directory repoDir, List<String> repos) {
         Directory(path.join(repoDir.path, '.gg')).createSync(recursive: true);
-        File(path.join(repoDir.path, '.gg', '.ticket.json')).writeAsStringSync(
+        File(path.join(repoDir.path, '.gg', 'ticket.json')).writeAsStringSync(
           TicketJson(
             issueId: 'alpha',
             description: 'Some ticket',
@@ -274,7 +274,7 @@ void main() {
       }
 
       TicketJson markerOf(Directory repoDir) => TicketJson.fromJsonString(
-            File(path.join(repoDir.path, '.gg', '.ticket.json'))
+            File(path.join(repoDir.path, '.gg', 'ticket.json'))
                 .readAsStringSync(),
           );
 
@@ -303,7 +303,7 @@ void main() {
         expect(marker.description, 'Some ticket');
         expect(
           messages,
-          contains('Removed a from .gg/.ticket.json of 1 repo(s).'),
+          contains('Removed a from .gg/ticket.json of 1 repo(s).'),
         );
       });
 
@@ -332,12 +332,28 @@ void main() {
         await runnerAt(alphaDir.path).run(['rm', 'a']);
 
         expect(
-          File(path.join(b.path, '.gg', '.ticket.json')).existsSync(),
+          File(path.join(b.path, '.gg', 'ticket.json')).existsSync(),
           isFalse,
         );
         expect(
-          messages.any((m) => m.contains('.gg/.ticket.json of')),
+          messages.any((m) => m.contains('.gg/ticket.json of')),
           isFalse,
+        );
+      });
+
+      test('updates a repo that still carries the hidden marker', () async {
+        // A ticket checked out before the files inside .gg were unhidden has
+        // `.gg/.ticket.json`. It counts as "has a marker", so the repo is
+        // brought up to date instead of being skipped.
+        final marker = File(path.join(b.path, '.gg', 'ticket.json'));
+        marker.renameSync(path.join(b.path, '.gg', '.ticket.json'));
+
+        await runnerAt(alphaDir.path).run(['rm', 'a']);
+
+        expect(markerOf(b).repositories.map((r) => r.name), ['b']);
+        expect(
+          messages,
+          contains('Removed a from .gg/ticket.json of 1 repo(s).'),
         );
       });
     });

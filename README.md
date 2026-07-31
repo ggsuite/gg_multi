@@ -284,7 +284,7 @@ unattended publish starts. When no config is supplied it runs
 `gg_multi do configure-publish`, which asks — per repo, in dependency
 order — for the version increment (`patch` / `minor` / `major`) and the
 merge message, plus a single "delete the ticket?" choice, and writes the
-answers to `<ticket>/.gg/.gg-publish.json`. You can also run
+answers to `<ticket>/.gg/gg-publish.json`. You can also run
 `gg_multi do configure-publish` on its own to prepare that file ahead of
 time.
 
@@ -307,14 +307,14 @@ publish fails partway through, fix the cause and resume with:
 gg_multi do publish --continue
 ```
 
-`--continue` reuses `.gg/.gg-publish.json`, skips the repos already marked
+`--continue` reuses `.gg/gg-publish.json`, skips the repos already marked
 `published`, skips the up-front review/validation, and picks up at the
 repo that failed — and *within* that repo, gg_one resumes at the first
 open publish step (version bump, registry publish, merge, branch
-deletion, tag) recorded in the repo's own `.gg/.gg-publish.json`.
+deletion, tag) recorded in the repo's own `.gg/gg-publish.json`.
 Nothing already done is repeated. On a fully successful run the files
 are removed again. Use `--reconfigure` to discard an existing
-`.gg/.gg-publish.json` (ticket and repo level) and be asked again.
+`.gg/gg-publish.json` (ticket and repo level) and be asked again.
 
 #### Non-interactive publish via `--config`
 
@@ -330,7 +330,7 @@ gg_multi do publish --config .gg-publish.json
 current directory, or absolute), then under the **ticket directory**.
 Missing fields cause a hard `FormatException` — no silent fall-back to
 an interactive prompt. The `--config` file is only read; a runtime copy
-at `<ticket>/.gg/.gg-publish.json` holds the progress and is removed on
+at `<ticket>/.gg/gg-publish.json` holds the progress and is removed on
 success, so your source file is left untouched.
 
 ##### `.gg-publish.json` schema

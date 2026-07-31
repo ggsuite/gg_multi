@@ -18,7 +18,7 @@ import 'package:path/path.dart' as path;
 ///   dereferenced and reduced to a flat copy. The destination repo is
 ///   expected to run its package-manager's install step after copying
 ///   to rebuild `node_modules` from scratch. It also excludes
-///   `.gg/.gg-publish.json`: the runtime progress of a publish is
+///   `.gg/gg-publish.json`: the runtime progress of a publish is
 ///   gitignored and belongs to the publish of one working copy only —
 ///   carried into a ticket copy it would block or corrupt the next
 ///   publish there (skipped steps, wrong feature branch).
@@ -29,6 +29,11 @@ Future<void> copyDirectory(
   Directory destination, {
   Set<String> skipNames = const {
     'node_modules',
+    'gg-publish.json',
+    'ticket.json',
+    'gg_localize_refs_publish_to_backup.json',
+    // The hidden names of the days before the files inside `.gg` were
+    // unhidden — a working copy that predates the change still carries them.
     '.gg-publish.json',
     '.ticket.json',
     '.gg_localize_refs_publish_to_backup.json',
