@@ -27,7 +27,7 @@ typedef EditMessage = Future<String?> Function(String initialMessage);
 /// Typedef for asking whether the ticket should be deleted after publishing.
 typedef ConfirmDeleteTicket = bool Function(String ticketName);
 
-/// Interactively builds the `.gg/.gg-publish.json` publish configuration for
+/// Interactively builds the `.gg/gg-publish.json` publish configuration for
 /// the current ticket, asking for the version increment and merge message of
 /// every repo up front plus a single `delete_ticket` choice. `do publish` runs
 /// this automatically when no configuration is supplied, so all decisions are
@@ -37,7 +37,7 @@ class DoConfigurePublishCommand extends DirCommand<void> {
   DoConfigurePublishCommand({
     required super.ggLog,
     super.name = 'configure-publish',
-    super.description = 'Interactively create the .gg/.gg-publish.json publish '
+    super.description = 'Interactively create the .gg/gg-publish.json publish '
         'configuration for the current ticket.',
     SortedProcessingList? sortedProcessingList,
     GetVersion? getVersionCommand,
@@ -69,9 +69,9 @@ class DoConfigurePublishCommand extends DirCommand<void> {
   /// Asks the user whether the ticket should be deleted after publishing.
   final ConfirmDeleteTicket _confirmDeleteTicket;
 
-  /// Returns the `.gg/.gg-publish.json` file for [ticketDir].
+  /// Returns the `.gg/gg-publish.json` file for [ticketDir].
   static File configFileFor(Directory ticketDir) =>
-      File(path.join(ticketDir.path, '.gg', '.gg-publish.json'));
+      File(path.join(ticketDir.path, '.gg', 'gg-publish.json'));
 
   @override
   Future<void> get({
@@ -86,7 +86,7 @@ class DoConfigurePublishCommand extends DirCommand<void> {
   }
 
   /// Builds the publish configuration for the ticket containing [directory],
-  /// writes it to `<ticket>/.gg/.gg-publish.json` and returns it. Pass
+  /// writes it to `<ticket>/.gg/gg-publish.json` and returns it. Pass
   /// [deleteTicket] to skip the interactive delete-ticket prompt.
   ///
   /// [defaultMergeMessage] (typically from `-m`) is the default merge message:
@@ -219,7 +219,7 @@ class DoConfigurePublishCommand extends DirCommand<void> {
   static bool _defaultConfirmDeleteTicket(String ticketName) {
     gg.throwWhenNotATerminal(
       'the delete-ticket prompt',
-      'set delete_ticket in .gg/.gg-publish.json (or --config)',
+      'set delete_ticket in .gg/gg-publish.json (or --config)',
     );
     final selected = Select(
       prompt: 'Delete ticket $ticketName and remove remote feature branches?',

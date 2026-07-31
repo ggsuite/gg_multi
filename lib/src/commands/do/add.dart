@@ -661,19 +661,19 @@ class AddCommand extends Command<dynamic> {
       ggLog: ggLog,
     );
 
-    // The runtime progress of a publish (.gg/.gg-publish.json) is gitignored,
+    // The runtime progress of a publish (.gg/gg-publish.json) is gitignored,
     // so the reset above never removes it. It records the progress of a
     // publish of ANOTHER branch and must not linger in the master workspace —
     // and never reach a ticket copy (copyDirectory skips it too).
     final stalePublishProgress = File(
-      path.join(repoDir.path, '.gg', '.gg-publish.json'),
+      path.join(repoDir.path, '.gg', 'gg-publish.json'),
     );
     if (stalePublishProgress.existsSync()) {
       stalePublishProgress.deleteSync();
       ggLog(
         yellow(
           'Removed stale publish progress '
-          '(.gg/.gg-publish.json) in $repoName.',
+          '(.gg/gg-publish.json) in $repoName.',
         ),
       );
     }
