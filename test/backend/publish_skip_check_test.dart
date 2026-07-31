@@ -166,7 +166,7 @@ void main() {
         await git(dir, ['checkout', '-b', 'feat']);
         await commitFile(
           dir,
-          'refs.txt',
+          'pubspec_overrides.yaml',
           'refs',
           '#gg: some future bookkeeping step',
         );
@@ -185,25 +185,25 @@ void main() {
         await git(dir, ['checkout', '-b', 'feat']);
         await commitFile(
           dir,
-          'a.txt',
+          'pubspec_overrides.yaml',
           'a',
           'gg_multi: changed references to path',
         );
         await commitFile(
           dir,
-          'b.txt',
+          'pubspec.lock',
           'b',
           'gg_multi: changed references to git',
         );
         await commitFile(
           dir,
-          'c.txt',
+          'CHANGELOG.md',
           'c',
           'gg_multi: changed references to local',
         );
         await commitFile(
           dir,
-          'd.txt',
+          '.gitignore',
           'd',
           'Gg Multi: changed references to pub.dev',
         );
@@ -213,6 +213,35 @@ void main() {
           refVersions: {},
         );
         expect(decision.skip, isTrue);
+      });
+
+      test('publishes when a gg commit swallowed user files', () async {
+        // gg's ref commits are force commits: pending user edits end up in
+        // the bookkeeping commit. Such a commit must block the skip so the
+        // user's work is not lost with the ticket branch.
+        final dir = await createRepo('a');
+        await git(dir, ['checkout', '-b', 'feat']);
+        File(path.join(dir.path, 'lib.dart')).writeAsStringSync('code');
+        await commitFile(
+          dir,
+          'pubspec_overrides.yaml',
+          'dependency_overrides: {}\n',
+          '#gg: changed references to git',
+        );
+
+        final decision = await check.get(
+          repo: node('a', dir),
+          refVersions: {},
+        );
+        expect(decision.skip, isFalse);
+        expect(
+          decision.reason,
+          allOf(
+            contains('#gg: changed references to git'),
+            contains('also changes'),
+            contains('lib.dart'),
+          ),
+        );
       });
 
       test('publishes when the feature branch has a manual commit', () async {
@@ -251,7 +280,7 @@ void main() {
         await git(dir, ['checkout', '-b', 'feat']);
         await commitFile(
           dir,
-          'refs.txt',
+          'pubspec_overrides.yaml',
           'refs',
           '#gg: changed references to git',
         );
@@ -274,7 +303,7 @@ void main() {
         await git(dir, ['checkout', '-b', 'feat']);
         await commitFile(
           dir,
-          'refs.txt',
+          'pubspec_overrides.yaml',
           'refs',
           '#gg: changed references to git',
         );
@@ -295,7 +324,7 @@ void main() {
         await git(dir, ['branch', '-D', 'main']);
         await commitFile(
           dir,
-          'refs.txt',
+          'pubspec_overrides.yaml',
           'refs',
           '#gg: changed references to git',
         );
@@ -818,7 +847,7 @@ void main() {
         await git(dir, ['checkout', '-b', 'feat']);
         await commitFile(
           dir,
-          'refs.txt',
+          'pubspec_overrides.yaml',
           'refs',
           '#gg: changed references to git',
         );

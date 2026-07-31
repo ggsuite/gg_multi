@@ -86,6 +86,24 @@ class PublishSkipCheck {
     'Gg Multi: changed references to pub.dev',
   };
 
+  /// The files gg's bookkeeping commits legitimately touch. A gg-labeled
+  /// commit changing anything else swallowed pending user edits (gg's ref
+  /// commits use `force`, which sweeps the whole working tree) — such a
+  /// commit counts as a manual change so the user's work is never lost.
+  static const Set<String> ggOwnedFiles = {
+    'pubspec.yaml',
+    'pubspec.lock',
+    'pubspec_overrides.yaml',
+    'package.json',
+    'package-lock.json',
+    'pnpm-lock.yaml',
+    'yarn.lock',
+    'CHANGELOG.md',
+    '.gitignore',
+    '.gitattributes',
+    '.gg_localize_refs_backup.json',
+  };
+
   // ...........................................................................
   /// Returns the skip decision for [repo].
   ///
@@ -361,18 +379,30 @@ class PublishSkipCheck {
         return 'no main branch to compare against was found';
       }
 
-      final subjects = await _runGit(
-        <String>['log', '--no-merges', '--format=%s', '$base..HEAD'],
+      final commits = await _runGit(
+        <String>['log', '--no-merges', '--format=%H%x09%s', '$base..HEAD'],
         repoDir: repoDir,
       );
 
-      for (final line in subjects.split('\n')) {
-        final subject = line.trim();
-        if (subject.isEmpty) {
+      for (final line in commits.split('\n')) {
+        final entry = line.trim();
+        if (entry.isEmpty) {
           continue;
         }
+        final tab = entry.indexOf('\t');
+        final hash = tab < 0 ? entry : entry.substring(0, tab);
+        final subject = tab < 0 ? '' : entry.substring(tab + 1).trim();
+
         if (!_isGgGenerated(subject)) {
           return 'the repo contains the manual commit »$subject«';
+        }
+
+        // gg's ref commits are force commits — they sweep pending user
+        // edits into the bookkeeping commit. A gg-labeled commit touching
+        // a non-gg file therefore carries user work and blocks the skip.
+        final swallowedFile = await _firstNonGgFile(hash, repoDir);
+        if (swallowedFile != null) {
+          return 'the gg commit »$subject« also changes »$swallowedFile«';
         }
       }
 
@@ -390,6 +420,31 @@ class PublishSkipCheck {
   bool _isGgGenerated(String subject) =>
       subject.startsWith(ggCommitPrefix) ||
       legacyGgCommitMessages.contains(subject);
+
+  // ...........................................................................
+  /// Returns the first file of commit [hash] that is not one gg's
+  /// bookkeeping legitimately touches, or null when the commit only
+  /// contains gg-owned files.
+  Future<String?> _firstNonGgFile(String hash, Directory repoDir) async {
+    final files = await _runGit(
+      <String>['show', '--name-only', '--format=', hash],
+      repoDir: repoDir,
+    );
+    for (final line in files.split('\n')) {
+      final file = line.trim();
+      if (file.isEmpty || _isGgOwnedPath(file)) {
+        continue;
+      }
+      return file;
+    }
+    return null;
+  }
+
+  // ...........................................................................
+  /// Whether [filePath] (repo-relative, forward slashes as printed by git)
+  /// belongs to gg's own bookkeeping files.
+  bool _isGgOwnedPath(String filePath) =>
+      filePath.startsWith('.gg/') || ggOwnedFiles.contains(filePath);
 
   // ...........................................................................
   /// The ref the feature branch is compared against — the remote main branch
