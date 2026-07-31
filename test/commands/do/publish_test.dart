@@ -15,6 +15,7 @@ import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_multi/src/backend/npm_registry_checker.dart';
 import 'package:gg_multi/src/backend/pub_dev_checker.dart';
+import 'package:gg_multi/src/backend/ensure_in_registry.dart';
 import 'package:gg_multi/src/backend/publish_skip_check.dart';
 import 'package:gg_multi/src/commands/do/configure_publish.dart'
     show DoConfigurePublishCommand;
@@ -83,6 +84,7 @@ void main() {
   late Directory tempDir;
   late Directory ticketsDir;
   late Directory ticketDir;
+  late MockEnsureInRegistry mockEnsureInRegistry;
   final messages = <String>[];
   // The same messages with their color codes intact, for tests that assert
   // how a message is highlighted.
@@ -101,6 +103,13 @@ void main() {
   setUp(() {
     messages.clear();
     coloredMessages.clear();
+    mockEnsureInRegistry = MockEnsureInRegistry();
+    when(
+      () => mockEnsureInRegistry.ensure(
+        directory: any(named: 'directory'),
+        ggLog: any(named: 'ggLog'),
+      ),
+    ).thenAnswer((_) async {});
     tempDir = Directory.systemTemp.createTempSync('do_publish_ticket_test_');
     ticketsDir = Directory(path.join(tempDir.path, 'tickets'))..createSync();
     ticketDir = Directory(path.join(ticketsDir.path, 'TICKPB'))..createSync();
@@ -134,6 +143,9 @@ void main() {
     test('fails outside any ticket folder', () async {
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
+          // No injected collaborators: this run fails before any repo work,
+          // so the default-constructed ones (incl. EnsureInRegistry) stay
+          // unused — and the default construction is covered.
           DoPublishCommand(
             ggLog: ggLog,
           ),
@@ -199,6 +211,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
             doReviewCommand: mockDoReviewCommand,
             canPublishCommand: mockCanPublishCommand,
             sortedProcessingList: mockSortedProcessingList,
@@ -261,6 +274,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
             doReviewCommand: mockDoReviewCommand,
             canPublishCommand: mockCanPublishCommand,
             sortedProcessingList: mockSortedProcessingList,
@@ -308,6 +322,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
             doReviewCommand: mockDoReviewCommand,
             canPublishCommand: mockCanPublishCommand,
             confirmDeleteTicket: (_) => false,
@@ -358,6 +373,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
             doReviewCommand: mockDoReviewCommand,
             canPublishCommand: mockCanPublishCommand,
             confirmDeleteTicket: (_) => false,
@@ -545,6 +561,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -591,6 +608,48 @@ void main() {
         Directory(path.join(ticketDir.path, 'B')).existsSync(),
         isFalse,
       );
+
+      // The registry gate ran for every repo before its »gg do publish« —
+      // a never-published package is published manually by the user first.
+      Matcher repoDir(String name) => isA<Directory>().having(
+            (dir) => path.basename(dir.path),
+            'basename',
+            name,
+          );
+      verifyInOrder([
+        () => mockEnsureInRegistry.ensure(
+              directory: any(named: 'directory', that: repoDir('A')),
+              ggLog: any(named: 'ggLog'),
+            ),
+        () => mockGgDoPublish.exec(
+              directory: any(named: 'directory', that: repoDir('A')),
+              ggLog: any(named: 'ggLog'),
+              message: any(named: 'message'),
+              deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+              verbose: any(named: 'verbose'),
+              versionIncrement: any(named: 'versionIncrement'),
+              channel: any(named: 'channel'),
+              askBeforePublishing: any(named: 'askBeforePublishing'),
+              resume: any(named: 'resume'),
+              pr: any(named: 'pr'),
+            ),
+        () => mockEnsureInRegistry.ensure(
+              directory: any(named: 'directory', that: repoDir('B')),
+              ggLog: any(named: 'ggLog'),
+            ),
+        () => mockGgDoPublish.exec(
+              directory: any(named: 'directory', that: repoDir('B')),
+              ggLog: any(named: 'ggLog'),
+              message: any(named: 'message'),
+              deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+              verbose: any(named: 'verbose'),
+              versionIncrement: any(named: 'versionIncrement'),
+              channel: any(named: 'channel'),
+              askBeforePublishing: any(named: 'askBeforePublishing'),
+              resume: any(named: 'resume'),
+              pr: any(named: 'pr'),
+            ),
+      ]);
     });
 
     test(
@@ -729,6 +788,7 @@ void main() {
           ..addCommand(
             DoPublishCommand(
               ggLog: ggLog,
+              ensureInRegistry: mockEnsureInRegistry,
               ggDoPublish: mockGgDoPublish,
               ggDoCommit: mockGgDoCommit,
               ggDoPush: mockGgDoPush,
@@ -928,6 +988,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -1090,6 +1151,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -1255,6 +1317,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -1435,6 +1498,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -1610,6 +1674,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -1708,6 +1773,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
@@ -1872,6 +1938,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -2082,6 +2149,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -2233,6 +2301,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -2411,6 +2480,7 @@ void main() {
           ..addCommand(
             DoPublishCommand(
               ggLog: ggLog,
+              ensureInRegistry: mockEnsureInRegistry,
               ggDoPublish: mockGgDoPublish,
               ggDoCommit: mockGgDoCommit,
               ggDoPush: mockGgDoPush,
@@ -2586,6 +2656,7 @@ void main() {
           ..addCommand(
             DoPublishCommand(
               ggLog: ggLog,
+              ensureInRegistry: mockEnsureInRegistry,
               ggDoPublish: mockGgDoPublish,
               ggDoCommit: mockGgDoCommit,
               ggDoPush: mockGgDoPush,
@@ -2775,6 +2846,7 @@ void main() {
           ..addCommand(
             DoPublishCommand(
               ggLog: ggLog,
+              ensureInRegistry: mockEnsureInRegistry,
               ggDoPublish: mockGgDoPublish,
               ggDoCommit: mockGgDoCommit,
               ggDoPush: mockGgDoPush,
@@ -2927,6 +2999,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -3088,6 +3161,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -3248,6 +3322,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -3331,6 +3406,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -3427,6 +3503,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -3594,6 +3671,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -3745,6 +3823,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -3919,6 +3998,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -3985,6 +4065,7 @@ void main() {
         )..addCommand(
             DoPublishCommand(
               ggLog: ggLog,
+              ensureInRegistry: mockEnsureInRegistry,
               ggDoCommit: mockGgDoCommit,
               unlocalizeRefs: mockUnlocalizeRefs,
               restorePublishTo: mockRestorePublishTo,
@@ -4973,6 +5054,7 @@ void main() {
           ..addCommand(
             DoPublishCommand(
               ggLog: ggLog,
+              ensureInRegistry: mockEnsureInRegistry,
               ggDoPublish: mockGgDoPublish,
               ggDoCommit: mockGgDoCommit,
               ggDoPush: mockGgDoPush,
@@ -5755,6 +5837,7 @@ void main() {
           ..addCommand(
             DoPublishCommand(
               ggLog: ggLog,
+              ensureInRegistry: mockEnsureInRegistry,
               ggDoPublish: mockGgDoPublish,
               ggDoCommit: mockGgDoCommit,
               ggDoPush: mockGgDoPush,

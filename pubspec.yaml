@@ -16,7 +16,9 @@ dependencies:
   gg_git: ^3.1.1
   gg_log: ^1.0.6
   gg_status_printer: ^1.1.4
-  gg_publish: ^3.8.4
+  # IsInRegistry was added in 3.9.0. gg_publish must be published with a
+  # »minor« increment, otherwise this constraint cannot be satisfied.
+  gg_publish: ^3.9.0
   pub_semver: ^2.2.0
   mocktail: ^1.0.5
   http: ^1.6.0

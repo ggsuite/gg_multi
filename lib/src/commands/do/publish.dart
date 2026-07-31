@@ -18,6 +18,7 @@ import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:interact/interact.dart';
 import 'package:path/path.dart' as path;
 
+import '../../backend/ensure_in_registry.dart';
 import '../../backend/git_snapshot.dart' as git_snapshot;
 import '../../backend/npm_registry_checker.dart';
 import '../../backend/pub_dev_checker.dart';
@@ -116,6 +117,7 @@ class DoPublishCommand extends DirCommand<void> {
     DoConfigurePublishCommand? doConfigurePublishCommand,
     gg.EnsurePublishConfigIgnored? ensureIgnored,
     ConfirmDeleteTicket? confirmDeleteTicket,
+    EnsureInRegistry? ensureInRegistry,
   })  : _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
         _unlocalizeRefs = unlocalizeRefs ?? ChangeRefsToPubDev(ggLog: ggLog),
         _restorePublishTo = restorePublishTo ?? RestorePublishTo(ggLog: ggLog),
@@ -136,6 +138,7 @@ class DoPublishCommand extends DirCommand<void> {
             DoConfigurePublishCommand(ggLog: ggLog),
         _ensureIgnored =
             ensureIgnored ?? gg.EnsurePublishConfigIgnored(ggLog: ggLog),
+        _ensureInRegistry = ensureInRegistry ?? EnsureInRegistry(ggLog: ggLog),
         _processRunner = processRunner ?? _defaultProcessRunner,
         _confirmDeleteTicket =
             confirmDeleteTicket ?? _defaultConfirmDeleteTicket {
@@ -191,6 +194,10 @@ class DoPublishCommand extends DirCommand<void> {
   /// Adds the repo-level `.gg/gg-publish.json` to each repo's `.gitignore`
   /// before the pre-publish commit, so gg_one's runtime file rides along.
   final gg.EnsurePublishConfigIgnored _ensureIgnored;
+
+  /// Makes sure a repo has at least one version on its registry before it
+  /// is published — a first-time publish is done manually by the user.
+  final EnsureInRegistry _ensureInRegistry;
 
   /// Runs shell commands such as branch deletion.
   final ProcessRunner _processRunner;
@@ -738,6 +745,12 @@ class DoPublishCommand extends DirCommand<void> {
     await _ggDoPush.exec(directory: repoDir, ggLog: taskLog);
 
     taskLog(green('$repoName: updated with new references.'));
+
+    // At least one version must already be on the registry. A package that
+    // was never published is published manually by the user first — right
+    // now, while the refs are unlocalized and the publish target is
+    // restored, so the current folder is publishable as-is.
+    await _ensureInRegistry.ensure(directory: repoDir, ggLog: ggLog);
 
     // The publish configuration is always resolved up front, so every repo
     // has an explicit merge message and version increment here.
