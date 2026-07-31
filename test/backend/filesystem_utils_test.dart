@@ -83,7 +83,7 @@ void main() {
           await ggDir.create(recursive: true);
 
           final publishProgress = File(
-            path.join(ggDir.path, '.gg-publish.json'),
+            path.join(ggDir.path, 'gg-publish.json'),
           );
           await publishProgress.writeAsString('{"done_steps":["merge"]}');
 
@@ -96,7 +96,7 @@ void main() {
           // Assert – the publish progress must not travel with the copy,
           // its sibling .gg.json must.
           final copiedProgress = File(
-            path.join(destinationDir.path, '.gg', '.gg-publish.json'),
+            path.join(destinationDir.path, '.gg', 'gg-publish.json'),
           );
           final copiedGgJson = File(
             path.join(destinationDir.path, '.gg', '.gg.json'),

@@ -573,7 +573,7 @@ dev_dependencies:
         // it — carried into a ticket it would block the next publish there.
         final ggDir = Directory(path.join(repoDir.path, '.gg'))
           ..createSync(recursive: true);
-        File(path.join(ggDir.path, '.gg-publish.json')).writeAsStringSync(
+        File(path.join(ggDir.path, 'gg-publish.json')).writeAsStringSync(
           '{"done_steps":["prepare_version","publish_registry"]}',
         );
         File(path.join(ggDir.path, '.gg.json')).writeAsStringSync('{}');
@@ -670,7 +670,7 @@ dev_dependencies:
 
         // The stale file is gone from the master repo …
         expect(
-          File(path.join(ggDir.path, '.gg-publish.json')).existsSync(),
+          File(path.join(ggDir.path, 'gg-publish.json')).existsSync(),
           isFalse,
         );
         expect(
@@ -683,7 +683,7 @@ dev_dependencies:
         // … and never reached the ticket copy. Its sibling .gg.json did.
         expect(
           File(
-            path.join(ticketDir.path, repoName, '.gg', '.gg-publish.json'),
+            path.join(ticketDir.path, repoName, '.gg', 'gg-publish.json'),
           ).existsSync(),
           isFalse,
         );

@@ -69,6 +69,12 @@ void main() {
       );
     });
 
+    test('has sensible default timeouts', () {
+      final checker = PubDevChecker();
+      expect(checker.timeout, const Duration(minutes: 15));
+      expect(checker.pollInterval, const Duration(seconds: 15));
+    });
+
     test('PackagePublishInfo exposes its fields', () {
       const info = PackagePublishInfo(packageName: 'x', waitsForPubDev: true);
       expect(info.packageName, 'x');

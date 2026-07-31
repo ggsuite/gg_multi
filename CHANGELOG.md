@@ -1,5 +1,12 @@
 # Changelog
 
+## 6.0.4 - 2026-07-31
+
+### Changed
+
+- Print »waiting until ... appears on pub.dev only one time
+- Don't hide files in .gg folder
+
 ## 6.0.3 - 2026-07-31
 
 ### Changed

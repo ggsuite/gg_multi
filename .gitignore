@@ -19,7 +19,10 @@ build
 # have no effect and .gg/.gg.json would never reach CI.
 .gg/*
 !.gg/.gg.json
+!.gg/gg.json
 
 # Local cross-repo dev override (not for commit)
 !.gg/.ticket.json
+!.gg/ticket.json
 .gg/.gg-publish.json
+.gg/gg-publish.json
