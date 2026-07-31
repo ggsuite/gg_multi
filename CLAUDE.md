@@ -150,6 +150,12 @@ Once found, it recreates the ticket folder + root `.ticket`, clones any missing 
 
 **Dependency-chain guard**: a ticket-scoped `rm` refuses to delete a repo that *links* two other repos of the ticket — one that has both a dependent and a dependency inside the ticket (`a → b → c`, removing `b`). The offending edges are listed and an exception is thrown, so the chain cannot be torn apart; remove the dependents first. Repos at either end of a chain (no dependents, or no dependencies within the ticket) and folders that are no package at all delete without complaint. The graph comes from `SortedProcessingList` (injectable for tests) over the ticket folder.
 
+### `do maintain` Command
+
+`MaintainCommand` (in `lib/src/commands/do/maintain.dart`) groups the maintenance tasks that run across the repos of a ticket; its subcommands live in `lib/src/commands/do/maintain/`. It has no `run()` of its own, so a bare `gg do maintain` prints the tasks available — the same shape as `do create`. Today that is `exec` (formerly the top-level `do execute`).
+
+`DoExecuteCommand` (in `lib/src/commands/do/maintain/exec.dart`) runs one shell command in every ticket repo in dependency order (`SortedProcessingList`), logging each repo name before its output. It collects the repos whose command exited non-zero instead of stopping at the first one, then lists them and throws — so a `gg do maintain exec dart pub get` reports *every* broken repo in one pass. The injectable `ProcessRunner` runs with `runInShell: true`; the `-l`/`--line-length` option exists only so an argument like `dart fmt -l 120` does not fail arg parsing before it reaches the tool.
+
 ### `do commit` Command
 
 `DoCommitCommand` (in `lib/src/commands/do/commit.dart`) commits every ticket repo in dependency order with one shared message, delegating to gg_one's `gg do commit` per repo.
