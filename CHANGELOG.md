@@ -1,5 +1,11 @@
 # Changelog
 
+## 6.0.1 - 2026-07-31
+
+### Changed
+
+- Print publish fail reason to console
+
 ## 6.0.0 - 2026-07-31
 
 ### Changed
