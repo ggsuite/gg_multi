@@ -99,6 +99,75 @@ void main() {
       expect(parsed.issueId, 'feat_x');
       expect(parsed.repositories.single.url, 'u1');
     });
+
+    group('gg_version', () {
+      final originalGgCliVersion = ggCliVersion;
+
+      tearDown(() {
+        ggCliVersion = originalGgCliVersion;
+      });
+
+      test('toPrettyJson serializes gg_version', () {
+        const ticket = TicketJson(
+          issueId: 'feat_x',
+          description: 'desc',
+          repositories: [],
+          ggVersion: '1.2.3',
+        );
+        expect(ticket.toPrettyJson(), contains('"gg_version": "1.2.3"'));
+        expect(
+          TicketJson.fromJsonString(ticket.toPrettyJson()).ggVersion,
+          '1.2.3',
+        );
+      });
+
+      test('fromJsonString accepts markers without gg_version', () {
+        final ticket = TicketJson.fromJsonString('{"issue_id": "x"}');
+        expect(ticket.ggVersion, '');
+      });
+
+      test('fromJsonString accepts markers with an older or equal gg_version',
+          () {
+        ggCliVersion = '2.0.0';
+        expect(
+          TicketJson.fromJsonString('{"gg_version": "1.9.9"}').ggVersion,
+          '1.9.9',
+        );
+        expect(
+          TicketJson.fromJsonString('{"gg_version": "2.0.0"}').ggVersion,
+          '2.0.0',
+        );
+      });
+
+      test('fromJsonString throws when the marker needs a newer gg', () {
+        ggCliVersion = '2.0.0';
+        expect(
+          () => TicketJson.fromJsonString('{"gg_version": "2.0.1"}'),
+          throwsA(
+            predicate<Exception>(
+              (e) =>
+                  e.toString().contains('written with gg 2.0.1') &&
+                  e.toString().contains('gg 2.0.0 is installed') &&
+                  e.toString().contains('dart pub global activate gg'),
+            ),
+          ),
+        );
+      });
+
+      test('fromJsonString ignores unparseable versions', () {
+        ggCliVersion = '2.0.0';
+        expect(
+          TicketJson.fromJsonString('{"gg_version": "not-a-version"}')
+              .ggVersion,
+          'not-a-version',
+        );
+        ggCliVersion = 'broken';
+        expect(
+          TicketJson.fromJsonString('{"gg_version": "99.0.0"}').ggVersion,
+          '99.0.0',
+        );
+      });
+    });
   });
 
   group('buildTicketJson', () {
@@ -128,6 +197,7 @@ void main() {
       expect(ticket.repositories[0].url, 'git@example.com:org/repo_a.git');
       expect(ticket.repositories[1].name, 'repo_b');
       expect(ticket.repositories[1].url, '');
+      expect(ticket.ggVersion, ggCliVersion);
     });
 
     test('uses an empty description when .ticket is absent', () {

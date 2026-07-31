@@ -6,4 +6,5 @@
 
 library;
 
+export 'src/backend/ticket_json.dart';
 export 'src/gg_multi.dart';

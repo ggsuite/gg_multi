@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Require minimum gg version
+
 ## 7.0.0 - 2026-07-31
 
 ### Changed
