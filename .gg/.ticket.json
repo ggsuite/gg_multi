@@ -1,0 +1,10 @@
+{
+  "issue_id": "37_improve_rm_message",
+  "description": "Colorize 'Deleted repository from ticket message'",
+  "repositories": [
+    {
+      "name": "gg_multi",
+      "url": "git@github.com:ggsuite/gg_multi.git"
+    }
+  ]
+}
