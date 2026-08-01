@@ -285,12 +285,11 @@ void main() {
       });
     });
 
-    group('.ticket.json', () {
+    group('ticket.json', () {
       late Directory alphaDir;
       late Directory a;
       late Directory b;
 
-      // Writes a package folder plus its `.gg/.ticket.json` marker.
       Directory makePackage(Directory parent, String name) {
         final dir = Directory(path.join(parent.path, name))
           ..createSync(recursive: true);
@@ -299,23 +298,21 @@ void main() {
         return dir;
       }
 
-      void writeMarker(Directory repoDir, List<String> repos) {
-        Directory(path.join(repoDir.path, '.gg')).createSync(recursive: true);
-        File(path.join(repoDir.path, '.gg', '.ticket.json')).writeAsStringSync(
+      // Writes the ticket.json of the ticket folder, listing [repos].
+      void writeMarker(Directory ticketDir, List<String> repos) {
+        writeTicketJson(
+          ticketDir,
           TicketJson(
             issueId: 'alpha',
             description: 'Some ticket',
             repositories: [
               for (final repo in repos) TicketRepo(name: repo, url: ''),
             ],
-          ).toPrettyJson(),
+          ),
         );
       }
 
-      TicketJson markerOf(Directory repoDir) => TicketJson.fromJsonString(
-            File(path.join(repoDir.path, '.gg', '.ticket.json'))
-                .readAsStringSync(),
-          );
+      TicketJson markerOf(Directory ticketDir) => readTicketJson(ticketDir)!;
 
       setUp(() {
         alphaDir = Directory(path.join(ticketsRoot.path, 'alpha'))
@@ -327,23 +324,24 @@ void main() {
         );
         a = makePackage(alphaDir, 'a');
         b = makePackage(alphaDir, 'b');
-        writeMarker(a, ['a', 'b']);
-        writeMarker(b, ['a', 'b']);
+        writeMarker(alphaDir, ['a', 'b']);
       });
 
-      test('drops the deleted repo from the marker of the remaining repos',
-          () async {
+      test('drops the deleted repo from the ticket.json', () async {
         await runnerAt(alphaDir.path).run(['rm', 'a']);
 
         expect(a.existsSync(), isFalse);
-        final marker = markerOf(b);
+        final marker = markerOf(alphaDir);
         expect(marker.repositories.map((r) => r.name), ['b']);
         expect(marker.issueId, 'alpha');
         expect(marker.description, 'Some ticket');
-        expect(
-          messages,
-          contains('Removed a from .gg/.ticket.json of 1 repo(s).'),
-        );
+        expect(messages, contains('Removed a from ticket.json.'));
+      });
+
+      test('never writes a ticket.json into a repository', () async {
+        await runnerAt(alphaDir.path).run(['rm', 'a']);
+
+        expect(Directory(path.join(b.path, '.gg')).existsSync(), isFalse);
       });
 
       test('leaves the marker untouched when the removal is refused', () async {
@@ -351,8 +349,8 @@ void main() {
         File(path.join(b.path, 'pubspec.yaml'))
             .writeAsStringSync('name: b\nversion: 1.0.0\n'
                 'dependencies:\n  a: ^1.0.0\n');
-        final c = makePackage(alphaDir, 'c');
-        writeMarker(c, ['a', 'b', 'c']);
+        makePackage(alphaDir, 'c');
+        writeMarker(alphaDir, ['a', 'b', 'c']);
         File(path.join(a.path, 'pubspec.yaml'))
             .writeAsStringSync('name: a\nversion: 1.0.0\n'
                 'dependencies:\n  c: ^1.0.0\n');
@@ -362,12 +360,16 @@ void main() {
           throwsA(isA<Exception>()),
         );
 
-        expect(markerOf(b).repositories.map((r) => r.name), ['a', 'b']);
+        expect(markerOf(alphaDir).repositories.map((r) => r.name), [
+          'a',
+          'b',
+          'c',
+        ]);
       });
 
       test('drops the deleted repo from pubspec_overrides.yaml', () async {
         final c = makePackage(alphaDir, 'c');
-        writeMarker(c, ['a', 'b', 'c']);
+        writeMarker(alphaDir, ['a', 'b', 'c']);
         File(path.join(b.path, 'pubspec_overrides.yaml')).writeAsStringSync(
           'dependency_overrides:\n'
           '  a:\n    path: ../a\n'
@@ -403,17 +405,17 @@ void main() {
         );
       });
 
-      test('writes no marker into repos that have none', () async {
-        Directory(path.join(b.path, '.gg')).deleteSync(recursive: true);
+      test('writes no ticket.json into a ticket that has none', () async {
+        File(path.join(alphaDir.path, ticketJsonFileName)).deleteSync();
 
         await runnerAt(alphaDir.path).run(['rm', 'a']);
 
         expect(
-          File(path.join(b.path, '.gg', '.ticket.json')).existsSync(),
+          File(path.join(alphaDir.path, ticketJsonFileName)).existsSync(),
           isFalse,
         );
         expect(
-          messages.any((m) => m.contains('.gg/.ticket.json of')),
+          messages.any((m) => m.contains('from ticket.json')),
           isFalse,
         );
       });

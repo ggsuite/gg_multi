@@ -241,38 +241,31 @@ class RemoveCommand extends Command<void> {
   }
 
   // ...........................................................................
-  /// Rewrites the `.gg/.ticket.json` marker of the repos that remain in the
-  /// ticket so the deleted repo no longer shows up in their repository list.
+  /// Rewrites the ticket's `ticket.json` so the deleted repo no longer shows
+  /// up in its repository list.
   ///
-  /// Only repos that already carry a marker are updated — a ticket that never
-  /// saw a `do add` does not gain one here. The marker is written but not
-  /// staged or committed; the next `do add` / `do commit` picks it up.
+  /// Only a ticket that already has a `ticket.json` is updated — one that never
+  /// saw a `do add` does not gain one here.
   void _updateTicketJson(Directory removedRepoDir, List<Node> nodes) {
+    final ticketDir = directoryFactory(_root);
+    if (!File(path.join(ticketDir.path, ticketJsonFileName)).existsSync()) {
+      return;
+    }
+
     final remaining = [
       for (final node in nodes)
         if (!path.equals(node.directory.path, removedRepoDir.path))
           node.directory,
     ];
 
-    final withMarker = [
-      for (final dir in remaining)
-        if (File(path.join(dir.path, '.gg', '.ticket.json')).existsSync()) dir,
-    ];
-    if (withMarker.isEmpty) {
-      return;
-    }
-
-    writeTicketJsonToRepos(
-      repoDirs: withMarker,
-      ticket: buildTicketJson(
-        ticketDir: directoryFactory(_root),
-        repoDirs: remaining,
-      ),
+    writeTicketJson(
+      ticketDir,
+      buildTicketJson(ticketDir: ticketDir, repoDirs: remaining),
     );
     ggLog(
       green(
         'Removed ${path.basename(removedRepoDir.path)} from '
-        '$ticketJsonRelativePath of ${withMarker.length} repo(s).',
+        '$ticketJsonFileName.',
       ),
     );
   }

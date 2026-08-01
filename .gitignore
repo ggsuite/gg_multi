@@ -13,15 +13,16 @@ build
 .DS_Store
 
 .aicode
-# Ignore .gg contents, but keep the check-state and ticket files trackable.
+# Ignore .gg contents, but keep the check-state file trackable.
 # ».gg« (the bare directory pattern) must not be used here: git never
 # descends into an excluded directory, so the »!«-negations below would
 # have no effect and .gg/.gg.json would never reach CI.
 .gg/*
 !.gg/gg.json
 
-# Local cross-repo dev override (not for commit)
-!.gg/.ticket.json
-!.gg/ticket.json
+# ticket.json lives in the ticket folder, never in a repo — it must stay
+# ignored here so a stale copy can never be committed.
+.gg/.ticket.json
+.gg/ticket.json
 .gg/.gg-publish.json
 .gg/gg-publish.json

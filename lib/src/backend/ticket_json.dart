@@ -14,8 +14,19 @@ import 'package:pub_semver/pub_semver.dart';
 import '../gg_multi_version.dart';
 import 'repo_folder_resolver.dart';
 
-/// Relative path of the ticket marker inside a repository.
-const String ticketJsonRelativePath = '.gg/.ticket.json';
+/// Name of the ticket description file inside the ticket folder.
+const String ticketJsonFileName = 'ticket.json';
+
+/// Legacy locations of the ticket marker inside a repository.
+///
+/// gg used to write, commit and push this marker with every feature branch.
+/// It is no longer created — the ticket description never leaves the machine
+/// it was created on — but `do checkout` still reads it from branches that
+/// were pushed by an older gg.
+const List<String> legacyTicketJsonRelativePaths = <String>[
+  '.gg/.ticket.json',
+  '.gg/ticket.json',
+];
 
 /// The version of the gg CLI that stamps and checks `.ticket.json` markers.
 ///
@@ -44,12 +55,13 @@ class TicketRepo {
   Map<String, String> toJson() => <String, String>{'name': name, 'url': url};
 }
 
-/// The content of a `.gg/.ticket.json` marker: the ticket id, its description
-/// and the full list of repositories (with git URLs) that make up the ticket.
+/// The content of a `ticket.json`: the ticket id, its description and the full
+/// list of repositories (with git URLs) that make up the ticket.
 ///
-/// `gg do add` writes this marker into every repository of a ticket so the
-/// whole ticket layout travels with each feature branch. `gg do checkout` can
-/// then reproduce the ticket 1:1 from any single repository.
+/// `gg do add` writes it to `<ticket folder>/ticket.json` — inside the ticket
+/// workspace only, never into a repository, so it is never committed and never
+/// pushed. `gg do checkout <path|url>` reproduces the ticket 1:1 from it, which
+/// makes sharing a ticket an explicit act.
 class TicketJson {
   /// Constructor.
   const TicketJson({
@@ -65,7 +77,7 @@ class TicketJson {
   factory TicketJson.fromJsonString(String source) {
     final decoded = jsonDecode(source);
     if (decoded is! Map<String, dynamic>) {
-      throw const FormatException('Invalid .ticket.json: expected an object.');
+      throw const FormatException('Invalid ticket.json: expected an object.');
     }
     final ggVersion = decoded['gg_version']?.toString() ?? '';
     _checkGgVersion(ggVersion);
@@ -159,24 +171,36 @@ TicketJson buildTicketJson({
   );
 }
 
-/// Writes (overwriting) the `.gg/.ticket.json` marker into every repository in
-/// [repoDirs]. The same [ticket] is written everywhere.
+/// Writes (overwriting) [ticket] to `<ticketDir>/ticket.json`.
 ///
-/// The `.gg/` folder is git-ignored (and gg re-appends that ignore on every
-/// run, so a `.gitignore` re-include is unreliable), therefore the caller must
-/// force-stage the marker (`git add -f`) to make it a tracked file that
-/// travels with the feature branch.
-void writeTicketJsonToRepos({
-  required Iterable<Directory> repoDirs,
-  required TicketJson ticket,
-}) {
-  final content = ticket.toPrettyJson();
-  for (final repoDir in repoDirs) {
-    final ggDir = Directory(path.join(repoDir.path, '.gg'));
-    if (!ggDir.existsSync()) {
-      ggDir.createSync(recursive: true);
-    }
-    File(path.join(ggDir.path, '.ticket.json')).writeAsStringSync(content);
+/// The file lives in the ticket workspace, next to the repositories and not
+/// inside any of them, so git never sees it and the ticket description cannot
+/// reach a remote.
+void writeTicketJson(Directory ticketDir, TicketJson ticket) {
+  if (!ticketDir.existsSync()) {
+    ticketDir.createSync(recursive: true);
+  }
+  File(
+    path.join(ticketDir.path, ticketJsonFileName),
+  ).writeAsStringSync(ticket.toPrettyJson());
+}
+
+/// Reads `<ticketDir>/ticket.json`, or returns `null` when the file is missing
+/// or malformed.
+///
+/// A gg version mismatch is not swallowed: [TicketJson.fromJsonString] throws
+/// so the user learns that their gg is too old, instead of silently getting an
+/// incomplete ticket.
+TicketJson? readTicketJson(Directory ticketDir) {
+  final file = File(path.join(ticketDir.path, ticketJsonFileName));
+  if (!file.existsSync()) {
+    return null;
+  }
+  try {
+    return TicketJson.fromJsonString(file.readAsStringSync());
+  } on FormatException {
+    // A hand-edited / truncated ticket.json must not crash the caller.
+    return null;
   }
 }
 

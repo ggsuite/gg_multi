@@ -242,40 +242,93 @@ void main() {
     });
   });
 
-  group('writeTicketJsonToRepos', () {
+  group('writeTicketJson', () {
     const ticket = TicketJson(
       issueId: 'feat_x',
       description: 'desc',
       repositories: [TicketRepo(name: 'r', url: 'u')],
     );
 
-    File markerOf(Directory repo) =>
-        File(path.join(repo.path, '.gg', '.ticket.json'));
+    File fileOf(Directory ticketDir) =>
+        File(path.join(ticketDir.path, ticketJsonFileName));
 
-    test('creates .gg and writes the pretty marker', () {
-      final repo = makeDir('fresh');
-      writeTicketJsonToRepos(repoDirs: [repo], ticket: ticket);
-      expect(markerOf(repo).readAsStringSync(), ticket.toPrettyJson());
+    test('writes the pretty ticket.json into the ticket folder', () {
+      final ticketDir = makeDir('fresh');
+      writeTicketJson(ticketDir, ticket);
+      expect(fileOf(ticketDir).readAsStringSync(), ticket.toPrettyJson());
     });
 
-    test('writes into a pre-existing .gg folder', () {
-      final repo = makeDir('has_gg');
-      Directory(path.join(repo.path, '.gg')).createSync();
-      writeTicketJsonToRepos(repoDirs: [repo], ticket: ticket);
-      expect(markerOf(repo).existsSync(), isTrue);
+    test('creates the ticket folder when it does not exist yet', () {
+      final ticketDir = Directory(path.join(tmp.path, 'not_yet'));
+      writeTicketJson(ticketDir, ticket);
+      expect(fileOf(ticketDir).existsSync(), isTrue);
     });
 
-    test(
-        'writes the same marker into every repo and never touches '
-        'the .gitignore', () {
-      final a = makeDir('multi_a');
-      final b = makeDir('multi_b');
-      File(path.join(b.path, '.gitignore')).writeAsStringSync('.gg\n');
-      writeTicketJsonToRepos(repoDirs: [a, b], ticket: ticket);
-      expect(markerOf(a).readAsStringSync(), ticket.toPrettyJson());
-      expect(markerOf(b).readAsStringSync(), ticket.toPrettyJson());
-      // The marker is force-staged by the caller, not via .gitignore.
-      expect(File(path.join(b.path, '.gitignore')).readAsStringSync(), '.gg\n');
+    test('overwrites an existing ticket.json', () {
+      final ticketDir = makeDir('again');
+      fileOf(ticketDir).writeAsStringSync('stale');
+      writeTicketJson(ticketDir, ticket);
+      expect(fileOf(ticketDir).readAsStringSync(), ticket.toPrettyJson());
+    });
+
+    test('writes nothing into the repositories of the ticket', () {
+      final ticketDir = makeDir('no_repo_marker');
+      final repo = Directory(path.join(ticketDir.path, 'org', 'repo'))
+        ..createSync(recursive: true);
+      writeTicketJson(ticketDir, ticket);
+      expect(Directory(path.join(repo.path, '.gg')).existsSync(), isFalse);
+    });
+  });
+
+  group('readTicketJson', () {
+    test('reads back what writeTicketJson wrote', () {
+      final ticketDir = makeDir('roundtrip');
+      const written = TicketJson(
+        issueId: 'feat_x',
+        description: 'desc',
+        repositories: [TicketRepo(name: 'r', url: 'u')],
+      );
+      writeTicketJson(ticketDir, written);
+
+      final read = readTicketJson(ticketDir)!;
+      expect(read.issueId, 'feat_x');
+      expect(read.description, 'desc');
+      expect(read.repositories.single.name, 'r');
+      expect(read.repositories.single.url, 'u');
+    });
+
+    test('returns null when there is no ticket.json', () {
+      expect(readTicketJson(makeDir('empty')), isNull);
+    });
+
+    test('returns null when the ticket.json is malformed', () {
+      final ticketDir = makeDir('broken');
+      File(
+        path.join(ticketDir.path, ticketJsonFileName),
+      ).writeAsStringSync('{not json');
+      expect(readTicketJson(ticketDir), isNull);
+    });
+
+    test('returns null when the ticket.json is not an object', () {
+      final ticketDir = makeDir('array');
+      File(
+        path.join(ticketDir.path, ticketJsonFileName),
+      ).writeAsStringSync('[1,2]');
+      expect(readTicketJson(ticketDir), isNull);
+    });
+
+    test('throws when the ticket.json needs a newer gg', () {
+      final ticketDir = makeDir('too_new');
+      writeTicketJson(
+        ticketDir,
+        const TicketJson(
+          issueId: 'x',
+          description: '',
+          repositories: [],
+          ggVersion: '9999.0.0',
+        ),
+      );
+      expect(() => readTicketJson(ticketDir), throwsA(isA<Exception>()));
     });
   });
 
