@@ -11,8 +11,8 @@ import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 // ignore: lines_longer_than_80_chars
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
-import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:gg_publish/gg_publish.dart';
 import 'package:interact/interact.dart';
 import 'package:path/path.dart' as path;
 import 'package:pub_semver/pub_semver.dart';
@@ -40,13 +40,13 @@ class DoConfigurePublishCommand extends DirCommand<void> {
     super.description = 'Interactively create the .gg/gg-publish.json publish '
         'configuration for the current ticket.',
     SortedProcessingList? sortedProcessingList,
-    GetVersion? getVersionCommand,
+    PublishedVersion? publishedVersion,
     gg.VersionSelector? versionSelector,
     EditMessage? editMessage,
     ConfirmDeleteTicket? confirmDeleteTicket,
   })  : _sortedProcessingList =
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
-        _getVersion = getVersionCommand ?? GetVersion(ggLog: ggLog),
+        _publishedVersion = publishedVersion ?? PublishedVersion(ggLog: ggLog),
         _versionSelector = versionSelector ?? gg.VersionSelector(),
         _editMessage = editMessage ?? _defaultEditMessage,
         _confirmDeleteTicket =
@@ -57,8 +57,8 @@ class DoConfigurePublishCommand extends DirCommand<void> {
   /// Collects the repos of a ticket in dependency order.
   final SortedProcessingList _sortedProcessingList;
 
-  /// Reads the current package version from a repo's manifest.
-  final GetVersion _getVersion;
+  /// Reads the version a repo last published to its registry.
+  final PublishedVersion _publishedVersion;
 
   /// Lets the user pick the version increment (patch/minor/major) per repo.
   final gg.VersionSelector _versionSelector;
@@ -180,16 +180,21 @@ class DoConfigurePublishCommand extends DirCommand<void> {
     return config;
   }
 
-  /// Reads the current package version of [repoDir], defaulting to 0.0.0 when
-  /// it cannot be read or parsed (e.g. a repo without a version). Only the
-  /// chosen increment is stored, so the baseline is used just for the preview.
+  /// Returns the baseline the increment preview is calculated from: the
+  /// version [repoDir] last published to its registry (pub.dev / npm), with
+  /// the git version tag as fallback for private and manifest-less repos.
+  ///
+  /// The manifest is deliberately *not* used. `gg do publish` bumps from the
+  /// published version, so a `pubspec.yaml` that lags behind the registry —
+  /// which is the normal state after a publish, since only main carries the
+  /// released version — would preview a version the publish never creates.
+  ///
+  /// Defaults to 0.0.0 when nothing can be determined (e.g. a repo without a
+  /// version). Only the chosen increment is stored, so the baseline is used
+  /// just for the preview.
   Future<Version> _currentVersion(Directory repoDir) async {
     try {
-      final raw = await _getVersion.get(directory: repoDir);
-      if (raw == null || raw.isEmpty) {
-        return Version(0, 0, 0);
-      }
-      return Version.parse(raw);
+      return await _publishedVersion.get(directory: repoDir, ggLog: ggLog);
     } catch (_) {
       return Version(0, 0, 0);
     }
