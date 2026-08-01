@@ -1,6 +1,6 @@
 name: gg_multi
 description: Das Herzstück der Gg Multi Suite. Fungiert als Backend und CMD-Line Tool.
-version: 7.1.2
+version: 7.1.4
 repository: https://github.com/ggsuite/gg_multi.git
 
 environment:

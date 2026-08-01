@@ -97,6 +97,173 @@ void stubGitHeadUnchanged(MockProcessRunner m) {
   ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
 }
 
+/// Stubs the probes `_integrateRemoteBranch` runs before it decides how to
+/// integrate the remote feature branch: the fetch of the branch and the two
+/// ancestry checks. By default the remote branch is neither already contained
+/// in the local history nor obsolete, so the regular `pull --rebase` runs.
+void stubIntegrateProbes(
+  MockProcessRunner m, {
+  String remoteHead = 'abc123',
+  bool remoteContainedInHead = false,
+  bool mainContainedInHead = false,
+}) {
+  when(
+    () => m(
+      'git',
+      ['fetch', 'origin', 'TICKDR'],
+      workingDirectory: any(named: 'workingDirectory'),
+    ),
+  ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+  when(
+    () => m(
+      'git',
+      ['merge-base', '--is-ancestor', remoteHead, 'HEAD'],
+      workingDirectory: any(named: 'workingDirectory'),
+    ),
+  ).thenAnswer(
+    (_) async => ProcessResult(0, remoteContainedInHead ? 0 : 1, '', ''),
+  );
+  when(
+    () => m(
+      'git',
+      ['merge-base', '--is-ancestor', 'origin/main', 'HEAD'],
+      workingDirectory: any(named: 'workingDirectory'),
+    ),
+  ).thenAnswer(
+    (_) async => ProcessResult(0, mainContainedInHead ? 0 : 1, '', ''),
+  );
+}
+
+/// Stubs the history inspection of `_remoteBranchIsObsolete`: [cherry] is the
+/// `git cherry` output and [extraCommits] the `<hash>\t<subject>` lines the
+/// remote branch holds on top of `HEAD`.
+void stubObsoleteAnalysis(
+  MockProcessRunner m, {
+  String remoteHead = 'abc123',
+  String cherry = '',
+  String extraCommits = '',
+}) {
+  when(
+    () => m(
+      'git',
+      ['cherry', 'origin/main', remoteHead],
+      workingDirectory: any(named: 'workingDirectory'),
+    ),
+  ).thenAnswer((_) async => ProcessResult(0, 0, cherry, ''));
+  when(
+    () => m(
+      'git',
+      ['log', '--format=%H%x09%s', remoteHead, '--not', 'HEAD'],
+      workingDirectory: any(named: 'workingDirectory'),
+    ),
+  ).thenAnswer((_) async => ProcessResult(0, 0, extraCommits, ''));
+}
+
+/// Stubs every collaborator of `do review` to succeed, so a test about the
+/// remote-branch integration only has to stub the git calls of that step.
+/// The remote feature branch exists and points to [remoteHead].
+({MockGgDoPush push, MockProcessRunner git}) stubReviewUpTo(
+  MockProcessRunner mockProcessRunner, {
+  required Directory ticketDir,
+  String remoteHead = 'abc123',
+}) {
+  final mockGgDoPush = MockGgDoPush();
+  stubGitHeadUnchanged(mockProcessRunner);
+
+  when(
+    () => mockProcessRunner(
+      'git',
+      ['merge', 'origin/main'],
+      workingDirectory: any(named: 'workingDirectory'),
+    ),
+  ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+  when(
+    () => mockProcessRunner(
+      'git',
+      ['ls-remote', '--heads', 'origin', 'TICKDR'],
+      workingDirectory: any(named: 'workingDirectory'),
+    ),
+  ).thenAnswer(
+    (_) async => ProcessResult(0, 0, '$remoteHead\trefs/heads/TICKDR', ''),
+  );
+
+  when(
+    () => mockGgDoPush.exec(
+      directory: any(named: 'directory'),
+      ggLog: any(named: 'ggLog'),
+    ),
+  ).thenAnswer((_) async {});
+
+  return (push: mockGgDoPush, git: mockProcessRunner);
+}
+
+/// A [DoReviewCommand] runner with the collaborators of [stubReviewUpTo].
+CommandRunner<void> reviewRunner({
+  required void Function(String) ggLog,
+  required Directory ticketDir,
+  required MockProcessRunner mockProcessRunner,
+  required MockGgDoPush mockGgDoPush,
+}) {
+  final mockSortedProcessingList = MockSortedProcessingList();
+  final mockCanReviewCommand = MockCanReviewCommand();
+  final mockLocalizeRefsToGit = MockLocalizeRefsToGit();
+  final mockGgDoCommit = MockGgDoCommit();
+
+  when(
+    () => mockCanReviewCommand.exec(
+      directory: any(named: 'directory'),
+      ggLog: any(named: 'ggLog'),
+    ),
+  ).thenAnswer((_) async {});
+
+  when(
+    () => mockSortedProcessingList.get(
+      directory: any(named: 'directory'),
+      ggLog: any(named: 'ggLog'),
+    ),
+  ).thenAnswer(
+    (_) async => [
+      Node(
+        name: 'A',
+        directory: Directory(path.join(ticketDir.path, 'A')),
+        manifest: DartPackageManifest(pubspec: Pubspec('A')),
+      ),
+    ],
+  );
+
+  when(
+    () => mockLocalizeRefsToGit.get(
+      directory: any(named: 'directory'),
+      ggLog: any(named: 'ggLog'),
+      gitRef: any(named: 'gitRef'),
+    ),
+  ).thenAnswer((_) async {});
+
+  when(
+    () => mockGgDoCommit.exec(
+      directory: any(named: 'directory'),
+      ggLog: any(named: 'ggLog'),
+      message: any(named: 'message'),
+      force: any(named: 'force'),
+    ),
+  ).thenAnswer((_) async {});
+
+  return CommandRunner<void>('test', 'do review ticket')
+    ..addCommand(
+      DoReviewCommand(
+        ggLog: ggLog,
+        canReviewCommand: mockCanReviewCommand,
+        unlocalizeRefs: MockUnlocalizeRefs(),
+        localizeRefsToGit: mockLocalizeRefsToGit,
+        sortedProcessingList: mockSortedProcessingList,
+        ggDoCommit: mockGgDoCommit,
+        ggDoPush: mockGgDoPush,
+        processRunner: mockProcessRunner.call,
+      ),
+    );
+}
+
 void main() {
   late Directory tempDir;
   late Directory ticketsDir;
@@ -1851,6 +2018,9 @@ void main() {
           (_) async => ProcessResult(0, 0, 'abc123\trefs/heads/TICKDR', ''),
         );
 
+        // ... is not contained in the local history and is no leftover ...
+        stubIntegrateProbes(mockProcessRunner);
+
         // ... so a rebase pull integrates it and succeeds.
         when(
           () => mockProcessRunner(
@@ -1905,6 +2075,222 @@ void main() {
             workingDirectory: path.join(ticketDir.path, 'A'),
           ),
         ).called(1);
+      },
+    );
+
+    test(
+      'skips the integration when the remote branch is already contained '
+      'in the local history',
+      () async {
+        final git = MockProcessRunner();
+        final mocks = stubReviewUpTo(git, ticketDir: ticketDir);
+        stubIntegrateProbes(git, remoteContainedInHead: true);
+
+        await reviewRunner(
+          ggLog: ggLog,
+          ticketDir: ticketDir,
+          mockProcessRunner: git,
+          mockGgDoPush: mocks.push,
+        ).run(['review', '--verbose', '--input', ticketDir.path]);
+
+        verifyNever(
+          () => git(
+            'git',
+            ['pull', '--rebase', 'origin', 'TICKDR'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        );
+        expect(messages.any((m) => m.contains('Pushed A')), isTrue);
+      },
+    );
+
+    test(
+      'replaces an obsolete remote branch — one whose commits are on main or '
+      'gg bookkeeping — instead of rebasing onto it',
+      () async {
+        final git = MockProcessRunner();
+        final mocks = stubReviewUpTo(git, ticketDir: ticketDir);
+        stubIntegrateProbes(git, mainContainedInHead: true);
+        stubObsoleteAnalysis(
+          git,
+          // »work« was squash-merged into main, so its patch is found there.
+          cherry: '- work\n+ ggcommit',
+          extraCommits: 'work\tFix the rm bug\n'
+              'ggcommit\t#gg: changed references to git',
+        );
+        when(
+          () => git(
+            'git',
+            [
+              'push',
+              '--force-with-lease=TICKDR:abc123',
+              '--set-upstream',
+              'origin',
+              'HEAD:refs/heads/TICKDR',
+            ],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+        await reviewRunner(
+          ggLog: ggLog,
+          ticketDir: ticketDir,
+          mockProcessRunner: git,
+          mockGgDoPush: mocks.push,
+        ).run(['review', '--verbose', '--input', ticketDir.path]);
+
+        verifyNever(
+          () => git(
+            'git',
+            ['pull', '--rebase', 'origin', 'TICKDR'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        );
+        verify(
+          () => git(
+            'git',
+            [
+              'push',
+              '--force-with-lease=TICKDR:abc123',
+              '--set-upstream',
+              'origin',
+              'HEAD:refs/heads/TICKDR',
+            ],
+            workingDirectory: path.join(ticketDir.path, 'A'),
+          ),
+        ).called(1);
+        expect(
+          messages.any(
+            (m) => m.contains(
+              'origin/TICKDR of A was a leftover of an already merged ticket',
+            ),
+          ),
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      'rebases when the remote branch still holds a commit that is neither '
+      'on main nor gg bookkeeping',
+      () async {
+        final git = MockProcessRunner();
+        final mocks = stubReviewUpTo(git, ticketDir: ticketDir);
+        stubIntegrateProbes(git, mainContainedInHead: true);
+        stubObsoleteAnalysis(
+          git,
+          cherry: '+ work',
+          extraCommits: 'work\tSomebody else pushed this',
+        );
+        when(
+          () => git(
+            'git',
+            ['pull', '--rebase', 'origin', 'TICKDR'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+        await reviewRunner(
+          ggLog: ggLog,
+          ticketDir: ticketDir,
+          mockProcessRunner: git,
+          mockGgDoPush: mocks.push,
+        ).run(['review', '--verbose', '--input', ticketDir.path]);
+
+        verify(
+          () => git(
+            'git',
+            ['pull', '--rebase', 'origin', 'TICKDR'],
+            workingDirectory: path.join(ticketDir.path, 'A'),
+          ),
+        ).called(1);
+      },
+    );
+
+    test(
+      'rebases when the remote branch adds no commit to the local history',
+      () async {
+        final git = MockProcessRunner();
+        final mocks = stubReviewUpTo(git, ticketDir: ticketDir);
+        stubIntegrateProbes(git, mainContainedInHead: true);
+        stubObsoleteAnalysis(git, extraCommits: '');
+        when(
+          () => git(
+            'git',
+            ['pull', '--rebase', 'origin', 'TICKDR'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+
+        await reviewRunner(
+          ggLog: ggLog,
+          ticketDir: ticketDir,
+          mockProcessRunner: git,
+          mockGgDoPush: mocks.push,
+        ).run(['review', '--verbose', '--input', ticketDir.path]);
+
+        verify(
+          () => git(
+            'git',
+            ['pull', '--rebase', 'origin', 'TICKDR'],
+            workingDirectory: path.join(ticketDir.path, 'A'),
+          ),
+        ).called(1);
+      },
+    );
+
+    test(
+      'fails with a manual-deletion hint when replacing the obsolete remote '
+      'branch is rejected',
+      () async {
+        final git = MockProcessRunner();
+        final mocks = stubReviewUpTo(git, ticketDir: ticketDir);
+        stubIntegrateProbes(git, mainContainedInHead: true);
+        stubObsoleteAnalysis(
+          git,
+          cherry: '- work',
+          extraCommits: 'work\tFix the rm bug',
+        );
+        when(
+          () => git(
+            'git',
+            [
+              'push',
+              '--force-with-lease=TICKDR:abc123',
+              '--set-upstream',
+              'origin',
+              'HEAD:refs/heads/TICKDR',
+            ],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer(
+          (_) async => ProcessResult(1, 1, '', 'stale info'),
+        );
+
+        await expectLater(
+          () async => reviewRunner(
+            ggLog: ggLog,
+            ticketDir: ticketDir,
+            mockProcessRunner: git,
+            mockGgDoPush: mocks.push,
+          ).run(['review', '--verbose', '--input', ticketDir.path]),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('git push origin --delete TICKDR'),
+            ),
+          ),
+        );
+
+        expect(
+          messages.any(
+            (m) => m.contains(
+              'Failed to replace the obsolete branch origin/TICKDR of A',
+            ),
+          ),
+          isTrue,
+        );
       },
     );
 
@@ -1977,6 +2363,8 @@ void main() {
         ).thenAnswer(
           (_) async => ProcessResult(0, 0, 'abc123\trefs/heads/TICKDR', ''),
         );
+
+        stubIntegrateProbes(mockProcessRunner);
 
         when(
           () => mockProcessRunner(
