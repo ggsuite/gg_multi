@@ -5,6 +5,19 @@
 ### Changed
 
 - Never publish ticket.json
+- Auto merge CHANGELOG.md
+- New published version needs to be derived version published on pub.dev
+
+### Fixed
+
+- Fix gg do rm repo does not work only work in ticket root but not when in one of the subfolders
+- The version increment dialog of »gg do publish« now previews the versions based on the version published to the registry instead of the one in the manifest
+
+## 7.1.0 - 2026-08-01
+
+### Added
+
+- Add »gg do merge«
 
 ## 7.0.1 - 2026-07-31
 
