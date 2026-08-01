@@ -81,6 +81,7 @@ order.
 | `gg_multi do add <target> [-f|--force]`                | add a repo or all repos of an organisation to the workspace                          |
 | `gg_multi do rm <target>`                              | remove a repo from the master workspace or delete a ticket workspace                 |
 | `gg_multi do create ticket <id> [-m <description>]`    | create `tickets/<id>/` with a `.ticket` file                                         |
+| `gg_multi do create graph [--format=…] [--org <name>]` | write the dependency graph of the workspace to stdout                                |
 | `gg_multi do add-deps <target>`                        | add every `dependencies` / `dev_dependencies` of `<target>` to the master workspace  |
 | `gg_multi do code`                                     | open the current ticket in VS Code                                                   |
 | `gg_multi do claude`                                   | aggregate each repo's `CLAUDE.md` into one ticket-level `CLAUDE.md`                  |

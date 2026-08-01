@@ -1,5 +1,16 @@
 # Changelog
 
+## 7.5.0 - 2026-08-01
+
+### Added
+
+- `gg do create graph` writes the dependency graph of the workspace to stdout,
+  as `mermaid` (default) or `json`. Inside a ticket it graphs the ticket repos
+  and what they reach, outside a ticket the whole master workspace, and
+  `--org <name>` narrows it down to one organization. Redundant edges are
+  hidden by default (`--no-transitive-reduction` keeps them); further options
+  are `--orientation`, `--(no-)dev-dependencies` and `--3rdparty-deps`.
+
 ## 7.4.0 - 2026-08-01
 
 ### Changed
