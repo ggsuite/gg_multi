@@ -141,7 +141,9 @@ Because the hook lives in the untracked `.git/hooks/`, it survives in every chec
 
 ### `do create graph` Command
 
-`GraphCommand` (in `lib/src/commands/do/create/graph.dart`) writes the dependency graph of the workspace to **stdout** — `mermaid` (`flowchart LR`, `--orientation=vertical` gives `TD`) or `json`. Warnings from the graph builder go to stderr, so stdout stays machine readable.
+`GraphCommand` (in `lib/src/commands/do/create/graph.dart`) writes the dependency graph of the workspace to **stdout** — `mermaid` (`flowchart LR`, `--orientation=vertical` gives `TD`) or `json`. `--output <file>` (`-o`) redirects it into a file (missing parent folders are created) and leaves only a confirmation on stdout. Warnings from the graph builder go to stderr, so stdout stays machine readable.
+
+**Edge direction**: the graph is drawn *against* the dependency. The arrow leaves the package that is depended upon and points at the one that needs it, so `LR` puts the dependencies on the left, the dependents on the right, and the chart reads along the build order. Everything before the rendering step works along "depends on" — the edges are reversed once, right before both renderers, so mermaid and json always agree (`from` = depended upon, `to` = needs it).
 
 **Scope** follows the working directory, the same detection every other command uses. Outside a ticket the graph covers `.master`. Inside a ticket it covers the ticket repos plus everything they reach: the checked-out repos are offered to the graph builder *before* the master ones, so they shadow the master copy of the same repo, while the remaining master repos stay available to resolve dependencies pointing out of the ticket. What no ticket repo reaches is dropped afterwards, and the checked-out repos are marked (`class … ticket` / `"inTicket": true`). `--org <name>` keeps only the repos of one organization folder and fails with a `UsageException` when none match.
 

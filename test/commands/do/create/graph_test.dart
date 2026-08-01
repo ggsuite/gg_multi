@@ -138,9 +138,9 @@ void main() {
         expect(output(), startsWith('flowchart LR'));
         expect(output(), contains('a["a"]'));
         expect(output(), contains('e["e"]'));
-        expect(mermaidEdges(), contains('a --> b'));
-        expect(mermaidEdges(), contains('a --> c'));
-        expect(mermaidEdges(), contains('b --> c'));
+        expect(mermaidEdges(), contains('b --> a'));
+        expect(mermaidEdges(), contains('c --> a'));
+        expect(mermaidEdges(), contains('c --> b'));
       });
 
       test('--org narrows the graph down to one organization', () async {
@@ -194,15 +194,15 @@ void main() {
       test('hides the edge that a longer path already implies', () async {
         await run(masterDir());
 
-        expect(mermaidEdges(), contains('a --> b'));
-        expect(mermaidEdges(), contains('b --> c'));
-        expect(mermaidEdges(), isNot(contains('a --> c')));
+        expect(mermaidEdges(), contains('b --> a'));
+        expect(mermaidEdges(), contains('c --> b'));
+        expect(mermaidEdges(), isNot(contains('c --> a')));
       });
 
       test('--no-transitive-reduction keeps it', () async {
         await run(masterDir(), <String>['--no-transitive-reduction']);
 
-        expect(mermaidEdges(), contains('a --> c'));
+        expect(mermaidEdges(), contains('c --> a'));
       });
     });
 
@@ -210,7 +210,7 @@ void main() {
       test('shows dev dependencies as dashed edges by default', () async {
         await run(masterDir());
 
-        expect(mermaidEdges(), contains('a -.-> d'));
+        expect(mermaidEdges(), contains('d -.-> a'));
       });
 
       test('--no-dev-dependencies drops them', () async {
@@ -232,7 +232,7 @@ void main() {
       test('are shown when requested', () async {
         await run(masterDir(), <String>['--3rdparty-deps']);
 
-        expect(mermaidEdges(), contains('a --> external_pkg'));
+        expect(mermaidEdges(), contains('external_pkg --> a'));
         expect(
           output(),
           contains('class _scope_pkg,_scope_pkg_2,external_pkg external;'),
@@ -245,8 +245,8 @@ void main() {
         // `@scope/pkg` and `_scope_pkg` both sanitize to `_scope_pkg`.
         expect(output(), contains('_scope_pkg["@scope/pkg"]'));
         expect(output(), contains('_scope_pkg_2["_scope_pkg"]'));
-        expect(mermaidEdges(), contains('ts_pkg --> _scope_pkg'));
-        expect(mermaidEdges(), contains('ts_pkg --> _scope_pkg_2'));
+        expect(mermaidEdges(), contains('_scope_pkg --> ts_pkg'));
+        expect(mermaidEdges(), contains('_scope_pkg_2 --> ts_pkg'));
       });
 
       test('are marked as external in json', () async {
@@ -257,6 +257,67 @@ void main() {
         final external = nodes.firstWhere((n) => n['name'] == 'external_pkg');
         expect(external['external'], isTrue);
         expect(external.containsKey('path'), isFalse);
+      });
+    });
+
+    group('edge direction', () {
+      test('points from the dependency to the dependent', () async {
+        await run(masterDir());
+
+        // `a` depends on `b`, so the arrow leaves `b`: in a `LR` flowchart the
+        // dependencies end up left of the packages that need them.
+        expect(mermaidEdges(), contains('b --> a'));
+        expect(mermaidEdges(), isNot(contains('a --> b')));
+      });
+
+      test('json carries the same direction as the arrows', () async {
+        await run(masterDir(), <String>['--format=json']);
+
+        final json = jsonDecode(output()) as Map<String, dynamic>;
+        final edges = (json['edges'] as List).cast<Map<String, dynamic>>();
+        final ab = edges.firstWhere(
+          (e) => e['from'] == 'b' && e['to'] == 'a',
+        );
+        expect(ab['dev'], isFalse);
+        expect(edges.any((e) => e['from'] == 'a' && e['to'] == 'b'), isFalse);
+      });
+    });
+
+    group('--output', () {
+      test('writes the graph to the file instead of stdout', () async {
+        final target = p.join(tempDir.path, 'out', 'graph.mmd');
+
+        await run(masterDir(), <String>['--output', target]);
+
+        final file = File(target);
+        expect(file.existsSync(), isTrue);
+        final content = file.readAsStringSync();
+        expect(content, startsWith('flowchart LR'));
+        expect(content, endsWith('\n'));
+        expect(content, contains('b --> a'));
+
+        // Only the confirmation goes to stdout, not the graph.
+        expect(output(), contains('Wrote graph to'));
+        expect(output(), contains(target));
+        expect(output(), isNot(contains('flowchart')));
+      });
+
+      test('creates missing parent directories', () async {
+        final target = p.join(tempDir.path, 'deeply', 'nested', 'graph.json');
+
+        await run(masterDir(), <String>['--format=json', '-o', target]);
+
+        final content = File(target).readAsStringSync();
+        expect(jsonDecode(content), isA<Map<String, dynamic>>());
+      });
+
+      test('overwrites an existing file', () async {
+        final target = p.join(tempDir.path, 'graph.mmd');
+        File(target).writeAsStringSync('stale content');
+
+        await run(masterDir(), <String>['--output', target]);
+
+        expect(File(target).readAsStringSync(), isNot(contains('stale')));
       });
     });
 
@@ -290,10 +351,12 @@ void main() {
             .cast<Map<String, dynamic>>()
             .map((e) => '${e['from']}->${e['to']} dev:${e['dev']}')
             .toList();
+        // `from` is the package being depended upon, `to` the one that needs
+        // it - the same direction the mermaid arrows are drawn in.
         expect(edges, <String>[
-          'a->b dev:false',
-          'a->d dev:true',
-          'b->c dev:false',
+          'b->a dev:false',
+          'c->b dev:false',
+          'd->a dev:true',
         ]);
       });
     });

@@ -17,14 +17,18 @@ import '../../../backend/repo_folder_resolver.dart';
 import '../../../backend/workspace_utils.dart';
 
 /// One directed edge of the dependency graph.
+///
+/// While the graph is built the edge runs along "depends on" ([from] needs
+/// [to]). For the output it is reversed, so that [from] is the package being
+/// depended upon and [to] the one that needs it - see `_toMermaid`.
 class GraphEdge {
   /// Creates an edge from [from] to [to].
   GraphEdge({required this.from, required this.to, required this.dev});
 
-  /// Name of the depending package.
+  /// Name of the package the arrow starts at.
   final String from;
 
-  /// Name of the package that is depended upon.
+  /// Name of the package the arrow points at.
   final String to;
 
   /// True when the edge is only declared as a dev dependency.
@@ -198,29 +202,42 @@ class GraphCommand extends DirCommand<void> {
       ticketNames: ticketNames,
     );
 
-    visibleEdges.sort((a, b) {
-      final byFrom = a.from.compareTo(b.from);
-      return byFrom != 0 ? byFrom : a.to.compareTo(b.to);
-    });
+    // Everything above works along "depends on". The graph is drawn the other
+    // way round - the arrow leaves the package that is depended upon and points
+    // at the one that needs it - so that a `LR` flowchart puts the dependencies
+    // on the left, the dependents on the right, and reads along the build
+    // order. Reversing here keeps both output formats consistent.
+    final drawnEdges = <GraphEdge>[
+      for (final edge in visibleEdges)
+        GraphEdge(from: edge.to, to: edge.from, dev: edge.dev),
+    ]..sort((a, b) {
+        final byFrom = a.from.compareTo(b.from);
+        return byFrom != 0 ? byFrom : a.to.compareTo(b.to);
+      });
 
-    if (format == 'json') {
-      ggLog(
-        _toJson(
-          nodes: graphNodes,
-          edges: visibleEdges,
-          orientation: orientation,
-          transitiveReduction: reduce,
-        ),
-      );
-    } else {
-      ggLog(
-        _toMermaid(
-          nodes: graphNodes,
-          edges: visibleEdges,
-          orientation: orientation,
-        ),
-      );
+    final rendered = format == 'json'
+        ? _toJson(
+            nodes: graphNodes,
+            edges: drawnEdges,
+            orientation: orientation,
+            transitiveReduction: reduce,
+          )
+        : _toMermaid(
+            nodes: graphNodes,
+            edges: drawnEdges,
+            orientation: orientation,
+          );
+
+    final output = argResults!['output'] as String?;
+    if (output == null) {
+      ggLog(rendered);
+      return;
     }
+
+    final file = File(p.absolute(output));
+    await file.parent.create(recursive: true);
+    await file.writeAsString('$rendered\n');
+    ggLog('✅ Wrote graph to ${file.path}');
   }
 
   // ######################
@@ -260,6 +277,11 @@ class GraphCommand extends DirCommand<void> {
       ..addOption(
         'org',
         help: 'Only graph the repositories of this organization.',
+      )
+      ..addOption(
+        'output',
+        abbr: 'o',
+        help: 'Write the graph to this file instead of stdout.',
       );
   }
 
@@ -464,6 +486,11 @@ class GraphCommand extends DirCommand<void> {
       .join('+');
 
   // ...........................................................................
+  /// Renders the graph as a mermaid flowchart.
+  ///
+  /// [edges] are already reversed: the arrow leaves the package that is
+  /// depended upon, so `LR` puts the dependencies left and the dependents
+  /// right.
   String _toMermaid({
     required List<GraphNode> nodes,
     required List<GraphEdge> edges,
@@ -522,6 +549,10 @@ class GraphCommand extends DirCommand<void> {
   }
 
   // ...........................................................................
+  /// Renders the graph as JSON.
+  ///
+  /// An edge carries the same direction the mermaid output draws: `from` is
+  /// the package that is depended upon, `to` the one that needs it.
   String _toJson({
     required List<GraphNode> nodes,
     required List<GraphEdge> edges,
