@@ -15,7 +15,6 @@ import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:gg_status_printer/gg_status_printer.dart';
-import 'package:interact/interact.dart';
 import 'package:path/path.dart' as path;
 
 import '../../backend/ensure_in_registry.dart';
@@ -23,6 +22,7 @@ import '../../backend/git_snapshot.dart' as git_snapshot;
 import '../../backend/npm_registry_checker.dart';
 import '../../backend/pub_dev_checker.dart';
 import '../../backend/publish_skip_check.dart';
+import '../../backend/trash.dart';
 import '../../backend/workspace_utils.dart';
 import '../../commands/can/publish.dart';
 import 'configure_publish.dart' show DoConfigurePublishCommand;
@@ -35,9 +35,6 @@ typedef ProcessRunner = Future<ProcessResult> Function(
   String? workingDirectory,
   Map<String, String>? environment,
 });
-
-/// Typedef for asking the user whether the ticket should be deleted.
-typedef ConfirmDeleteTicket = bool Function(String ticketName);
 
 /// Snapshot of a repository's state taken before its publish starts.
 class _RepoPublishSnapshot {
@@ -93,12 +90,18 @@ class _RepoPublishSnapshot {
 }
 
 /// Command to publish all repos in the ticket.
+///
+/// With [mergeOnly] the exact same flow runs, minus the two steps that release
+/// the packages: nothing is uploaded to a package registry and no version tags
+/// are created. That is what `gg do merge` ([DoMergeCommand]) is — see there
+/// for the additional preconditions it enforces.
 class DoPublishCommand extends DirCommand<void> {
   /// Constructor
   DoPublishCommand({
     required super.ggLog,
     super.name = 'publish',
     super.description = 'Publishes all repositories in the current ticket.',
+    this.mergeOnly = false,
     gg.DoCommit? ggDoCommit,
     ChangeRefsToPubDev? unlocalizeRefs,
     RestorePublishTo? restorePublishTo,
@@ -116,7 +119,6 @@ class DoPublishCommand extends DirCommand<void> {
     PublishSkipCheck? publishSkipCheck,
     DoConfigurePublishCommand? doConfigurePublishCommand,
     gg.EnsurePublishConfigIgnored? ensureIgnored,
-    ConfirmDeleteTicket? confirmDeleteTicket,
     EnsureInRegistry? ensureInRegistry,
   })  : _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
         _unlocalizeRefs = unlocalizeRefs ?? ChangeRefsToPubDev(ggLog: ggLog),
@@ -139,11 +141,23 @@ class DoPublishCommand extends DirCommand<void> {
         _ensureIgnored =
             ensureIgnored ?? gg.EnsurePublishConfigIgnored(ggLog: ggLog),
         _ensureInRegistry = ensureInRegistry ?? EnsureInRegistry(ggLog: ggLog),
-        _processRunner = processRunner ?? _defaultProcessRunner,
-        _confirmDeleteTicket =
-            confirmDeleteTicket ?? _defaultConfirmDeleteTicket {
+        _processRunner = processRunner ?? _defaultProcessRunner {
     _addArgs();
   }
+
+  /// Whether the run merges without releasing: no registry upload, no tags.
+  /// Set by [DoMergeCommand]; false for a regular publish.
+  final bool mergeOnly;
+
+  /// The command name used in user-facing hints (`gg do publish` /
+  /// `gg do merge`).
+  String get _command => mergeOnly ? 'gg do merge' : 'gg do publish';
+
+  /// The past participle used in user-facing messages.
+  String get _done => mergeOnly ? 'merged' : 'published';
+
+  /// The noun used in user-facing messages.
+  String get _action => mergeOnly ? 'merge' : 'publish';
 
   /// Instance of gg DoCommit
   final gg.DoCommit _ggDoCommit;
@@ -202,19 +216,18 @@ class DoPublishCommand extends DirCommand<void> {
   /// Runs shell commands such as branch deletion.
   final ProcessRunner _processRunner;
 
-  /// Asks the user whether the ticket should be deleted.
-  final ConfirmDeleteTicket _confirmDeleteTicket;
-
   @override
   Future<void> exec({
     required Directory directory,
     required GgLog ggLog,
     bool? verbose,
+    bool? deleteRemoteBranch,
   }) =>
       get(
         directory: directory,
         ggLog: ggLog,
         verbose: verbose,
+        deleteRemoteBranch: deleteRemoteBranch,
       );
 
   @override
@@ -222,13 +235,16 @@ class DoPublishCommand extends DirCommand<void> {
     required Directory directory,
     required GgLog ggLog,
     bool? verbose,
+    bool? deleteRemoteBranch,
   }) async {
     verbose ??= argResults?['verbose'] as bool? ?? false;
     final continueRun = argResults?['continue'] as bool? ?? false;
     final reconfigure = argResults?['reconfigure'] as bool? ?? false;
     final publishUnchanged = argResults?['publish-unchanged'] as bool? ?? false;
+    final force = mergeOnly && (argResults?['force'] as bool? ?? false);
     final String? configArg = argResults?['config'] as String?;
     final String? messageArg = argResults?['message'] as String?;
+    deleteRemoteBranch ??= argResults?['delete-remote-branch'] as bool? ?? true;
 
     // Only an explicitly passed --pr/--no-pr is forwarded to the repos; when
     // absent, each repo's persisted .gg/gg-publish.json (on resume) or the
@@ -248,7 +264,6 @@ class DoPublishCommand extends DirCommand<void> {
     }
 
     final ticketDir = Directory(ticketPath);
-    final ticketName = path.basename(ticketDir.path);
     final runtimeFile = DoConfigurePublishCommand.configFileFor(ticketDir);
 
     // Step 2: Resolve the publish configuration up front so the rest of the
@@ -277,6 +292,15 @@ class DoPublishCommand extends DirCommand<void> {
     if (subs.isEmpty) {
       ggLog(yellow('⚠️ No repos in this ticket'));
       return;
+    }
+
+    // A merge brings the ticket onto the main branches without releasing it.
+    // A repository that still redirects a dependency to a local working copy
+    // would therefore land on main referencing something nobody can resolve —
+    // that ticket has to be published, not merged. Checked before `do review`
+    // runs, because reviewing replaces the path overrides with git refs.
+    if (mergeOnly && !force) {
+      _throwOnLocalizedRefs(subs);
     }
 
     // --reconfigure discards not only the ticket-level config but also the
@@ -351,10 +375,10 @@ class DoPublishCommand extends DirCommand<void> {
           : null;
 
       if (alreadyPublished) {
-        ggLog('${cyan(repoName)}: already published — skipping.');
+        ggLog('${cyan(repoName)}: already $_done — skipping.');
       } else if (skipDecision?.skip ?? false) {
         ggLog(
-          '${cyan(repoName)}: ${yellow('not published')} — '
+          '${cyan(repoName)}: ${yellow('not $_done')} — '
           '${skipDecision!.reason}.',
         );
         publishConfig = publishConfig.withRepoStatus(repoName, 'skipped');
@@ -362,7 +386,10 @@ class DoPublishCommand extends DirCommand<void> {
         skippedRepos.add(repoName);
       } else {
         if (skipDecision != null) {
-          taskLog('$repoName: publishing — ${skipDecision.reason}.');
+          taskLog(
+            '$repoName: ${mergeOnly ? 'merging' : 'publishing'} — '
+            '${skipDecision.reason}.',
+          );
         }
 
         await _waitForPublishedDependenciesIfNeeded(
@@ -386,6 +413,7 @@ class DoPublishCommand extends DirCommand<void> {
             configPath: configSourcePath,
             resume: continueRun,
             pr: prArg,
+            force: force,
             verbose: verbose,
             ggLog: ggLog,
             taskLog: taskLog,
@@ -410,7 +438,7 @@ class DoPublishCommand extends DirCommand<void> {
         // re-run this already-published repo on a later `--continue`.
         publishConfig = publishConfig.withRepoStatus(repoName, 'published');
         await publishConfig.save(file: runtimeFile);
-        taskLog(green('$repoName: published successfully.'));
+        taskLog(green('$repoName: $_done successfully.'));
       }
 
       // Capture the published version + registry visibility so later repos
@@ -428,8 +456,11 @@ class DoPublishCommand extends DirCommand<void> {
 
           final projectType = _detectProjectType(repoDir);
           try {
-            // Git-only repos (no manifest) have no registry to wait for.
-            if (projectType != gg.ProjectType.none) {
+            // Git-only repos (no manifest) have no registry to wait for. A
+            // merge uploads nothing either, so the fresh version never becomes
+            // visible on a registry — recording it here would make every
+            // dependent repo wait for a release that is not coming.
+            if (!mergeOnly && projectType != gg.ProjectType.none) {
               final publishInfo = projectType == gg.ProjectType.typescript
                   ? await _npmChecker.getPackagePublishInfo(
                       packageName: packageName,
@@ -465,7 +496,7 @@ class DoPublishCommand extends DirCommand<void> {
     if (skippedRepos.isNotEmpty) {
       ggLog(
         yellow(
-          'Not published because unchanged: ${skippedRepos.join(', ')}',
+          'Not $_done because unchanged: ${skippedRepos.join(', ')}',
         ),
       );
     }
@@ -474,56 +505,122 @@ class DoPublishCommand extends DirCommand<void> {
     if (runtimeFile.existsSync()) {
       runtimeFile.deleteSync();
       taskLog(
-        green('Removed ${path.basename(runtimeFile.path)} after publish.'),
+        green(
+          'Removed ${path.basename(runtimeFile.path)} after the $_action.',
+        ),
       );
     }
 
-    // delete_ticket from .gg-publish.json wins; else interactive prompt.
-    final bool shouldDeleteTicket =
-        publishConfig.deleteTicket ?? _confirmDeleteTicket(ticketName);
-    if (!shouldDeleteTicket) {
-      taskLog(
-        yellow(
-          'Skipped deleting repositories in ticket $ticketName.',
-        ),
-      );
-      taskLog(
-        '✅ All repositories in ticket $ticketName published successfully.',
-      );
-      return;
-    }
+    // Step 6: Clean the ticket up. The repos are never deleted outright —
+    // they move to <root>/.trash/<ticket>, so uncommitted leftovers stay
+    // recoverable. The remote feature branch is deleted unless
+    // --no-delete-remote-branch was passed.
+    await _cleanUpTicket(
+      ticketDir: ticketDir,
+      subs: subs,
+      deleteRemoteBranch: deleteRemoteBranch,
+      ggLog: ggLog,
+      taskLog: taskLog,
+    );
+
+    taskLog('✅ All repos $_done');
+  }
+
+  /// Moves everything the published ticket leaves behind into
+  /// `<root>/.trash/<ticket>` and removes the ticket folder afterwards.
+  ///
+  /// Every repository of the ticket is moved — also when its remote feature
+  /// branch is kept ([deleteRemoteBranch] is false), because the ticket
+  /// folder goes away either way and a repo left inside it would be lost.
+  /// The `<ticket>.code-workspace` file travels along, so reopening the
+  /// published ticket in VS Code is still possible from the trash.
+  ///
+  /// A failure while trashing a single repo is reported and the remaining
+  /// ones are still processed; the ticket folder is only removed when
+  /// nothing was left behind.
+  Future<void> _cleanUpTicket({
+    required Directory ticketDir,
+    required List<Node> subs,
+    required bool deleteRemoteBranch,
+    required GgLog ggLog,
+    required GgLog taskLog,
+  }) async {
+    final ticketName = path.basename(ticketDir.path);
+    var allMoved = true;
 
     for (final repo in subs) {
       final repoDir = repo.directory;
       final repoName = path.basename(repoDir.path);
 
       try {
-        await _deleteRemoteBranch(
-          repoDir: repoDir,
-          branchName: ticketName,
-          ggLog: taskLog,
-        );
+        if (deleteRemoteBranch) {
+          await _deleteRemoteBranch(
+            repoDir: repoDir,
+            branchName: ticketName,
+            ggLog: taskLog,
+          );
+        } else {
+          taskLog(
+            yellow('Kept remote branch $ticketName for $repoName.'),
+          );
+        }
 
         if (repoDir.existsSync()) {
-          repoDir.deleteSync(recursive: true);
+          final target = await Trash.moveFromTicket(
+            source: repoDir,
+            ticketDir: ticketDir,
+          );
           taskLog(
             green(
-              'Deleted repository $repoName from ticket $ticketName after '
-              'successful publish.',
+              'Moved repository $repoName of ticket $ticketName to $target.',
             ),
           );
         }
       } catch (e) {
+        allMoved = false;
         ggLog(
           red(
-            'Failed to delete repository $repoName from ticket $ticketName: '
-            '$e',
+            'Failed to move repository $repoName of ticket $ticketName to '
+            'the trash: $e',
           ),
         );
       }
     }
 
-    taskLog('✅ All repos published');
+    // The VS Code workspace describes a ticket that no longer exists — it
+    // belongs to the trashed repos, so it follows them.
+    final workspaceFile = File(
+      path.join(ticketDir.path, '$ticketName.code-workspace'),
+    );
+    if (workspaceFile.existsSync()) {
+      try {
+        final target = await Trash.moveFromTicket(
+          source: workspaceFile,
+          ticketDir: ticketDir,
+        );
+        taskLog(green('Moved ${path.basename(target)} to $target.'));
+      } catch (e) {
+        allMoved = false;
+        ggLog(
+          red('Failed to move the VS Code workspace of $ticketName: $e'),
+        );
+      }
+    }
+
+    if (!allMoved) {
+      ggLog(
+        yellow(
+          'Ticket $ticketName was not deleted because not everything could '
+          'be moved to the trash.',
+        ),
+      );
+      return;
+    }
+
+    if (ticketDir.existsSync()) {
+      ticketDir.deleteSync(recursive: true);
+      taskLog(green('Deleted ticket folder ${ticketDir.path}.'));
+    }
   }
 
   /// Resolves the publish configuration for the ticket in [ticketDir] and
@@ -561,7 +658,7 @@ class DoPublishCommand extends DirCommand<void> {
       if (!runtimeFile.existsSync()) {
         throw Exception(
           'Nothing to continue: ${runtimeFile.path} does not exist. Start a '
-          'normal "gg do publish" first.',
+          'normal "$_command" first.',
         );
       }
       return (
@@ -603,8 +700,8 @@ class DoPublishCommand extends DirCommand<void> {
       if (config.repos.values.any((r) => r.status != null)) {
         throw Exception(
           'An unfinished publish left progress in ${runtimeFile.path}. '
-          'Resume it with "gg do publish --continue", or discard it with '
-          '"gg do publish --reconfigure".',
+          'Resume it with "$_command --continue", or discard it with '
+          '"$_command --reconfigure".',
         );
       }
       return (config: config, sourcePath: runtimeFile.path);
@@ -644,8 +741,8 @@ class DoPublishCommand extends DirCommand<void> {
     if (existing.repos.values.any((r) => r.status != null)) {
       throw Exception(
         'An unfinished publish left progress in ${runtimeFile.path}. '
-        'Resume it with "gg do publish --continue", or discard it with '
-        '"gg do publish --reconfigure".',
+        'Resume it with "$_command --continue", or discard it with '
+        '"$_command --reconfigure".',
       );
     }
   }
@@ -679,6 +776,7 @@ class DoPublishCommand extends DirCommand<void> {
     required String configPath,
     required bool resume,
     required bool? pr,
+    required bool force,
     required bool verbose,
     required GgLog ggLog,
     required GgLog taskLog,
@@ -776,6 +874,36 @@ class DoPublishCommand extends DirCommand<void> {
       askBeforePublishing: false,
       resume: resume,
       pr: pr,
+      mergeOnly: mergeOnly,
+      force: force,
+    );
+  }
+
+  /// Throws when one of [repos] still redirects a dependency to a local
+  /// working copy (`pubspec_overrides.yaml`).
+  ///
+  /// Only `gg do merge` calls this: it brings the ticket onto the main
+  /// branches *without* releasing anything, so a reference that exists only as
+  /// a working copy on this machine would never become resolvable for anybody
+  /// else. Such a ticket has to be published. `--force` skips the check.
+  void _throwOnLocalizedRefs(List<Node> repos) {
+    final localized = repos
+        .where((repo) => gg.NoPubspecOverrides.hasLocalizedRefs(repo.directory))
+        .map((repo) => path.basename(repo.directory.path))
+        .toList();
+
+    if (localized.isEmpty) {
+      return;
+    }
+
+    throw Exception(
+      [
+        'These projects depend on other local projects: '
+            '${localized.join(', ')}.',
+        'Just merging is not possible.',
+        '  - Either run ${blue('gg do publish')} ',
+        '  - Or merge anyway adding ${blue('--force')} option.',
+      ].join('\n'),
     );
   }
 
@@ -938,7 +1066,7 @@ class DoPublishCommand extends DirCommand<void> {
     ggLog(
       yellow(
         'The publish is marked as »failed«. Fix the problem and resume it '
-        'with ${blue('gg do publish --continue')}.',
+        'with ${blue('$_command --continue')}.',
       ),
     );
   }
@@ -1088,7 +1216,7 @@ class DoPublishCommand extends DirCommand<void> {
       ggLog(
         yellow(
           '$repoName: back on ${s.branch}, but all commits were kept '
-          'because $reason. Re-running "gg do publish" resumes the publish.',
+          'because $reason. Re-running "$_command" resumes the $_action.',
         ),
       );
       return;
@@ -1337,19 +1465,6 @@ class DoPublishCommand extends DirCommand<void> {
     );
   }
 
-  /// Asks the user whether the ticket repositories should be deleted.
-  static bool _defaultConfirmDeleteTicket(String ticketName) {
-    gg.throwWhenNotATerminal(
-      'the delete-ticket prompt',
-      'set delete_ticket in .gg/gg-publish.json (or --config)',
-    );
-    final selected = Select(
-      prompt: 'Delete ticket $ticketName and remove remote feature branches?',
-      options: ['Yes', 'No'],
-      initialIndex: 0,
-    ).interact();
-    return selected == 0;
-  }
   // coverage:ignore-end
 
   // Adds command line arguments
@@ -1365,9 +1480,17 @@ class DoPublishCommand extends DirCommand<void> {
     argParser.addOption(
       'config',
       help: 'Path to a .gg-publish.json file with per-repo merge_message + '
-          'version_increment, plus the optional ticket-wide '
-          '`delete_ticket` flag. Resolved as-given (CWD), then under the '
+          'version_increment. Resolved as-given (CWD), then under the '
           'ticket directory. Copied to .gg/gg-publish.json for the run.',
+    );
+    argParser.addFlag(
+      'delete-remote-branch',
+      help: 'Delete the remote feature branch of every repo after the '
+          'publish (default). --no-delete-remote-branch keeps the branches '
+          'on the git remote; the local repo folders are moved to '
+          '<root>/.trash/<ticket> either way.',
+      defaultsTo: true,
+      negatable: true,
     );
     argParser.addFlag(
       'pr',
@@ -1392,6 +1515,14 @@ class DoPublishCommand extends DirCommand<void> {
       defaultsTo: false,
       negatable: false,
     );
+    if (mergeOnly) {
+      argParser.addFlag(
+        'force',
+        help: 'Merge although local refs are still in place.',
+        defaultsTo: false,
+        negatable: false,
+      );
+    }
     argParser.addFlag(
       'reconfigure',
       help: 'Ignore an existing .gg/gg-publish.json and configure the '

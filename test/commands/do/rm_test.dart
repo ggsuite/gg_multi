@@ -145,6 +145,45 @@ void main() {
           contains('Repository unrelated is not part of ticket alpha.'),
         );
       });
+
+      test('works when invoked from a sub-folder of the ticket', () async {
+        final alphaDir = Directory(path.join(ticketsRoot.path, 'alpha'))
+          ..createSync();
+        final repoDir = Directory(path.join(alphaDir.path, 'ggsuite', 'shared'))
+          ..createSync(recursive: true);
+        File(path.join(repoDir.path, 'pubspec.yaml'))
+            .writeAsStringSync('name: shared\nversion: 1.0.0\n');
+        final subDir = Directory(path.join(repoDir.path, 'lib', 'src'))
+          ..createSync(recursive: true);
+
+        await runnerAt(subDir.path).run(['rm', 'shared']);
+
+        expect(repoDir.existsSync(), isFalse);
+        expect(
+          messages,
+          contains('Deleted repository shared from ticket alpha.'),
+        );
+      });
+    });
+
+    group('invoked from a sub-folder of the workspace root', () {
+      test('deletes the master copy when no ticket uses the repo', () async {
+        final repoDir = Directory(
+          path.join(masterWs.path, 'ggsuite', 'project'),
+        )..createSync(recursive: true);
+        File(path.join(repoDir.path, 'pubspec.yaml'))
+            .writeAsStringSync('name: project\nversion: 1.0.0\n');
+        final subDir = Directory(path.join(repoDir.path, 'lib'))
+          ..createSync(recursive: true);
+
+        await runnerAt(subDir.path).run(['rm', 'project']);
+
+        expect(repoDir.existsSync(), isFalse);
+        expect(
+          messages,
+          contains('Deleted repository project from master workspace.'),
+        );
+      });
     });
 
     group('dependency chain inside a ticket', () {
@@ -324,6 +363,44 @@ void main() {
         );
 
         expect(markerOf(b).repositories.map((r) => r.name), ['a', 'b']);
+      });
+
+      test('drops the deleted repo from pubspec_overrides.yaml', () async {
+        final c = makePackage(alphaDir, 'c');
+        writeMarker(c, ['a', 'b', 'c']);
+        File(path.join(b.path, 'pubspec_overrides.yaml')).writeAsStringSync(
+          'dependency_overrides:\n'
+          '  a:\n    path: ../a\n'
+          '  c:\n    path: ../c\n',
+        );
+        // c only overrides the deleted repo — its file goes away entirely.
+        File(path.join(c.path, 'pubspec_overrides.yaml')).writeAsStringSync(
+          'dependency_overrides:\n  a:\n    path: ../a\n',
+        );
+
+        await runnerAt(alphaDir.path).run(['rm', 'a']);
+
+        final overridesOfB = File(path.join(b.path, 'pubspec_overrides.yaml'))
+            .readAsStringSync();
+        expect(overridesOfB, isNot(contains('../a')));
+        expect(overridesOfB, contains('../c'));
+        expect(
+          File(path.join(c.path, 'pubspec_overrides.yaml')).existsSync(),
+          isFalse,
+        );
+        expect(
+          messages,
+          contains('Removed a from pubspec_overrides.yaml of 2 repo(s).'),
+        );
+      });
+
+      test('says nothing when no repo overrides the deleted one', () async {
+        await runnerAt(alphaDir.path).run(['rm', 'a']);
+
+        expect(
+          messages.any((m) => m.contains('pubspec_overrides.yaml of')),
+          isFalse,
+        );
       });
 
       test('writes no marker into repos that have none', () async {

@@ -11,8 +11,8 @@ import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 // ignore: lines_longer_than_80_chars
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
-import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:gg_publish/gg_publish.dart';
 import 'package:interact/interact.dart';
 import 'package:path/path.dart' as path;
 import 'package:pub_semver/pub_semver.dart';
@@ -24,14 +24,11 @@ import '../../backend/workspace_utils.dart';
 /// Typedef for editing a merge message interactively.
 typedef EditMessage = Future<String?> Function(String initialMessage);
 
-/// Typedef for asking whether the ticket should be deleted after publishing.
-typedef ConfirmDeleteTicket = bool Function(String ticketName);
-
 /// Interactively builds the `.gg/gg-publish.json` publish configuration for
 /// the current ticket, asking for the version increment and merge message of
-/// every repo up front plus a single `delete_ticket` choice. `do publish` runs
-/// this automatically when no configuration is supplied, so all decisions are
-/// made before the long (unattended) publish starts.
+/// every repo up front. `do publish` runs this automatically when no
+/// configuration is supplied, so all decisions are made before the long
+/// (unattended) publish starts.
 class DoConfigurePublishCommand extends DirCommand<void> {
   /// Constructor
   DoConfigurePublishCommand({
@@ -40,34 +37,28 @@ class DoConfigurePublishCommand extends DirCommand<void> {
     super.description = 'Interactively create the .gg/gg-publish.json publish '
         'configuration for the current ticket.',
     SortedProcessingList? sortedProcessingList,
-    GetVersion? getVersionCommand,
+    PublishedVersion? publishedVersion,
     gg.VersionSelector? versionSelector,
     EditMessage? editMessage,
-    ConfirmDeleteTicket? confirmDeleteTicket,
   })  : _sortedProcessingList =
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
-        _getVersion = getVersionCommand ?? GetVersion(ggLog: ggLog),
+        _publishedVersion = publishedVersion ?? PublishedVersion(ggLog: ggLog),
         _versionSelector = versionSelector ?? gg.VersionSelector(),
-        _editMessage = editMessage ?? _defaultEditMessage,
-        _confirmDeleteTicket =
-            confirmDeleteTicket ?? _defaultConfirmDeleteTicket {
+        _editMessage = editMessage ?? _defaultEditMessage {
     _addArgs();
   }
 
   /// Collects the repos of a ticket in dependency order.
   final SortedProcessingList _sortedProcessingList;
 
-  /// Reads the current package version from a repo's manifest.
-  final GetVersion _getVersion;
+  /// Reads the version a repo last published to its registry.
+  final PublishedVersion _publishedVersion;
 
   /// Lets the user pick the version increment (patch/minor/major) per repo.
   final gg.VersionSelector _versionSelector;
 
   /// Opens an interactive editor for a repo's merge message.
   final EditMessage _editMessage;
-
-  /// Asks the user whether the ticket should be deleted after publishing.
-  final ConfirmDeleteTicket _confirmDeleteTicket;
 
   /// Returns the `.gg/gg-publish.json` file for [ticketDir].
   static File configFileFor(Directory ticketDir) =>
@@ -86,8 +77,7 @@ class DoConfigurePublishCommand extends DirCommand<void> {
   }
 
   /// Builds the publish configuration for the ticket containing [directory],
-  /// writes it to `<ticket>/.gg/gg-publish.json` and returns it. Pass
-  /// [deleteTicket] to skip the interactive delete-ticket prompt.
+  /// writes it to `<ticket>/.gg/gg-publish.json` and returns it.
   ///
   /// [defaultMergeMessage] (typically from `-m`) is the default merge message:
   /// it pre-fills every repo's merge-message prompt and is the fallback when
@@ -96,7 +86,6 @@ class DoConfigurePublishCommand extends DirCommand<void> {
   Future<gg.PublishConfig> configure({
     required Directory directory,
     required GgLog ggLog,
-    bool? deleteTicket,
     String? defaultMergeMessage,
   }) async {
     final String? ticketPath = WorkspaceUtils.detectTicketPath(
@@ -107,7 +96,6 @@ class DoConfigurePublishCommand extends DirCommand<void> {
     }
 
     final ticketDir = Directory(ticketPath);
-    final ticketName = path.basename(ticketDir.path);
 
     // Never clobber the progress of an unfinished publish — rewriting the
     // file would silently discard the per-repo status markers, so a later
@@ -171,25 +159,31 @@ class DoConfigurePublishCommand extends DirCommand<void> {
       );
     }
 
-    final delete = deleteTicket ?? _confirmDeleteTicket(ticketName);
-
-    final config = gg.PublishConfig(deleteTicket: delete, repos: repos);
+    // Whether the ticket is cleaned up is no longer a question: `do publish`
+    // always moves the published repos to <root>/.trash and removes the
+    // ticket folder, so nothing is asked and nothing is stored here.
+    final config = gg.PublishConfig(repos: repos);
     final file = configFileFor(ticketDir);
     await config.save(file: file);
     ggLog(green('Wrote publish configuration to ${file.path}'));
     return config;
   }
 
-  /// Reads the current package version of [repoDir], defaulting to 0.0.0 when
-  /// it cannot be read or parsed (e.g. a repo without a version). Only the
-  /// chosen increment is stored, so the baseline is used just for the preview.
+  /// Returns the baseline the increment preview is calculated from: the
+  /// version [repoDir] last published to its registry (pub.dev / npm), with
+  /// the git version tag as fallback for private and manifest-less repos.
+  ///
+  /// The manifest is deliberately *not* used. `gg do publish` bumps from the
+  /// published version, so a `pubspec.yaml` that lags behind the registry —
+  /// which is the normal state after a publish, since only main carries the
+  /// released version — would preview a version the publish never creates.
+  ///
+  /// Defaults to 0.0.0 when nothing can be determined (e.g. a repo without a
+  /// version). Only the chosen increment is stored, so the baseline is used
+  /// just for the preview.
   Future<Version> _currentVersion(Directory repoDir) async {
     try {
-      final raw = await _getVersion.get(directory: repoDir);
-      if (raw == null || raw.isEmpty) {
-        return Version(0, 0, 0);
-      }
-      return Version.parse(raw);
+      return await _publishedVersion.get(directory: repoDir, ggLog: ggLog);
     } catch (_) {
       return Version(0, 0, 0);
     }
@@ -215,19 +209,6 @@ class DoConfigurePublishCommand extends DirCommand<void> {
     }
   }
 
-  /// Asks the user whether the ticket repositories should be deleted.
-  static bool _defaultConfirmDeleteTicket(String ticketName) {
-    gg.throwWhenNotATerminal(
-      'the delete-ticket prompt',
-      'set delete_ticket in .gg/gg-publish.json (or --config)',
-    );
-    final selected = Select(
-      prompt: 'Delete ticket $ticketName and remove remote feature branches?',
-      options: ['Yes', 'No'],
-      initialIndex: 0,
-    ).interact();
-    return selected == 0;
-  }
   // coverage:ignore-end
 
   /// Adds command line arguments.

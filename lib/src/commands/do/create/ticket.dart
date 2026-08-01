@@ -14,6 +14,7 @@ import 'package:path/path.dart' as path;
 import '../../../backend/constants.dart';
 import '../../../backend/repo_setup.dart';
 import '../../../backend/ticket_json.dart';
+import '../../../backend/trash.dart';
 import '../../../backend/workspace_utils.dart';
 import 'package:path/path.dart' as p;
 
@@ -110,6 +111,11 @@ class TicketCommand extends DirCommand<void> {
     // ticket right away. It holds the ticket folder itself until `do add`
     // rewrites it with one entry per repository.
     writeCodeWorkspaceFile(Directory(ticketsPath), const <String>[]);
+
+    // Every ticket gets its trash folder right away, so `do publish` has a
+    // place to move the ticket's repos to and the user can find it even
+    // before anything was removed.
+    Trash.createDirForTicket(Directory(ticketsPath));
 
     ggLog('✅ Created ticket $issueId');
     ggLog(
