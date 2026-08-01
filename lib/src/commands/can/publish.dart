@@ -52,6 +52,7 @@ class CanPublishCommand extends DirCommand<void> {
     gg.CanCommit? ggCanCommit,
     gg.CanMerge? ggCanMerge,
     gg.CanPublish? ggCanPublish,
+    gg.NpmLoggedIn? ggNpmLoggedIn,
     gg_publish.MergeMainIntoFeat? ggMergeMainIntoFeat,
     SortedProcessingList? sortedProcessingList,
     ProcessRunner? processRunner,
@@ -59,6 +60,7 @@ class CanPublishCommand extends DirCommand<void> {
     DoPushCommand? doPushCommand,
   })  : _ggCanMerge = ggCanMerge ?? gg.CanMerge(ggLog: ggLog),
         _ggCanPublish = ggCanPublish ?? gg.CanPublish(ggLog: ggLog),
+        _ggNpmLoggedIn = ggNpmLoggedIn ?? gg.NpmLoggedIn(ggLog: ggLog),
         _ggMergeMainIntoFeat =
             ggMergeMainIntoFeat ?? gg_publish.MergeMainIntoFeat(ggLog: ggLog),
         _sortedProcessingList =
@@ -74,6 +76,9 @@ class CanPublishCommand extends DirCommand<void> {
 
   /// Instance of gg CanPublish (per-repo publish readiness, incl. npm auth)
   final gg.CanPublish _ggCanPublish;
+
+  /// Instance of gg NpmLoggedIn (ticket wide npm authentication check)
+  final gg.NpmLoggedIn _ggNpmLoggedIn;
 
   /// Instance of gg MergeMainIntoFeat
   final gg_publish.MergeMainIntoFeat _ggMergeMainIntoFeat;
@@ -107,6 +112,21 @@ class CanPublishCommand extends DirCommand<void> {
     required Directory directory,
     required GgLog ggLog,
     bool? verbose,
+  }) =>
+      checkTicket(directory: directory, ggLog: ggLog, verbose: verbose);
+
+  /// Runs the ticket wide publish readiness checks for [directory].
+  ///
+  /// [includeCanPublish] controls the last step, `gg can publish` per repo.
+  /// `gg can publish` runs it — that is the default. `gg do publish` passes
+  /// `false` and calls [checkRepo] per repo instead: only there are the refs
+  /// unlocalized and the dependencies published earlier in the same run
+  /// already on their registry, so pana can resolve them.
+  Future<void> checkTicket({
+    required Directory directory,
+    required GgLog ggLog,
+    bool? verbose,
+    bool includeCanPublish = true,
   }) async {
     verbose ??= argResults?['verbose'] as bool? ?? false;
 
@@ -193,22 +213,59 @@ class CanPublishCommand extends DirCommand<void> {
       ),
     );
 
-    // Step 7: Run gg can publish per repo -----------------------------------
-    // Verifies each repo's publish readiness (feature branch, CHANGELOG, pana,
-    // npm authentication) so blockers — like a missing npm login for an
-    // npm-published package — surface here instead of mid-publish as a 404.
+    // Step 7: Check the npm authentication ----------------------------------
+    // This is the one publish blocker that has nothing to do with dependency
+    // resolution, so it stays ticket wide even when step 8 is deferred to
+    // `do publish`'s per-repo gate: finding out about a missing npm login
+    // after the first packages went to a registry is the worst failure mode
+    // this command has. Repos not publishing to npm are skipped by gg_one.
     await GgStatusPrinter<void>(
-      message: 'Can publish?',
+      message: 'Logged in to npm?',
       ggLog: ggLog,
     ).run(
-      () async => _checkCanPublish(
+      () async => _checkNpmLoggedIn(
         subs: subs,
         ggLog: taskLog,
       ),
     );
 
+    // Step 8: Run gg can publish per repo -----------------------------------
+    // Verifies each repo's publish readiness (feature branch, CHANGELOG,
+    // pana, npm authentication).
+    if (includeCanPublish) {
+      await GgStatusPrinter<void>(
+        message: 'Can publish?',
+        ggLog: ggLog,
+      ).run(
+        () async => _checkCanPublish(
+          subs: subs,
+          ggLog: taskLog,
+        ),
+      );
+    }
+
     // All successful --------------------------------------------------------
     taskLog('✅ All repos can be published');
+  }
+
+  /// Checks whether the single repository [directory] can be published.
+  ///
+  /// Covers the same ground as the ticket wide `Can publish?` step — feature
+  /// branch, no path overrides, CHANGELOG format, committed changes, pana and
+  /// npm authentication — for one repo, and throws the same
+  /// `Cannot publish: <repo> (<reason>)` exception.
+  ///
+  /// [directory] is a repository, not a ticket folder. The caller decides how
+  /// verbose the output is: `gg do publish` passes its own `ggLog`, because a
+  /// rejection here is what makes the run fail.
+  Future<void> checkRepo({
+    required Directory directory,
+    required GgLog ggLog,
+  }) async {
+    final failure = await _canPublishFailure(repoDir: directory, ggLog: ggLog);
+    if (failure != null) {
+      throw Exception('Cannot publish: $failure');
+    }
   }
 
   /// Checks for uncommitted changes in all repos.
@@ -287,9 +344,50 @@ class CanPublishCommand extends DirCommand<void> {
     }
   }
 
+  /// Runs gg can publish for the repository [repoDir].
+  ///
+  /// Returns `null` when the repo is publish-ready, otherwise the
+  /// `<repo> (<error>)` description the failure is reported with. One code
+  /// path for the ticket wide check and for [checkRepo], so the two cannot
+  /// report the same problem differently.
+  Future<String?> _canPublishFailure({
+    required Directory repoDir,
+    required GgLog ggLog,
+  }) async {
+    final repoName = path.basename(repoDir.path);
+    ggLog('${cyan(repoName)}:');
+    try {
+      await _ggCanPublish.exec(directory: repoDir, ggLog: ggLog);
+      return null;
+    } catch (e) {
+      ggLog(red('❌ Cannot publish $repoName: $e'));
+      return '$repoName ($e)';
+    }
+  }
+
   /// Runs gg can publish for every repository in the ticket, collecting the
   /// repos that are not publish-ready (e.g. not logged in to npm).
   Future<void> _checkCanPublish({
+    required List<Node> subs,
+    required GgLog ggLog,
+  }) async {
+    final failedRepos = <String>[];
+    for (final repo in subs) {
+      final failure = await _canPublishFailure(
+        repoDir: repo.directory,
+        ggLog: ggLog,
+      );
+      if (failure != null) {
+        failedRepos.add(failure);
+      }
+    }
+    if (failedRepos.isNotEmpty) {
+      throw Exception('Cannot publish: ${failedRepos.join('; ')}');
+    }
+  }
+
+  /// Checks the npm authentication of every repository in the ticket.
+  Future<void> _checkNpmLoggedIn({
     required List<Node> subs,
     required GgLog ggLog,
   }) async {
@@ -299,14 +397,14 @@ class CanPublishCommand extends DirCommand<void> {
       final repoName = path.basename(repoDir.path);
       ggLog('${cyan(repoName)}:');
       try {
-        await _ggCanPublish.exec(directory: repoDir, ggLog: ggLog);
+        await _ggNpmLoggedIn.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
-        ggLog(red('❌ Cannot publish $repoName: $e'));
+        ggLog(red('❌ Not logged in to npm for $repoName: $e'));
         failedRepos.add('$repoName ($e)');
       }
     }
     if (failedRepos.isNotEmpty) {
-      throw Exception('Cannot publish: ${failedRepos.join('; ')}');
+      throw Exception('Not logged in to npm: ${failedRepos.join('; ')}');
     }
   }
 

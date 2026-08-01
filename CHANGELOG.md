@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- `gg can publish` verifies the npm login of every repo as its own step. It therefore stays a ticket-wide, up-front check even though the rest of the per-repo publish readiness moved into `do publish`, so a missing npm login is still reported before the first package is uploaded.
+- A failed `gg do merge` reports "Merging … failed" and "The merge is marked as »failed«" instead of the publish wording.
+- New `CanPublishCommand.checkTicket(…, includeCanPublish:)` and `CanPublishCommand.checkRepo(…)`. `gg can publish` itself is unchanged apart from the added npm step.
+- Can publish runs per repo right before that repo is published
+
+### Fixed
+
+- `do publish`/`do merge` no longer fail on a ticket whose repos depend on each other. `gg can publish` ran pana for every repo up front, where a constraint naming an as-yet-unpublished sibling version cannot resolve. The check now runs per repo, right before that repo is published — after its refs were unlocalized and committed and before it is pushed — so every dependency published earlier in the same run is already on its registry.
+
 ## 7.4.0 - 2026-08-01
 
 ### Changed
