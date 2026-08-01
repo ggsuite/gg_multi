@@ -32,10 +32,15 @@ typedef ProcessRunner = Future<ProcessResult> Function(
 /// - `* text=auto eol=lf` enables automatic EOL conversion to LF (required
 ///   by `gg`).
 /// - The `merge=ours` rules ensure that generated/state files are not
-///   merged textually but kept from the current branch.
+///   merged textually but kept from the current branch. The rule is
+///   `.gg/gg.json` — the state file is named `gg.json`, not `.gg.json`.
+/// - `CHANGELOG.md merge=union` keeps the entries of *both* sides instead
+///   of conflicting when main and the feature branch both added a line.
+///   `union` is a built-in git driver and needs no `git config`.
 const String gitattributesRequiredLines = '* text=auto eol=lf\n'
-    '.gg/.gg.json merge=ours\n'
-    'pubspec.lock merge=ours';
+    '.gg/gg.json merge=ours\n'
+    'pubspec.lock merge=ours\n'
+    'CHANGELOG.md merge=union';
 
 /// Ensures a `.gitattributes` file containing all
 /// [gitattributesRequiredLines] exists in every repository of the current
@@ -43,10 +48,11 @@ const String gitattributesRequiredLines = '* text=auto eol=lf\n'
 ///
 /// `gg` refuses to operate (e.g. `gg do commit`) when automatic EOL
 /// conversion is not configured via `.gitattributes`. In addition, the
-/// ticket workflow relies on `merge=ours` rules for state files so that
-/// merges do not produce textual conflicts in generated content. The
-/// referenced `ours` driver only works once
-/// `git config merge.ours.driver true` has been set in each repository.
+/// ticket workflow relies on `merge=ours` rules for state files and on
+/// `merge=union` for the changelog so that merging main into a feature
+/// branch does not produce textual conflicts. The referenced `ours` driver
+/// only works once `git config merge.ours.driver true` has been set in each
+/// repository; `union` is built into git.
 ///
 /// Behaviour per repository:
 /// - If `.gitattributes` does not exist, it is created containing all

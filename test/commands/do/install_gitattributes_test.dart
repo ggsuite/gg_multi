@@ -163,8 +163,9 @@ void main() {
       );
       const original = '# header\n'
           '* text=auto eol=lf\n'
-          '.gg/.gg.json merge=ours\n'
-          'pubspec.lock merge=ours\n';
+          '.gg/gg.json merge=ours\n'
+          'pubspec.lock merge=ours\n'
+          'CHANGELOG.md merge=union\n';
       file.writeAsStringSync(original);
       final originalMtime = file.lastModifiedSync();
 
@@ -211,15 +212,17 @@ void main() {
         fileA.readAsStringSync(),
         '*.png binary\n'
         '* text=auto eol=lf\n'
-        '.gg/.gg.json merge=ours\n'
-        'pubspec.lock merge=ours\n',
+        '.gg/gg.json merge=ours\n'
+        'pubspec.lock merge=ours\n'
+        'CHANGELOG.md merge=union\n',
       );
       expect(
         fileB.readAsStringSync(),
         '*.png binary\n'
         '* text=auto eol=lf\n'
-        '.gg/.gg.json merge=ours\n'
-        'pubspec.lock merge=ours\n',
+        '.gg/gg.json merge=ours\n'
+        'pubspec.lock merge=ours\n'
+        'CHANGELOG.md merge=union\n',
       );
       expect(messages, contains('Updated .gitattributes in A.'));
       expect(messages, contains('Updated .gitattributes in B.'));

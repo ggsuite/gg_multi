@@ -350,6 +350,95 @@ void main() {
         );
       });
 
+      test(
+        'publishes when non-gg commits landed on main since the last tag',
+        () async {
+          // »gg do merge« merges a ticket into main without tagging it. The
+          // scan must reach back to the last tag, otherwise the merged work
+          // looks released and the next run skips the repo.
+          final dir = await createRepo('a');
+          await git(dir, ['tag', '1.0.0']);
+          await commitFile(dir, 'lib.dart', 'void main() {}', 'Fix login bug');
+          await git(dir, ['checkout', '-b', 'feat']);
+          await commitFile(
+            dir,
+            'pubspec_overrides.yaml',
+            'refs',
+            '#gg: changed references to git',
+          );
+
+          final decision = await check.get(
+            repo: node('a', dir),
+            refVersions: {},
+          );
+          expect(decision.skip, isFalse);
+          expect(decision.reason, contains('Fix login bug'));
+        },
+      );
+
+      test('skips when only gg commits happened since the last tag', () async {
+        final dir = await createRepo('a');
+        await commitFile(dir, 'lib.dart', 'void main() {}', 'Fix login bug');
+        // The release tag covers the manual commit — it is published.
+        await git(dir, ['tag', '1.0.0']);
+        await git(dir, ['checkout', '-b', 'feat']);
+        await commitFile(
+          dir,
+          'pubspec_overrides.yaml',
+          'refs',
+          '#gg: changed references to git',
+        );
+
+        final decision = await check.get(
+          repo: node('a', dir),
+          refVersions: {},
+        );
+        expect(decision.skip, isTrue);
+      });
+
+      test(
+        'prefers the last tag over the main branch as compare base',
+        () async {
+          // The manual commit sits on main *before* the feature branch, so a
+          // main-based comparison would not see it. The tag predates it.
+          final dir = await createRepo('a');
+          await git(dir, ['tag', '1.0.0']);
+          await commitFile(dir, 'lib.dart', 'void main() {}', 'Manual work');
+          await git(dir, ['update-ref', 'refs/remotes/origin/main', 'main']);
+          await git(dir, ['checkout', '-b', 'feat']);
+
+          final decision = await check.get(
+            repo: node('a', dir),
+            refVersions: {},
+          );
+          expect(decision.skip, isFalse);
+          expect(decision.reason, contains('Manual work'));
+        },
+      );
+
+      test('ignores tags that are not reachable from HEAD', () async {
+        // A tag on an unrelated branch says nothing about this branch's
+        // release state — the main branch stays the base then.
+        final dir = await createRepo('a');
+        await git(dir, ['checkout', '-b', 'other']);
+        await commitFile(dir, 'other.txt', 'x', 'Other work');
+        await git(dir, ['tag', '9.9.9']);
+        await git(dir, ['checkout', 'main']);
+        await git(dir, ['checkout', '-b', 'feat']);
+        await commitFile(
+          dir,
+          'pubspec_overrides.yaml',
+          'refs',
+          '#gg: changed references to git',
+        );
+
+        final decision = await check.get(
+          repo: node('a', dir),
+          refVersions: {},
+        );
+        expect(decision.skip, isTrue);
+      });
+
       test('reports uncommitted changes via an injected runner', () async {
         final runner = MockProcessRunner();
         when(
