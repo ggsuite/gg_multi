@@ -120,7 +120,7 @@ It runs at the start of `do add` (master **and** ticket) and of `do checkout` (m
 
 ### `.gg/.ticket.json` ticket marker
 
-`do add` writes a pretty-printed `.gg/.ticket.json` into **every** repo of a ticket (overwriting on each `add` so it stays current). It holds `issue_id`, `description` and the full list of repos with their git URLs, and is whitelisted in each repo's `.gitignore` (`!.gg/.ticket.json`) so it travels with the feature branch. `gg_one do merge` removes it again before merging so it never reaches `main`. Logic lives in `lib/src/backend/ticket_json.dart`.
+`do add` writes a pretty-printed `.gg/.ticket.json` into **every** repo of a ticket (overwriting on each `add` so it stays current). It holds `issue_id`, `description` and the full list of repos with their git URLs, and is whitelisted in each repo's `.gitignore` (`!.gg/.ticket.json`) so it travels with the feature branch. `gg_one` removes it again before publishing: `do publish` drops it before the version bump and registry upload (so it never ships to pub.dev/npm) and `do merge` drops it before merging (so it never reaches `main`). Logic lives in `lib/src/backend/ticket_json.dart`.
 
 ### No git hooks
 
@@ -176,7 +176,9 @@ Before touching anything it snapshots every repo (branch — the commit hash whe
 
 ### `do configure-publish` Command
 
-`DoConfigurePublishCommand` (in `lib/src/commands/do/configure_publish.dart`) interactively builds the publish configuration for the current ticket and writes it to `<ticket>/.gg/.gg-publish.json`. It walks the repos in dependency order and asks, per repo, for the version increment (via gg_one's `VersionSelector`, with an injectable `InteractAdapter` for tests) and the merge message, plus a single `delete_ticket` choice. The merge-message default (which pre-fills every repo's prompt and is the fallback for an empty entry) is `-m`/`--message` if given, else the ticket description, else `Publish <repo>` — so a merge message is never empty and `-m` wins over the ticket description. `configFileFor(ticketDir)` returns the canonical `.gg/.gg-publish.json` path used everywhere. `do publish` calls this automatically when no config is supplied, so every interactive decision is made **up front** before the long, unattended publish begins.
+`DoConfigurePublishCommand` (in `lib/src/commands/do/configure_publish.dart`) interactively builds the publish configuration for the current ticket and writes it to `<ticket>/.gg/.gg-publish.json`. It walks the repos in dependency order and asks, per repo, for the version increment (via gg_one's `VersionSelector`, with an injectable `InteractAdapter` for tests) and the merge message, plus a single `delete_ticket` choice.
+
+**Increment-preview baseline**: the `Patch (x -> y)` options are calculated from the version the repo last **published to its registry** (gg_publish's `PublishedVersion` — pub.dev/npm, git version tag for private and manifest-less repos, 0.0.0 when nothing resolves), *not* from the manifest. `gg do publish` bumps from the published version too, so the two must agree: only `main` carries the released version, so a feature branch's `pubspec.yaml` normally lags behind the registry (e.g. manifest 7.0.1 while pub.dev is at 7.1.2) and a manifest baseline would offer a version the publish never creates. The merge-message default (which pre-fills every repo's prompt and is the fallback for an empty entry) is `-m`/`--message` if given, else the ticket description, else `Publish <repo>` — so a merge message is never empty and `-m` wins over the ticket description. `configFileFor(ticketDir)` returns the canonical `.gg/.gg-publish.json` path used everywhere. `do publish` calls this automatically when no config is supplied, so every interactive decision is made **up front** before the long, unattended publish begins.
 
 ### `do publish` Command
 

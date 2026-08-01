@@ -6,6 +6,7 @@
 
 - Auto merge CHANGELOG.md
 - Tidy CHANGELOG entry
+- \#gg: changed references to git
 
 ### Fixed
 
