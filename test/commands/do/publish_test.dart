@@ -561,6 +561,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -782,6 +783,7 @@ void main() {
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
@@ -1071,6 +1073,8 @@ void main() {
               askBeforePublishing: any(named: 'askBeforePublishing'),
               resume: any(named: 'resume'),
               pr: any(named: 'pr'),
+              mergeOnly: any(named: 'mergeOnly'),
+              force: any(named: 'force'),
             ),
         () => mockEnsureInRegistry.ensure(
               directory: any(named: 'directory', that: repoDir('B')),
@@ -1087,6 +1091,8 @@ void main() {
               askBeforePublishing: any(named: 'askBeforePublishing'),
               resume: any(named: 'resume'),
               pr: any(named: 'pr'),
+              mergeOnly: any(named: 'mergeOnly'),
+              force: any(named: 'force'),
             ),
       ]);
 
@@ -6703,6 +6709,7 @@ void main() {
           ..addCommand(
             DoPublishCommand(
               ggLog: ggLog,
+              ensureInRegistry: mockEnsureInRegistry,
               mergeOnly: true,
               ggDoPublish: mockGgDoPublish,
               ggDoCommit: mockGgDoCommit,

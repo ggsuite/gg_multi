@@ -847,8 +847,11 @@ class DoPublishCommand extends DirCommand<void> {
     // At least one version must already be on the registry. A package that
     // was never published is published manually by the user first — right
     // now, while the refs are unlocalized and the publish target is
-    // restored, so the current folder is publishable as-is.
-    await _ensureInRegistry.ensure(directory: repoDir, ggLog: ggLog);
+    // restored, so the current folder is publishable as-is. A merge-only
+    // run releases nothing to a registry, so there is nothing to ensure.
+    if (!mergeOnly) {
+      await _ensureInRegistry.ensure(directory: repoDir, ggLog: ggLog);
+    }
 
     // The publish configuration is always resolved up front, so every repo
     // has an explicit merge message and version increment here.
