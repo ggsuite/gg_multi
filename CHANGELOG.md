@@ -1,5 +1,19 @@
 # Changelog
 
+## 7.3.0 - 2026-08-01
+
+### Changed
+
+- \#gg: changed references to pub.dev
+
+### Fixed
+
+- Fix missing git references
+
+### Removed
+
+- Remove code modifying publish_to because it is not used anymore
+
 ## 7.2.2 - 2026-08-01
 
 ### Changed
