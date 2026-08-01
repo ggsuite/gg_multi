@@ -5,4 +5,6 @@
 # remove it again.
 dependency_overrides:
   gg_local_package_dependencies:
-    path: ../gg_local_package_dependencies
+    git:
+      url: git@github.com:ggsuite/gg_local_package_dependencies.git
+      ref: "64"
