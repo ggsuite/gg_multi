@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Add »gg do merge«
+
 ## 7.0.1 - 2026-07-31
 
 ### Changed

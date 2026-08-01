@@ -487,6 +487,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
 
@@ -681,6 +683,8 @@ void main() {
             askBeforePublishing: any(named: 'askBeforePublishing'),
             resume: any(named: 'resume'),
             pr: any(named: 'pr'),
+            mergeOnly: any(named: 'mergeOnly'),
+            force: any(named: 'force'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -874,6 +878,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -1055,6 +1061,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -1123,6 +1131,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).called(1);
     });
@@ -1222,6 +1232,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -1289,6 +1301,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).called(1);
 
@@ -1308,6 +1322,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).called(1);
     });
@@ -1400,6 +1416,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -1468,6 +1486,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).called(1);
     });
@@ -1568,6 +1588,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -1820,6 +1842,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((invocation) {
         final repoDir = invocation.namedArguments[#directory] as Directory;
@@ -2036,6 +2060,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
 
@@ -2213,6 +2239,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -2383,6 +2411,8 @@ void main() {
             askBeforePublishing: any(named: 'askBeforePublishing'),
             resume: any(named: 'resume'),
             pr: any(named: 'pr'),
+            mergeOnly: any(named: 'mergeOnly'),
+            force: any(named: 'force'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -2558,6 +2588,8 @@ void main() {
             askBeforePublishing: any(named: 'askBeforePublishing'),
             resume: any(named: 'resume'),
             pr: any(named: 'pr'),
+            mergeOnly: any(named: 'mergeOnly'),
+            force: any(named: 'force'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -2732,6 +2764,8 @@ void main() {
             askBeforePublishing: any(named: 'askBeforePublishing'),
             resume: any(named: 'resume'),
             pr: any(named: 'pr'),
+            mergeOnly: any(named: 'mergeOnly'),
+            force: any(named: 'force'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -2885,6 +2919,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -3039,6 +3075,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -3215,6 +3253,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -3584,6 +3624,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -3735,6 +3777,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -3909,6 +3953,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -4015,6 +4061,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).thenThrow(Exception('publish failed'));
     }
@@ -4938,6 +4986,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -5021,6 +5071,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).called(1);
     });
@@ -5082,6 +5134,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).called(1);
       // Review + can-publish are skipped when resuming.
@@ -5171,6 +5225,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).called(1);
       verifyNever(
@@ -5288,6 +5344,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: false,
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).called(1);
       // The repo-level runtime file was gitignored before the pre-publish
@@ -5340,6 +5398,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: true,
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).called(1);
     });
@@ -5361,6 +5421,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: false,
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).called(1);
     });
@@ -5381,6 +5443,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: null,
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).called(1);
     });
@@ -5513,6 +5577,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).called(1);
     });
@@ -5554,6 +5620,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).called(1);
     });
@@ -5699,6 +5767,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).thenAnswer((_) async {});
 
@@ -5826,6 +5896,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).captured.cast<Directory>();
       expect(publishedDirs, hasLength(1));
@@ -5873,6 +5945,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).captured.cast<Directory>();
       expect(
@@ -5896,6 +5970,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).thenThrow(Exception('registry down'));
 
@@ -5961,6 +6037,8 @@ void main() {
           askBeforePublishing: any(named: 'askBeforePublishing'),
           resume: any(named: 'resume'),
           pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
         ),
       ).captured.cast<Directory>();
       expect(publishedDirs.map((d) => path.basename(d.path)), ['A']);
@@ -5968,6 +6046,307 @@ void main() {
       expect(
         messages,
         contains('B: already published — skipping.'),
+      );
+    });
+  });
+
+  group('DoPublishCommand in merge mode', () {
+    late MockGgDoPublish mockGgDoPublish;
+    late MockGgDoCommit mockGgDoCommit;
+    late MockGgDoPush mockGgDoPush;
+    late MockUnlocalizeRefs mockUnlocalizeRefs;
+    late MockRestorePublishTo mockRestorePublishTo;
+    late MockSortedProcessingList mockSortedProcessingList;
+    late MockProcessRunner mockProcessRunner;
+    late MockCanPublishCommand mockCanPublishCommand;
+    late MockDoReviewCommand mockDoReviewCommand;
+    late MockGetVersion mockGetVersion;
+    late MockSetRefVersion mockSetRefVersion;
+    late MockGetRefVersion mockGetRefVersion;
+    late MockPubDevChecker mockPubDevChecker;
+
+    setUp(() {
+      mockGgDoPublish = MockGgDoPublish();
+      mockGgDoCommit = MockGgDoCommit();
+      mockGgDoPush = MockGgDoPush();
+      mockUnlocalizeRefs = MockUnlocalizeRefs();
+      mockRestorePublishTo = MockRestorePublishTo();
+      mockSortedProcessingList = MockSortedProcessingList();
+      mockProcessRunner = MockProcessRunner();
+      _stubPubUpgrade(mockProcessRunner);
+      _stubRepoSnapshot(mockProcessRunner);
+      mockCanPublishCommand = MockCanPublishCommand();
+      mockDoReviewCommand = MockDoReviewCommand();
+      mockGetVersion = MockGetVersion();
+      mockSetRefVersion = MockSetRefVersion();
+      mockGetRefVersion = MockGetRefVersion();
+      mockPubDevChecker = MockPubDevChecker();
+
+      when(
+        () => mockDoReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          verbose: any(named: 'verbose'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockCanPublishCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockRestorePublishTo.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          for (final name in ['A', 'B'])
+            Node(
+              name: name,
+              directory: Directory(path.join(ticketDir.path, name)),
+              manifest: DartPackageManifest(pubspec: Pubspec(name)),
+            ),
+        ],
+      );
+
+      when(
+        () => mockUnlocalizeRefs.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockGgDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockGetVersion.get(directory: any(named: 'directory')),
+      ).thenAnswer((_) async => '1.0.0');
+
+      when(
+        () => mockGetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+        ),
+      ).thenAnswer((_) async => null);
+
+      when(
+        () => mockSetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+          version: any(named: 'version'),
+        ),
+      ).thenAnswer((_) async {});
+    });
+
+    /// Builds the publish command in merge mode with all mocks wired up.
+    CommandRunner<void> buildRunner() =>
+        CommandRunner<void>('test', 'do merge ticket')
+          ..addCommand(
+            DoPublishCommand(
+              ggLog: ggLog,
+              mergeOnly: true,
+              ggDoPublish: mockGgDoPublish,
+              ggDoCommit: mockGgDoCommit,
+              ggDoPush: mockGgDoPush,
+              unlocalizeRefs: mockUnlocalizeRefs,
+              restorePublishTo: mockRestorePublishTo,
+              sortedProcessingList: mockSortedProcessingList,
+              processRunner: mockProcessRunner.call,
+              canPublishCommand: mockCanPublishCommand,
+              doReviewCommand: mockDoReviewCommand,
+              getVersionCommand: mockGetVersion,
+              setRefVersionCommand: mockSetRefVersion,
+              getRefVersionCommand: mockGetRefVersion,
+              pubDevChecker: mockPubDevChecker,
+              confirmDeleteTicket: (_) => false,
+            ),
+          );
+
+    /// Writes a `pubspec_overrides.yaml` with [content] into repo [name].
+    void writeOverrides(String name, String content) {
+      File(
+        path.join(ticketDir.path, name, 'pubspec_overrides.yaml'),
+      ).writeAsStringSync(content);
+    }
+
+    test('merges every repo without publishing or tagging', () async {
+      await buildRunner().run(['publish', '--input', ticketDir.path, '-v']);
+
+      // gg_one is asked for a merge-only run.
+      verify(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
+          mergeOnly: true,
+          force: false,
+        ),
+      ).called(2);
+
+      // Nothing reaches a registry, so nothing is waited for either.
+      verifyNever(
+        () => mockPubDevChecker.getPackagePublishInfo(
+          packageName: any(named: 'packageName'),
+        ),
+      );
+
+      expect(messages, contains('A: merged successfully.'));
+      expect(messages, contains('Removed gg-publish.json after the merge.'));
+      expect(
+        messages,
+        contains('✅ All repositories in ticket TICKPB merged successfully.'),
+      );
+    });
+
+    test('refuses while a repo redirects refs to a working copy', () async {
+      writeOverrides('B', 'dependency_overrides:\n  A:\n    path: ../A\n');
+
+      await expectLater(
+        () => buildRunner().run(['publish', '--input', ticketDir.path]),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            allOf(
+              contains('These projects depend on other local projects: B'),
+              contains('Just merging is not possible'),
+              // Both escape hatches are named.
+              contains('gg do publish'),
+              contains('--force'),
+            ),
+          ),
+        ),
+      );
+
+      // The guard runs before the review — nothing was touched.
+      verifyNever(
+        () => mockDoReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          verbose: any(named: 'verbose'),
+        ),
+      );
+    });
+
+    test('--force merges despite localized refs', () async {
+      writeOverrides('B', 'dependency_overrides:\n  A:\n    path: ../A\n');
+
+      await buildRunner().run(
+        ['publish', '--input', ticketDir.path, '--force'],
+      );
+
+      verify(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
+          mergeOnly: true,
+          force: true,
+        ),
+      ).called(2);
+    });
+
+    test('tolerates an overrides file without effective refs', () async {
+      writeOverrides('B', 'dependency_overrides:\n');
+
+      await buildRunner().run(['publish', '--input', ticketDir.path]);
+
+      verify(
+        () => mockDoReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          verbose: any(named: 'verbose'),
+        ),
+      ).called(1);
+    });
+
+    test('names »gg do merge« in the resume hints', () async {
+      when(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
+        ),
+      ).thenThrow(Exception('merge failed'));
+
+      await expectLater(
+        () => buildRunner().run(['publish', '--input', ticketDir.path]),
+        throwsA(isA<Exception>()),
+      );
+
+      expect(
+        messages.any((m) => m.contains('gg do merge --continue')),
+        isTrue,
+      );
+      expect(
+        messages.any((m) => m.contains('gg do publish --continue')),
+        isFalse,
       );
     });
   });
