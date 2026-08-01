@@ -5,6 +5,13 @@
 ### Added
 
 - Add »gg do create graph« to output mermaid graphs
+- `gg do create graph` boxes the repositories of each organization in a mermaid
+`subgraph` when more than one organization is shown. `--no-group-by-orgs`
+turns the boxes off.
+
+### Changed
+
+- Allow to group nodes by org
 
 ## 7.5.0 - 2026-08-01
 

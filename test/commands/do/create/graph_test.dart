@@ -321,6 +321,67 @@ void main() {
       });
     });
 
+    group('--group-by-orgs', () {
+      test('boxes the repositories per organization by default', () async {
+        await run(masterDir());
+
+        expect(output(), contains('subgraph org_org_a["org_a"]'));
+        expect(output(), contains('subgraph org_org_b["org_b"]'));
+
+        // The nodes sit inside their box, the edges outside.
+        final lines = output().split('\n');
+        final orgA = lines.indexOf('  subgraph org_org_a["org_a"]');
+        final end = lines.indexOf('  end', orgA);
+        expect(lines.sublist(orgA, end), contains('    a["a"]'));
+        expect(lines.sublist(orgA, end), isNot(contains('    e["e"]')));
+      });
+
+      test('--no-group-by-orgs keeps the flat list', () async {
+        await run(masterDir(), <String>['--no-group-by-orgs']);
+
+        expect(output(), isNot(contains('subgraph')));
+        expect(output(), contains('  a["a"]'));
+        expect(mermaidEdges(), contains('b --> a'));
+      });
+
+      test('does not box a single organization', () async {
+        await run(masterDir(), <String>['--org', 'org_a']);
+
+        expect(output(), isNot(contains('subgraph')));
+        expect(output(), contains('a["a"]'));
+      });
+
+      test('leaves third party packages outside the boxes', () async {
+        await run(masterDir(), <String>['--3rdparty-deps']);
+
+        final lines = output().split('\n');
+        expect(lines, contains('  external_pkg["external_pkg"]'));
+        expect(lines, isNot(contains('    external_pkg["external_pkg"]')));
+      });
+
+      test('gives an org a subgraph id that no node uses', () async {
+        // Mermaid keeps subgraph and node ids in one namespace. An
+        // organization `a` would produce the id `org_a`, which the package of
+        // that name already occupies.
+        writePackage(root: '.master', org: 'org_b', name: 'org_a');
+        writePackage(root: '.master', org: 'a', name: 'inside_a');
+
+        await run(masterDir());
+
+        expect(output(), contains('  org_a["org_a"]'));
+        expect(output(), contains('subgraph org_a_2["a"]'));
+      });
+
+      test('is ignored by the json format', () async {
+        await run(masterDir(), <String>['--format=json']);
+
+        final json = jsonDecode(output()) as Map<String, dynamic>;
+        final nodes = (json['nodes'] as List).cast<Map<String, dynamic>>();
+        final a = nodes.firstWhere((n) => n['name'] == 'a');
+        expect(a['organization'], 'org_a');
+      });
+    });
+
     group('--orientation', () {
       test('is horizontal by default', () async {
         await run(masterDir());

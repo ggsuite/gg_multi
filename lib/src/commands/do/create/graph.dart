@@ -226,6 +226,7 @@ class GraphCommand extends DirCommand<void> {
             nodes: graphNodes,
             edges: drawnEdges,
             orientation: orientation,
+            groupByOrgs: argResults!['group-by-orgs'] as bool,
           );
 
     final output = argResults!['output'] as String?;
@@ -273,6 +274,12 @@ class GraphCommand extends DirCommand<void> {
         '3rdparty-deps',
         defaultsTo: false,
         help: 'Include dependencies that are no local repositories.',
+      )
+      ..addFlag(
+        'group-by-orgs',
+        defaultsTo: true,
+        help: 'Box the repositories of each organization in the mermaid '
+            'graph. Only applies when more than one organization is shown.',
       )
       ..addOption(
         'org',
@@ -495,14 +502,41 @@ class GraphCommand extends DirCommand<void> {
     required List<GraphNode> nodes,
     required List<GraphEdge> edges,
     required String orientation,
+    required bool groupByOrgs,
   }) {
     final ids = _mermaidIds(nodes);
     final lines = <String>[
       'flowchart ${orientation == 'vertical' ? 'TD' : 'LR'}',
     ];
 
-    for (final node in nodes) {
-      lines.add('  ${ids[node.name]}["${node.name}"]');
+    // Boxing the repositories per organization only tells the reader something
+    // when there is more than one - a single box around everything is noise.
+    final orgs = <String>{
+      for (final node in nodes)
+        if (node.organization != null) node.organization!,
+    }.toList()
+      ..sort();
+    final grouped = groupByOrgs && orgs.length > 1;
+
+    if (!grouped) {
+      for (final node in nodes) {
+        lines.add('  ${ids[node.name]}["${node.name}"]');
+      }
+    } else {
+      // Third party packages belong to no organization and stay outside the
+      // boxes.
+      for (final node in nodes.where((n) => n.organization == null)) {
+        lines.add('  ${ids[node.name]}["${node.name}"]');
+      }
+
+      final orgIds = _mermaidOrgIds(orgs, ids.values);
+      for (final org in orgs) {
+        lines.add('  subgraph ${orgIds[org]}["$org"]');
+        for (final node in nodes.where((n) => n.organization == org)) {
+          lines.add('    ${ids[node.name]}["${node.name}"]');
+        }
+        lines.add('  end');
+      }
     }
 
     for (final edge in edges) {
@@ -543,6 +577,31 @@ class GraphCommand extends DirCommand<void> {
         id = '${base}_${++suffix}';
       }
       result[node.name] = id;
+    }
+
+    return result;
+  }
+
+  // ...........................................................................
+  /// Maps every organization to a subgraph id that collides with no node id.
+  ///
+  /// Mermaid keeps subgraph and node ids in one namespace, so an organization
+  /// named like one of its packages would otherwise swallow that node.
+  Map<String, String> _mermaidOrgIds(
+    List<String> orgs,
+    Iterable<String> nodeIds,
+  ) {
+    final result = <String, String>{};
+    final used = <String>{...nodeIds};
+
+    for (final org in orgs) {
+      final base = 'org_${org.replaceAll(RegExp(r'[^A-Za-z0-9_]'), '_')}';
+      var id = base;
+      var suffix = 1;
+      while (!used.add(id)) {
+        id = '${base}_${++suffix}';
+      }
+      result[org] = id;
     }
 
     return result;
