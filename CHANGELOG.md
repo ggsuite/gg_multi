@@ -12,6 +12,7 @@ turns the boxes off.
 ### Changed
 
 - Allow to group nodes by org
+- Allow to print dependency graphs using "gg do create graph"
 - Allow to print dependency graphs using &quot;gg do create graph&quot;
 
 ## 7.5.0 - 2026-08-01
