@@ -643,6 +643,11 @@ class AddCommand extends Command<dynamic> {
     required String repoName,
     required GgLog ggLog,
   }) async {
+    await _throwIfMasterRepoIsDirty(
+      repoDir: repoDir,
+      repoName: repoName,
+      ggLog: ggLog,
+    );
     await _gitFetch(repoDir: repoDir, repoName: repoName, ggLog: ggLog);
     await _gitResetHardToOriginMain(
       repoDir: repoDir,
@@ -677,6 +682,68 @@ class AddCommand extends Command<dynamic> {
         ),
       );
     }
+  }
+
+  /// Throws when the master copy of [repoName] carries uncommitted changes.
+  ///
+  /// The preparation below runs `git reset --hard origin/main`, which would
+  /// throw away every modification the user made in the master workspace
+  /// without a trace. So a dirty repo stops the `add` instead: the user has
+  /// to commit, stash or revert the changes first. Untracked files survive
+  /// the reset and are therefore not counted as dirty.
+  Future<void> _throwIfMasterRepoIsDirty({
+    required Directory repoDir,
+    required String repoName,
+    required GgLog ggLog,
+  }) async {
+    final result = await processRunner(
+      'git',
+      <String>['status', '--porcelain', '--untracked-files=no'],
+      workingDirectory: repoDir.path,
+      runInShell: true,
+    );
+
+    // A folder git cannot report on (e.g. no repository at all) has no
+    // changes that could be lost — the failure is logged and the following
+    // steps report it as well.
+    if (result.exitCode != 0) {
+      ggLog(
+        red(
+          'Failed to execute git status in $repoName in master workspace: '
+          '${result.stderr}',
+        ),
+      );
+      return;
+    }
+
+    final changes = const LineSplitter()
+        .convert('${result.stdout}')
+        .where((l) => l.trim().isNotEmpty)
+        .toList();
+
+    if (changes.isEmpty) {
+      return;
+    }
+
+    ggLog(
+      red(
+        'The repository $repoName in the master workspace has uncommitted '
+        'changes:',
+      ),
+    );
+    for (final change in changes) {
+      ggLog(red('  $change'));
+    }
+    ggLog(
+      yellow(
+        'Commit, stash or revert them before running "gg do add" — '
+        'otherwise they would be lost.',
+      ),
+    );
+
+    throw Exception(
+      'Repository $repoName in the master workspace is not clean',
+    );
   }
 
   /// Runs a single git command in [repoDir] and logs success/failure.

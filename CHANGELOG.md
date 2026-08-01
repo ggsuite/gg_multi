@@ -5,6 +5,7 @@
 ### Changed
 
 - Do not write dart specific code into pure typescript .gitattributes
+- Throw an error when added repo in master is not clean
 
 ## 7.4.0 - 2026-08-01
 

@@ -490,6 +490,14 @@ dev_dependencies:
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
 
+        when(
+          () => mockProc(
+            'git',
+            ['status', '--porcelain', '--untracked-files=no'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
         createRunner(
           executionPath: ticketDir.path,
           ggDoCommit: mockDoCommit,
@@ -640,6 +648,14 @@ dev_dependencies:
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
 
+        when(
+          () => mockProc(
+            'git',
+            ['status', '--porcelain', '--untracked-files=no'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
         createRunner(
           executionPath: ticketDir.path,
           ggDoCommit: mockDoCommit,
@@ -723,6 +739,14 @@ dev_dependencies:
           ),
         ).thenAnswer((_) async {});
 
+        when(
+          () => mockProc(
+            'git',
+            ['status', '--porcelain', '--untracked-files=no'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
         createRunner(
           executionPath: ticketDir.path,
           processRunner: mockProc.call,
@@ -787,6 +811,14 @@ dev_dependencies:
         ).thenAnswer((_) async {});
 
         var fetchCalls = 0;
+        when(
+          () => mockProc(
+            'git',
+            ['status', '--porcelain', '--untracked-files=no'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
         createRunner(
           executionPath: ticketDir.path,
           processRunner: mockProc.call,
@@ -864,6 +896,14 @@ dev_dependencies:
         ).thenAnswer((_) async {});
 
         const repoUrl = '${orgUrl}tx_known_org_dep.git';
+        when(
+          () => mockProc(
+            'git',
+            ['status', '--porcelain', '--untracked-files=no'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
         createRunner(
           executionPath: ticketDir.path,
           processRunner: mockProc.call,
@@ -934,6 +974,14 @@ dev_dependencies:
           ),
         ).thenAnswer((_) async {});
 
+        when(
+          () => mockProc(
+            'git',
+            ['status', '--porcelain', '--untracked-files=no'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
         createRunner(
           executionPath: ticketDir.path,
           processRunner: mockProc.call,
@@ -1039,6 +1087,14 @@ version: 1.0.0
         ),
       ).thenAnswer((_) async {});
 
+      when(
+        () => mockProc(
+          'git',
+          ['status', '--porcelain', '--untracked-files=no'],
+          workingDirectory: any(named: 'workingDirectory'),
+          runInShell: true,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
       createRunner(
         executionPath: ticketDir.path,
         processRunner: mockProc.call,
@@ -1056,6 +1112,130 @@ version: 1.0.0
           (json['folders'] as List<dynamic>).cast<Map<String, dynamic>>();
       final paths = folders.map((f) => f['path'] as String).toSet();
       expect(paths, equals(<String>{repoName}));
+    });
+
+    test('throws when the master repo has uncommitted changes', () async {
+      const repoName = 'dirtyRepo';
+      final masterRepoDir = Directory(
+        path.join(masterWorkspacePath, repoName),
+      )..createSync(recursive: true);
+      File(path.join(masterRepoDir.path, 'file.txt')).writeAsStringSync('x');
+
+      final ticketDir = Directory(
+        path.join(tempDir.path, ggMultiTicketFolder, 'TICKET_DIRTY'),
+      )..createSync(recursive: true);
+
+      final mockProc = MockProcessRunner();
+      when(
+        () => mockProc(
+          any(),
+          any(),
+          workingDirectory: any(named: 'workingDirectory'),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => mockProc(
+          'git',
+          ['status', '--porcelain', '--untracked-files=no'],
+          workingDirectory: masterRepoDir.path,
+          runInShell: true,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, ' M file.txt\n', ''));
+
+      createRunner(
+        executionPath: ticketDir.path,
+        processRunner: mockProc.call,
+      );
+
+      await expectLater(
+        () async => runner.run(['add', '--verbose', repoName]),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains(
+              'Repository $repoName in the master workspace is not clean',
+            ),
+          ),
+        ),
+      );
+
+      expect(
+        logMessages.any(
+          (m) => m.contains(
+            'The repository $repoName in the master workspace has '
+            'uncommitted changes:',
+          ),
+        ),
+        isTrue,
+      );
+      expect(logMessages.any((m) => m.contains('M file.txt')), isTrue);
+
+      // The repo was not reset and not copied.
+      verifyNever(
+        () => mockProc(
+          'git',
+          ['reset', '--hard', 'origin/main'],
+          workingDirectory: masterRepoDir.path,
+          runInShell: true,
+        ),
+      );
+      expect(
+        Directory(path.join(ticketDir.path, repoName)).existsSync(),
+        isFalse,
+      );
+    });
+
+    test('logs when git status fails and continues', () async {
+      const repoName = 'statusFailRepo';
+      final masterRepoDir = Directory(
+        path.join(masterWorkspacePath, repoName),
+      )..createSync(recursive: true);
+      File(path.join(masterRepoDir.path, 'file.txt')).writeAsStringSync('x');
+
+      final ticketDir = Directory(
+        path.join(tempDir.path, ggMultiTicketFolder, 'TICKET_STATUS_FAIL'),
+      )..createSync(recursive: true);
+
+      final mockProc = MockProcessRunner();
+      when(
+        () => mockProc(
+          any(),
+          any(),
+          workingDirectory: any(named: 'workingDirectory'),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => mockProc(
+          'git',
+          ['status', '--porcelain', '--untracked-files=no'],
+          workingDirectory: masterRepoDir.path,
+          runInShell: true,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 1, '', 'status error'));
+
+      createRunner(
+        executionPath: ticketDir.path,
+        processRunner: mockProc.call,
+      );
+
+      await runner.run(['add', '--verbose', repoName]);
+
+      expect(
+        logMessages.any(
+          (m) => m.contains(
+            'Failed to execute git status in $repoName in master '
+            'workspace: status error',
+          ),
+        ),
+        isTrue,
+      );
+      expect(
+        Directory(path.join(ticketDir.path, repoName)).existsSync(),
+        isTrue,
+      );
     });
 
     test('logs error when git reset fails but still copies repo', () async {
@@ -1157,6 +1337,15 @@ version: 1.0.0
           runInShell: true,
         ),
       ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
+
+      when(
+        () => mockProc(
+          'git',
+          ['status', '--porcelain', '--untracked-files=no'],
+          workingDirectory: any(named: 'workingDirectory'),
+          runInShell: true,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
 
       final localRunner = CommandRunner<void>('test', 'Add pull fail')
         ..addCommand(
@@ -1368,6 +1557,14 @@ version: 1.0.0
             runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['status', '--porcelain', '--untracked-files=no'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
         createRunner(
           executionPath: ticketDir.path,
           processRunner: mockProcessRunner.call,
@@ -1555,6 +1752,14 @@ version: 1.0.0
             ),
           ).thenAnswer((_) async {});
 
+          when(
+            () => mockProc(
+              'git',
+              ['status', '--porcelain', '--untracked-files=no'],
+              workingDirectory: any(named: 'workingDirectory'),
+              runInShell: true,
+            ),
+          ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
           createRunner(
             executionPath: ticketDir.path,
             processRunner: mockProc.call,
@@ -1633,6 +1838,14 @@ version: 1.0.0
             ),
           ).thenAnswer((_) async {});
 
+          when(
+            () => mockProc(
+              'git',
+              ['status', '--porcelain', '--untracked-files=no'],
+              workingDirectory: any(named: 'workingDirectory'),
+              runInShell: true,
+            ),
+          ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
           createRunner(
             executionPath: ticketDir.path,
             processRunner: mockProc.call,
@@ -1690,6 +1903,14 @@ version: 1.0.0
             ),
           ).thenAnswer((_) async {});
 
+          when(
+            () => mockProc(
+              'git',
+              ['status', '--porcelain', '--untracked-files=no'],
+              workingDirectory: any(named: 'workingDirectory'),
+              runInShell: true,
+            ),
+          ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
           createRunner(
             executionPath: ticketDir.path,
             processRunner: mockProc.call,
@@ -1811,6 +2032,14 @@ version: 1.0.0
         ),
       ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
 
+      when(
+        () => mockProc(
+          'git',
+          ['status', '--porcelain', '--untracked-files=no'],
+          workingDirectory: any(named: 'workingDirectory'),
+          runInShell: true,
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
       createRunner(
         executionPath: ticketDir.path,
         ggDoCommit: mockDoCommit,
@@ -1964,6 +2193,14 @@ version: 1.0.0
           ),
         ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
 
+        when(
+          () => mockRunner(
+            'git',
+            ['status', '--porcelain', '--untracked-files=no'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
         createRunner(
           executionPath: ticketDir.path,
           processRunner: mockRunner.call,
@@ -2059,6 +2296,14 @@ version: 1.0.0
           ),
         ).thenAnswer((_) async {});
 
+        when(
+          () => mockRunner(
+            'git',
+            ['status', '--porcelain', '--untracked-files=no'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
         createRunner(
           executionPath: ticketDir.path,
           processRunner: mockRunner.call,
@@ -2175,6 +2420,14 @@ version: 1.0.0
           ),
         ).thenAnswer((_) async {});
 
+        when(
+          () => mockRunner(
+            'git',
+            ['status', '--porcelain', '--untracked-files=no'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
         createRunner(
           executionPath: ticketDir.path,
           processRunner: mockRunner.call,
@@ -2348,6 +2601,14 @@ version: 1.0.0
           ),
         ).thenAnswer((_) async {});
 
+        when(
+          () => mockProc(
+            'git',
+            ['status', '--porcelain', '--untracked-files=no'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
         createRunner(
           executionPath: ticketDir.path,
           processRunner: mockProc.call,
@@ -2452,6 +2713,14 @@ version: 1.0.0
           ),
         ).thenAnswer((_) async {});
 
+        when(
+          () => mockProc(
+            'git',
+            ['status', '--porcelain', '--untracked-files=no'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
         createRunner(
           executionPath: ticketDir.path,
           processRunner: mockProc.call,
@@ -2570,6 +2839,14 @@ version: 1.0.0
           ),
         ).thenAnswer((_) async {});
 
+        when(
+          () => mockProc(
+            'git',
+            ['status', '--porcelain', '--untracked-files=no'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
         createRunner(
           executionPath: ticketDir.path,
           processRunner: mockProc.call,
@@ -2699,6 +2976,14 @@ version: 1.0.0
           ),
         ).thenAnswer((_) async {});
 
+        when(
+          () => mockProc(
+            'git',
+            ['status', '--porcelain', '--untracked-files=no'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
         createRunner(
           executionPath: ticketDir.path,
           processRunner: mockProc.call,
@@ -2838,6 +3123,14 @@ version: 1.0.0
           ),
         ).thenAnswer((_) async {});
 
+        when(
+          () => mockProc(
+            'git',
+            ['status', '--porcelain', '--untracked-files=no'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
         createRunner(
           executionPath: ticketDir.path,
           processRunner: mockProc.call,
@@ -2947,6 +3240,14 @@ version: 1.0.0
           ),
         ).thenAnswer((_) async {});
 
+        when(
+          () => mockProc(
+            'git',
+            ['status', '--porcelain', '--untracked-files=no'],
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
         createRunner(
           executionPath: ticketDir.path,
           processRunner: mockProc.call,
