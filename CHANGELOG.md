@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Merge gg one do merge to gg one do publish --merge-only
+
+### Removed
+
+- Dead »MockGgDoMerge« stubs in the do-review tests — gg_one's »DoMerge« class is gone, its merge implementation is now gg_one's »MergeFlow«
+
 ## 7.3.1 - 2026-08-01
 
 ### Changed

@@ -33,8 +33,6 @@ class MockGgDoCommit extends Mock implements gg.DoCommit {}
 
 class MockGgDoPush extends Mock implements gg.DoPush {}
 
-class MockGgDoMerge extends Mock implements gg.DoMerge {}
-
 class FakeDirectory extends Fake implements Directory {}
 
 class MockGgCanCommit extends Mock implements gg.CanCommit {}
@@ -348,7 +346,6 @@ void main() {
         final mockCanReviewCommand = MockCanReviewCommand();
         final mockGgDoCommit = MockGgDoCommit();
         final mockGgDoPush = MockGgDoPush();
-        final mockGgDoMerge = MockGgDoMerge();
         final mockProcessRunner = MockProcessRunner();
         stubGitHeadUnchanged(mockProcessRunner);
 
@@ -416,16 +413,6 @@ void main() {
           () => mockGgDoPush.exec(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
-          ),
-        ).thenAnswer((_) async {});
-
-        when(
-          () => mockGgDoMerge.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-            automerge: any(named: 'automerge'),
-            local: any(named: 'local'),
-            message: any(named: 'message'),
           ),
         ).thenAnswer((_) async {});
 
@@ -812,7 +799,6 @@ void main() {
       final mockCanReviewCommand = MockCanReviewCommand();
       final mockGgDoCommit = MockGgDoCommit();
       final mockGgDoPush = MockGgDoPush();
-      final mockGgDoMerge = MockGgDoMerge();
       final mockProcessRunner = MockProcessRunner();
       stubGitHeadUnchanged(mockProcessRunner);
 
@@ -870,16 +856,6 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      when(
-        () => mockGgDoMerge.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          automerge: any(named: 'automerge'),
-          local: any(named: 'local'),
-          message: any(named: 'message'),
-        ),
-      ).thenAnswer((_) async {});
-
       final runner = CommandRunner<void>('test', 'do review ticket')
         ..addCommand(
           DoReviewCommand(
@@ -927,7 +903,6 @@ void main() {
       final mockCanReviewCommand = MockCanReviewCommand();
       final mockGgDoCommit = MockGgDoCommit();
       final mockGgDoPush = MockGgDoPush();
-      final mockGgDoMerge = MockGgDoMerge();
       final mockProcessRunner = MockProcessRunner();
       stubGitHeadUnchanged(mockProcessRunner);
 
@@ -993,16 +968,6 @@ void main() {
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
 
-      when(
-        () => mockGgDoMerge.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          automerge: any(named: 'automerge'),
-          local: any(named: 'local'),
-          message: any(named: 'message'),
-        ),
-      ).thenAnswer((_) async {});
-
       final runner = CommandRunner<void>('test', 'do review ticket')
         ..addCommand(
           DoReviewCommand(
@@ -1052,7 +1017,6 @@ void main() {
         final mockCanReviewCommand = MockCanReviewCommand();
         final mockGgDoCommit = MockGgDoCommit();
         final mockGgDoPush = MockGgDoPush();
-        final mockGgDoMerge = MockGgDoMerge();
         final mockProcessRunner = MockProcessRunner();
         stubGitHeadUnchanged(mockProcessRunner);
 
@@ -1108,16 +1072,6 @@ void main() {
             ggLog: any(named: 'ggLog'),
           ),
         ).thenAnswer((_) async {});
-        when(
-          () => mockGgDoMerge.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-            automerge: any(named: 'automerge'),
-            local: any(named: 'local'),
-            message: any(named: 'message'),
-          ),
-        ).thenAnswer((_) async {});
-
         final runner = CommandRunner<void>('test', 'do review ticket')
           ..addCommand(
             DoReviewCommand(
@@ -1174,7 +1128,6 @@ void main() {
         final mockGgDoPush = MockGgDoPush();
         final mockProcessRunner = MockProcessRunner();
         stubGitHeadUnchanged(mockProcessRunner);
-        final mockGgDoMerge = MockGgDoMerge();
 
         final repoADir = Directory(path.join(ticketDir.path, 'A'));
         File(path.join(repoADir.path, 'pubspec.yaml')).writeAsStringSync(
@@ -1251,16 +1204,6 @@ void main() {
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
 
-        when(
-          () => mockGgDoMerge.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-            automerge: any(named: 'automerge'),
-            local: any(named: 'local'),
-            message: any(named: 'message'),
-          ),
-        ).thenAnswer((_) async {});
-
         final runner = CommandRunner<void>('test', 'do review ticket')
           ..addCommand(
             DoReviewCommand(
@@ -1302,7 +1245,6 @@ void main() {
         final mockGgDoPush = MockGgDoPush();
         final mockProcessRunner = MockProcessRunner();
         stubGitHeadUnchanged(mockProcessRunner);
-        final mockGgDoMerge = MockGgDoMerge();
 
         final repoADir = Directory(path.join(ticketDir.path, 'A'));
         File(path.join(repoADir.path, 'pubspec.yaml')).writeAsStringSync(
@@ -1372,16 +1314,6 @@ void main() {
         ).thenAnswer(
           (_) async => ProcessResult(1, 1, '', 'upgrade error'),
         );
-
-        when(
-          () => mockGgDoMerge.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-            automerge: any(named: 'automerge'),
-            local: any(named: 'local'),
-            message: any(named: 'message'),
-          ),
-        ).thenAnswer((_) async {});
 
         final runner = CommandRunner<void>('test', 'do review ticket')
           ..addCommand(

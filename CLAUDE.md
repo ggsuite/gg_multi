@@ -123,7 +123,7 @@ It runs at the start of `do add` (master **and** ticket) and of `do checkout` (m
 
 ### `.gg/ticket.json` ticket marker
 
-`do add` writes a pretty-printed `.gg/ticket.json` into **every** repo of a ticket (overwriting on each `add` so it stays current). It holds `issue_id`, `description` and the full list of repos with their git URLs, and is whitelisted in each repo's `.gitignore` (`!.gg/ticket.json`) so it travels with the feature branch. `gg_one` removes it again before publishing: `do publish` drops it before the version bump and registry upload (so it never ships to pub.dev/npm) and `do merge` drops it before merging (so it never reaches `main`). Logic lives in `lib/src/backend/ticket_json.dart`.
+`do add` writes a pretty-printed `.gg/ticket.json` into **every** repo of a ticket (overwriting on each `add` so it stays current). It holds `issue_id`, `description` and the full list of repos with their git URLs, and is whitelisted in each repo's `.gitignore` (`!.gg/ticket.json`) so it travels with the feature branch. `gg_one` removes it again before publishing: `do publish` drops it before the version bump and registry upload (so it never ships to pub.dev/npm) and its merge step drops it before merging (so it never reaches `main`; gg_one has no `do merge` command anymore — the merge lives in `MergeFlow`, driven by `do publish`). Logic lives in `lib/src/backend/ticket_json.dart`.
 
 ### No git hooks
 
