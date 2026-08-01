@@ -128,7 +128,6 @@ void main() {
             capturedInitials.add(initial);
             return initial;
           },
-      confirmDeleteTicket: (_) => true,
     );
   }
 
@@ -158,7 +157,6 @@ void main() {
       final config = await command.configure(
         directory: emptyTicket,
         ggLog: ggLog,
-        deleteTicket: false,
       );
 
       expect(messages, contains('⚠️ No repos in this ticket'));
@@ -170,7 +168,7 @@ void main() {
         configArg: file.path,
         fallbackDir: emptyTicket.path,
       );
-      expect(reloaded.deleteTicket, isFalse);
+      expect(reloaded.deleteTicket, isNull);
       expect(reloaded.repos, isEmpty);
     });
 
@@ -186,7 +184,6 @@ void main() {
       await command.configure(
         directory: ticketDir,
         ggLog: ggLog,
-        deleteTicket: true,
       );
 
       final file = DoConfigurePublishCommand.configFileFor(ticketDir);
@@ -198,12 +195,12 @@ void main() {
       expect(cfg.repos['A']!.mergeMessage, 'Ticket desc');
       expect(cfg.repos['B']!.versionIncrement, 'patch');
       expect(cfg.repos['B']!.mergeMessage, 'Ticket desc');
-      expect(cfg.deleteTicket, isTrue);
+      expect(cfg.deleteTicket, isNull);
       // Both repos were shown the merge-message editor with the description.
       expect(capturedInitials, ['Ticket desc', 'Ticket desc']);
     });
 
-    test('CLI run resolves the directory and prompts for delete_ticket',
+    test('CLI run resolves the directory and writes no delete_ticket',
         () async {
       final command = makeCommand(
         repos: [node('A')],
@@ -221,8 +218,8 @@ void main() {
       expect(cfg.repos['A']!.versionIncrement, 'major');
       // No .ticket and an empty edit → generic non-empty fallback message.
       expect(cfg.repos['A']!.mergeMessage, 'Publish A');
-      // confirmDeleteTicket stub returns true.
-      expect(cfg.deleteTicket, isTrue);
+      // The delete-ticket question is gone: `do publish` always trashes.
+      expect(cfg.deleteTicket, isNull);
     });
 
     test('falls back to the ticket description when the edit is empty',
@@ -237,7 +234,6 @@ void main() {
       await command.configure(
         directory: ticketDir,
         ggLog: ggLog,
-        deleteTicket: true,
       );
 
       final file = DoConfigurePublishCommand.configFileFor(ticketDir);
@@ -259,7 +255,6 @@ void main() {
         await command.configure(
           directory: ticketDir,
           ggLog: ggLog,
-          deleteTicket: true,
         );
         expect(adapter.capturedOptions.first.first, contains('2.5.0'));
       });
@@ -280,7 +275,6 @@ void main() {
         await command.configure(
           directory: ticketDir,
           ggLog: ggLog,
-          deleteTicket: true,
         );
         expect(
           adapter.capturedOptions.first.first,
@@ -299,7 +293,6 @@ void main() {
         await command.configure(
           directory: ticketDir,
           ggLog: ggLog,
-          deleteTicket: true,
         );
         expect(adapter.capturedOptions.first.first, contains('0.0.0'));
       });
@@ -311,7 +304,6 @@ void main() {
         await command.configure(
           directory: ticketDir,
           ggLog: ggLog,
-          deleteTicket: true,
         );
         expect(capturedInitials, ['']);
       });
@@ -322,7 +314,6 @@ void main() {
         await command.configure(
           directory: ticketDir,
           ggLog: ggLog,
-          deleteTicket: true,
         );
         expect(capturedInitials, ['']);
       });
@@ -335,7 +326,6 @@ void main() {
         await command.configure(
           directory: ticketDir,
           ggLog: ggLog,
-          deleteTicket: true,
         );
         expect(capturedInitials, ['']);
       });
@@ -347,7 +337,6 @@ void main() {
         await command.configure(
           directory: ticketDir,
           ggLog: ggLog,
-          deleteTicket: true,
         );
         expect(capturedInitials, ['']);
       });
@@ -372,7 +361,6 @@ void main() {
         () => command.configure(
           directory: ticketDir,
           ggLog: ggLog,
-          deleteTicket: true,
         ),
         throwsA(
           isA<Exception>().having(
@@ -397,7 +385,6 @@ void main() {
       final config = await command.configure(
         directory: ticketDir,
         ggLog: ggLog,
-        deleteTicket: true,
         defaultMergeMessage: 'new',
       );
 
@@ -410,7 +397,6 @@ void main() {
         await command.configure(
           directory: ticketDir,
           ggLog: ggLog,
-          deleteTicket: true,
           defaultMergeMessage: 'CLI msg',
         );
         // No .ticket; -m pre-fills the prompt and becomes the message.
@@ -431,7 +417,6 @@ void main() {
         await command.configure(
           directory: ticketDir,
           ggLog: ggLog,
-          deleteTicket: true,
           defaultMergeMessage: '  CLI msg  ',
         );
         // -m wins and is trimmed.
@@ -445,7 +430,6 @@ void main() {
         await command.configure(
           directory: ticketDir,
           ggLog: ggLog,
-          deleteTicket: true,
           defaultMergeMessage: '   ',
         );
         expect(capturedInitials, ['Ticket desc']);

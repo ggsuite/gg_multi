@@ -365,6 +365,44 @@ void main() {
         expect(markerOf(b).repositories.map((r) => r.name), ['a', 'b']);
       });
 
+      test('drops the deleted repo from pubspec_overrides.yaml', () async {
+        final c = makePackage(alphaDir, 'c');
+        writeMarker(c, ['a', 'b', 'c']);
+        File(path.join(b.path, 'pubspec_overrides.yaml')).writeAsStringSync(
+          'dependency_overrides:\n'
+          '  a:\n    path: ../a\n'
+          '  c:\n    path: ../c\n',
+        );
+        // c only overrides the deleted repo — its file goes away entirely.
+        File(path.join(c.path, 'pubspec_overrides.yaml')).writeAsStringSync(
+          'dependency_overrides:\n  a:\n    path: ../a\n',
+        );
+
+        await runnerAt(alphaDir.path).run(['rm', 'a']);
+
+        final overridesOfB = File(path.join(b.path, 'pubspec_overrides.yaml'))
+            .readAsStringSync();
+        expect(overridesOfB, isNot(contains('../a')));
+        expect(overridesOfB, contains('../c'));
+        expect(
+          File(path.join(c.path, 'pubspec_overrides.yaml')).existsSync(),
+          isFalse,
+        );
+        expect(
+          messages,
+          contains('Removed a from pubspec_overrides.yaml of 2 repo(s).'),
+        );
+      });
+
+      test('says nothing when no repo overrides the deleted one', () async {
+        await runnerAt(alphaDir.path).run(['rm', 'a']);
+
+        expect(
+          messages.any((m) => m.contains('pubspec_overrides.yaml of')),
+          isFalse,
+        );
+      });
+
       test('writes no marker into repos that have none', () async {
         Directory(path.join(b.path, '.gg')).deleteSync(recursive: true);
 

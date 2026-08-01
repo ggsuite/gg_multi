@@ -51,7 +51,6 @@ class DoMergeCommand extends DoPublishCommand {
     super.publishSkipCheck,
     super.doConfigurePublishCommand,
     super.ensureIgnored,
-    super.confirmDeleteTicket,
   });
 }
 

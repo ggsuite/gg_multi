@@ -1,5 +1,15 @@
 # Changelog
 
+## 7.2.0 - 2026-08-01
+
+### Changed
+
+- Introtruce .trash for deleted tickets and repos
+
+### Removed
+
+- Introduce .trash for published tickets and removed repos
+
 ## 7.1.4 - 2026-08-01
 
 ### Changed

@@ -15,13 +15,13 @@ import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:gg_status_printer/gg_status_printer.dart';
-import 'package:interact/interact.dart';
 import 'package:path/path.dart' as path;
 
 import '../../backend/git_snapshot.dart' as git_snapshot;
 import '../../backend/npm_registry_checker.dart';
 import '../../backend/pub_dev_checker.dart';
 import '../../backend/publish_skip_check.dart';
+import '../../backend/trash.dart';
 import '../../backend/workspace_utils.dart';
 import '../../commands/can/publish.dart';
 import 'configure_publish.dart' show DoConfigurePublishCommand;
@@ -34,9 +34,6 @@ typedef ProcessRunner = Future<ProcessResult> Function(
   String? workingDirectory,
   Map<String, String>? environment,
 });
-
-/// Typedef for asking the user whether the ticket should be deleted.
-typedef ConfirmDeleteTicket = bool Function(String ticketName);
 
 /// Snapshot of a repository's state taken before its publish starts.
 class _RepoPublishSnapshot {
@@ -121,7 +118,6 @@ class DoPublishCommand extends DirCommand<void> {
     PublishSkipCheck? publishSkipCheck,
     DoConfigurePublishCommand? doConfigurePublishCommand,
     gg.EnsurePublishConfigIgnored? ensureIgnored,
-    ConfirmDeleteTicket? confirmDeleteTicket,
   })  : _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
         _unlocalizeRefs = unlocalizeRefs ?? ChangeRefsToPubDev(ggLog: ggLog),
         _restorePublishTo = restorePublishTo ?? RestorePublishTo(ggLog: ggLog),
@@ -142,9 +138,7 @@ class DoPublishCommand extends DirCommand<void> {
             DoConfigurePublishCommand(ggLog: ggLog),
         _ensureIgnored =
             ensureIgnored ?? gg.EnsurePublishConfigIgnored(ggLog: ggLog),
-        _processRunner = processRunner ?? _defaultProcessRunner,
-        _confirmDeleteTicket =
-            confirmDeleteTicket ?? _defaultConfirmDeleteTicket {
+        _processRunner = processRunner ?? _defaultProcessRunner {
     _addArgs();
   }
 
@@ -215,19 +209,18 @@ class DoPublishCommand extends DirCommand<void> {
   /// Runs shell commands such as branch deletion.
   final ProcessRunner _processRunner;
 
-  /// Asks the user whether the ticket should be deleted.
-  final ConfirmDeleteTicket _confirmDeleteTicket;
-
   @override
   Future<void> exec({
     required Directory directory,
     required GgLog ggLog,
     bool? verbose,
+    bool? deleteRemoteBranch,
   }) =>
       get(
         directory: directory,
         ggLog: ggLog,
         verbose: verbose,
+        deleteRemoteBranch: deleteRemoteBranch,
       );
 
   @override
@@ -235,6 +228,7 @@ class DoPublishCommand extends DirCommand<void> {
     required Directory directory,
     required GgLog ggLog,
     bool? verbose,
+    bool? deleteRemoteBranch,
   }) async {
     verbose ??= argResults?['verbose'] as bool? ?? false;
     final continueRun = argResults?['continue'] as bool? ?? false;
@@ -243,6 +237,7 @@ class DoPublishCommand extends DirCommand<void> {
     final force = mergeOnly && (argResults?['force'] as bool? ?? false);
     final String? configArg = argResults?['config'] as String?;
     final String? messageArg = argResults?['message'] as String?;
+    deleteRemoteBranch ??= argResults?['delete-remote-branch'] as bool? ?? true;
 
     // Only an explicitly passed --pr/--no-pr is forwarded to the repos; when
     // absent, each repo's persisted .gg/gg-publish.json (on resume) or the
@@ -262,7 +257,6 @@ class DoPublishCommand extends DirCommand<void> {
     }
 
     final ticketDir = Directory(ticketPath);
-    final ticketName = path.basename(ticketDir.path);
     final runtimeFile = DoConfigurePublishCommand.configFileFor(ticketDir);
 
     // Step 2: Resolve the publish configuration up front so the rest of the
@@ -510,52 +504,116 @@ class DoPublishCommand extends DirCommand<void> {
       );
     }
 
-    // delete_ticket from .gg-publish.json wins; else interactive prompt.
-    final bool shouldDeleteTicket =
-        publishConfig.deleteTicket ?? _confirmDeleteTicket(ticketName);
-    if (!shouldDeleteTicket) {
-      taskLog(
-        yellow(
-          'Skipped deleting repositories in ticket $ticketName.',
-        ),
-      );
-      taskLog(
-        '✅ All repositories in ticket $ticketName $_done successfully.',
-      );
-      return;
-    }
+    // Step 6: Clean the ticket up. The repos are never deleted outright —
+    // they move to <root>/.trash/<ticket>, so uncommitted leftovers stay
+    // recoverable. The remote feature branch is deleted unless
+    // --no-delete-remote-branch was passed.
+    await _cleanUpTicket(
+      ticketDir: ticketDir,
+      subs: subs,
+      deleteRemoteBranch: deleteRemoteBranch,
+      ggLog: ggLog,
+      taskLog: taskLog,
+    );
+
+    taskLog('✅ All repos $_done');
+  }
+
+  /// Moves everything the published ticket leaves behind into
+  /// `<root>/.trash/<ticket>` and removes the ticket folder afterwards.
+  ///
+  /// Every repository of the ticket is moved — also when its remote feature
+  /// branch is kept ([deleteRemoteBranch] is false), because the ticket
+  /// folder goes away either way and a repo left inside it would be lost.
+  /// The `<ticket>.code-workspace` file travels along, so reopening the
+  /// published ticket in VS Code is still possible from the trash.
+  ///
+  /// A failure while trashing a single repo is reported and the remaining
+  /// ones are still processed; the ticket folder is only removed when
+  /// nothing was left behind.
+  Future<void> _cleanUpTicket({
+    required Directory ticketDir,
+    required List<Node> subs,
+    required bool deleteRemoteBranch,
+    required GgLog ggLog,
+    required GgLog taskLog,
+  }) async {
+    final ticketName = path.basename(ticketDir.path);
+    var allMoved = true;
 
     for (final repo in subs) {
       final repoDir = repo.directory;
       final repoName = path.basename(repoDir.path);
 
       try {
-        await _deleteRemoteBranch(
-          repoDir: repoDir,
-          branchName: ticketName,
-          ggLog: taskLog,
-        );
+        if (deleteRemoteBranch) {
+          await _deleteRemoteBranch(
+            repoDir: repoDir,
+            branchName: ticketName,
+            ggLog: taskLog,
+          );
+        } else {
+          taskLog(
+            yellow('Kept remote branch $ticketName for $repoName.'),
+          );
+        }
 
         if (repoDir.existsSync()) {
-          repoDir.deleteSync(recursive: true);
+          final target = await Trash.moveFromTicket(
+            source: repoDir,
+            ticketDir: ticketDir,
+          );
           taskLog(
             green(
-              'Deleted repository $repoName from ticket $ticketName after '
-              'the successful ${mergeOnly ? 'merge' : 'publish'}.',
+              'Moved repository $repoName of ticket $ticketName to $target.',
             ),
           );
         }
       } catch (e) {
+        allMoved = false;
         ggLog(
           red(
-            'Failed to delete repository $repoName from ticket $ticketName: '
-            '$e',
+            'Failed to move repository $repoName of ticket $ticketName to '
+            'the trash: $e',
           ),
         );
       }
     }
 
-    taskLog('✅ All repos $_done');
+    // The VS Code workspace describes a ticket that no longer exists — it
+    // belongs to the trashed repos, so it follows them.
+    final workspaceFile = File(
+      path.join(ticketDir.path, '$ticketName.code-workspace'),
+    );
+    if (workspaceFile.existsSync()) {
+      try {
+        final target = await Trash.moveFromTicket(
+          source: workspaceFile,
+          ticketDir: ticketDir,
+        );
+        taskLog(green('Moved ${path.basename(target)} to $target.'));
+      } catch (e) {
+        allMoved = false;
+        ggLog(
+          red('Failed to move the VS Code workspace of $ticketName: $e'),
+        );
+      }
+    }
+
+    if (!allMoved) {
+      ggLog(
+        yellow(
+          'Ticket $ticketName was not deleted because not everything could '
+          'be moved to the trash.',
+        ),
+      );
+      return;
+    }
+
+    if (ticketDir.existsSync()) {
+      ticketDir.deleteSync(recursive: true);
+      taskLog(green('Deleted ticket folder ${ticketDir.path}.'));
+    }
   }
 
   /// Resolves the publish configuration for the ticket in [ticketDir] and
@@ -1394,19 +1452,6 @@ class DoPublishCommand extends DirCommand<void> {
     );
   }
 
-  /// Asks the user whether the ticket repositories should be deleted.
-  static bool _defaultConfirmDeleteTicket(String ticketName) {
-    gg.throwWhenNotATerminal(
-      'the delete-ticket prompt',
-      'set delete_ticket in .gg/gg-publish.json (or --config)',
-    );
-    final selected = Select(
-      prompt: 'Delete ticket $ticketName and remove remote feature branches?',
-      options: ['Yes', 'No'],
-      initialIndex: 0,
-    ).interact();
-    return selected == 0;
-  }
   // coverage:ignore-end
 
   // Adds command line arguments
@@ -1422,9 +1467,17 @@ class DoPublishCommand extends DirCommand<void> {
     argParser.addOption(
       'config',
       help: 'Path to a .gg-publish.json file with per-repo merge_message + '
-          'version_increment, plus the optional ticket-wide '
-          '`delete_ticket` flag. Resolved as-given (CWD), then under the '
+          'version_increment. Resolved as-given (CWD), then under the '
           'ticket directory. Copied to .gg/gg-publish.json for the run.',
+    );
+    argParser.addFlag(
+      'delete-remote-branch',
+      help: 'Delete the remote feature branch of every repo after the '
+          'publish (default). --no-delete-remote-branch keeps the branches '
+          'on the git remote; the local repo folders are moved to '
+          '<root>/.trash/<ticket> either way.',
+      defaultsTo: true,
+      negatable: true,
     );
     argParser.addFlag(
       'pr',

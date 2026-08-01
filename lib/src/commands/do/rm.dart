@@ -12,6 +12,7 @@ import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 import '../../backend/add_repository_helper.dart';
 import '../../backend/constants.dart';
+import '../../backend/dependency_overrides.dart';
 import '../../backend/repo_folder_resolver.dart';
 import '../../backend/ticket_json.dart';
 import '../../backend/workspace_utils.dart';
@@ -116,6 +117,10 @@ class RemoveCommand extends Command<void> {
 
     _throwIfLinkingOtherRepos(repoName, ticketRepoDir, nodes);
 
+    // Collect the names the repo is referenced by *before* it is gone — the
+    // manifest that carries them is deleted with it.
+    final removedNames = _packageNamesOf(repoName, ticketRepoDir, nodes);
+
     ticketRepoDir.deleteSync(recursive: true);
     RepoFolderResolver.removeEmptyOrgFolder(
       workspacePath: _root,
@@ -130,6 +135,60 @@ class RemoveCommand extends Command<void> {
     );
 
     _updateTicketJson(ticketRepoDir, nodes);
+    _removeDependencyOverrides(ticketRepoDir, nodes, removedNames);
+  }
+
+  // ...........................................................................
+  /// All names the removed repo can appear under in another repo's
+  /// `dependency_overrides`: the folder name, the name it was addressed with,
+  /// and the package name(s) the dependency graph knows it by.
+  Set<String> _packageNamesOf(
+    String repoName,
+    Directory ticketRepoDir,
+    List<Node> nodes,
+  ) {
+    final names = <String>{repoName, path.basename(ticketRepoDir.path)};
+    for (final node in nodes) {
+      if (path.equals(node.directory.path, ticketRepoDir.path)) {
+        names.add(node.name);
+        names.addAll(node.aliases);
+      }
+    }
+    return names;
+  }
+
+  // ...........................................................................
+  /// Drops the removed repo from the `pubspec_overrides.yaml` of the repos
+  /// that stay in the ticket.
+  ///
+  /// Those overrides point at the sibling checkout (`path: ../<repo>`) that
+  /// just disappeared, so leaving them would break `dart pub get` in every
+  /// remaining repo.
+  void _removeDependencyOverrides(
+    Directory removedRepoDir,
+    List<Node> nodes,
+    Set<String> removedNames,
+  ) {
+    final remaining = [
+      for (final node in nodes)
+        if (!path.equals(node.directory.path, removedRepoDir.path))
+          node.directory,
+    ];
+
+    final changed = removeDependencyOverrides(
+      repoDirs: remaining,
+      packageNames: removedNames,
+    );
+    if (changed.isEmpty) {
+      return;
+    }
+
+    ggLog(
+      green(
+        'Removed ${path.basename(removedRepoDir.path)} from '
+        '$pubspecOverridesFileName of ${changed.length} repo(s).',
+      ),
+    );
   }
 
   // ...........................................................................
