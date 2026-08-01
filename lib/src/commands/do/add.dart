@@ -845,9 +845,18 @@ class AddCommand extends Command<dynamic> {
       final repoDir = node.directory;
       final repoName = path.basename(repoDir.path);
       try {
-        final backupFile =
-            File('${repoDir.path}/.gg_localize_refs_backup.json');
-        if (backupFile.existsSync()) {
+        // Dart and TypeScript each keep their own backup in .gg today; the
+        // shared and root-level names are what older checkouts still carry.
+        final backupFiles = [
+          for (final name in const <String>[
+            'gg_localize_refs_backup_dart.json',
+            'gg_localize_refs_backup_ts.json',
+            'gg_localize_refs_backup.json',
+          ])
+            File(path.join(repoDir.path, '.gg', name)),
+          File(path.join(repoDir.path, '.gg_localize_refs_backup.json')),
+        ];
+        if (backupFiles.any((f) => f.existsSync())) {
           await _unlocalizeRefs.get(directory: repoDir, ggLog: ggLog);
         }
       } catch (e) {

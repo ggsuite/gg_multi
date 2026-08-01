@@ -725,6 +725,36 @@ void main() {
         expect(decision.reason, contains('could be determined'));
       });
 
+      test('reads the unhidden Dart backup file name', () async {
+        // gg_localize_refs writes .gg/gg_localize_refs_backup.json today —
+        // only older checkouts carry the dot-prefixed name. A git-localized
+        // manifest has no constraint of its own, so missing this file made
+        // every such repo publish.
+        final depDir = createPlainRepo('a', pubspecContent: 'name: a\n');
+        final dir = createPlainRepo(
+          'b',
+          pubspecContent: 'name: b\n'
+              'dependencies:\n'
+              '  a:\n'
+              '    git:\n'
+              '      url: https://example.com/a.git\n'
+              '      ref: feat\n',
+        );
+        Directory(path.join(dir.path, '.gg')).createSync();
+        File(
+          path.join(dir.path, '.gg', 'gg_localize_refs_backup.json'),
+        ).writeAsStringSync('{"a": "^1.0.0"}');
+        final repo = node('b', dir);
+        repo.dependencies['a'] = node('a', depDir);
+
+        final breaking = await check.get(
+          repo: repo,
+          refVersions: {'a': '2.0.0'},
+        );
+        expect(breaking.skip, isFalse);
+        expect(breaking.reason, contains('outside the published constraint'));
+      });
+
       test('honors the backup at the repo root (TS/legacy)', () async {
         final depDir = createPlainRepo('a', pubspecContent: 'name: a\n');
         final dir = createPlainRepo(
