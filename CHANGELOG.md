@@ -1,5 +1,15 @@
 # Changelog
 
+## 7.2.2 - 2026-08-01
+
+### Changed
+
+- Fix: Skipping unchanged repos from publishing does not work
+
+### Fixed
+
+- Fixes
+
 ## 7.2.1 - 2026-08-01
 
 ### Added

@@ -279,13 +279,23 @@ class PublishSkipCheck {
 
   // ...........................................................................
   /// The original dependency specs gg_localize_refs backed up before
-  /// localizing the refs of [repoDir], merged over the TypeScript/legacy
-  /// location (repo root) and the Dart location (`.gg/`).
+  /// localizing the refs of [repoDir].
+  ///
+  /// Dart writes `.gg/gg_localize_refs_backup_dart.json` and TypeScript
+  /// `.gg/gg_localize_refs_backup_ts.json` today. The older spellings — one
+  /// shared name inside `.gg`, its hidden predecessor, and the hidden file
+  /// TypeScript kept in the repo root — are still read so checkouts made
+  /// before the renames keep working. Reading only a legacy name made every
+  /// git-localized repo look constraint-less, which forced a publish for
+  /// repos that carry nothing but gg's own commits.
   Map<String, dynamic> _savedDependencySpecs(Directory repoDir) {
     final result = <String, dynamic>{};
     final files = [
       File(path.join(repoDir.path, '.gg_localize_refs_backup.json')),
       File(path.join(repoDir.path, '.gg', '.gg_localize_refs_backup.json')),
+      File(path.join(repoDir.path, '.gg', 'gg_localize_refs_backup.json')),
+      File(path.join(repoDir.path, '.gg', 'gg_localize_refs_backup_dart.json')),
+      File(path.join(repoDir.path, '.gg', 'gg_localize_refs_backup_ts.json')),
     ];
     for (final file in files) {
       if (!file.existsSync()) {
