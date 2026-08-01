@@ -11,6 +11,7 @@
 
 - Fix gg do rm repo does not work only work in ticket root but not when in one of the subfolders
 - Fix »gg do merge« conflicting with a leftover remote feature branch of an already merged ticket
+- Fix error while executing gg do merge
 
 ## 7.1.0 - 2026-08-01
 
