@@ -14,6 +14,7 @@ on the registry
 
 - Make sure package is already published in registry before publishing
 - Adapt first-publish gate to merge-only mode from main
+- Make sure, package is already published in registry before publishing
 
 ## 7.2.0 - 2026-08-01
 
