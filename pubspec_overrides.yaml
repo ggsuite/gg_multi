@@ -5,8 +5,14 @@
 # remove it again.
 dependency_overrides:
   gg_one:
-    path: ../gg_one
+    git:
+      url: git@github.com:ggsuite/gg_one.git
+      ref: "58"
   gg_localize_refs:
-    path: ../gg_localize_refs
+    git:
+      url: git@github.com:ggsuite/gg_localize_refs.git
+      ref: "58"
   gg_publish:
-    path: ../gg_publish
+    git:
+      url: git@github.com:ggsuite/gg_publish.git
+      ref: "58"
