@@ -5,6 +5,21 @@
 ### Changed
 
 - Fix: Skipping unchanged repos from publishing does not work
+## 7.2.1 - 2026-08-01
+
+### Added
+
+- »do publish« makes sure every repo has at least one version on its
+registry (pub.dev / npm) before it is published. A repo that was never
+published is published manually by the user first — the shell commands to
+execute are shown, the publish continues after the package became visible
+on the registry
+
+### Changed
+
+- Make sure package is already published in registry before publishing
+- Adapt first-publish gate to merge-only mode from main
+- Make sure, package is already published in registry before publishing
 
 ## 7.2.0 - 2026-08-01
 
