@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Do not write dart specific code into pure typescript .gitattributes
+
 ## 7.4.0 - 2026-08-01
 
 ### Changed

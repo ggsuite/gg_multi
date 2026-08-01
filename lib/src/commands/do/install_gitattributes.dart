@@ -26,8 +26,8 @@ typedef ProcessRunner = Future<ProcessResult> Function(
   bool runInShell,
 });
 
-/// The lines `gg` and the ticket workflow require in every repository's
-/// `.gitattributes` file.
+/// The lines `gg` and the ticket workflow require in *every* repository's
+/// `.gitattributes` file, no matter which language it is written in.
 ///
 /// - `* text=auto eol=lf` enables automatic EOL conversion to LF (required
 ///   by `gg`).
@@ -37,14 +37,62 @@ typedef ProcessRunner = Future<ProcessResult> Function(
 /// - `CHANGELOG.md merge=union` keeps the entries of *both* sides instead
 ///   of conflicting when main and the feature branch both added a line.
 ///   `union` is a built-in git driver and needs no `git config`.
-const String gitattributesRequiredLines = '* text=auto eol=lf\n'
+const String gitattributesCommonLines = '* text=auto eol=lf\n'
     '.gg/gg.json merge=ours\n'
-    'pubspec.lock merge=ours\n'
     'CHANGELOG.md merge=union';
 
-/// Ensures a `.gitattributes` file containing all
-/// [gitattributesRequiredLines] exists in every repository of the current
-/// ticket and that the `merge=ours` driver is configured locally.
+/// The lock files that are kept from the current branch instead of being
+/// merged textually, mapped to the manifest that makes them relevant.
+///
+/// A lock file rule is only written when the repository actually is of that
+/// language — a pure TypeScript repo must not be told about `pubspec.lock`,
+/// and a Dart repo not about `pnpm-lock.yaml`.
+const Map<String, List<String>> gitattributesLockFilesByManifest =
+    <String, List<String>>{
+  'pubspec.yaml': <String>['pubspec.lock'],
+  'package.json': <String>[
+    'package-lock.json',
+    'pnpm-lock.yaml',
+    'yarn.lock',
+  ],
+};
+
+/// The lines `.gitattributes` of the repository at [repoPath] must contain.
+///
+/// That is [gitattributesCommonLines] plus a `merge=ours` rule for each lock
+/// file of the languages the repository uses — detected by the manifests
+/// (`pubspec.yaml`, `package.json`) lying in its root.
+List<String> gitattributesRequiredLinesFor(String repoPath) {
+  final lines = const LineSplitter()
+      .convert(gitattributesCommonLines)
+      .where((l) => l.isNotEmpty)
+      .toList();
+
+  for (final entry in gitattributesLockFilesByManifest.entries) {
+    if (!File(path.join(repoPath, entry.key)).existsSync()) {
+      continue;
+    }
+
+    // A repo uses one of the lock files of its language. Only the existing
+    // ones get a rule; when none exists yet, the canonical one is written so
+    // the rule is in place once the lock file appears.
+    final existing = entry.value
+        .where((l) => File(path.join(repoPath, l)).existsSync())
+        .toList();
+
+    for (final lockFile
+        in existing.isEmpty ? <String>[entry.value.first] : existing) {
+      lines.add('$lockFile merge=ours');
+    }
+  }
+
+  return lines;
+}
+
+/// Ensures a `.gitattributes` file containing all lines
+/// [gitattributesRequiredLinesFor] returns for the repository exists in every
+/// repository of the current ticket and that the `merge=ours` driver is
+/// configured locally.
 ///
 /// `gg` refuses to operate (e.g. `gg do commit`) when automatic EOL
 /// conversion is not configured via `.gitattributes`. In addition, the
@@ -122,15 +170,12 @@ class DoInstallGitattributesCommand extends DirCommand<void> {
       return;
     }
 
-    final requiredLines = const LineSplitter()
-        .convert(gitattributesRequiredLines)
-        .where((l) => l.isNotEmpty)
-        .toList();
-
     // Ensure .gitattributes and merge.ours driver in each repository --------
     for (final node in nodes) {
       final repoDir = node.directory;
       final repoName = path.basename(repoDir.path);
+
+      final requiredLines = gitattributesRequiredLinesFor(repoDir.path);
 
       final attributesFile = File(
         path.join(repoDir.path, '.gitattributes'),
