@@ -845,9 +845,13 @@ class AddCommand extends Command<dynamic> {
       final repoDir = node.directory;
       final repoName = path.basename(repoDir.path);
       try {
-        final backupFile =
-            File('${repoDir.path}/.gg_localize_refs_backup.json');
-        if (backupFile.existsSync()) {
+        // The backup lives in .gg today; the hidden root file is what older
+        // checkouts still carry.
+        final backupFiles = [
+          File(path.join(repoDir.path, '.gg', 'gg_localize_refs_backup.json')),
+          File(path.join(repoDir.path, '.gg_localize_refs_backup.json')),
+        ];
+        if (backupFiles.any((f) => f.existsSync())) {
           await _unlocalizeRefs.get(directory: repoDir, ggLog: ggLog);
         }
       } catch (e) {

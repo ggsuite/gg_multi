@@ -55,6 +55,9 @@ void main() {
 
   // ...........................................................................
   /// Creates a git repo with a pubspec committed on [defaultBranch].
+  ///
+  /// The initial commit is tagged so the compare base represents a published
+  /// state — the normal situation after a gg release.
   Future<Directory> createRepo(
     String name, {
     String defaultBranch = 'main',
@@ -69,6 +72,7 @@ void main() {
     );
     await git(dir, ['add', '.']);
     await git(dir, ['commit', '-m', 'Initial commit']);
+    await git(dir, ['tag', '1.0.0']);
     return dir;
   }
 
@@ -284,10 +288,11 @@ void main() {
           'refs',
           '#gg: changed references to git',
         );
-        // Let main advance and merge it back into feat — the merge commit
-        // (two parents) must not count as a manual change.
+        // Let main advance to a *released* state and merge it back into feat
+        // — the merge commit (two parents) must not count as a manual change.
         await git(dir, ['checkout', 'main']);
         await commitFile(dir, 'main.txt', 'main', 'Change on main');
+        await git(dir, ['tag', '1.0.1']);
         await git(dir, ['checkout', 'feat']);
         await git(dir, ['merge', 'main', '--no-ff', '-m', 'Merge main']);
 
@@ -296,6 +301,31 @@ void main() {
           refVersions: {},
         );
         expect(decision.skip, isTrue);
+      });
+
+      test('publishes when main moved past the last release', () async {
+        final dir = await createRepo('a');
+        await git(dir, ['checkout', '-b', 'feat']);
+        await commitFile(
+          dir,
+          'pubspec_overrides.yaml',
+          'refs',
+          '#gg: changed references to git',
+        );
+        // main gained a commit that was never released and it is merged into
+        // the ticket branch. `main..HEAD` hides it, so without the release
+        // check the repo would look unchanged and the work would be dropped.
+        await git(dir, ['checkout', 'main']);
+        await commitFile(dir, 'main.txt', 'main', 'Update dependencies (#15)');
+        await git(dir, ['checkout', 'feat']);
+        await git(dir, ['merge', 'main', '--no-ff', '-m', 'Merge main']);
+
+        final decision = await check.get(
+          repo: node('a', dir),
+          refVersions: {},
+        );
+        expect(decision.skip, isFalse);
+        expect(decision.reason, contains('never published'));
       });
 
       test('falls back to master when there is no main branch', () async {
@@ -634,6 +664,49 @@ void main() {
         );
         expect(decision.skip, isFalse);
         expect(decision.reason, contains('could be determined'));
+      });
+
+      test('reads the unhidden Dart backup file name', () async {
+        // gg_localize_refs writes .gg/gg_localize_refs_backup.json today —
+        // only older checkouts carry the dot-prefixed name. A git-localized
+        // manifest has no constraint of its own, so missing this file made
+        // every such repo publish.
+        final depDir = createPlainRepo('a', pubspecContent: 'name: a\n');
+        final dir = await createRepo(
+          'b',
+          pubspecContent: 'name: b\n'
+              'dependencies:\n'
+              '  a:\n'
+              '    git:\n'
+              '      url: https://example.com/a.git\n'
+              '      ref: feat\n',
+        );
+        await git(dir, ['checkout', '-b', 'feat']);
+        Directory(path.join(dir.path, '.gg')).createSync();
+        File(
+          path.join(dir.path, '.gg', 'gg_localize_refs_backup.json'),
+        ).writeAsStringSync('{"a": "^1.0.0"}');
+        await commitFile(
+          dir,
+          'pubspec_overrides.yaml',
+          'refs',
+          '#gg: changed references to git',
+        );
+        final repo = node('b', dir);
+        repo.dependencies['a'] = node('a', depDir);
+
+        final breaking = await check.get(
+          repo: repo,
+          refVersions: {'a': '2.0.0'},
+        );
+        expect(breaking.skip, isFalse);
+        expect(breaking.reason, contains('outside the published constraint'));
+
+        final compatible = await check.get(
+          repo: repo,
+          refVersions: {'a': '1.2.0'},
+        );
+        expect(compatible.skip, isTrue);
       });
 
       test('honors the backup at the repo root (TS/legacy)', () async {

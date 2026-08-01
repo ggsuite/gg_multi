@@ -277,13 +277,20 @@ class PublishSkipCheck {
 
   // ...........................................................................
   /// The original dependency specs gg_localize_refs backed up before
-  /// localizing the refs of [repoDir], merged over the TypeScript/legacy
-  /// location (repo root) and the Dart location (`.gg/`).
+  /// localizing the refs of [repoDir].
+  ///
+  /// Both languages write `.gg/gg_localize_refs_backup.json` today. The two
+  /// legacy spellings — hidden inside `.gg` (Dart) and hidden in the repo
+  /// root (TypeScript) — are still read so checkouts made before the rename
+  /// keep working. Reading only a legacy name made every git-localized repo
+  /// look constraint-less, which forced a publish for repos that carry
+  /// nothing but gg's own commits.
   Map<String, dynamic> _savedDependencySpecs(Directory repoDir) {
     final result = <String, dynamic>{};
     final files = [
       File(path.join(repoDir.path, '.gg_localize_refs_backup.json')),
       File(path.join(repoDir.path, '.gg', '.gg_localize_refs_backup.json')),
+      File(path.join(repoDir.path, '.gg', 'gg_localize_refs_backup.json')),
     ];
     for (final file in files) {
       if (!file.existsSync()) {
@@ -377,6 +384,20 @@ class PublishSkipCheck {
       final base = await _compareBase(repoDir);
       if (base == null) {
         return 'no main branch to compare against was found';
+      }
+
+      // Comparing against main only proves the *branch* adds nothing. If
+      // main itself moved past the last release — e.g. commits merged into
+      // the ticket branch from main — those changes are unpublished too and
+      // would be lost by a skip. A release is tagged with its version, so an
+      // untagged base means main carries unreleased work.
+      final baseTags = await _runGit(
+        <String>['tag', '--points-at', base],
+        repoDir: repoDir,
+        allowFailure: true,
+      );
+      if (baseTags.isEmpty) {
+        return 'the main branch carries commits that were never published';
       }
 
       final commits = await _runGit(
