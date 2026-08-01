@@ -127,7 +127,7 @@ It runs at the start of `do add` (master **and** ticket) and of `do checkout` (m
 
 It sits **next to** the repositories, never inside one, so git never sees it and the ticket description cannot reach a remote — a private ticket stays private. Sharing a ticket is therefore an explicit act: hand the file over, or put it behind a URL, and the recipient runs `gg do checkout <path|url>`.
 
-**Legacy**: gg used to write the marker into every repo's `.gg/` folder, force-stage it (`git add -f`) and commit it, so it travelled with the feature branch; the `.gitignore` of each repo whitelisted it. That is gone. `.gg/ticket.json` and `.gg/.ticket.json` are now plainly gitignored, `copyDirectory` skips both names, and gg_one still strips a leftover marker from branches pushed by an older gg before merging/publishing. `do checkout` can still read such a marker (see below), which is the only reason the legacy paths are still known.
+**Legacy**: gg used to write the marker into every repo's `.gg/` folder, force-stage it (`git add -f`) and commit it, so it travelled with the feature branch; the `.gitignore` of each repo whitelisted it. That is gone. `.gg/ticket.json` and `.gg/.ticket.json` are now plainly gitignored, and `copyDirectory` skips both names. gg_one still strips a leftover marker from branches an older gg pushed: `do publish` drops it before the version bump and registry upload (so it never ships to pub.dev/npm) and its merge step drops it before merging (so it never reaches `main`; gg_one has no `do merge` command anymore — the merge lives in `MergeFlow`, driven by `do publish`). `do checkout` can still read such a marker (see below), which is the only reason the legacy paths are still known.
 
 ### No git hooks
 
