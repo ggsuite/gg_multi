@@ -1,0 +1,15 @@
+{
+  "issue_id": "52",
+  "description": "Fix error while executing gg do merge",
+  "gg_version": "14.0.1",
+  "repositories": [
+    {
+      "name": "gg_one",
+      "url": "git@github.com:ggsuite/gg_one.git"
+    },
+    {
+      "name": "gg_multi",
+      "url": "git@github.com:ggsuite/gg_multi.git"
+    }
+  ]
+}
