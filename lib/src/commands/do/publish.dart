@@ -89,12 +89,18 @@ class _RepoPublishSnapshot {
 }
 
 /// Command to publish all repos in the ticket.
+///
+/// With [mergeOnly] the exact same flow runs, minus the two steps that release
+/// the packages: nothing is uploaded to a package registry and no version tags
+/// are created. That is what `gg do merge` ([DoMergeCommand]) is — see there
+/// for the additional preconditions it enforces.
 class DoPublishCommand extends DirCommand<void> {
   /// Constructor
   DoPublishCommand({
     required super.ggLog,
     super.name = 'publish',
     super.description = 'Publishes all repositories in the current ticket.',
+    this.mergeOnly = false,
     gg.DoCommit? ggDoCommit,
     ChangeRefsToPubDev? unlocalizeRefs,
     RestorePublishTo? restorePublishTo,
@@ -135,6 +141,20 @@ class DoPublishCommand extends DirCommand<void> {
         _processRunner = processRunner ?? _defaultProcessRunner {
     _addArgs();
   }
+
+  /// Whether the run merges without releasing: no registry upload, no tags.
+  /// Set by [DoMergeCommand]; false for a regular publish.
+  final bool mergeOnly;
+
+  /// The command name used in user-facing hints (`gg do publish` /
+  /// `gg do merge`).
+  String get _command => mergeOnly ? 'gg do merge' : 'gg do publish';
+
+  /// The past participle used in user-facing messages.
+  String get _done => mergeOnly ? 'merged' : 'published';
+
+  /// The noun used in user-facing messages.
+  String get _action => mergeOnly ? 'merge' : 'publish';
 
   /// Instance of gg DoCommit
   final gg.DoCommit _ggDoCommit;
@@ -214,6 +234,7 @@ class DoPublishCommand extends DirCommand<void> {
     final continueRun = argResults?['continue'] as bool? ?? false;
     final reconfigure = argResults?['reconfigure'] as bool? ?? false;
     final publishUnchanged = argResults?['publish-unchanged'] as bool? ?? false;
+    final force = mergeOnly && (argResults?['force'] as bool? ?? false);
     final String? configArg = argResults?['config'] as String?;
     final String? messageArg = argResults?['message'] as String?;
     deleteRemoteBranch ??= argResults?['delete-remote-branch'] as bool? ?? true;
@@ -264,6 +285,15 @@ class DoPublishCommand extends DirCommand<void> {
     if (subs.isEmpty) {
       ggLog(yellow('⚠️ No repos in this ticket'));
       return;
+    }
+
+    // A merge brings the ticket onto the main branches without releasing it.
+    // A repository that still redirects a dependency to a local working copy
+    // would therefore land on main referencing something nobody can resolve —
+    // that ticket has to be published, not merged. Checked before `do review`
+    // runs, because reviewing replaces the path overrides with git refs.
+    if (mergeOnly && !force) {
+      _throwOnLocalizedRefs(subs);
     }
 
     // --reconfigure discards not only the ticket-level config but also the
@@ -338,10 +368,10 @@ class DoPublishCommand extends DirCommand<void> {
           : null;
 
       if (alreadyPublished) {
-        ggLog('${cyan(repoName)}: already published — skipping.');
+        ggLog('${cyan(repoName)}: already $_done — skipping.');
       } else if (skipDecision?.skip ?? false) {
         ggLog(
-          '${cyan(repoName)}: ${yellow('not published')} — '
+          '${cyan(repoName)}: ${yellow('not $_done')} — '
           '${skipDecision!.reason}.',
         );
         publishConfig = publishConfig.withRepoStatus(repoName, 'skipped');
@@ -349,7 +379,10 @@ class DoPublishCommand extends DirCommand<void> {
         skippedRepos.add(repoName);
       } else {
         if (skipDecision != null) {
-          taskLog('$repoName: publishing — ${skipDecision.reason}.');
+          taskLog(
+            '$repoName: ${mergeOnly ? 'merging' : 'publishing'} — '
+            '${skipDecision.reason}.',
+          );
         }
 
         await _waitForPublishedDependenciesIfNeeded(
@@ -373,6 +406,7 @@ class DoPublishCommand extends DirCommand<void> {
             configPath: configSourcePath,
             resume: continueRun,
             pr: prArg,
+            force: force,
             verbose: verbose,
             ggLog: ggLog,
             taskLog: taskLog,
@@ -397,7 +431,7 @@ class DoPublishCommand extends DirCommand<void> {
         // re-run this already-published repo on a later `--continue`.
         publishConfig = publishConfig.withRepoStatus(repoName, 'published');
         await publishConfig.save(file: runtimeFile);
-        taskLog(green('$repoName: published successfully.'));
+        taskLog(green('$repoName: $_done successfully.'));
       }
 
       // Capture the published version + registry visibility so later repos
@@ -415,8 +449,11 @@ class DoPublishCommand extends DirCommand<void> {
 
           final projectType = _detectProjectType(repoDir);
           try {
-            // Git-only repos (no manifest) have no registry to wait for.
-            if (projectType != gg.ProjectType.none) {
+            // Git-only repos (no manifest) have no registry to wait for. A
+            // merge uploads nothing either, so the fresh version never becomes
+            // visible on a registry — recording it here would make every
+            // dependent repo wait for a release that is not coming.
+            if (!mergeOnly && projectType != gg.ProjectType.none) {
               final publishInfo = projectType == gg.ProjectType.typescript
                   ? await _npmChecker.getPackagePublishInfo(
                       packageName: packageName,
@@ -452,7 +489,7 @@ class DoPublishCommand extends DirCommand<void> {
     if (skippedRepos.isNotEmpty) {
       ggLog(
         yellow(
-          'Not published because unchanged: ${skippedRepos.join(', ')}',
+          'Not $_done because unchanged: ${skippedRepos.join(', ')}',
         ),
       );
     }
@@ -461,7 +498,9 @@ class DoPublishCommand extends DirCommand<void> {
     if (runtimeFile.existsSync()) {
       runtimeFile.deleteSync();
       taskLog(
-        green('Removed ${path.basename(runtimeFile.path)} after publish.'),
+        green(
+          'Removed ${path.basename(runtimeFile.path)} after the $_action.',
+        ),
       );
     }
 
@@ -477,7 +516,7 @@ class DoPublishCommand extends DirCommand<void> {
       taskLog: taskLog,
     );
 
-    taskLog('✅ All repos published');
+    taskLog('✅ All repos $_done');
   }
 
   /// Moves everything the published ticket leaves behind into
@@ -612,7 +651,7 @@ class DoPublishCommand extends DirCommand<void> {
       if (!runtimeFile.existsSync()) {
         throw Exception(
           'Nothing to continue: ${runtimeFile.path} does not exist. Start a '
-          'normal "gg do publish" first.',
+          'normal "$_command" first.',
         );
       }
       return (
@@ -654,8 +693,8 @@ class DoPublishCommand extends DirCommand<void> {
       if (config.repos.values.any((r) => r.status != null)) {
         throw Exception(
           'An unfinished publish left progress in ${runtimeFile.path}. '
-          'Resume it with "gg do publish --continue", or discard it with '
-          '"gg do publish --reconfigure".',
+          'Resume it with "$_command --continue", or discard it with '
+          '"$_command --reconfigure".',
         );
       }
       return (config: config, sourcePath: runtimeFile.path);
@@ -695,8 +734,8 @@ class DoPublishCommand extends DirCommand<void> {
     if (existing.repos.values.any((r) => r.status != null)) {
       throw Exception(
         'An unfinished publish left progress in ${runtimeFile.path}. '
-        'Resume it with "gg do publish --continue", or discard it with '
-        '"gg do publish --reconfigure".',
+        'Resume it with "$_command --continue", or discard it with '
+        '"$_command --reconfigure".',
       );
     }
   }
@@ -730,6 +769,7 @@ class DoPublishCommand extends DirCommand<void> {
     required String configPath,
     required bool resume,
     required bool? pr,
+    required bool force,
     required bool verbose,
     required GgLog ggLog,
     required GgLog taskLog,
@@ -821,6 +861,36 @@ class DoPublishCommand extends DirCommand<void> {
       askBeforePublishing: false,
       resume: resume,
       pr: pr,
+      mergeOnly: mergeOnly,
+      force: force,
+    );
+  }
+
+  /// Throws when one of [repos] still redirects a dependency to a local
+  /// working copy (`pubspec_overrides.yaml`).
+  ///
+  /// Only `gg do merge` calls this: it brings the ticket onto the main
+  /// branches *without* releasing anything, so a reference that exists only as
+  /// a working copy on this machine would never become resolvable for anybody
+  /// else. Such a ticket has to be published. `--force` skips the check.
+  void _throwOnLocalizedRefs(List<Node> repos) {
+    final localized = repos
+        .where((repo) => gg.NoPubspecOverrides.hasLocalizedRefs(repo.directory))
+        .map((repo) => path.basename(repo.directory.path))
+        .toList();
+
+    if (localized.isEmpty) {
+      return;
+    }
+
+    throw Exception(
+      [
+        'These projects depend on other local projects: '
+            '${localized.join(', ')}.',
+        'Just merging is not possible.',
+        '  - Either run ${blue('gg do publish')} ',
+        '  - Or merge anyway adding ${blue('--force')} option.',
+      ].join('\n'),
     );
   }
 
@@ -983,7 +1053,7 @@ class DoPublishCommand extends DirCommand<void> {
     ggLog(
       yellow(
         'The publish is marked as »failed«. Fix the problem and resume it '
-        'with ${blue('gg do publish --continue')}.',
+        'with ${blue('$_command --continue')}.',
       ),
     );
   }
@@ -1133,7 +1203,7 @@ class DoPublishCommand extends DirCommand<void> {
       ggLog(
         yellow(
           '$repoName: back on ${s.branch}, but all commits were kept '
-          'because $reason. Re-running "gg do publish" resumes the publish.',
+          'because $reason. Re-running "$_command" resumes the $_action.',
         ),
       );
       return;
@@ -1432,6 +1502,14 @@ class DoPublishCommand extends DirCommand<void> {
       defaultsTo: false,
       negatable: false,
     );
+    if (mergeOnly) {
+      argParser.addFlag(
+        'force',
+        help: 'Merge although local refs are still in place.',
+        defaultsTo: false,
+        negatable: false,
+      );
+    }
     argParser.addFlag(
       'reconfigure',
       help: 'Ignore an existing .gg/gg-publish.json and configure the '

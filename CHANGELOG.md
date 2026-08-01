@@ -2,9 +2,33 @@
 
 ## Unreleased
 
+### Changed
+
+- Introtruce .trash for deleted tickets and repos
+
 ### Removed
 
 - Introduce .trash for published tickets and removed repos
+
+## 7.1.4 - 2026-08-01
+
+### Changed
+
+- Auto merge CHANGELOG.md
+- Tidy CHANGELOG entry
+- \#gg: changed references to git
+
+### Fixed
+
+- Fix gg do rm repo does not work only work in ticket root but not when in one of the subfolders
+- Fix »gg do merge« conflicting with a leftover remote feature branch of an already merged ticket
+- Fix error while executing gg do merge
+
+## 7.1.0 - 2026-08-01
+
+### Added
+
+- Add »gg do merge«
 
 ## 7.0.1 - 2026-07-31
 

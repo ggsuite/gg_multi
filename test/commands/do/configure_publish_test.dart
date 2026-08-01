@@ -10,10 +10,11 @@ import 'package:args/command_runner.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 // ignore: lines_longer_than_80_chars
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
-import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_multi/src/commands/do/configure_publish.dart';
+import 'package:gg_publish/gg_publish.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
+import 'package:pub_semver/pub_semver.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:test/test.dart';
 
@@ -21,9 +22,10 @@ import '../../rm_console_colors_helper.dart';
 
 class MockSortedProcessingList extends Mock implements SortedProcessingList {}
 
-class MockGetVersion extends Mock implements GetVersion {}
-
 class FakeDirectory extends Fake implements Directory {}
+
+/// Fallback for the `ggLog` argument matcher of [MockPublishedVersion].
+void _fallbackGgLog(String msg) {}
 
 /// Deterministic [gg.InteractAdapter] returning queued indices and capturing
 /// the option lists it is shown (to assert the version previews).
@@ -54,6 +56,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(FakeDirectory());
+    registerFallbackValue(_fallbackGgLog);
   });
 
   void ggLog(String msg) => messages.add(rmConsoleColors(msg));
@@ -83,7 +86,7 @@ void main() {
   DoConfigurePublishCommand makeCommand({
     required List<Node> repos,
     List<int> increments = const [0],
-    String? version = '1.0.0',
+    String version = '1.0.0',
     bool versionThrows = false,
     _StubAdapter? adapter,
     EditMessage? editMessage,
@@ -96,21 +99,27 @@ void main() {
       ),
     ).thenAnswer((_) async => repos);
 
-    final getVersion = MockGetVersion();
+    final publishedVersion = MockPublishedVersion();
     if (versionThrows) {
       when(
-        () => getVersion.get(directory: any(named: 'directory')),
+        () => publishedVersion.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
       ).thenThrow(Exception('no version'));
     } else {
       when(
-        () => getVersion.get(directory: any(named: 'directory')),
-      ).thenAnswer((_) async => version);
+        () => publishedVersion.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async => Version.parse(version));
     }
 
     return DoConfigurePublishCommand(
       ggLog: ggLog,
       sortedProcessingList: sortedList,
-      getVersionCommand: getVersion,
+      publishedVersion: publishedVersion,
       versionSelector: gg.VersionSelector(
         adapter: adapter ?? _StubAdapter(increments),
       ),
@@ -125,7 +134,7 @@ void main() {
   group('DoConfigurePublishCommand', () {
     test('throws when not inside a ticket folder', () async {
       // The bare constructor also exercises the real default dependencies
-      // (SortedProcessingList / GetVersion / VersionSelector).
+      // (SortedProcessingList / PublishedVersion / VersionSelector).
       final command = DoConfigurePublishCommand(ggLog: ggLog);
       await expectLater(
         () => command.configure(directory: tempDir, ggLog: ggLog),
@@ -236,7 +245,7 @@ void main() {
     });
 
     group('version preview baseline', () {
-      test('uses the current version when it is readable', () async {
+      test('uses the published version when it is readable', () async {
         final adapter = _StubAdapter([0]);
         final command = makeCommand(
           repos: [node('A')],
@@ -250,18 +259,28 @@ void main() {
         expect(adapter.capturedOptions.first.first, contains('2.5.0'));
       });
 
-      test('falls back to 0.0.0 when the version is null', () async {
+      test('uses the published version, not the one in the manifest', () async {
+        // The feature branch lags behind the registry: main carries the
+        // released version, so pubspec.yaml is stale until the next publish.
+        // The preview must show what the publish will really bump from.
+        File(path.join(ticketDir.path, 'A', 'pubspec.yaml'))
+            .writeAsStringSync('name: a\nversion: 7.0.1\n');
+
         final adapter = _StubAdapter([0]);
         final command = makeCommand(
           repos: [node('A')],
-          version: null,
+          version: '7.1.2',
           adapter: adapter,
         );
         await command.configure(
           directory: ticketDir,
           ggLog: ggLog,
         );
-        expect(adapter.capturedOptions.first.first, contains('0.0.0'));
+        expect(
+          adapter.capturedOptions.first.first,
+          contains('7.1.2 -> 7.1.3'),
+        );
+        expect(adapter.capturedOptions.first.first, isNot(contains('7.0.1')));
       });
 
       test('falls back to 0.0.0 when reading the version throws', () async {

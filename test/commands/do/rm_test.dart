@@ -145,6 +145,45 @@ void main() {
           contains('Repository unrelated is not part of ticket alpha.'),
         );
       });
+
+      test('works when invoked from a sub-folder of the ticket', () async {
+        final alphaDir = Directory(path.join(ticketsRoot.path, 'alpha'))
+          ..createSync();
+        final repoDir = Directory(path.join(alphaDir.path, 'ggsuite', 'shared'))
+          ..createSync(recursive: true);
+        File(path.join(repoDir.path, 'pubspec.yaml'))
+            .writeAsStringSync('name: shared\nversion: 1.0.0\n');
+        final subDir = Directory(path.join(repoDir.path, 'lib', 'src'))
+          ..createSync(recursive: true);
+
+        await runnerAt(subDir.path).run(['rm', 'shared']);
+
+        expect(repoDir.existsSync(), isFalse);
+        expect(
+          messages,
+          contains('Deleted repository shared from ticket alpha.'),
+        );
+      });
+    });
+
+    group('invoked from a sub-folder of the workspace root', () {
+      test('deletes the master copy when no ticket uses the repo', () async {
+        final repoDir = Directory(
+          path.join(masterWs.path, 'ggsuite', 'project'),
+        )..createSync(recursive: true);
+        File(path.join(repoDir.path, 'pubspec.yaml'))
+            .writeAsStringSync('name: project\nversion: 1.0.0\n');
+        final subDir = Directory(path.join(repoDir.path, 'lib'))
+          ..createSync(recursive: true);
+
+        await runnerAt(subDir.path).run(['rm', 'project']);
+
+        expect(repoDir.existsSync(), isFalse);
+        expect(
+          messages,
+          contains('Deleted repository project from master workspace.'),
+        );
+      });
     });
 
     group('dependency chain inside a ticket', () {
