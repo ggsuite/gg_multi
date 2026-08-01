@@ -181,10 +181,18 @@ class DoConfigurePublishCommand extends DirCommand<void> {
   /// Defaults to 0.0.0 when nothing can be determined (e.g. a repo without a
   /// version). Only the chosen increment is stored, so the baseline is used
   /// just for the preview.
+  /// A failing lookup (e.g. the registry is unreachable) is reported instead of
+  /// being swallowed, so a network hiccup does not silently look like a repo
+  /// that was never published.
   Future<Version> _currentVersion(Directory repoDir) async {
     try {
       return await _publishedVersion.get(directory: repoDir, ggLog: ggLog);
-    } catch (_) {
+    } on Exception catch (e) {
+      ggLog(
+        yellow(
+          '⚠️ Could not determine the published version, assuming 0.0.0: $e',
+        ),
+      );
       return Version(0, 0, 0);
     }
   }
