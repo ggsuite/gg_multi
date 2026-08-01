@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- \#gg: changed references to pub.dev
+
 ### Fixed
 
 - Fix missing git references
