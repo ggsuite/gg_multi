@@ -54,6 +54,7 @@ void main() {
   late MockRemoteBranchExists remoteBranchExists;
   late MockProcessRunner proc;
   final copyCalls = <String>[];
+  final fetchedUrls = <String>[];
 
   String ticketJsonStr({
     String issueId = 'feat_x',
@@ -96,6 +97,7 @@ void main() {
   setUp(() {
     messages.clear();
     copyCalls.clear();
+    fetchedUrls.clear();
     tempDir = Directory.systemTemp.createTempSync('do_checkout_test');
     masterPath = path.join(tempDir.path, '.master');
     Directory(masterPath).createSync(recursive: true);
@@ -152,8 +154,14 @@ void main() {
     String? executionPath,
     BranchSelector? selectBranch,
     CopyDirectory? copyDir,
+    TicketJsonFetcher? fetchTicketJson,
   }) =>
       DoCheckoutCommand(
+        fetchTicketJson: fetchTicketJson ??
+            (url) async {
+              fetchedUrls.add(url.toString());
+              return ticketJsonStr();
+            },
         ggLog: ggLog,
         gitHandler: gitHandler,
         fetch: fetch,
@@ -187,6 +195,144 @@ void main() {
 
     test('throws UsageException when no name is given', () async {
       await expectLater(runCmd(build(), []), throwsA(isA<UsageException>()));
+    });
+
+    group('ticket.json given as a file path', () {
+      late Directory sourceDir;
+
+      setUp(() {
+        sourceDir = Directory(path.join(tempDir.path, 'shared'))
+          ..createSync(recursive: true);
+      });
+
+      File writeSource(String content, {String name = 'ticket.json'}) =>
+          File(path.join(sourceDir.path, name))..writeAsStringSync(content);
+
+      test('reproduces the ticket from the file', () async {
+        makeMasterRepo('repo_a');
+        final file = writeSource(ticketJsonStr());
+
+        await runCmd(build(), [file.path]);
+
+        final tdir = ticketDirOf('feat_x');
+        expect(File(path.join(tdir.path, '.ticket')).existsSync(), isTrue);
+        expect(File(path.join(tdir.path, 'ticket.json')).existsSync(), isTrue);
+        expect(logged('Checked out ticket feat_x'), isTrue);
+      });
+
+      test('accepts a file that is not called ticket.json', () async {
+        makeMasterRepo('repo_a');
+        final file = writeSource(ticketJsonStr(), name: 'shared_ticket.json');
+
+        await runCmd(build(), [file.path]);
+
+        expect(ticketDirOf('feat_x').existsSync(), isTrue);
+      });
+
+      test('accepts a ticket folder and reads its ticket.json', () async {
+        makeMasterRepo('repo_a');
+        writeSource(ticketJsonStr());
+
+        await runCmd(build(), [sourceDir.path]);
+
+        expect(ticketDirOf('feat_x').existsSync(), isTrue);
+      });
+
+      test('never contacts the network for a file path', () async {
+        makeMasterRepo('repo_a');
+        await runCmd(build(), [writeSource(ticketJsonStr()).path]);
+        expect(fetchedUrls, isEmpty);
+      });
+
+      test('throws when the file holds no valid ticket.json', () async {
+        final file = writeSource('{not json');
+        await expectLater(
+          runCmd(build(), [file.path]),
+          throwsA(
+            predicate(
+              (e) => e.toString().contains('Invalid ticket.json at "'),
+            ),
+          ),
+        );
+      });
+
+      test('throws when the folder has no ticket.json', () async {
+        await expectLater(
+          runCmd(build(), [sourceDir.path]),
+          throwsA(
+            predicate(
+              (e) => e.toString().contains('contains no ticket.json'),
+            ),
+          ),
+        );
+      });
+
+      test('leaves a plain name to the legacy branch modes', () async {
+        final repoA = makeMasterRepo('repo_a');
+        await runCmd(build(executionPath: repoA.path), ['feat_x']);
+        expect(ticketDirOf('feat_x').existsSync(), isTrue);
+      });
+    });
+
+    group('ticket.json given as a URL', () {
+      test('downloads the ticket.json and reproduces the ticket', () async {
+        makeMasterRepo('repo_a');
+
+        await runCmd(build(), ['https://example.com/t/ticket.json']);
+
+        expect(fetchedUrls, ['https://example.com/t/ticket.json']);
+        expect(ticketDirOf('feat_x').existsSync(), isTrue);
+        expect(logged('Downloading ticket.json from'), isTrue);
+      });
+
+      test('accepts a plain http URL', () async {
+        makeMasterRepo('repo_a');
+        await runCmd(build(), ['http://example.com/ticket.json']);
+        expect(fetchedUrls, ['http://example.com/ticket.json']);
+      });
+
+      test('propagates a download failure', () async {
+        await expectLater(
+          runCmd(
+            build(
+              fetchTicketJson: (_) async => throw Exception('HTTP 404'),
+            ),
+            ['https://example.com/ticket.json'],
+          ),
+          throwsA(predicate((e) => e.toString().contains('HTTP 404'))),
+        );
+      });
+
+      test('throws when the download is no valid ticket.json', () async {
+        await expectLater(
+          runCmd(
+            build(fetchTicketJson: (_) async => '<html>404</html>'),
+            ['https://example.com/ticket.json'],
+          ),
+          throwsA(
+            predicate((e) => e.toString().contains('Invalid ticket.json at')),
+          ),
+        );
+      });
+
+      test('throws when the ticket.json needs a newer gg', () async {
+        await expectLater(
+          runCmd(
+            build(
+              fetchTicketJson: (_) async => jsonEncode(<String, Object?>{
+                'issue_id': 'feat_x',
+                'description': 'd',
+                'gg_version': '9999.0.0',
+                'repositories': <Object?>[],
+              }),
+            ),
+            ['https://example.com/ticket.json'],
+          ),
+          throwsA(
+            predicate((e) => e.toString().contains('9999.0.0')),
+          ),
+        );
+      });
     });
 
     group('mode 1 (inside a master repo)', () {
@@ -337,7 +483,7 @@ void main() {
           throwsA(
             predicate(
               (e) => e.toString().contains(
-                    'No repository in the master workspace has a branch',
+                    'is neither a ticket.json path',
                   ),
             ),
           ),
@@ -376,10 +522,35 @@ void main() {
           runCmd(build(executionPath: repoA.path), ['feat_x']),
           throwsA(
             predicate(
-              (e) => e.toString().contains('Could not read .gg/.ticket.json'),
+              (e) => e.toString().contains('Could not read a ticket marker'),
             ),
           ),
         );
+      });
+
+      test('warns that the legacy marker is deprecated', () async {
+        final repoA = makeMasterRepo('repo_a');
+        await runCmd(build(executionPath: repoA.path), ['feat_x']);
+        expect(logged('legacy ticket marker'), isTrue);
+      });
+
+      test('falls back to the unhidden .gg/ticket.json', () async {
+        final repoA = makeMasterRepo('repo_a');
+        when(
+          () => showFile.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            ref: any(named: 'ref'),
+            filePath: any(named: 'filePath'),
+          ),
+        ).thenAnswer(
+          (i) async => i.namedArguments[#filePath] == '.gg/ticket.json'
+              ? ticketJsonStr()
+              : null,
+        );
+
+        await runCmd(build(executionPath: repoA.path), ['feat_x']);
+        expect(ticketDirOf('feat_x').existsSync(), isTrue);
       });
 
       test('throws on an invalid ticket marker', () async {
@@ -389,7 +560,7 @@ void main() {
           runCmd(build(executionPath: repoA.path), ['feat_x']),
           throwsA(
             predicate(
-              (e) => e.toString().contains('Invalid .gg/.ticket.json'),
+              (e) => e.toString().contains('Invalid ticket.json'),
             ),
           ),
         );

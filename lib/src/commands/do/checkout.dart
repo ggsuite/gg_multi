@@ -10,6 +10,7 @@ import 'package:args/command_runner.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_git/gg_git.dart' as gg_git;
 import 'package:gg_log/gg_log.dart';
+import 'package:http/http.dart' as http;
 import 'package:interact/interact.dart';
 import 'package:path/path.dart' as path;
 
@@ -28,17 +29,24 @@ typedef BranchSelector = Future<String?> Function(List<String> branches);
 /// Copies a directory tree; injectable for tests.
 typedef CopyDirectory = Future<void> Function(Directory src, Directory dest);
 
-/// Reproduces a whole ticket from a single `.gg/.ticket.json` marker.
+/// Downloads the `ticket.json` at [url]; injectable for tests.
+typedef TicketJsonFetcher = Future<String> Function(Uri url);
+
+/// Reproduces a whole ticket from a `ticket.json`.
 ///
-/// `gg multi do checkout <X>` resolves [X] in three modes:
-/// * executed inside a `.master` repo → [X] is the ticket name, read from that
-///   repo's branch;
-/// * [X] is a known `.master` repo → interactive branch selection in that repo;
-/// * otherwise [X] is a ticket name → searched across all `.master` repos.
+/// `gg multi do checkout <X>` resolves [X] in this order:
+/// * [X] is an `http(s)` URL → the `ticket.json` is downloaded from there;
+/// * [X] is a file → the `ticket.json` is read from it; a directory is taken as
+///   a ticket folder and its `ticket.json` is read;
+/// * *(legacy)* [X] names a `.master` repo, or a ticket branch — the marker
+///   older gg versions committed to `.gg/` is read from `origin/<branch>`.
 ///
-/// Once a `.ticket.json` is found it is used to recreate the ticket workspace,
-/// clone any missing repositories, and check out the existing feature branch in
-/// every repository (with its already path-localized deps), so a ticket created
+/// Since a `ticket.json` no longer travels with the feature branch, sharing a
+/// ticket is explicit: hand over the file or a URL pointing to it.
+///
+/// The `ticket.json` is used to recreate the ticket workspace, clone any
+/// missing repositories, and check out the existing feature branch in every
+/// repository (with its already path-localized deps), so a ticket created
 /// elsewhere is reproduced. Unlike a fresh `do add` it does not re-install git
 /// hooks or `.gitattributes`.
 class DoCheckoutCommand extends Command<dynamic> {
@@ -56,6 +64,7 @@ class DoCheckoutCommand extends Command<dynamic> {
     ProcessRunner? processRunner,
     BranchSelector? selectBranch,
     CopyDirectory? copyDir,
+    TicketJsonFetcher? fetchTicketJson,
     // coverage:ignore-start
   })  : gitHandler = gitHandler ?? GitHandler(),
         _fetch = fetch ?? gg_git.Fetch(ggLog: ggLog),
@@ -69,7 +78,8 @@ class DoCheckoutCommand extends Command<dynamic> {
         executionPath = executionPath ?? Directory.current.path,
         processRunner = processRunner ?? Process.run,
         _selectBranch = selectBranch ?? _defaultSelectBranch,
-        _copyDir = copyDir ?? copyDirectory;
+        _copyDir = copyDir ?? copyDirectory,
+        _fetchTicketJson = fetchTicketJson ?? _defaultFetchTicketJson;
   // coverage:ignore-end
 
   /// The log function.
@@ -95,14 +105,19 @@ class DoCheckoutCommand extends Command<dynamic> {
 
   final BranchSelector _selectBranch;
   final CopyDirectory _copyDir;
+  final TicketJsonFetcher _fetchTicketJson;
 
   @override
   String get name => 'checkout';
 
   @override
   String get description =>
-      'Reproduces a ticket from its .gg/.ticket.json marker by checking out '
-      'the feature branch in every repository of the ticket.';
+      'Reproduces a ticket from a ticket.json — given as a file path or an '
+      'http(s) URL — by checking out the feature branch in every repository '
+      'of the ticket.';
+
+  @override
+  String get invocation => 'gg multi do checkout <path|url>';
 
   // coverage:ignore-start
   static Future<String?> _defaultSelectBranch(List<String> branches) async {
@@ -112,18 +127,50 @@ class DoCheckoutCommand extends Command<dynamic> {
     ).interact();
     return branches[index];
   }
+
+  static Future<String> _defaultFetchTicketJson(Uri url) async {
+    final response = await http.get(url);
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Could not download ticket.json from "$url": '
+        'HTTP ${response.statusCode}.',
+      );
+    }
+    return response.body;
+  }
   // coverage:ignore-end
 
   @override
   Future<void> run() async {
     if (argResults!.rest.isEmpty) {
-      throw UsageException('Missing ticket or repository name.', usage);
+      throw UsageException(
+        'Missing path or URL of a ticket.json.',
+        usage,
+      );
     }
     final arg = argResults!.rest.first;
 
     // Maintenance: move the repositories of an old master workspace into
     // their organization folders before resolving anything.
     migrateToOrgFolders(workspacePath: masterWorkspacePath, ggLog: ggLog);
+
+    // Mode URL: arg points to a downloadable ticket.json.
+    final url = _ticketJsonUrl(arg);
+    if (url != null) {
+      ggLog(blue('Downloading ticket.json from $url'));
+      final content = await _fetchTicketJson(url);
+      await _reproduce(_parseTicket(content, url.toString()));
+      return;
+    }
+
+    // Mode file: arg is a ticket.json, or a ticket folder containing one.
+    final file = _ticketJsonFile(arg);
+    if (file != null) {
+      await _reproduce(
+        _parseTicket(file.readAsStringSync(), file.path),
+      );
+      return;
+    }
 
     // Mode 1: executed inside a master repo → arg is the ticket name.
     final currentRepo = _currentMasterRepoPath();
@@ -170,8 +217,57 @@ class DoCheckoutCommand extends Command<dynamic> {
     }
 
     throw Exception(
-      'No repository in the master workspace has a branch "$arg".',
+      '"$arg" is neither a ticket.json path, an http(s) URL, a repository of '
+      'the master workspace, nor a branch of one of its repositories.',
     );
+  }
+
+  // ...........................................................................
+  /// Returns [arg] as an http(s) URL, or null when it is not one.
+  static Uri? _ticketJsonUrl(String arg) {
+    final uri = Uri.tryParse(arg);
+    if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https')) {
+      return null;
+    }
+    return uri;
+  }
+
+  // ...........................................................................
+  /// Returns the `ticket.json` [arg] denotes — the file itself, or the
+  /// `ticket.json` of the ticket folder [arg] points to — or null when [arg]
+  /// is no path at all and the legacy branch modes should have a go.
+  ///
+  /// An [arg] that *is* a path is never handed on to those modes: a folder
+  /// without a `ticket.json` is a mistake worth naming, not a repository name
+  /// that happens to look like a directory.
+  static File? _ticketJsonFile(String arg) {
+    final asFile = File(arg);
+    if (asFile.existsSync()) {
+      return asFile;
+    }
+    if (!_looksLikePath(arg) || !Directory(arg).existsSync()) {
+      return null;
+    }
+    final inDir = File(path.join(arg, ticketJsonFileName));
+    if (!inDir.existsSync()) {
+      throw Exception('"$arg" contains no $ticketJsonFileName.');
+    }
+    return inDir;
+  }
+
+  /// Whether [arg] is meant as a path rather than as a repository or ticket
+  /// name — names never carry a separator.
+  static bool _looksLikePath(String arg) =>
+      arg.contains(path.separator) || arg.contains('/');
+
+  // ...........................................................................
+  /// Parses [content] into a [TicketJson], naming [source] when it is invalid.
+  static TicketJson _parseTicket(String content, String source) {
+    try {
+      return TicketJson.fromJsonString(content);
+    } on FormatException catch (e) {
+      throw Exception('Invalid ticket.json at "$source": $e');
+    }
   }
 
   // ...........................................................................
@@ -199,8 +295,11 @@ class DoCheckoutCommand extends Command<dynamic> {
   }
 
   // ...........................................................................
-  /// Reads the `.ticket.json` marker from `origin/<branch>` of [repoPath] and
-  /// reproduces the ticket it describes.
+  /// Legacy path: reads the marker older gg versions committed to `.gg/` from
+  /// `origin/<branch>` of [repoPath] and reproduces the ticket it describes.
+  ///
+  /// gg no longer writes that marker — a ticket.json stays on the machine that
+  /// created it — so this only serves branches pushed by an older gg.
   Future<void> _reproduceFromBranch({
     required String repoPath,
     required String branch,
@@ -210,25 +309,36 @@ class DoCheckoutCommand extends Command<dynamic> {
     if (!alreadyFetched) {
       await _fetch.get(directory: dir, ggLog: ggLog);
     }
-    final content = await _showFile.get(
-      directory: dir,
-      ggLog: ggLog,
-      ref: 'origin/$branch',
-      filePath: ticketJsonRelativePath,
-    );
+
+    String? content;
+    for (final markerPath in legacyTicketJsonRelativePaths) {
+      content = await _showFile.get(
+        directory: dir,
+        ggLog: ggLog,
+        ref: 'origin/$branch',
+        filePath: markerPath,
+      );
+      if (content != null) {
+        break;
+      }
+    }
     if (content == null) {
       throw Exception(
-        'Could not read $ticketJsonRelativePath from "origin/$branch" — '
-        'the branch may not be pushed/fetched, or has no marker.',
+        'Could not read a ticket marker from "origin/$branch" — the branch may '
+        'not be pushed/fetched, or was pushed by a gg that no longer uploads '
+        'one.\nCheck the ticket out from its ticket.json instead:\n'
+        '  gg multi do checkout <path-or-url-of-ticket.json>',
       );
     }
-    final TicketJson ticket;
-    try {
-      ticket = TicketJson.fromJsonString(content);
-    } on FormatException catch (e) {
-      throw Exception('Invalid $ticketJsonRelativePath on "$branch": $e');
-    }
-    await _reproduce(ticket);
+
+    ggLog(
+      yellow(
+        'Using the legacy ticket marker committed to "origin/$branch". '
+        'gg does not upload it anymore — pass the path or URL of a '
+        'ticket.json instead.',
+      ),
+    );
+    await _reproduce(_parseTicket(content, 'origin/$branch'));
   }
 
   // ...........................................................................
@@ -252,6 +362,9 @@ class DoCheckoutCommand extends Command<dynamic> {
       issueId: ticket.issueId,
       description: ticket.description,
     );
+    // Keep the ticket.json in the reproduced workspace so it can be handed on
+    // from here as well.
+    writeTicketJson(ticketDir, ticket);
 
     final succeeded = <String>[];
     final failed = <String>[];

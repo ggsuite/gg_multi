@@ -32,6 +32,7 @@ Future<void> copyDirectory(
     'gg-publish.json',
     '.gg-publish.json',
     '.ticket.json',
+    'ticket.json',
     '.gg_localize_refs_publish_to_backup.json',
   },
 }) async {

@@ -831,13 +831,13 @@ class AddCommand extends Command<dynamic> {
       return;
     }
 
-    // Write the ticket marker into every repo so the full ticket layout
-    // travels with each feature branch. It is overwritten on every `do add`,
-    // keeping the repo list current, and committed in iteration 2 below.
+    // Write the ticket description next to the repos. It is overwritten on
+    // every `do add`, keeping the repo list current, and it stays local: no
+    // repo carries it, so it is never committed and never pushed.
     final repoDirs = nodes.map((n) => n.directory).toList();
-    writeTicketJsonToRepos(
-      repoDirs: repoDirs,
-      ticket: buildTicketJson(ticketDir: ticketDir, repoDirs: repoDirs),
+    writeTicketJson(
+      ticketDir,
+      buildTicketJson(ticketDir: ticketDir, repoDirs: repoDirs),
     );
 
     // Iteration 1: Unlocalize all ---------------------------------------------
@@ -884,17 +884,6 @@ class AddCommand extends Command<dynamic> {
         ggLog: ggLog,
         processRunner: processRunner,
         upgradeDart: true,
-      );
-
-      // Force-stage the ticket marker: `.gg/` is gitignored, so a plain
-      // `git add .` would skip it. Force-adding makes it a tracked file that
-      // travels with the feature branch.
-      await _runGit(
-        repoDir: repoDir,
-        arguments: const ['add', '-f', '.gg/.ticket.json'],
-        successMessage: 'Staged .gg/.ticket.json in $repoName.',
-        failureLabel: 'git add -f .gg/.ticket.json in $repoName',
-        ggLog: ggLog,
       );
 
       // Commit per repo; skip changelog (gg_changelog needs pubspec.yaml).

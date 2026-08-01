@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **Breaking:** `ticket.json` is no longer written into the repositories of a ticket, force-staged and pushed. It now lives in the ticket folder only (`tickets/<ticket>/ticket.json`), so a private ticket's description and repo list never reach a remote.
+- **Breaking:** `do checkout` takes the path or an `http(s)` URL of a `ticket.json`; a directory is read as a ticket folder. Reading the marker from `origin/<branch>` still works for branches an older gg pushed, but warns that it is deprecated.
+- Do not upload ticket.json. Share it manually and import it using &quot;gg do checkout&quot;
+
+### Fixed
+
+- `.gg/ticket.json` and `.gg/.ticket.json` are gitignored again instead of whitelisted, and `copyDirectory` skips both names.
+
 ## 7.3.1 - 2026-08-01
 
 ### Changed
