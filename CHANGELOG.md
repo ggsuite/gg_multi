@@ -5,12 +5,12 @@
 ### Changed
 
 - Auto merge CHANGELOG.md
+- Tidy CHANGELOG entry
 
 ### Fixed
 
 - Fix gg do rm repo does not work only work in ticket root but not when in one of the subfolders
-- Fix »gg do merge« failing with rebase conflicts when a leftover remote feature branch of an already merged ticket still exists
-- Fix gg do merge conflicting with a leftover remote feature branch
+- Fix »gg do merge« conflicting with a leftover remote feature branch of an already merged ticket
 
 ## 7.1.0 - 2026-08-01
 
