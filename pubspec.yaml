@@ -1,6 +1,6 @@
 name: gg_multi
 description: gg_multi manages multi package workspaces and supports orchestrated editing and publishing
-version: 7.3.0
+version: 7.3.1
 repository: https://github.com/ggsuite/gg_multi.git
 
 environment:
@@ -17,7 +17,7 @@ dependencies:
   gg_localize_refs: ^3.3.0
   gg_local_package_dependencies: ^2.0.0
   gg_log: ^1.0.6
-  gg_publish: ^3.9.1
+  gg_publish: ^3.9.2
   gg_status_printer: ^1.1.4
   pub_semver: ^2.2.0
   mocktail: ^1.0.5

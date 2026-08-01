@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.3.1 - 2026-08-01
+
+### Changed
+
+- Take base version from git tags when publish_to is none
+
 ## 7.3.0 - 2026-08-01
 
 ### Changed

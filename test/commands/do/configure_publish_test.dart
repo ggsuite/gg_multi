@@ -295,6 +295,10 @@ void main() {
           ggLog: ggLog,
         );
         expect(adapter.capturedOptions.first.first, contains('0.0.0'));
+        expect(
+          messages.join('\n'),
+          contains('Could not determine the published version'),
+        );
       });
     });
 
