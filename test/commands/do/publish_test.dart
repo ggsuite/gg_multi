@@ -6433,6 +6433,56 @@ void main() {
       );
     });
 
+    test('points the refs of a skipped repo at the published versions',
+        () async {
+      // The ticket cleanup deletes the feature branch the review pinned the
+      // refs to, so a repo that was not published must leave that mode too -
+      // otherwise its next »dart pub get« cannot resolve anything.
+      stubSkipCheck({'A'});
+
+      await buildRunner().run(['publish', '--input', ticketDir.path]);
+
+      final unlocalized = verify(
+        () => mockUnlocalizeRefs.get(
+          directory: captureAny(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).captured.cast<Directory>().map((d) => path.basename(d.path));
+
+      expect(unlocalized, contains('A'));
+    });
+
+    test('reports a repo whose refs could not be changed and continues',
+        () async {
+      stubSkipCheck({'A'});
+      when(
+        () => mockUnlocalizeRefs.get(
+          directory: any(
+            named: 'directory',
+            that: predicate<Directory>((d) => path.basename(d.path) == 'A'),
+          ),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenThrow(Exception('no remote'));
+
+      await buildRunner().run(['publish', '--input', ticketDir.path]);
+
+      expect(
+        messages.any(
+          (m) => m.contains(
+            'Could not point the references of A at the published versions',
+          ),
+        ),
+        isTrue,
+      );
+
+      // The run still finished: the resume anchor is gone again.
+      expect(
+        File(path.join(ticketDir.path, '.gg', 'gg-publish.json')).existsSync(),
+        isFalse,
+      );
+    });
+
     test('--publish-unchanged publishes every repo unchecked', () async {
       stubSkipCheck({'A', 'B'});
 

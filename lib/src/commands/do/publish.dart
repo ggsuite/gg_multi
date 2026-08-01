@@ -354,6 +354,10 @@ class DoPublishCommand extends DirCommand<void> {
     final confirmedPubDevVersions = <String>{};
     final skippedRepos = <String>[];
 
+    // The repos that went through _publishRepo in this run — the only ones
+    // whose references were already pointed back at the registry.
+    final refsChangedRepos = <String>{};
+
     // Map of reference name to version captured from repos processed so far.
     final refVersions = <String, String>{};
 
@@ -433,6 +437,8 @@ class DoPublishCommand extends DirCommand<void> {
           rethrow;
         }
 
+        refsChangedRepos.add(repoName);
+
         // Record success *now*, before the network-dependent version capture
         // below — so a transient failure there cannot lose the marker and
         // re-run this already-published repo on a later `--continue`.
@@ -501,7 +507,19 @@ class DoPublishCommand extends DirCommand<void> {
       );
     }
 
-    // Step 5: All repos published — the resume anchor is no longer needed.
+    // Step 5: Every repo that was not published still carries the git refs of
+    // the review. The cleanup below deletes the very branch they point at, so
+    // they are pointed at the freshly published versions first — all versions
+    // of the ticket are known now that the loop is through.
+    await _changeRemainingRefsToPubDev(
+      subs: subs,
+      publishedRepos: refsChangedRepos,
+      refVersions: refVersions,
+      ggLog: ggLog,
+      taskLog: taskLog,
+    );
+
+    // Step 6: All repos published — the resume anchor is no longer needed.
     if (runtimeFile.existsSync()) {
       runtimeFile.deleteSync();
       taskLog(
@@ -511,7 +529,7 @@ class DoPublishCommand extends DirCommand<void> {
       );
     }
 
-    // Step 6: Clean the ticket up. The repos are never deleted outright —
+    // Step 7: Clean the ticket up. The repos are never deleted outright —
     // they move to <root>/.trash/<ticket>, so uncommitted leftovers stay
     // recoverable. The remote feature branch is deleted unless
     // --no-delete-remote-branch was passed.
@@ -785,50 +803,11 @@ class DoPublishCommand extends DirCommand<void> {
     // the entry rides along the force-commit below, no extra commit needed.
     await _ensureIgnored.ensure(directory: repoDir, commit: false);
 
-    try {
-      await _unlocalizeRefs.get(directory: repoDir, ggLog: taskLog);
-      taskLog(green('$repoName: unlocalized refs.'));
-    } catch (e) {
-      throw Exception('Failed to unlocalize refs for $repoName: $e');
-    }
-
-    try {
-      await _restorePublishTo.exec(directory: repoDir, ggLog: taskLog);
-    } catch (e) {
-      throw Exception('Failed to restore publish_to for $repoName: $e');
-    }
-
-    // Apply all known reference versions to this repo if it depends on them
-    for (final entry in refVersions.entries) {
-      final refName = entry.key;
-      final refVersion = entry.value;
-      try {
-        final spec = await _getRefVersion.get(
-          directory: repoDir,
-          ref: refName,
-        );
-        if (spec != null) {
-          // Pass the bare published version. set-ref-version preserves the
-          // operator (`^`, `~`, or none/exact) the dependency is currently
-          // declared with — the refs were just unlocalized back to their
-          // original spec — so the user's chosen constraint style survives.
-          await _setRefVersion.get(
-            directory: repoDir,
-            ref: refName,
-            version: refVersion,
-          );
-        }
-      } catch (e) {
-        throw Exception('Failed to update version of $refName '
-            'in $repoName: $e');
-      }
-    }
-
-    // Refresh deps after manifest edits (refs, publish_to, versions).
-    await _refreshDependencies(
+    await _changeRefsToPubDev(
       repoDir: repoDir,
       repoName: repoName,
-      ggLog: taskLog,
+      refVersions: refVersions,
+      taskLog: taskLog,
     );
 
     // Commit
@@ -880,6 +859,128 @@ class DoPublishCommand extends DirCommand<void> {
       mergeOnly: mergeOnly,
       force: force,
     );
+  }
+
+  /// Points every reference of [repoDir] at the registry again: the localized
+  /// refs are unlocalized, the original `publish_to` is restored, every known
+  /// [refVersions] entry is written as the dependency's version and the
+  /// dependencies are refreshed so the lock file follows.
+  ///
+  /// While the ticket is under review, `gg_localize_refs` redirects the
+  /// workspace dependencies through `pubspec_overrides.yaml` — first to the
+  /// sibling checkouts, then to the ticket's feature branch. Both are gone
+  /// after the publish: the checkouts move to the trash and the feature branch
+  /// is deleted on the remote (by `_cleanUpTicket`, and often by the provider
+  /// itself the moment the pull request is merged). A repo left pointing at
+  /// either fails its next `dart pub get` with an unresolvable reference,
+  /// which is why this runs for **every** repo of the ticket — see
+  /// [_changeRemainingRefsToPubDev] for the ones that are not published.
+  Future<void> _changeRefsToPubDev({
+    required Directory repoDir,
+    required String repoName,
+    required Map<String, String> refVersions,
+    required GgLog taskLog,
+  }) async {
+    try {
+      await _unlocalizeRefs.get(directory: repoDir, ggLog: taskLog);
+      taskLog(green('$repoName: unlocalized refs.'));
+    } catch (e) {
+      throw Exception('Failed to unlocalize refs for $repoName: $e');
+    }
+
+    try {
+      await _restorePublishTo.exec(directory: repoDir, ggLog: taskLog);
+    } catch (e) {
+      throw Exception('Failed to restore publish_to for $repoName: $e');
+    }
+
+    // Apply all known reference versions to this repo if it depends on them
+    for (final entry in refVersions.entries) {
+      final refName = entry.key;
+      final refVersion = entry.value;
+      try {
+        final spec = await _getRefVersion.get(
+          directory: repoDir,
+          ref: refName,
+        );
+        if (spec != null) {
+          // Pass the bare published version. set-ref-version preserves the
+          // operator (`^`, `~`, or none/exact) the dependency is currently
+          // declared with — the refs were just unlocalized back to their
+          // original spec — so the user's chosen constraint style survives.
+          await _setRefVersion.get(
+            directory: repoDir,
+            ref: refName,
+            version: refVersion,
+          );
+        }
+      } catch (e) {
+        throw Exception('Failed to update version of $refName '
+            'in $repoName: $e');
+      }
+    }
+
+    // Refresh deps after manifest edits (refs, publish_to, versions).
+    await _refreshDependencies(
+      repoDir: repoDir,
+      repoName: repoName,
+      ggLog: taskLog,
+    );
+  }
+
+  /// Runs [_changeRefsToPubDev] for the repos of [subs] that never went
+  /// through [_publishRepo] — the ones the unchanged-repo check skipped and,
+  /// on `--continue`, the ones an earlier run already published.
+  ///
+  /// Without it exactly those repos keep the refs of the review: a
+  /// `pubspec_overrides.yaml` pinning the ticket's feature branch, which the
+  /// ticket cleanup deletes right after. The repos are moved to the trash
+  /// rather than deleted, so they stay usable — but only when their references
+  /// point at the versions that were just published.
+  ///
+  /// [publishedRepos] are the repos that already did this inside their
+  /// publish. Failures are reported and the remaining repos are still
+  /// processed: everything irreversible has happened at this point, and
+  /// aborting here would leave the ticket half cleaned up.
+  Future<void> _changeRemainingRefsToPubDev({
+    required List<Node> subs,
+    required Set<String> publishedRepos,
+    required Map<String, String> refVersions,
+    required GgLog ggLog,
+    required GgLog taskLog,
+  }) async {
+    for (final repo in subs) {
+      final repoName = path.basename(repo.directory.path);
+      if (publishedRepos.contains(repoName)) {
+        continue;
+      }
+
+      try {
+        // Unlike inside the publish loop — where a repo's own version is only
+        // recorded after its turn — refVersions holds every repo of the ticket
+        // by now, this one included. A package never depends on itself, so its
+        // own entry is dropped instead of looked up.
+        final ownName = await _readManifestName(repo.directory, repoName);
+        await _changeRefsToPubDev(
+          repoDir: repo.directory,
+          repoName: repoName,
+          refVersions: <String, String>{
+            for (final entry in refVersions.entries)
+              if (entry.key != ownName && entry.key != repoName)
+                entry.key: entry.value,
+          },
+          taskLog: taskLog,
+        );
+      } catch (e) {
+        ggLog(
+          yellow(
+            'Could not point the references of $repoName at the published '
+            'versions ($e). Its ${gg.NoPubspecOverrides.fileName} may still '
+            'refer to the deleted feature branch.',
+          ),
+        );
+      }
+    }
   }
 
   /// Throws when one of [repos] still redirects a dependency to a local
