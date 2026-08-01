@@ -18,6 +18,7 @@ import 'package:gg_multi/src/commands/do/init.dart';
 import 'package:gg_multi/src/commands/do/rm.dart';
 
 import 'do/commit.dart';
+import 'do/merge.dart';
 import 'do/push.dart';
 import 'do/publish.dart';
 import 'do/review.dart';
@@ -49,6 +50,7 @@ class Do extends Command<void> {
     addSubcommand(DoCommitCommand(ggLog: ggLog));
     addSubcommand(DoPushCommand(ggLog: ggLog));
     addSubcommand(DoPublishCommand(ggLog: ggLog));
+    addSubcommand(DoMergeCommand(ggLog: ggLog));
     addSubcommand(DoConfigurePublishCommand(ggLog: ggLog));
     addSubcommand(DoReviewCommand(ggLog: ggLog));
     addSubcommand(DoCancelReviewCommand(ggLog: ggLog));

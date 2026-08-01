@@ -1,5 +1,16 @@
 # Changelog
 
+## 7.1.0 - 2026-08-01
+
+### Added
+
+- Add »gg do merge«
+
+### Changed
+
+- \#gg: changed references to git
+- \#gg: changed references to pub.dev
+
 ## 7.0.1 - 2026-07-31
 
 ### Changed
