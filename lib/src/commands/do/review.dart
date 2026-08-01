@@ -16,6 +16,7 @@ import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
 import '../../backend/git_snapshot.dart' as git_snapshot;
+import '../../backend/publish_skip_check.dart';
 import '../../backend/workspace_utils.dart';
 import '../../commands/can/review.dart';
 
@@ -707,6 +708,11 @@ class DoReviewCommand extends DirCommand<void> {
   /// local review commit is replayed on top of the remote state. On a genuine
   /// rebase conflict we abort and throw an actionable error — we never
   /// force-push.
+  ///
+  /// The one exception is an **obsolete** remote branch — see
+  /// [_remoteBranchIsObsolete]: rebasing onto it would replay the whole main
+  /// branch onto a tip that predates it and conflict on commits that are long
+  /// merged. Such a branch is overwritten with `--force-with-lease` instead.
   Future<void> _integrateRemoteBranch({
     required Directory repoDir,
     required String repoName,
@@ -724,6 +730,40 @@ class DoReviewCommand extends DirCommand<void> {
     final remoteHasBranch = remoteBranch.exitCode == 0 &&
         (remoteBranch.stdout?.toString().trim().isNotEmpty ?? false);
     if (!remoteHasBranch) {
+      return;
+    }
+
+    // The hash the remote branch points to right now. It is both the input of
+    // the obsolete-branch analysis and the lease of the force push below, so
+    // a branch somebody moved in between is never overwritten.
+    final remoteHead =
+        remoteBranch.stdout!.toString().trim().split(RegExp(r'\s')).first;
+
+    // Make the remote commits available locally — the analysis walks them.
+    await _runGit(
+      <String>['fetch', 'origin', branch],
+      repoDir: repoDir,
+      allowFailure: true,
+    );
+
+    // Already contained in the local history — nothing to integrate. Checked
+    // first because it is the cheap and by far most common case.
+    if (await _isAncestor(remoteHead, 'HEAD', repoDir: repoDir)) {
+      return;
+    }
+
+    if (await _remoteBranchIsObsolete(
+      repoDir: repoDir,
+      remoteHead: remoteHead,
+    )) {
+      await _replaceObsoleteRemoteBranch(
+        repoDir: repoDir,
+        repoName: repoName,
+        branch: branch,
+        remoteHead: remoteHead,
+        ggLog: ggLog,
+        errorLog: errorLog,
+      );
       return;
     }
 
@@ -753,6 +793,148 @@ class DoReviewCommand extends DirCommand<void> {
       );
     }
     ggLog(green('Integrated origin/$branch into $repoName before push'));
+  }
+
+  /// Whether `origin/<branch>` is a leftover of a ticket that was **already
+  /// merged**, and therefore must not be rebased onto.
+  ///
+  /// A ticket branch that was squash-merged into `main` keeps existing on the
+  /// remote when the provider did not delete it. Re-using the ticket (a fresh
+  /// `gg do add`/`do checkout`, or simply a second `gg do merge`) recreates
+  /// the branch locally *from the current main* — which now contains the
+  /// squashed ticket plus everything merged after it. `git pull --rebase`
+  /// then replays all of those commits onto a tip that predates them and dies
+  /// in conflicts on foreign, long-merged work.
+  ///
+  /// The branch counts as obsolete when every commit it holds on top of the
+  /// local history is either
+  ///
+  /// * already contained in `origin/main` **by content** (`git cherry`
+  ///   compares patch ids, so a squash merge is recognized), or
+  /// * one of gg's own bookkeeping commits (`#gg: …`, or a legacy subject) —
+  ///   the ref-flipping commits of an earlier review carry no work.
+  ///
+  /// Anything else — a real commit somebody pushed to the branch and that is
+  /// not on main — makes this return false, so the regular rebase runs and
+  /// no work can be lost.
+  Future<bool> _remoteBranchIsObsolete({
+    required Directory repoDir,
+    required String remoteHead,
+  }) async {
+    // The local branch must be up to date with main — otherwise this is an
+    // ordinary divergence and not the "branch rebuilt from main" situation.
+    // `origin/main` is current: the review fetched and merged it in step 4.
+    // A repository without it fails this check and is never treated as
+    // obsolete.
+    if (!await _isAncestor('origin/main', 'HEAD', repoDir: repoDir)) {
+      return false;
+    }
+
+    // Commits of the remote branch that are already on main by content.
+    final cherry = await _runGit(
+      <String>['cherry', 'origin/main', remoteHead],
+      repoDir: repoDir,
+      allowFailure: true,
+    );
+    final onMainByContent = <String>{
+      for (final line in cherry.split('\n'))
+        if (line.trim().startsWith('- ')) line.trim().substring(2).trim(),
+    };
+
+    // Everything the remote branch adds to the local history.
+    final extra = await _runGit(
+      <String>['log', '--format=%H%x09%s', remoteHead, '--not', 'HEAD'],
+      repoDir: repoDir,
+      allowFailure: true,
+    );
+    if (extra.isEmpty) {
+      return false; // Nothing to explain — the rebase is a no-op anyway.
+    }
+
+    for (final line in extra.split('\n')) {
+      final entry = line.trim();
+      if (entry.isEmpty) {
+        continue;
+      }
+      final tab = entry.indexOf('\t');
+      final hash = tab < 0 ? entry : entry.substring(0, tab);
+      final subject = tab < 0 ? '' : entry.substring(tab + 1).trim();
+
+      if (onMainByContent.contains(hash)) {
+        continue;
+      }
+      if (subject.startsWith(PublishSkipCheck.ggCommitPrefix) ||
+          PublishSkipCheck.legacyGgCommitMessages.contains(subject)) {
+        continue;
+      }
+      return false;
+    }
+
+    return true;
+  }
+
+  /// Overwrites an obsolete `origin/<branch>` (see [_remoteBranchIsObsolete])
+  /// with the local state, so the following push is a fast-forward.
+  ///
+  /// The lease pins [remoteHead] — the hash the obsolete-branch analysis was
+  /// made from — so a branch that moved on the remote in the meantime is
+  /// rejected instead of overwritten.
+  Future<void> _replaceObsoleteRemoteBranch({
+    required Directory repoDir,
+    required String repoName,
+    required String branch,
+    required String remoteHead,
+    required GgLog ggLog,
+    required GgLog errorLog,
+  }) async {
+    final push = await _processRunner(
+      'git',
+      <String>[
+        'push',
+        '--force-with-lease=$branch:$remoteHead',
+        '--set-upstream',
+        'origin',
+        'HEAD:refs/heads/$branch',
+      ],
+      workingDirectory: repoDir.path,
+    );
+
+    if (push.exitCode != 0) {
+      final stderrStr = push.stderr?.toString() ?? '';
+      errorLog(
+        red(
+          'Failed to replace the obsolete branch origin/$branch of '
+          '$repoName: $stderrStr',
+        ),
+      );
+      throw Exception(
+        'Failed to review in: $repoName (origin/$branch is a leftover of an '
+        'already merged ticket, but replacing it failed — delete it manually '
+        'with "git push origin --delete $branch", then re-run): $stderrStr',
+      );
+    }
+
+    ggLog(
+      yellow(
+        'origin/$branch of $repoName was a leftover of an already merged '
+        'ticket — replaced it with the current branch instead of rebasing '
+        'onto it.',
+      ),
+    );
+  }
+
+  /// Whether [ancestor] is an ancestor of [descendant] in [repoDir].
+  Future<bool> _isAncestor(
+    String ancestor,
+    String descendant, {
+    required Directory repoDir,
+  }) async {
+    final result = await _processRunner(
+      'git',
+      <String>['merge-base', '--is-ancestor', ancestor, descendant],
+      workingDirectory: repoDir.path,
+    );
+    return result.exitCode == 0;
   }
 
   /// Refreshes dependencies for [repoDir] based on the detected project
