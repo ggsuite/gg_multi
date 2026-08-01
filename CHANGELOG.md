@@ -5,8 +5,6 @@
 ### Changed
 
 - Never publish ticket.json
-- \#gg: changed references to git
-- \#gg: changed references to pub.dev
 
 ## 7.0.1 - 2026-07-31
 
