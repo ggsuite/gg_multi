@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Fix gg do rm repo does not work only work in ticket root but not when in one of the subfolders
+
 ### Changed
 
 - Auto merge CHANGELOG.md
@@ -11,12 +15,6 @@
 ### Added
 
 - Add »gg do merge«
-
-### Changed
-
-- \#gg: changed references to git
-- \#gg: changed references to pub.dev
-  > > > > > > > origin/main
 
 ## 7.0.1 - 2026-07-31
 

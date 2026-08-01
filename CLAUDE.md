@@ -144,7 +144,7 @@ Once found, it recreates the ticket folder + root `.ticket`, clones any missing 
 
 ### `do rm` Command
 
-`RemoveCommand` (in `lib/src/commands/do/rm.dart`) deletes a single repo folder. From the workspace root it deletes the master copy only when no ticket still references the repo, otherwise it lists the offending tickets. From inside a ticket it deletes that ticket's copy only — master and sibling tickets are never touched. The repo is addressed by its plain name and resolved inside its organization folder; an organization folder that loses its last repo is removed with it.
+`RemoveCommand` (in `lib/src/commands/do/rm.dart`) deletes a single repo folder. From the workspace root it deletes the master copy only when no ticket still references the repo, otherwise it lists the offending tickets. From inside a ticket it deletes that ticket's copy only — master and sibling tickets are never touched. The context is resolved from the working directory with `WorkspaceUtils.detectTicketPath` / `defaultGgMultiWorkspacePath`, so the command works from any sub-folder (e.g. inside one of the ticket's repos), not just from the ticket or workspace root. The repo is addressed by its plain name and resolved inside its organization folder; an organization folder that loses its last repo is removed with it.
 
 **`.ticket.json` upkeep**: after a ticket-scoped deletion the `.gg/.ticket.json` marker of every remaining repo is rewritten without the deleted repo (`issue_id`/`description` come from the root `.ticket` via `buildTicketJson`, same as `do add`). Only repos that already carry a marker are touched, so a ticket that never saw a `do add` does not gain one. The marker is written but neither staged nor committed — the next `do add`/`do commit` picks it up.
 

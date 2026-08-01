@@ -14,6 +14,7 @@ import '../../backend/add_repository_helper.dart';
 import '../../backend/constants.dart';
 import '../../backend/repo_folder_resolver.dart';
 import '../../backend/ticket_json.dart';
+import '../../backend/workspace_utils.dart';
 
 /// Factory for `Directory` instances — overridable in tests.
 typedef DirectoryFactory = Directory Function(String path);
@@ -55,18 +56,27 @@ class RemoveCommand extends Command<void> {
     final targetArg = argResults!.rest.first;
     final repoName = extractRepoName(targetArg) ?? 'unknown_repo';
 
-    if (_isTicketDirectory(rootPath)) {
+    final ticketPath = WorkspaceUtils.detectTicketPath(rootPath);
+    if (ticketPath != null) {
+      _root = ticketPath;
       await _removeFromTicket(repoName);
       return;
     }
+
+    _root = WorkspaceUtils.defaultGgMultiWorkspacePath(workingDir: rootPath);
     _removeFromMasterIfUnused(repoName);
   }
 
   /// Log sink.
   final GgLog ggLog;
 
-  /// Root directory to search for workspaces.
+  /// Directory the command was invoked in.
   final String rootPath;
+
+  /// The workspace [rootPath] belongs to: the ticket directory when invoked
+  /// inside a ticket, the Gg Multi workspace root otherwise. Resolved in
+  /// [run], so the command also works from any sub-folder.
+  late final String _root;
 
   /// Factory used to materialize Directory handles (tests substitute it).
   final DirectoryFactory directoryFactory;
@@ -84,23 +94,23 @@ class RemoveCommand extends Command<void> {
   /// Deletes the repo from the ticket the command was invoked in.
   Future<void> _removeFromTicket(String repoName) async {
     final resolved = RepoFolderResolver.resolve(
-      workspacePath: rootPath,
+      workspacePath: _root,
       repoName: repoName,
     );
     final ticketRepoDir =
-        resolved ?? directoryFactory(path.join(rootPath, repoName));
+        resolved ?? directoryFactory(path.join(_root, repoName));
     if (!ticketRepoDir.existsSync()) {
       ggLog(
         red(
           'Repository $repoName is not part of ticket '
-          '${path.basename(rootPath)}.',
+          '${path.basename(_root)}.',
         ),
       );
       return;
     }
 
     final nodes = await _sortedProcessingList.get(
-      directory: directoryFactory(rootPath),
+      directory: directoryFactory(_root),
       ggLog: ggLog,
     );
 
@@ -108,14 +118,14 @@ class RemoveCommand extends Command<void> {
 
     ticketRepoDir.deleteSync(recursive: true);
     RepoFolderResolver.removeEmptyOrgFolder(
-      workspacePath: rootPath,
+      workspacePath: _root,
       repoDir: ticketRepoDir,
     );
     ggLog(
       darkGray('Deleted repository ') +
           green(repoName) +
           darkGray(' from ticket ') +
-          green(path.basename(rootPath)) +
+          green(path.basename(_root)) +
           darkGray('.'),
     );
 
@@ -150,7 +160,7 @@ class RemoveCommand extends Command<void> {
     ggLog(
       red(
         'Repository $repoName connects other repos of ticket '
-        '${path.basename(rootPath)}:',
+        '${path.basename(_root)}:',
       ),
     );
     for (final dependent in dependents) {
@@ -196,7 +206,7 @@ class RemoveCommand extends Command<void> {
     writeTicketJsonToRepos(
       repoDirs: withMarker,
       ticket: buildTicketJson(
-        ticketDir: directoryFactory(rootPath),
+        ticketDir: directoryFactory(_root),
         repoDirs: remaining,
       ),
     );
@@ -213,12 +223,12 @@ class RemoveCommand extends Command<void> {
   void _removeFromMasterIfUnused(String repoName) {
     final ticketsContainingRepo = _ticketsReferencing(repoName);
     final resolved = RepoFolderResolver.resolve(
-      workspacePath: path.join(rootPath, ggMultiMasterFolder),
+      workspacePath: path.join(_root, ggMultiMasterFolder),
       repoName: repoName,
     );
     final masterRepoDir = resolved ??
         directoryFactory(
-          path.join(rootPath, ggMultiMasterFolder, repoName),
+          path.join(_root, ggMultiMasterFolder, repoName),
         );
     final existsInMaster = masterRepoDir.existsSync();
 
@@ -230,7 +240,7 @@ class RemoveCommand extends Command<void> {
     if (ticketsContainingRepo.isEmpty) {
       masterRepoDir.deleteSync(recursive: true);
       RepoFolderResolver.removeEmptyOrgFolder(
-        workspacePath: path.join(rootPath, ggMultiMasterFolder),
+        workspacePath: path.join(_root, ggMultiMasterFolder),
         repoDir: masterRepoDir,
       );
       ggLog(green('Deleted repository $repoName from master workspace.'));
@@ -252,7 +262,7 @@ class RemoveCommand extends Command<void> {
   // ...........................................................................
   /// Returns the names of all tickets that still hold a copy of [repoName].
   List<String> _ticketsReferencing(String repoName) {
-    final ticketsRoot = Directory(path.join(rootPath, ggMultiTicketFolder));
+    final ticketsRoot = Directory(path.join(_root, ggMultiTicketFolder));
     if (!ticketsRoot.existsSync()) return const <String>[];
     return [
       for (final ticket in ticketsRoot.listSync().whereType<Directory>())
@@ -263,11 +273,5 @@ class RemoveCommand extends Command<void> {
             null)
           path.basename(ticket.path),
     ];
-  }
-
-  // ...........................................................................
-  /// True when [dirPath]'s parent is `tickets/`.
-  bool _isTicketDirectory(String dirPath) {
-    return path.basename(path.dirname(dirPath)) == ggMultiTicketFolder;
   }
 }
