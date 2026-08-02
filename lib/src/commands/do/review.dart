@@ -670,6 +670,9 @@ class DoReviewCommand extends DirCommand<void> {
           ggLog: ggLog,
           message: '#gg: changed references to git',
           force: true,
+          // Bookkeeping, not a change of the package — keep it out of
+          // CHANGELOG.md (»gg do commit --no-log«).
+          updateChangeLog: false,
         );
         ggLog(green('Committed $repoName'));
       } catch (e) {
@@ -800,7 +803,7 @@ class DoReviewCommand extends DirCommand<void> {
   ///
   /// A ticket branch that was squash-merged into `main` keeps existing on the
   /// remote when the provider did not delete it. Re-using the ticket (a fresh
-  /// `gg do add`/`do checkout`, or simply a second `gg do merge`) recreates
+  /// `gg do add`/`do checkout`) recreates
   /// the branch locally *from the current main* — which now contains the
   /// squashed ticket plus everything merged after it. `git pull --rebase`
   /// then replays all of those commits onto a tip that predates them and dies
