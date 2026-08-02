@@ -91,10 +91,21 @@ class _RepoPublishSnapshot {
 
 /// Command to publish all repos in the ticket.
 ///
-/// With [mergeOnly] the exact same flow runs, minus the two steps that release
-/// the packages: nothing is uploaded to a package registry and no version tags
-/// are created. That is what `gg do merge` ([DoMergeCommand]) is — see there
-/// for the additional preconditions it enforces.
+/// With `--merge-only` ([mergeOnly]) the exact same flow runs, minus the two
+/// steps that release the packages: nothing is uploaded to a package registry
+/// and no version tags are created. Because the merged state is therefore
+/// never resolvable against a registry, that mode refuses to run while any
+/// repository of the ticket still redirects a dependency to a local working
+/// copy (a `pubspec_overrides.yaml` with a `path:` override); such a ticket
+/// has to be published. `--force` merges anyway.
+///
+/// Since a merge leaves no tag behind, the work it puts on the main branch is
+/// unreleased. `PublishSkipCheck` therefore compares against the last **tag**,
+/// not against the main branch — so the next `gg do publish` still sees those
+/// commits instead of mistaking the repository for unchanged.
+///
+/// There is no `gg do merge` command anymore — it was folded into this one, so
+/// there is exactly one flow.
 class DoPublishCommand extends DirCommand<void> {
   /// Constructor
   DoPublishCommand({
@@ -146,12 +157,15 @@ class DoPublishCommand extends DirCommand<void> {
   }
 
   /// Whether the run merges without releasing: no registry upload, no tags.
-  /// Set by [DoMergeCommand]; false for a regular publish.
-  final bool mergeOnly;
+  ///
+  /// Set by `--merge-only` (resolved in [get] before the flow starts) or by
+  /// the constructor for programmatic callers; false for a regular publish.
+  bool mergeOnly;
 
   /// The command name used in user-facing hints (`gg do publish` /
-  /// `gg do merge`).
-  String get _command => mergeOnly ? 'gg do merge' : 'gg do publish';
+  /// `gg do publish --merge-only`).
+  String get _command =>
+      mergeOnly ? 'gg do publish --merge-only' : 'gg do publish';
 
   /// The past participle used in user-facing messages.
   String get _done => mergeOnly ? 'merged' : 'published';
@@ -222,12 +236,14 @@ class DoPublishCommand extends DirCommand<void> {
     required GgLog ggLog,
     bool? verbose,
     bool? deleteRemoteBranch,
+    bool? mergeOnly,
   }) =>
       get(
         directory: directory,
         ggLog: ggLog,
         verbose: verbose,
         deleteRemoteBranch: deleteRemoteBranch,
+        mergeOnly: mergeOnly,
       );
 
   @override
@@ -236,12 +252,19 @@ class DoPublishCommand extends DirCommand<void> {
     required GgLog ggLog,
     bool? verbose,
     bool? deleteRemoteBranch,
+    bool? mergeOnly,
   }) async {
+    // »--merge-only« replaces the former »gg do merge« command. The resolved
+    // value drives every merge-only branch of the flow below, so it is
+    // settled before anything else runs.
+    this.mergeOnly = mergeOnly ??
+        (this.mergeOnly || (argResults?['merge-only'] as bool? ?? false));
+    final bool isMergeOnly = this.mergeOnly;
     verbose ??= argResults?['verbose'] as bool? ?? false;
     final continueRun = argResults?['continue'] as bool? ?? false;
     final reconfigure = argResults?['reconfigure'] as bool? ?? false;
     final publishUnchanged = argResults?['publish-unchanged'] as bool? ?? false;
-    final force = mergeOnly && (argResults?['force'] as bool? ?? false);
+    final force = this.mergeOnly && (argResults?['force'] as bool? ?? false);
     final String? configArg = argResults?['config'] as String?;
     final String? messageArg = argResults?['message'] as String?;
     deleteRemoteBranch ??= argResults?['delete-remote-branch'] as bool? ?? true;
@@ -299,7 +322,7 @@ class DoPublishCommand extends DirCommand<void> {
     // would therefore land on main referencing something nobody can resolve —
     // that ticket has to be published, not merged. Checked before `do review`
     // runs, because reviewing replaces the path overrides with git refs.
-    if (mergeOnly && !force) {
+    if (isMergeOnly && !force) {
       _throwOnLocalizedRefs(subs);
     }
 
@@ -398,7 +421,7 @@ class DoPublishCommand extends DirCommand<void> {
       } else {
         if (skipDecision != null) {
           taskLog(
-            '$repoName: ${mergeOnly ? 'merging' : 'publishing'} — '
+            '$repoName: ${isMergeOnly ? 'merging' : 'publishing'} — '
             '${skipDecision.reason}.',
           );
         }
@@ -473,7 +496,7 @@ class DoPublishCommand extends DirCommand<void> {
             // merge uploads nothing either, so the fresh version never becomes
             // visible on a registry — recording it here would make every
             // dependent repo wait for a release that is not coming.
-            if (!mergeOnly && projectType != gg.ProjectType.none) {
+            if (!isMergeOnly && projectType != gg.ProjectType.none) {
               final publishInfo = projectType == gg.ProjectType.typescript
                   ? await _npmChecker.getPackagePublishInfo(
                       packageName: packageName,
@@ -746,6 +769,7 @@ class DoPublishCommand extends DirCommand<void> {
       directory: ticketDir,
       ggLog: ggLog,
       defaultMergeMessage: messageArg,
+      mergeOnly: mergeOnly,
     );
     return (config: config, sourcePath: runtimeFile.path);
   }
@@ -871,6 +895,9 @@ class DoPublishCommand extends DirCommand<void> {
     final resolved = publishConfig.forRepo(
       repoName: repoName,
       configPath: configPath,
+      // A merge-only run bumps no version, so a config written for it carries
+      // no increment — demanding one would reject the very file it wrote.
+      requireVersionIncrement: !mergeOnly,
     );
     final publishMessage = resolved.mergeMessage;
     final publishVersionIncrement = resolved.versionIncrement;
@@ -1020,7 +1047,7 @@ class DoPublishCommand extends DirCommand<void> {
   /// Throws when one of [repos] still redirects a dependency to a local
   /// working copy (`pubspec_overrides.yaml`).
   ///
-  /// Only `gg do merge` calls this: it brings the ticket onto the main
+  /// Only a `--merge-only` run calls this: it brings the ticket onto the main
   /// branches *without* releasing anything, so a reference that exists only as
   /// a working copy on this machine would never become resolvable for anybody
   /// else. Such a ticket has to be published. `--force` skips the check.
@@ -1653,14 +1680,20 @@ class DoPublishCommand extends DirCommand<void> {
       defaultsTo: false,
       negatable: false,
     );
-    if (mergeOnly) {
-      argParser.addFlag(
-        'force',
-        help: 'Merge although local refs are still in place.',
-        defaultsTo: false,
-        negatable: false,
-      );
-    }
+    argParser.addFlag(
+      'merge-only',
+      help: 'Merge the ticket into the main branches without releasing it: '
+          'no registry upload and no version tags. Refused while a repo '
+          'still redirects a dependency to a local working copy.',
+      defaultsTo: false,
+      negatable: false,
+    );
+    argParser.addFlag(
+      'force',
+      help: 'With --merge-only: merge although local refs are still in place.',
+      defaultsTo: false,
+      negatable: false,
+    );
     argParser.addFlag(
       'reconfigure',
       help: 'Ignore an existing .gg/gg-publish.json and configure the '

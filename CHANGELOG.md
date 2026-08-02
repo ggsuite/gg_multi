@@ -7,6 +7,10 @@
 - Use gg_args 2.1.0 which reports unknown sub commands itself
 - Keep gg bookkeeping commits out of CHANGELOG.md using --no-log
 
+### Removed
+
+- Remove gg do merge, use gg do publish --merge-only which asks for no version increment
+
 ## 7.6.0 - 2026-08-02
 
 ### Added

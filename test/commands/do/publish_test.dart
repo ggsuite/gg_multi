@@ -6758,6 +6758,60 @@ void main() {
       ).writeAsStringSync(content);
     }
 
+    /// Builds a plain publish command — merge mode comes from --merge-only.
+    CommandRunner<void> buildFlagRunner() =>
+        CommandRunner<void>('test', 'do publish ticket')
+          ..addCommand(
+            DoPublishCommand(
+              ggLog: ggLog,
+              ensureInRegistry: mockEnsureInRegistry,
+              ggDoPublish: mockGgDoPublish,
+              ggDoCommit: mockGgDoCommit,
+              ggDoPush: mockGgDoPush,
+              unlocalizeRefs: mockUnlocalizeRefs,
+              restorePublishTo: mockRestorePublishTo,
+              sortedProcessingList: mockSortedProcessingList,
+              processRunner: mockProcessRunner.call,
+              canPublishCommand: mockCanPublishCommand,
+              doReviewCommand: mockDoReviewCommand,
+              getVersionCommand: mockGetVersion,
+              setRefVersionCommand: mockSetRefVersion,
+              getRefVersionCommand: mockGetRefVersion,
+              pubDevChecker: mockPubDevChecker,
+            ),
+          );
+
+    test('--merge-only turns a plain publish into a merge', () async {
+      // Replaces the former »gg do merge« command: the flag alone must put
+      // the very same flow into merge mode.
+      await buildFlagRunner().run([
+        'publish',
+        '--input',
+        ticketDir.path,
+        '--merge-only',
+        '-v',
+      ]);
+
+      verify(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
+          mergeOnly: true,
+          force: false,
+        ),
+      ).called(2);
+
+      expect(messages, contains('✅ All repos merged'));
+    });
+
     test('merges every repo without publishing or tagging', () async {
       await buildRunner().run(['publish', '--input', ticketDir.path, '-v']);
 
@@ -6909,7 +6963,7 @@ void main() {
       );
     });
 
-    test('names »gg do merge« in the resume hints', () async {
+    test('names »gg do publish --merge-only« in the resume hints', () async {
       when(
         () => mockGgDoPublish.exec(
           directory: any(named: 'directory'),
@@ -6933,12 +6987,10 @@ void main() {
       );
 
       expect(
-        messages.any((m) => m.contains('gg do merge --continue')),
+        messages.any(
+          (m) => m.contains('gg do publish --merge-only --continue'),
+        ),
         isTrue,
-      );
-      expect(
-        messages.any((m) => m.contains('gg do publish --continue')),
-        isFalse,
       );
     });
   });
