@@ -139,6 +139,22 @@ Because the hook lives in the untracked `.git/hooks/`, it survives in every chec
 
 `TicketCommand` (in `lib/src/commands/do/create/ticket.dart`) creates `tickets/<issue-id>/` with the root `.ticket` file and the VS Code workspace `<issue-id>.code-workspace`, so `do code <ticket>` opens something before the first `do add`. It also creates the ticket's trash folder `<root>/.trash/<issue-id>/`, so the place a later `do publish` moves the repos to exists from the start. A ticket without repos gets the ticket folder itself (`{"path": "."}`) as its single entry — `writeCodeWorkspaceFile` never writes an empty folder list, because VS Code then shows a window with nothing in it and no way to add the first folder. `do add` rewrites the file with one `<org>/<repo>` entry per repository.
 
+### `do create graph` Command
+
+`GraphCommand` (in `lib/src/commands/do/create/graph.dart`) writes the dependency graph of the workspace to **stdout** — `mermaid` (`flowchart LR`, `--orientation=vertical` gives `TD`) or `json`. `--output <file>` (`-o`) redirects it into a file (missing parent folders are created) and leaves only a confirmation on stdout. Warnings from the graph builder go to stderr, so stdout stays machine readable.
+
+**Organization boxes**: repositories are wrapped in a `subgraph` per organization, so a workspace holding several of them stays readable. The boxes appear only when more than one organization is shown — one box around everything is noise — and `--no-group-by-orgs` turns them off. Third party packages belong to no organization and stay outside. Mermaid keeps subgraph and node ids in one namespace, so the box ids are prefixed with `org_` and allocated from the same used-set as the nodes. The flag is mermaid-only: the json format carries the organization per node anyway.
+
+**Edge direction**: the graph is drawn *against* the dependency. The arrow leaves the package that is depended upon and points at the one that needs it, so `LR` puts the dependencies on the left, the dependents on the right, and the chart reads along the build order. Everything before the rendering step works along "depends on" — the edges are reversed once, right before both renderers, so mermaid and json always agree (`from` = depended upon, `to` = needs it).
+
+**Scope** follows the working directory, the same detection every other command uses. Outside a ticket the graph covers `.master`. Inside a ticket it covers the ticket repos plus everything they reach: the checked-out repos are offered to the graph builder *before* the master ones, so they shadow the master copy of the same repo, while the remaining master repos stay available to resolve dependencies pointing out of the ticket. What no ticket repo reaches is dropped afterwards, and the checked-out repos are marked (`class … ticket` / `"inTicket": true`). `--org <name>` keeps only the repos of one organization folder and fails with a `UsageException` when none match.
+
+**Edges** are built from `Node.manifests` directly rather than taken from `Node.dependencies`: `Graph` merges dependencies and dev dependencies into one set and drops everything that is no local package, but the command has to tell the two apart (`--no-dev-dependencies`, dashed `-.->`) and can show third party packages as leaf nodes (`--3rdparty-deps`, off by default). A package that is both a dependency and a dev dependency is shown as the stronger of the two. Dependency names are resolved through the node aliases, so a cross-language repo is reached under its Dart *and* its npm name.
+
+**`--transitive-reduction`** (on by default) drops every edge `u -> v` whose target is reachable from `u` via a longer path — on ggsuite that halves the edge count. All removals are decided against the unreduced graph, so the result does not depend on the visiting order. The graph is acyclic because `Graph` rejects circular dependencies before this point.
+
+Building the node set across the two roots needs `Graph.get(packageDirs: …)` from gg_local_package_dependencies ≥ 2.1.0 — without it a graph is always confined to what lies below a single directory.
+
 ### `do checkout` Command
 
 `DoCheckoutCommand` (in `lib/src/commands/do/checkout.dart`) reproduces a whole ticket from a `ticket.json` (e.g. one another person created) — its repositories on their feature branch, not a byte-identical clone of a fresh `do add` (no `.gitattributes` reinstall). `gg do checkout <X>` resolves `<X>` in this order:

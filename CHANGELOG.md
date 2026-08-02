@@ -1,5 +1,35 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Add »gg do create graph« to output mermaid graphs
+- `gg do create graph` boxes the repositories of each organization in a mermaid
+`subgraph` when more than one organization is shown. `--no-group-by-orgs`
+turns the boxes off.
+
+### Changed
+
+- Allow to group nodes by org
+- Allow to print dependency graphs using "gg do create graph"
+- Allow to print dependency graphs using "gg do create graph"
+- dependency_graph
+
+## 7.5.0 - 2026-08-01
+
+### Added
+
+- `gg do create graph` writes the dependency graph of the workspace to stdout,
+as `mermaid` (default) or `json`. Inside a ticket it graphs the ticket repos
+and what they reach, outside a ticket the whole master workspace, and
+`--org <name>` narrows it down to one organization. Redundant edges are
+hidden by default (`--no-transitive-reduction` keeps them); further options
+are `--orientation`, `--(no-)dev-dependencies` and `--3rdparty-deps`.
+`--output <file>` (`-o`) writes the graph into a file instead of stdout.
+Arrows point from the dependency to the dependent, so a horizontal chart
+lists the dependencies on the left and the dependents on the right.
+
 ## 7.4.1 - 2026-08-01
 
 ### Changed

@@ -7,6 +7,7 @@
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
 
+import 'create/graph.dart';
 import 'create/ticket.dart';
 
 /// Command to create resources such as tickets.
@@ -15,6 +16,9 @@ class CreateCommand extends Command<void> {
   CreateCommand({required this.ggLog}) {
     addSubcommand(
       TicketCommand(ggLog: ggLog),
+    );
+    addSubcommand(
+      GraphCommand(ggLog: ggLog),
     );
   }
 
