@@ -7,6 +7,49 @@
 - `do update master`: syncs the master workspace with the git platforms. It walks every organization of `.organizations`, fetches its current repository list, clones the repos master lacks and moves the ones the organization no longer offers to `<root>/.trash/.master/<org>/<repo>`. Repos are matched by remote url, so a folder named after the package is recognized. Nothing is removed on a guess: an unparsable/missing remote, an unregistered organization and every repo of an organization whose fetch failed stay untouched. `--dry-run` reports without changing anything.
 - `Trash.moveFromMaster`: moves a master repository into `<root>/.trash/.master`, with the same never-overwrite ` (2)` suffixing and cross-volume fallback `moveFromTicket` uses.
 - Add gg do update master
+## 7.6.0 - 2026-08-02
+
+### Added
+
+- Add »gg do create graph« to output mermaid graphs
+- `gg do create graph` boxes the repositories of each organization in a mermaid
+`subgraph` when more than one organization is shown. `--no-group-by-orgs`
+turns the boxes off.
+- Add »gg do add --no-localize«, »--org« and »--all«
+
+### Changed
+
+- Allow to group nodes by org
+- Allow to print dependency graphs using "gg do create graph"
+- Allow to print dependency graphs using "gg do create graph"
+- dependency_graph
+
+## 7.5.0 - 2026-08-01
+
+### Added
+
+- `gg do create graph` writes the dependency graph of the workspace to stdout,
+as `mermaid` (default) or `json`. Inside a ticket it graphs the ticket repos
+and what they reach, outside a ticket the whole master workspace, and
+`--org <name>` narrows it down to one organization. Redundant edges are
+hidden by default (`--no-transitive-reduction` keeps them); further options
+are `--orientation`, `--(no-)dev-dependencies` and `--3rdparty-deps`.
+`--output <file>` (`-o`) writes the graph into a file instead of stdout.
+Arrows point from the dependency to the dependent, so a horizontal chart
+lists the dependencies on the left and the dependents on the right.
+
+## 7.4.1 - 2026-08-01
+
+### Changed
+
+- `gg can publish` verifies the npm login of every repo as its own step. It therefore stays a ticket-wide, up-front check even though the rest of the per-repo publish readiness moved into `do publish`, so a missing npm login is still reported before the first package is uploaded.
+- A failed `gg do merge` reports "Merging … failed" and "The merge is marked as »failed«" instead of the publish wording.
+- New `CanPublishCommand.checkTicket(…, includeCanPublish:)` and `CanPublishCommand.checkRepo(…)`. `gg can publish` itself is unchanged apart from the added npm step.
+- Can publish runs per repo right before that repo is published
+
+### Fixed
+
+- `do publish`/`do merge` no longer fail on a ticket whose repos depend on each other. `gg can publish` ran pana for every repo up front, where a constraint naming an as-yet-unpublished sibling version cannot resolve. The check now runs per repo, right before that repo is published — after its refs were unlocalized and committed and before it is pushed — so every dependency published earlier in the same run is already on its registry.
 
 ## 7.4.0 - 2026-08-01
 

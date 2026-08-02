@@ -3133,5 +3133,263 @@ version: 1.0.0
         expect(logMessages, contains('✓ gg_foo (already added).'));
       });
     });
+
+    group('--localize, --org and --all', () {
+      late MockLocalizeRefs mockLoc;
+      late MockUnlocalizeRefs mockUnloc;
+      late MockGgDoCommit mockDoCommit;
+      late MockProcessRunner mockProc;
+
+      setUp(() {
+        mockProc = MockProcessRunner();
+        when(
+          () => mockProc(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+        mockLoc = MockLocalizeRefs();
+        when(
+          () => mockLoc.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        mockUnloc = MockUnlocalizeRefs();
+        when(
+          () => mockUnloc.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        mockDoCommit = MockGgDoCommit();
+        when(
+          () => mockDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            logType: any(named: 'logType'),
+            updateChangeLog: any(named: 'updateChangeLog'),
+            force: any(named: 'force'),
+          ),
+        ).thenAnswer((_) async {});
+      });
+
+      // Creates a master repo at [relativePath] carrying a git remote.
+      void makeMasterRepo(String relativePath, String remoteUrl) {
+        final dir = Directory(path.join(masterWorkspacePath, relativePath))
+          ..createSync(recursive: true);
+        File(path.join(dir.path, 'pubspec.yaml')).writeAsStringSync(
+          'name: ${path.basename(relativePath)}\nversion: 1.0.0\n',
+        );
+        final gitDir = Directory(path.join(dir.path, '.git'))..createSync();
+        File(path.join(gitDir.path, 'config')).writeAsStringSync(
+          '[remote "origin"]\n\turl = $remoteUrl\n',
+        );
+      }
+
+      Directory makeTicketDir(String name) => Directory(
+            path.join(tempDir.path, ggMultiTicketFolder, name),
+          )..createSync(recursive: true);
+
+      void createTicketRunner(Directory ticketDir) => createRunner(
+            executionPath: ticketDir.path,
+            processRunner: mockProc.call,
+            ggDoCommit: mockDoCommit,
+            unlocalizeRefs: mockUnloc,
+            localizeRefs: mockLoc,
+          );
+
+      // Creates orgA/repo1, orgA/repo2 and orgB/repo3 in the master.
+      void makeTwoOrgs() {
+        makeMasterRepo(
+          path.join('orgA', 'repo1'),
+          'https://github.com/orgA/repo1.git',
+        );
+        makeMasterRepo(
+          path.join('orgA', 'repo2'),
+          'https://github.com/orgA/repo2.git',
+        );
+        makeMasterRepo(
+          path.join('orgB', 'repo3'),
+          'https://github.com/orgB/repo3.git',
+        );
+      }
+
+      Set<String> ticketRepoPaths(Directory ticketDir) => <String>{
+            for (final org in ticketDir.listSync().whereType<Directory>())
+              for (final repo in org.listSync().whereType<Directory>())
+                '${path.basename(org.path)}/${path.basename(repo.path)}',
+          };
+
+      test('localizes the refs by default', () async {
+        makeMasterRepo(
+          path.join('ggsuite', 'gg_foo'),
+          'https://github.com/ggsuite/gg_foo.git',
+        );
+        final ticketDir = makeTicketDir('TICKET_LOC');
+        createTicketRunner(ticketDir);
+
+        await runner.run(['add', 'gg_foo']);
+
+        verify(
+          () => mockLoc.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).called(1);
+      });
+
+      test('--no-localize copies the repos but keeps the refs', () async {
+        makeMasterRepo(
+          path.join('ggsuite', 'gg_foo'),
+          'https://github.com/ggsuite/gg_foo.git',
+        );
+        final ticketDir = makeTicketDir('TICKET_NOLOC');
+        createTicketRunner(ticketDir);
+
+        await runner.run(['add', '--no-localize', 'gg_foo']);
+
+        // The repo is copied ...
+        expect(
+          Directory(
+            path.join(ticketDir.path, 'ggsuite', 'gg_foo'),
+          ).existsSync(),
+          isTrue,
+        );
+
+        // ... but nothing touched its references.
+        verifyNever(
+          () => mockLoc.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        );
+        verifyNever(
+          () => mockUnloc.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        );
+        verifyNever(
+          () => mockDoCommit.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+            message: any(named: 'message'),
+            logType: any(named: 'logType'),
+            updateChangeLog: any(named: 'updateChangeLog'),
+            force: any(named: 'force'),
+          ),
+        );
+
+        // The ticket description stays current nevertheless.
+        expect(
+          File(path.join(ticketDir.path, 'ticket.json')).existsSync(),
+          isTrue,
+        );
+        expect(
+          logMessages,
+          contains('Skipped localizing references (--no-localize).'),
+        );
+      });
+
+      test('--org adds all repos of that organization folder', () async {
+        makeTwoOrgs();
+        final ticketDir = makeTicketDir('TICKET_ORG_OPT');
+        createTicketRunner(ticketDir);
+
+        await runner.run(['add', '--org', 'orgA']);
+
+        expect(ticketRepoPaths(ticketDir), {'orgA/repo1', 'orgA/repo2'});
+      });
+
+      test('--org is repeatable', () async {
+        makeTwoOrgs();
+        final ticketDir = makeTicketDir('TICKET_ORG_MULTI');
+        createTicketRunner(ticketDir);
+
+        await runner.run(['add', '--org', 'orgA', '--org', 'orgB']);
+
+        expect(
+          ticketRepoPaths(ticketDir),
+          {'orgA/repo1', 'orgA/repo2', 'orgB/repo3'},
+        );
+      });
+
+      test('--org warns about an unknown organization', () async {
+        makeTwoOrgs();
+        final ticketDir = makeTicketDir('TICKET_ORG_UNKNOWN');
+        createTicketRunner(ticketDir);
+
+        await runner.run(['add', '--org', 'orgX']);
+
+        expect(
+          logMessages,
+          contains(
+            'No repositories found for organization orgX '
+            'in the master workspace.',
+          ),
+        );
+        expect(logMessages, contains('No repositories to add.'));
+        expect(ticketRepoPaths(ticketDir), isEmpty);
+      });
+
+      test('--all adds all repos of the master workspace', () async {
+        makeTwoOrgs();
+        final ticketDir = makeTicketDir('TICKET_ALL');
+        createTicketRunner(ticketDir);
+
+        await runner.run(['add', '--all']);
+
+        expect(
+          ticketRepoPaths(ticketDir),
+          {'orgA/repo1', 'orgA/repo2', 'orgB/repo3'},
+        );
+      });
+
+      test('--all and --org are refused outside a ticket', () async {
+        createRunner(
+          executionPath: Directory.systemTemp.createTempSync('no_ticket_').path,
+        );
+
+        await expectLater(
+          () => runner.run(['add', '--all']),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              contains('can only be used from inside a ticket workspace'),
+            ),
+          ),
+        );
+
+        await expectLater(
+          () => runner.run(['add', '--org', 'orgA']),
+          throwsA(isA<UsageException>()),
+        );
+      });
+
+      test('still requires a target without --all and --org', () async {
+        createRunner(
+          executionPath: Directory.systemTemp.createTempSync('no_ticket_').path,
+        );
+
+        await expectLater(
+          () => runner.run(['add']),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              'Missing target parameter.',
+            ),
+          ),
+        );
+      });
+    });
   });
 }
