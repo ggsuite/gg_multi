@@ -9,7 +9,7 @@ environment:
 dependencies:
   path: ^1.9.1
   args: ^2.7.0
-  gg_one: ^12.3.0
+  gg_one: ^12.4.0
   gg_lang: ^0.3.2
   gg_console_colors: ^2.1.5
   gg_args: ^2.1.0
