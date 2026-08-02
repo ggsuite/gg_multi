@@ -200,6 +200,45 @@ void main() {
       expect(capturedInitials, ['Ticket desc', 'Ticket desc']);
     });
 
+    test('--merge-only asks for no version increment', () async {
+      // A merge creates no release, so the increment prompt must not appear
+      // and nothing is stored — the empty increment list would throw if the
+      // selector were asked.
+      final command = makeCommand(
+        repos: [node('A'), node('B')],
+        increments: const [],
+      );
+
+      final config = await command.configure(
+        directory: ticketDir,
+        ggLog: ggLog,
+        mergeOnly: true,
+      );
+
+      expect(config.repos['A']!.versionIncrement, isNull);
+      expect(config.repos['B']!.versionIncrement, isNull);
+      expect(config.repos['A']!.mergeMessage, 'Publish A');
+    });
+
+    test('the CLI offers --merge-only too', () async {
+      final command = makeCommand(repos: [node('A')], increments: const []);
+      final runner = CommandRunner<void>('test', 'configure publish')
+        ..addCommand(command);
+      await runner.run([
+        'configure-publish',
+        '--input',
+        ticketDir.path,
+        '--merge-only',
+      ]);
+
+      final file = DoConfigurePublishCommand.configFileFor(ticketDir);
+      final cfg = gg.PublishConfig.load(
+        configArg: file.path,
+        fallbackDir: ticketDir.path,
+      );
+      expect(cfg.repos['A']!.versionIncrement, isNull);
+    });
+
     test('CLI run resolves the directory and writes no delete_ticket',
         () async {
       final command = makeCommand(

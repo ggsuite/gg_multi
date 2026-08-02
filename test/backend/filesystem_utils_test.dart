@@ -107,6 +107,56 @@ void main() {
       );
 
       test(
+        'copies symlinks as symlinks',
+        () async {
+          // A file, a link to it, and a link to a sub directory.
+          final target = File(path.join(sourceDir.path, 'target.txt'));
+          await target.writeAsString('content');
+          final subDir = Directory(path.join(sourceDir.path, 'sub'))
+            ..createSync();
+          await File(path.join(subDir.path, 'inner.txt')).writeAsString('i');
+
+          await Link(path.join(sourceDir.path, 'file_link.txt'))
+              .create('target.txt');
+          await Link(path.join(sourceDir.path, 'dir_link')).create('sub');
+
+          // Act.
+          await copyDirectory(sourceDir, destinationDir);
+
+          // Assert - both links are links again, with their original target.
+          final fileLink = Link(
+            path.join(destinationDir.path, 'file_link.txt'),
+          );
+          final dirLink = Link(path.join(destinationDir.path, 'dir_link'));
+          expect(fileLink.existsSync(), isTrue);
+          expect(await fileLink.target(), 'target.txt');
+          expect(dirLink.existsSync(), isTrue);
+          expect(await dirLink.target(), 'sub');
+
+          // They resolve inside the destination.
+          expect(
+            File(path.join(destinationDir.path, 'file_link.txt'))
+                .readAsStringSync(),
+            'content',
+          );
+        },
+      );
+
+      test(
+        'copies a broken symlink instead of dropping it',
+        () async {
+          await Link(path.join(sourceDir.path, 'broken'))
+              .create('does_not_exist.txt');
+
+          await copyDirectory(sourceDir, destinationDir);
+
+          final link = Link(path.join(destinationDir.path, 'broken'));
+          expect(link.existsSync(), isTrue);
+          expect(await link.target(), 'does_not_exist.txt');
+        },
+      );
+
+      test(
         'throws ArgumentError when source does not exist',
         () async {
           final nonExisting = Directory(

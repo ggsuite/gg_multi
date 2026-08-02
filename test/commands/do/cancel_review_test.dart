@@ -150,6 +150,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {});
 
@@ -183,6 +184,8 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: '#gg: changed references to local',
           force: true,
+          // gg's bookkeeping commits must not land in CHANGELOG.md.
+          updateChangeLog: false,
         ),
       ).called(2);
 
@@ -263,6 +266,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       );
     });
@@ -300,6 +304,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenThrow(Exception('commit failed'));
 
@@ -385,6 +390,7 @@ void main() {
             ggLog: any(named: 'ggLog'),
             message: any(named: 'message'),
             force: any(named: 'force'),
+            updateChangeLog: any(named: 'updateChangeLog'),
           ),
         ).thenAnswer((_) async {});
 
@@ -475,6 +481,7 @@ void main() {
             ggLog: any(named: 'ggLog'),
             message: any(named: 'message'),
             force: any(named: 'force'),
+            updateChangeLog: any(named: 'updateChangeLog'),
           ),
         ).thenAnswer((_) async {});
 
@@ -560,6 +567,7 @@ void main() {
             ggLog: any(named: 'ggLog'),
             message: any(named: 'message'),
             force: any(named: 'force'),
+            updateChangeLog: any(named: 'updateChangeLog'),
           ),
         ).thenAnswer((_) async {});
 
@@ -637,6 +645,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {});
 

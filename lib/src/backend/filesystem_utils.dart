@@ -12,6 +12,9 @@ import 'package:path/path.dart' as path;
 ///
 /// * Creates the destination directory if it does not exist.
 /// * Copies files and sub-directories.
+/// * Copies symlinks *as symlinks*, keeping their target as it is written in
+///   the source link. A link is neither followed nor dropped, so a repository
+///   holding one arrives complete in the ticket.
 /// * Skips entries (on every level) whose name is listed in [skipNames].
 ///   The default skip-list excludes `node_modules` so pnpm's symlinked
 ///   `node_modules/.pnpm/<pkg>/node_modules/<dep>` chains never get
@@ -45,7 +48,10 @@ Future<void> copyDirectory(
     await destination.create(recursive: true);
   }
 
-  await for (final entity in source.list(recursive: false)) {
+  // followLinks: false — a symlink is copied as a symlink (see below) instead
+  // of being dereferenced into a copy of what it points to.
+  await for (final entity
+      in source.list(recursive: false, followLinks: false)) {
     final name = path.basename(entity.path);
     if (skipNames.contains(name)) continue;
     String newPath = path.join(destination.path, name);
@@ -53,7 +59,13 @@ Future<void> copyDirectory(
     if (entity is File && path.extension(entity.path) == '.darta') {
       newPath = '${path.withoutExtension(newPath)}.dart';
     }
-    if (entity is File) {
+    if (entity is Link) {
+      // The link is recreated with its original target — the same relative
+      // or absolute path the source link holds. Dereferencing it would
+      // duplicate the target (and loop on a link pointing at an ancestor),
+      // and skipping it would silently lose a file of the repository.
+      await Link(newPath).create(await entity.target(), recursive: true);
+    } else if (entity is File) {
       await entity.copy(newPath);
     } else if (entity is Directory) {
       // Recurse into sub-directories.
