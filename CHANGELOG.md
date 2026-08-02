@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 7.9.0 - 2026-08-02
 
 ### Added
 
@@ -9,6 +9,7 @@
 ### Changed
 
 - Create pull request as part of the review
+
 ## 7.8.0 - 2026-08-02
 
 ### Added
