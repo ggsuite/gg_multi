@@ -1,5 +1,15 @@
 # Changelog
 
+## 7.9.0 - 2026-08-02
+
+### Added
+
+- `gg do review` opens a pull request for every ticket repo right after pushing it and prints its url, so the work can be reviewed while the ticket is still open. The pull requests carry **no** auto-merge flag — `gg do publish` reuses them and sets it when the release is done. An existing open pull request is reused, and a repo whose pull request cannot be opened (no GitHub/Azure DevOps remote, missing `gh`/`az`) is reported without failing the review.
+
+### Changed
+
+- Create pull request as part of the review
+
 ## 7.8.0 - 2026-08-02
 
 ### Added

@@ -17,6 +17,7 @@ import 'package:path/path.dart' as path;
 
 import '../../backend/git_snapshot.dart' as git_snapshot;
 import '../../backend/publish_skip_check.dart';
+import '../../backend/ticket_json.dart';
 import '../../backend/workspace_utils.dart';
 import '../../commands/can/review.dart';
 
@@ -102,6 +103,7 @@ class DoReviewCommand extends DirCommand<void> {
     gg.DoCommit? ggDoCommit,
     gg.DoPush? ggDoPush,
     gg.CanCommit? ggCanCommit,
+    gg.CreatePullRequest? createPullRequest,
     ProcessRunner? processRunner,
   })  : _canReviewCommand = canReviewCommand ?? CanReviewCommand(ggLog: ggLog),
         _localizeRefsToGit =
@@ -111,6 +113,8 @@ class DoReviewCommand extends DirCommand<void> {
         _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
         _ggDoPush = ggDoPush ?? gg.DoPush(ggLog: ggLog),
         _ggCanCommit = ggCanCommit ?? gg.CanCommit(ggLog: ggLog),
+        _createPullRequest =
+            createPullRequest ?? gg.CreatePullRequest(ggLog: ggLog),
         _processRunner = processRunner ?? _defaultProcessRunner {
     _addArgs();
   }
@@ -133,6 +137,10 @@ class DoReviewCommand extends DirCommand<void> {
   /// Instance of gg CanCommit, used to verify a repository still passes the
   /// commit checks after `origin/main` was merged into it.
   final gg.CanCommit _ggCanCommit;
+
+  /// Opens the pull request of a repository's feature branch — without the
+  /// auto-merge flag, which only `do publish` adds.
+  final gg.CreatePullRequest _createPullRequest;
 
   /// The injected process runner used to execute system processes like
   /// `git merge` and `dart pub upgrade` after localization.
@@ -255,6 +263,86 @@ class DoReviewCommand extends DirCommand<void> {
         errorLog: errorLog,
       );
       rethrow;
+    }
+
+    // Step 7: Open a pull request per repo and print its url ---------------
+    // Everything is on the remote now, so the work can be reviewed right
+    // away instead of only when it is published. This is *outside* the
+    // rollback: the review itself has succeeded, and a provider that cannot
+    // be reached must not undo it.
+    await _createPullRequests(
+      ticketDir: ticketDir,
+      ticketName: ticketName,
+      subs: subs,
+      ggLog: ggLog,
+      taskLog: taskLog,
+    );
+  }
+
+  /// Opens — or reuses — the pull request of every ticket repo and prints its
+  /// url, so a reviewer can be pointed at it immediately.
+  ///
+  /// The pull requests are created **without** the auto-merge flag: the
+  /// ticket is under review, not ready to land. `gg do publish` reuses them
+  /// and sets auto-merge when the release is complete.
+  ///
+  /// A repo whose pull request cannot be opened does **not** fail the review:
+  /// merging main, the checks and the push have all succeeded already, and
+  /// the branch is on the remote either way. The reason is reported and the
+  /// remaining repos are still processed.
+  Future<void> _createPullRequests({
+    required Directory ticketDir,
+    required String ticketName,
+    required List<Node> subs,
+    required GgLog ggLog,
+    required GgLog taskLog,
+  }) async {
+    // The ticket description is what the ticket is about, so it is the
+    // natural pull-request title — the same default `do commit` uses for its
+    // commit message. Without one the ticket (and branch) name is left.
+    final message = readTicketDescription(ticketDir) ?? ticketName;
+
+    final urls = <String, String>{};
+    final failures = <String, String>{};
+
+    // Collected first, printed afterwards: the status printer overwrites its
+    // own line, so nothing may be logged while it runs.
+    await GgStatusPrinter<void>(
+      message: 'Creating pull requests',
+      ggLog: ggLog,
+    ).run(() async {
+      for (final repo in subs) {
+        final repoDir = repo.directory;
+        final repoName = path.basename(repoDir.path);
+        try {
+          final url = await _createPullRequest.get(
+            directory: repoDir,
+            ggLog: taskLog,
+            message: message,
+          );
+          if (url != null) {
+            urls[repoName] = url;
+          }
+        } catch (e) {
+          failures[repoName] = e.toString();
+        }
+      }
+    });
+
+    if (urls.isNotEmpty) {
+      ggLog(green('Pull requests:'));
+      for (final entry in urls.entries) {
+        ggLog(' - ${entry.key}: ${blue(entry.value)}');
+      }
+    }
+
+    for (final entry in failures.entries) {
+      ggLog(
+        yellow(
+          'No pull request for ${entry.key}: ${entry.value}. '
+          'Create it manually, or run "gg do review" again.',
+        ),
+      );
     }
   }
 

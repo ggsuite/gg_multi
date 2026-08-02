@@ -37,6 +37,24 @@ class FakeDirectory extends Fake implements Directory {}
 
 class MockGgCanCommit extends Mock implements gg.CanCommit {}
 
+class MockCreatePullRequest extends Mock implements gg.CreatePullRequest {}
+
+/// A [MockCreatePullRequest] that answers every repo with [url] — null when
+/// the repo has no provider gg can open a pull request on.
+MockCreatePullRequest stubCreatePullRequest({
+  String? url = 'https://github.com/ggsuite/A/pull/1',
+}) {
+  final mock = MockCreatePullRequest();
+  when(
+    () => mock.get(
+      directory: any(named: 'directory'),
+      ggLog: any(named: 'ggLog'),
+      message: any(named: 'message'),
+    ),
+  ).thenAnswer((_) async => url);
+  return mock;
+}
+
 class MockProcessRunner extends Mock {
   Future<ProcessResult> call(
     String executable,
@@ -202,6 +220,7 @@ CommandRunner<void> reviewRunner({
   required Directory ticketDir,
   required MockProcessRunner mockProcessRunner,
   required MockGgDoPush mockGgDoPush,
+  MockCreatePullRequest? createPullRequest,
 }) {
   final mockSortedProcessingList = MockSortedProcessingList();
   final mockCanReviewCommand = MockCanReviewCommand();
@@ -258,6 +277,7 @@ CommandRunner<void> reviewRunner({
         sortedProcessingList: mockSortedProcessingList,
         ggDoCommit: mockGgDoCommit,
         ggDoPush: mockGgDoPush,
+        createPullRequest: createPullRequest ?? stubCreatePullRequest(),
         processRunner: mockProcessRunner.call,
       ),
     );
@@ -2724,6 +2744,145 @@ void main() {
         );
       },
     );
+  });
+
+  group('DoReviewCommand pull requests', () {
+    late MockProcessRunner git;
+    late ({MockGgDoPush push, MockProcessRunner git}) mocks;
+
+    setUp(() {
+      git = MockProcessRunner();
+      mocks = stubReviewUpTo(git, ticketDir: ticketDir);
+      stubIntegrateProbes(git, remoteContainedInHead: true);
+    });
+
+    Future<void> review(MockCreatePullRequest createPullRequest) =>
+        reviewRunner(
+          ggLog: ggLog,
+          ticketDir: ticketDir,
+          mockProcessRunner: git,
+          mockGgDoPush: mocks.push,
+          createPullRequest: createPullRequest,
+        ).run(['review', '--input', ticketDir.path]);
+
+    test('are opened for every repo and their urls are printed', () async {
+      final createPullRequest = stubCreatePullRequest(
+        url: 'https://github.com/ggsuite/A/pull/7',
+      );
+
+      await review(createPullRequest);
+
+      verify(
+        () => createPullRequest.get(
+          directory: any(
+            named: 'directory',
+            that: isA<Directory>().having(
+              (d) => d.path,
+              'path',
+              path.join(ticketDir.path, 'A'),
+            ),
+          ),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+        ),
+      ).called(1);
+
+      expect(messages, contains('Pull requests:'));
+      expect(
+        messages,
+        contains(' - A: https://github.com/ggsuite/A/pull/7'),
+      );
+    });
+
+    test('use the ticket description as message', () async {
+      File(path.join(ticketDir.path, '.ticket')).writeAsStringSync(
+        jsonEncode(<String, String>{
+          'issue_id': 'TICKDR',
+          'description': 'Create pull requests while reviewing',
+        }),
+      );
+      final createPullRequest = stubCreatePullRequest();
+
+      await review(createPullRequest);
+
+      verify(
+        () => createPullRequest.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: 'Create pull requests while reviewing',
+        ),
+      ).called(1);
+    });
+
+    test('fall back to the ticket name without a description', () async {
+      final createPullRequest = stubCreatePullRequest();
+
+      await review(createPullRequest);
+
+      verify(
+        () => createPullRequest.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: 'TICKDR',
+        ),
+      ).called(1);
+    });
+
+    test('print nothing when the provider supports none', () async {
+      await review(stubCreatePullRequest(url: null));
+
+      expect(messages.any((m) => m.contains('Pull requests:')), isFalse);
+    });
+
+    test('report a failure without failing the review', () async {
+      final createPullRequest = MockCreatePullRequest();
+      when(
+        () => createPullRequest.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+        ),
+      ).thenThrow(Exception('gh not installed'));
+
+      await review(createPullRequest);
+
+      expect(
+        messages.any(
+          (m) =>
+              m.contains('No pull request for A') &&
+              m.contains('gh not installed'),
+        ),
+        isTrue,
+      );
+      // The review itself succeeded — the branch is on the remote.
+      expect(
+        messages.any((m) => m.contains('✅ Creating pull requests')),
+        isTrue,
+      );
+    });
+
+    test('are not opened when the review fails', () async {
+      final createPullRequest = stubCreatePullRequest();
+      when(
+        () => mocks.push.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenThrow(Exception('push failed'));
+
+      await expectLater(
+        () async => review(createPullRequest),
+        throwsA(isA<Exception>()),
+      );
+
+      verifyNever(
+        () => createPullRequest.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+        ),
+      );
+    });
   });
 
   group('DoReviewCommand rollback on failure', () {
