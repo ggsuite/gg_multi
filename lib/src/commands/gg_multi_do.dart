@@ -16,6 +16,7 @@ import 'package:gg_multi/src/commands/do/configure_publish.dart';
 import 'package:gg_multi/src/commands/do/create.dart';
 import 'package:gg_multi/src/commands/do/init.dart';
 import 'package:gg_multi/src/commands/do/rm.dart';
+import 'package:gg_multi/src/commands/do/update.dart';
 
 import 'do/commit.dart';
 import 'do/push.dart';
@@ -62,5 +63,6 @@ class Do extends Command<void> {
     addSubcommand(CreateCommand(ggLog: ggLog));
     addSubcommand(InitCommand(ggLog: ggLog));
     addSubcommand(RemoveCommand(ggLog: ggLog));
+    addSubcommand(UpdateCommand(ggLog: ggLog));
   }
 }
