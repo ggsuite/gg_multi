@@ -184,5 +184,55 @@ void main() {
         );
       });
     });
+
+    group('moveFromMaster', () {
+      Directory masterRepo(String org, String name) {
+        final dir = Directory(path.join(root.path, '.master', org, name))
+          ..createSync(recursive: true);
+        File(path.join(dir.path, 'pubspec.yaml'))
+            .writeAsStringSync('name: $name');
+        return dir;
+      }
+
+      test('moves a repo to <root>/.trash/.master/<org>/<repo>', () async {
+        final dir = masterRepo('ggsuite', 'gg_multi');
+
+        final target = await Trash.moveFromMaster(
+          source: dir,
+          rootPath: root.path,
+        );
+
+        expect(
+          target,
+          path.join(root.path, '.trash', '.master', 'ggsuite', 'gg_multi'),
+        );
+        expect(dir.existsSync(), isFalse);
+        expect(
+          File(path.join(target, 'pubspec.yaml')).readAsStringSync(),
+          'name: gg_multi',
+        );
+      });
+
+      test('never overwrites an already trashed copy', () async {
+        await Trash.moveFromMaster(
+          source: masterRepo('ggsuite', 'gg_multi'),
+          rootPath: root.path,
+        );
+        final second = masterRepo('ggsuite', 'gg_multi');
+        File(path.join(second.path, 'pubspec.yaml'))
+            .writeAsStringSync('name: second');
+
+        final target = await Trash.moveFromMaster(
+          source: second,
+          rootPath: root.path,
+        );
+
+        expect(path.basename(target), 'gg_multi (2)');
+        expect(
+          File(path.join(target, 'pubspec.yaml')).readAsStringSync(),
+          'name: second',
+        );
+      });
+    });
   });
 }

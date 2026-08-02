@@ -56,7 +56,42 @@ class Trash {
   }) async {
     final relative = path.relative(source.path, from: ticketDir.path);
     final trashDir = createDirForTicket(ticketDir);
-    final target = _freeTarget(path.join(trashDir.path, relative));
+    return _moveInto(source, path.join(trashDir.path, relative));
+  }
+
+  /// Moves [source] — a repository of the master workspace — into
+  /// `<root>/.trash/.master/<org>/<repo>`, keeping the path it had relative to
+  /// `<root>/.master`. Returns the path it was moved to.
+  ///
+  /// The trash mirrors the master layout under its own `.master` folder, so a
+  /// trashed master repository can never collide with the
+  /// `<root>/.trash/<ticket>/…` entries a published ticket leaves behind. An
+  /// already occupied target gets the same ` (2)`, ` (3)`, … suffix
+  /// [moveFromTicket] uses — nothing in the trash is ever overwritten.
+  static Future<String> moveFromMaster({
+    required FileSystemEntity source,
+    required String rootPath,
+  }) async {
+    final masterPath = path.join(rootPath, ggMultiMasterFolder);
+    final relative = path.relative(source.path, from: masterPath);
+    return _moveInto(
+      source,
+      path.join(
+        rootPath,
+        ggMultiTrashFolder,
+        ggMultiMasterFolder,
+        relative,
+      ),
+    );
+  }
+
+  /// Moves [source] to [targetPath], or to the first free ` (n)` variant of
+  /// it, creating the parent folders on the way. Returns the path used.
+  static Future<String> _moveInto(
+    FileSystemEntity source,
+    String targetPath,
+  ) async {
+    final target = _freeTarget(targetPath);
 
     final parent = Directory(path.dirname(target));
     if (!parent.existsSync()) {
