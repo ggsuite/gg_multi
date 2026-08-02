@@ -8,6 +8,7 @@
 - `gg do create graph` boxes the repositories of each organization in a mermaid
 `subgraph` when more than one organization is shown. `--no-group-by-orgs`
 turns the boxes off.
+- Add »gg do add --no-localize«, »--org« and »--all«
 
 ### Changed
 
