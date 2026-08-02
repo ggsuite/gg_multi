@@ -823,6 +823,9 @@ class DoPublishCommand extends DirCommand<void> {
       ggLog: taskLog,
       message: '#gg: changed references to pub.dev',
       force: true,
+      // Bookkeeping, not a change of the package — keep it out of
+      // CHANGELOG.md (»gg do commit --no-log«).
+      updateChangeLog: false,
     );
 
     // Can this repo be published? Only NOW is the question answerable: the

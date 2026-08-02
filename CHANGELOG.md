@@ -5,6 +5,7 @@
 ### Changed
 
 - Use gg_args 2.1.0 which reports unknown sub commands itself
+- Keep gg bookkeeping commits out of CHANGELOG.md using --no-log
 
 ## 7.6.0 - 2026-08-02
 

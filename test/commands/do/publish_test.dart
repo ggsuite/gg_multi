@@ -480,6 +480,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {});
 
@@ -697,6 +698,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {});
 
@@ -906,6 +908,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {});
 
@@ -1159,6 +1162,7 @@ void main() {
             ggLog: any(named: 'ggLog'),
             message: any(named: 'message'),
             force: any(named: 'force'),
+            updateChangeLog: any(named: 'updateChangeLog'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -1342,6 +1346,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -1519,6 +1524,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -1685,6 +1691,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -1864,6 +1871,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -2031,6 +2039,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -2280,6 +2289,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {});
 
@@ -2493,6 +2503,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {});
 
@@ -2669,6 +2680,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -2836,6 +2848,7 @@ void main() {
             ggLog: any(named: 'ggLog'),
             message: any(named: 'message'),
             force: any(named: 'force'),
+            updateChangeLog: any(named: 'updateChangeLog'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -3008,6 +3021,7 @@ void main() {
             ggLog: any(named: 'ggLog'),
             message: any(named: 'message'),
             force: any(named: 'force'),
+            updateChangeLog: any(named: 'updateChangeLog'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -3177,6 +3191,7 @@ void main() {
             ggLog: any(named: 'ggLog'),
             message: any(named: 'message'),
             force: any(named: 'force'),
+            updateChangeLog: any(named: 'updateChangeLog'),
           ),
         ).thenAnswer((_) async {});
 
@@ -3339,6 +3354,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -3492,6 +3508,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -3663,6 +3680,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {
         order.add('commit');
@@ -3924,6 +3942,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       );
     });
@@ -4021,6 +4040,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -4169,6 +4189,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -4340,6 +4361,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -4545,6 +4567,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -5437,6 +5460,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -6211,6 +6235,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {});
 
@@ -6653,6 +6678,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {});
 
@@ -7014,6 +7040,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((i) async => calls.add('commit:${repoOf(i)}'));
 

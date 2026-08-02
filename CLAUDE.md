@@ -189,6 +189,8 @@ Once the `ticket.json` is in hand, it recreates the ticket folder + root `.ticke
 
 `readTicketDescription` is the single reader of the root `.ticket` description, shared by `do commit`, `do configure-publish` and `buildTicketJson`.
 
+**gg's own bookkeeping commits never write a CHANGELOG entry.** Every internal `gg do commit` — the `#gg: changed references to path/git/local/pub.dev` commits of `do add`, `do review`, `do cancel-review` and `do publish` — passes `updateChangeLog: false` (the API equivalent of `gg do commit --no-log`). The `#gg: ` prefix alone does **not** suppress the entry: gg_one writes the commit message into `CHANGELOG.md` unless the flag says otherwise, so a missing `updateChangeLog: false` puts lines like `- \#gg: changed references to git` into the released changelog.
+
 ### `do review` Command
 
 `DoReviewCommand` (in `lib/src/commands/do/review.dart`) prepares every ticket repo for review: fetch + merge `origin/main` into the feature branch (`git fetch origin main` first, so a main that moved on the remote is really merged; re-verifying with `gg can commit` when the merge moved HEAD), run `can review`, then per repo localize refs to git feature branches, refresh dependencies, force-commit, integrate the remote feature branch (`pull --rebase`, never force-push) and push.
