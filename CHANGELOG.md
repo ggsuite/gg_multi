@@ -9,6 +9,35 @@
 ### Changed
 
 - Create pull request as part of the review
+## 7.8.0 - 2026-08-02
+
+### Added
+
+- `do update master`: syncs the master workspace with the git platforms. It walks every organization of `.organizations`, fetches its current repository list, clones the repos master lacks and moves the ones the organization no longer offers to `<root>/.trash/.master/<org>/<repo>`. Repos are matched by remote url, so a folder named after the package is recognized. Nothing is removed on a guess: an unparsable/missing remote, an unregistered organization and every repo of an organization whose fetch failed stay untouched. `--dry-run` reports without changing anything.
+- `Trash.moveFromMaster`: moves a master repository into `<root>/.trash/.master`, with the same never-overwrite ` (2)` suffixing and cross-volume fallback `moveFromTicket` uses.
+- Add gg do update master
+
+### Changed
+
+- Do not write dart specific code into pure typescript .gitattributes
+- Throw an error when added repo in master is not clean
+- Either copy symlinks or throw an exception that symlinks are not supported
+
+### Fixed
+
+- Fix gg do add errors
+
+## 7.7.0 - 2026-08-02
+
+### Changed
+
+- Use gg_args 2.1.0 which reports unknown sub commands itself
+- Keep gg bookkeeping commits out of CHANGELOG.md using --no-log
+
+### Removed
+
+- Remove gg do merge, use gg do publish --merge-only which asks for no version increment
+
 ## 7.6.0 - 2026-08-02
 
 ### Added

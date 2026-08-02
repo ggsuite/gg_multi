@@ -16,9 +16,9 @@ import 'package:gg_multi/src/commands/do/configure_publish.dart';
 import 'package:gg_multi/src/commands/do/create.dart';
 import 'package:gg_multi/src/commands/do/init.dart';
 import 'package:gg_multi/src/commands/do/rm.dart';
+import 'package:gg_multi/src/commands/do/update.dart';
 
 import 'do/commit.dart';
-import 'do/merge.dart';
 import 'do/push.dart';
 import 'do/publish.dart';
 import 'do/review.dart';
@@ -50,7 +50,6 @@ class Do extends Command<void> {
     addSubcommand(DoCommitCommand(ggLog: ggLog));
     addSubcommand(DoPushCommand(ggLog: ggLog));
     addSubcommand(DoPublishCommand(ggLog: ggLog));
-    addSubcommand(DoMergeCommand(ggLog: ggLog));
     addSubcommand(DoConfigurePublishCommand(ggLog: ggLog));
     addSubcommand(DoReviewCommand(ggLog: ggLog));
     addSubcommand(DoCancelReviewCommand(ggLog: ggLog));
@@ -64,5 +63,6 @@ class Do extends Command<void> {
     addSubcommand(CreateCommand(ggLog: ggLog));
     addSubcommand(InitCommand(ggLog: ggLog));
     addSubcommand(RemoveCommand(ggLog: ggLog));
+    addSubcommand(UpdateCommand(ggLog: ggLog));
   }
 }

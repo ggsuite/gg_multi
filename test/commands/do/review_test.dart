@@ -263,6 +263,7 @@ CommandRunner<void> reviewRunner({
       ggLog: any(named: 'ggLog'),
       message: any(named: 'message'),
       force: any(named: 'force'),
+      updateChangeLog: any(named: 'updateChangeLog'),
     ),
   ).thenAnswer((_) async {});
 
@@ -426,6 +427,7 @@ void main() {
             ggLog: any(named: 'ggLog'),
             message: any(named: 'message'),
             force: any(named: 'force'),
+            updateChangeLog: any(named: 'updateChangeLog'),
           ),
         ).thenAnswer((_) async {});
 
@@ -520,6 +522,8 @@ void main() {
             ggLog: any(named: 'ggLog'),
             message: '#gg: changed references to git',
             force: any(named: 'force'),
+            // gg's bookkeeping commits must not land in CHANGELOG.md.
+            updateChangeLog: false,
           ),
         ).called(greaterThan(0));
 
@@ -866,6 +870,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenThrow(Exception('commit failed'));
 
@@ -970,6 +975,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {});
 
@@ -1084,6 +1090,7 @@ void main() {
             ggLog: any(named: 'ggLog'),
             message: any(named: 'message'),
             force: any(named: 'force'),
+            updateChangeLog: any(named: 'updateChangeLog'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -1198,6 +1205,7 @@ void main() {
             ggLog: any(named: 'ggLog'),
             message: any(named: 'message'),
             force: any(named: 'force'),
+            updateChangeLog: any(named: 'updateChangeLog'),
           ),
         ).thenAnswer((_) async {});
 
@@ -1315,6 +1323,7 @@ void main() {
             ggLog: any(named: 'ggLog'),
             message: any(named: 'message'),
             force: any(named: 'force'),
+            updateChangeLog: any(named: 'updateChangeLog'),
           ),
         ).thenAnswer((_) async {});
 
@@ -1446,6 +1455,7 @@ void main() {
             ggLog: any(named: 'ggLog'),
             message: any(named: 'message'),
             force: any(named: 'force'),
+            updateChangeLog: any(named: 'updateChangeLog'),
           ),
         ).thenAnswer((_) async {});
 
@@ -1707,6 +1717,7 @@ void main() {
             ggLog: any(named: 'ggLog'),
             message: any(named: 'message'),
             force: any(named: 'force'),
+            updateChangeLog: any(named: 'updateChangeLog'),
           ),
         ).thenAnswer((_) async {});
 
@@ -1851,6 +1862,7 @@ void main() {
             ggLog: any(named: 'ggLog'),
             message: any(named: 'message'),
             force: any(named: 'force'),
+            updateChangeLog: any(named: 'updateChangeLog'),
           ),
         ).thenAnswer((_) async {});
 
@@ -1956,6 +1968,7 @@ void main() {
             ggLog: any(named: 'ggLog'),
             message: any(named: 'message'),
             force: any(named: 'force'),
+            updateChangeLog: any(named: 'updateChangeLog'),
           ),
         ).thenAnswer((_) async {});
 
@@ -2303,6 +2316,7 @@ void main() {
             ggLog: any(named: 'ggLog'),
             message: any(named: 'message'),
             force: any(named: 'force'),
+            updateChangeLog: any(named: 'updateChangeLog'),
           ),
         ).thenAnswer((_) async {});
 
@@ -2500,6 +2514,7 @@ void main() {
             ggLog: any(named: 'ggLog'),
             message: any(named: 'message'),
             force: any(named: 'force'),
+            updateChangeLog: any(named: 'updateChangeLog'),
           ),
         ).thenAnswer((_) async {});
 
@@ -2947,6 +2962,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((_) async {});
       when(
@@ -3269,6 +3285,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
           message: any(named: 'message'),
           force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
         ),
       ).thenAnswer((invocation) async {
         final dir = invocation.namedArguments[#directory] as Directory;

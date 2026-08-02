@@ -122,7 +122,7 @@ void main() {
         expect(file.existsSync(), isTrue);
         expect(
           file.readAsStringSync(),
-          '$gitattributesRequiredLines\n',
+          '$gitattributesCommonLines\npubspec.lock merge=ours\n',
         );
         expect(messages, contains('Created .gitattributes in $name.'));
         expect(
@@ -153,6 +153,48 @@ void main() {
         contains(
           '✅ Ensured .gitattributes for all repositories in ticket TICKG.',
         ),
+      );
+    });
+
+    test('writes no dart rules into a typescript repo', () async {
+      final tsRepo = Directory(path.join(ticketDir.path, 'ts'))..createSync();
+      File(path.join(tsRepo.path, 'package.json')).writeAsStringSync(
+        '{"name": "ts"}',
+      );
+      File(path.join(tsRepo.path, 'pnpm-lock.yaml')).writeAsStringSync('');
+      Directory(path.join(tsRepo.path, '.git')).createSync();
+
+      final runner = CommandRunner<void>('test', 'do install-gitattributes')
+        ..addCommand(newCommand());
+
+      await runner.run(
+        <String>['install-gitattributes', '--input', ticketDir.path],
+      );
+
+      expect(
+        File(path.join(tsRepo.path, '.gitattributes')).readAsStringSync(),
+        '$gitattributesCommonLines\npnpm-lock.yaml merge=ours\n',
+      );
+    });
+
+    test('writes the canonical lock file rule when no lock file exists',
+        () async {
+      final tsRepo = Directory(path.join(ticketDir.path, 'ts'))..createSync();
+      File(path.join(tsRepo.path, 'package.json')).writeAsStringSync(
+        '{"name": "ts"}',
+      );
+      Directory(path.join(tsRepo.path, '.git')).createSync();
+
+      final runner = CommandRunner<void>('test', 'do install-gitattributes')
+        ..addCommand(newCommand());
+
+      await runner.run(
+        <String>['install-gitattributes', '--input', ticketDir.path],
+      );
+
+      expect(
+        File(path.join(tsRepo.path, '.gitattributes')).readAsStringSync(),
+        '$gitattributesCommonLines\npackage-lock.json merge=ours\n',
       );
     });
 
@@ -213,16 +255,16 @@ void main() {
         '*.png binary\n'
         '* text=auto eol=lf\n'
         '.gg/gg.json merge=ours\n'
-        'pubspec.lock merge=ours\n'
-        'CHANGELOG.md merge=union\n',
+        'CHANGELOG.md merge=union\n'
+        'pubspec.lock merge=ours\n',
       );
       expect(
         fileB.readAsStringSync(),
         '*.png binary\n'
         '* text=auto eol=lf\n'
         '.gg/gg.json merge=ours\n'
-        'pubspec.lock merge=ours\n'
-        'CHANGELOG.md merge=union\n',
+        'CHANGELOG.md merge=union\n'
+        'pubspec.lock merge=ours\n',
       );
       expect(messages, contains('Updated .gitattributes in A.'));
       expect(messages, contains('Updated .gitattributes in B.'));

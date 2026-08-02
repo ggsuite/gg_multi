@@ -73,6 +73,7 @@ class DoConfigurePublishCommand extends DirCommand<void> {
       directory: directory,
       ggLog: ggLog,
       defaultMergeMessage: argResults?['message'] as String?,
+      mergeOnly: argResults?['merge-only'] as bool? ?? false,
     );
   }
 
@@ -83,10 +84,14 @@ class DoConfigurePublishCommand extends DirCommand<void> {
   /// it pre-fills every repo's merge-message prompt and is the fallback when
   /// the prompt is left empty. It takes precedence over the ticket
   /// description; a generic `Publish <repo>` is used only when both are empty.
+  ///
+  /// [mergeOnly] configures a `gg do publish --merge-only` run: it releases
+  /// nothing, so no version increment is asked for and none is stored.
   Future<gg.PublishConfig> configure({
     required Directory directory,
     required GgLog ggLog,
     String? defaultMergeMessage,
+    bool mergeOnly = false,
   }) async {
     final String? ticketPath = WorkspaceUtils.detectTicketPath(
       path.absolute(directory.path),
@@ -139,9 +144,14 @@ class DoConfigurePublishCommand extends DirCommand<void> {
       final repoName = path.basename(repoDir.path);
       ggLog('${cyan(repoName)}:');
 
-      final increment = await _versionSelector.selectIncrement(
-        currentVersion: await _currentVersion(repoDir),
-      );
+      // A merge-only run releases nothing — no version bump, no changelog
+      // heading, no tag. Asking for an increment would offer a version that
+      // is never created, so the prompt is skipped and none is stored.
+      final increment = mergeOnly
+          ? null
+          : await _versionSelector.selectIncrement(
+              currentVersion: await _currentVersion(repoDir),
+            );
       // A merge message must never be empty (the config model rejects it), so
       // fall back to the seed (-m or ticket description) and finally a generic
       // default.
@@ -154,7 +164,7 @@ class DoConfigurePublishCommand extends DirCommand<void> {
       }
 
       repos[repoName] = gg.RepoOverride(
-        versionIncrement: increment.name,
+        versionIncrement: increment?.name,
         mergeMessage: message,
       );
     }
@@ -227,6 +237,13 @@ class DoConfigurePublishCommand extends DirCommand<void> {
       help: 'Default merge message that pre-fills every repo\'s merge-message '
           'prompt (and is used when a prompt is left empty). Takes precedence '
           'over the ticket description.',
+    );
+    argParser.addFlag(
+      'merge-only',
+      help: 'Configure a »gg do publish --merge-only« run: no version '
+          'increment is asked for, because a merge creates no release.',
+      defaultsTo: false,
+      negatable: false,
     );
   }
 }
