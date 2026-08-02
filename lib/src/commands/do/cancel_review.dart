@@ -161,6 +161,9 @@ class DoCancelReviewCommand extends DirCommand<void> {
           ggLog: ggLog,
           message: '#gg: changed references to local',
           force: true,
+          // Bookkeeping, not a change of the package — keep it out of
+          // CHANGELOG.md (»gg do commit --no-log«).
+          updateChangeLog: false,
         );
         ggLog(green('Committed $repoName'));
       } catch (e) {
