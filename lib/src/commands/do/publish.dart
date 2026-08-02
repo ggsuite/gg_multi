@@ -316,7 +316,10 @@ class DoPublishCommand extends DirCommand<void> {
       }
     }
 
-    // Step 3: Review + validate. Skipped when genuinely resuming a run that
+    // Step 3: Review + the ticket wide validation. The per-repo
+    // `gg can publish` gate is NOT part of this — it runs inside
+    // _publishRepo, right before the repo is published (see there).
+    // Skipped when genuinely resuming a run that
     // already made irreversible progress: a repo finished ('published'), or
     // a repo's own .gg/gg-publish.json records completed publish steps —
     // e.g. the FIRST repo failed after its registry publish or merge.
@@ -344,7 +347,11 @@ class DoPublishCommand extends DirCommand<void> {
       }
 
       try {
-        await _canPublishCommand.exec(directory: ticketDir, ggLog: ggLog);
+        await _canPublishCommand.checkTicket(
+          directory: ticketDir,
+          ggLog: ggLog,
+          includeCanPublish: false,
+        );
       } catch (e) {
         throw Exception('gg_multi can publish failed: $e');
       }
@@ -785,7 +792,7 @@ class DoPublishCommand extends DirCommand<void> {
 
   /// Performs the per-repo publish steps: unlocalize refs, restore
   /// publish_to, propagate reference versions, refresh dependencies, commit,
-  /// push and finally `gg do publish`.
+  /// check that this repo can be published, push and finally `gg do publish`.
   Future<void> _publishRepo({
     required Directory repoDir,
     required String repoName,
@@ -817,6 +824,30 @@ class DoPublishCommand extends DirCommand<void> {
       message: '#gg: changed references to pub.dev',
       force: true,
     );
+
+    // Can this repo be published? Only NOW is the question answerable: the
+    // refs point at the registry again and every dependency published
+    // earlier in this run is already there, so pana — which analyses the
+    // package exactly as it would be published — can resolve it. Asking this
+    // ticket wide up front fails for every repo that depends on a sibling
+    // version this run has not uploaded yet.
+    //
+    // Two invariants hold the position:
+    //   * AFTER the force-commit — gg can publish contains `did commit`, and
+    //     _changeRefsToPubDev leaves the manifests dirty.
+    //   * BEFORE the push — nothing irreversible has happened yet, so a
+    //     rejected repo takes the full-restore path in _restoreRepoState and
+    //     ends up exactly as it started. Moving this below the push would
+    //     downgrade a fully recoverable failure to a cleanup restore.
+    //
+    // A repo that already carries gg_one step progress is past the point
+    // where the gate is meaningful — its version is bumped and possibly
+    // uploaded, which is precisely what pana and `is feature branch` would
+    // now trip over — so a resume skips it and gg_one continues at its own
+    // first open step.
+    if (!(resume && _repoHasStepProgress(repoDir))) {
+      await _canPublishCommand.checkRepo(directory: repoDir, ggLog: ggLog);
+    }
 
     // Push
     await _ggDoPush.exec(directory: repoDir, ggLog: taskLog);
@@ -1163,13 +1194,13 @@ class DoPublishCommand extends DirCommand<void> {
     final reason = error.toString().replaceAll('Exception: ', '').trim();
     ggLog(
       red(
-        '❌ Publishing $repoName failed'
+        '❌ ${mergeOnly ? 'Merging' : 'Publishing'} $repoName failed'
         '${reason.isEmpty ? '.' : ':\n$reason'}',
       ),
     );
     ggLog(
       yellow(
-        'The publish is marked as »failed«. Fix the problem and resume it '
+        'The $_action is marked as »failed«. Fix the problem and resume it '
         'with ${blue('$_command --continue')}.',
       ),
     );

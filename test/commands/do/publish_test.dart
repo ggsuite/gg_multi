@@ -193,12 +193,7 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
 
       when(
         () => mockSortedProcessingList.get(
@@ -238,12 +233,7 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
 
       // One repo, so the review gate is reached (an empty ticket returns
       // before it). The can-publish stub aborts the run right after the
@@ -263,9 +253,11 @@ void main() {
         ],
       );
       when(
-        () => mockCanPublishCommand.exec(
+        () => mockCanPublishCommand.checkTicket(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
+          verbose: any(named: 'verbose'),
+          includeCanPublish: any(named: 'includeCanPublish'),
         ),
       ).thenThrow(Exception('stop after can publish'));
 
@@ -297,11 +289,22 @@ void main() {
               ggLog: any(named: 'ggLog'),
               verbose: any(named: 'verbose'),
             ),
-        () => mockCanPublishCommand.exec(
+        () => mockCanPublishCommand.checkTicket(
               directory: any(named: 'directory'),
               ggLog: any(named: 'ggLog'),
+              verbose: any(named: 'verbose'),
+              includeCanPublish: any(named: 'includeCanPublish'),
             ),
       ]);
+
+      // The ticket wide call defers the per-repo gate; `exec` — which would
+      // run the full check up front — is not used at all any more.
+      verifyNever(
+        () => mockCanPublishCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      );
     });
 
     test('aborts if do review fails before can publish', () async {
@@ -342,9 +345,11 @@ void main() {
       );
 
       verifyNever(
-        () => mockCanPublishCommand.exec(
+        () => mockCanPublishCommand.checkTicket(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
+          verbose: any(named: 'verbose'),
+          includeCanPublish: any(named: 'includeCanPublish'),
         ),
       );
     });
@@ -395,9 +400,11 @@ void main() {
       );
 
       verifyNever(
-        () => mockCanPublishCommand.exec(
+        () => mockCanPublishCommand.checkTicket(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
+          verbose: any(named: 'verbose'),
+          includeCanPublish: any(named: 'includeCanPublish'),
         ),
       );
     });
@@ -429,12 +436,7 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
 
       when(
         () => mockSortedProcessingList.get(
@@ -651,12 +653,7 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
 
       when(
         () => mockSortedProcessingList.get(
@@ -865,12 +862,7 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
 
       when(
         () => mockSortedProcessingList.get(
@@ -1140,12 +1132,7 @@ void main() {
             verbose: any(named: 'verbose'),
           ),
         ).thenAnswer((_) async {});
-        when(
-          () => mockCanPublishCommand.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-          ),
-        ).thenAnswer((_) async {});
+        stubCanPublish(mockCanPublishCommand);
         when(
           () => mockSortedProcessingList.get(
             directory: any(named: 'directory'),
@@ -1314,12 +1301,7 @@ void main() {
           verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
       when(
         () => mockSortedProcessingList.get(
           directory: any(named: 'directory'),
@@ -1508,12 +1490,7 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
 
       when(
         () => mockSortedProcessingList.get(
@@ -1676,12 +1653,7 @@ void main() {
           verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
       when(
         () => mockSortedProcessingList.get(
           directory: any(named: 'directory'),
@@ -1863,12 +1835,7 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
 
       when(
         () => mockSortedProcessingList.get(
@@ -2021,12 +1988,7 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
 
       when(
         () => mockSortedProcessingList.get(
@@ -2187,9 +2149,11 @@ void main() {
       ).thenAnswer((_) async {});
 
       when(
-        () => mockCanPublishCommand.exec(
+        () => mockCanPublishCommand.checkTicket(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
+          verbose: any(named: 'verbose'),
+          includeCanPublish: any(named: 'includeCanPublish'),
         ),
       ).thenThrow(Exception('can publish failed'));
 
@@ -2281,12 +2245,7 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
 
       when(
         () => mockSortedProcessingList.get(
@@ -2493,12 +2452,7 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
 
       when(
         () => mockSortedProcessingList.get(
@@ -2666,12 +2620,7 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
 
       when(
         () => mockSortedProcessingList.get(
@@ -2822,12 +2771,7 @@ void main() {
           ),
         ).thenAnswer((_) async {});
 
-        when(
-          () => mockCanPublishCommand.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-          ),
-        ).thenAnswer((_) async {});
+        stubCanPublish(mockCanPublishCommand);
 
         final aDir = Directory(path.join(ticketDir.path, 'A'));
         final bDir = Directory(path.join(ticketDir.path, 'B'));
@@ -3001,12 +2945,7 @@ void main() {
           ),
         ).thenAnswer((_) async {});
 
-        when(
-          () => mockCanPublishCommand.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-          ),
-        ).thenAnswer((_) async {});
+        stubCanPublish(mockCanPublishCommand);
 
         final aDir = Directory(path.join(ticketDir.path, 'A'));
         final bDir = Directory(path.join(ticketDir.path, 'B'));
@@ -3181,12 +3120,7 @@ void main() {
           ),
         ).thenAnswer((_) async {});
 
-        when(
-          () => mockCanPublishCommand.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-          ),
-        ).thenAnswer((_) async {});
+        stubCanPublish(mockCanPublishCommand);
 
         final dirA = Directory(path.join(ticketDir.path, 'A'));
         when(
@@ -3378,12 +3312,7 @@ void main() {
           verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
       when(
         () => mockSortedProcessingList.get(
           directory: any(named: 'directory'),
@@ -3536,12 +3465,7 @@ void main() {
           verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
       when(
         () => mockSortedProcessingList.get(
           directory: any(named: 'directory'),
@@ -3699,12 +3623,7 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
 
       when(
         () => mockSortedProcessingList.get(
@@ -3848,12 +3767,7 @@ void main() {
           verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
       when(
         () => mockSortedProcessingList.get(
           directory: any(named: 'directory'),
@@ -3933,12 +3847,7 @@ void main() {
           verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
       when(
         () => mockSortedProcessingList.get(
           directory: any(named: 'directory'),
@@ -4053,12 +3962,7 @@ void main() {
           verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
       when(
         () => mockSortedProcessingList.get(
           directory: any(named: 'directory'),
@@ -4219,12 +4123,7 @@ void main() {
           verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
       when(
         () => mockSortedProcessingList.get(
           directory: any(named: 'directory'),
@@ -4374,12 +4273,7 @@ void main() {
           verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
       when(
         () => mockSortedProcessingList.get(
           directory: any(named: 'directory'),
@@ -4618,12 +4512,7 @@ void main() {
           verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
       when(
         () => mockSortedProcessingList.get(
           directory: any(named: 'directory'),
@@ -4824,6 +4713,80 @@ void main() {
           (msg) => msg.contains('pushes to origin are not rolled back'),
         ),
         isTrue,
+      );
+    });
+
+    test('a rejected per-repo gate takes the full restore path', () async {
+      // The gate sits after the force-commit and BEFORE the push, so nothing
+      // irreversible has happened when it rejects a repo: no version bump,
+      // main unmoved, feature branch unpushed. That must full-restore the
+      // repo — moving the gate below the push would silently downgrade this
+      // to a cleanup restore, which keeps the commits and tells the user to
+      // resume a failure that was entirely undoable.
+      when(
+        () => mockCanPublishCommand.checkRepo(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenThrow(Exception('Cannot publish: A (Exception: pana failed)'));
+
+      // HEAD moved because of the `#gg: changed references` commit.
+      stubHeadMoves('h0', 'h1');
+      when(
+        () => m(
+          'git',
+          ['reset', '--hard', 'h0'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+      await expectLater(
+        () async => buildRunner().run(
+          ['publish', '--verbose', '--input', ticketDir.path],
+        ),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Cannot publish: A'),
+          ),
+        ),
+      );
+
+      // The ref commit is thrown away — full restore, not cleanup restore.
+      verify(
+        () => m('git', ['reset', '--hard', 'h0'], workingDirectory: dirA),
+      ).called(1);
+      expect(
+        messages.any(
+          (msg) => msg.contains('Restored the state before the publish in A'),
+        ),
+        isTrue,
+      );
+
+      // Nothing was pushed and nothing was published before the rejection.
+      verifyNever(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      );
+      verifyNever(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
+        ),
       );
     });
 
@@ -5455,12 +5418,7 @@ void main() {
           verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
       when(
         () => mockSortedProcessingList.get(
           directory: any(named: 'directory'),
@@ -6218,12 +6176,7 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
 
       when(
         () => mockSortedProcessingList.get(
@@ -6662,12 +6615,7 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      when(
-        () => mockCanPublishCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
 
       when(
         () => mockRestorePublishTo.exec(
@@ -6894,6 +6842,47 @@ void main() {
       ).called(1);
     });
 
+    test('gates every repo and reports a rejection with merge wording',
+        () async {
+      when(
+        () => mockCanPublishCommand.checkRepo(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((invocation) {
+        final dir = invocation.namedArguments[#directory] as Directory;
+        if (path.basename(dir.path) == 'B') {
+          throw Exception('Cannot publish: B (Exception: pana failed)');
+        }
+        return Future.value();
+      });
+
+      await expectLater(
+        () => buildRunner().run(['publish', '--input', ticketDir.path]),
+        throwsA(isA<Exception>()),
+      );
+
+      // The gate applies to a merge too — it is the same flow.
+      verify(
+        () => mockCanPublishCommand.checkRepo(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).called(2);
+
+      // ... and the failure is worded for the mode.
+      expect(messages.any((m) => m.contains('❌ Merging B failed')), isTrue);
+      expect(
+        messages.any((m) => m.contains('The merge is marked as »failed«')),
+        isTrue,
+      );
+      expect(messages.any((m) => m.contains('❌ Publishing B')), isFalse);
+      expect(
+        messages.any((m) => m.contains('The publish is marked')),
+        isFalse,
+      );
+    });
+
     test('names »gg do merge« in the resume hints', () async {
       when(
         () => mockGgDoPublish.exec(
@@ -6927,6 +6916,374 @@ void main() {
       );
     });
   });
+
+  // ...........................................................................
+  group('DoPublishCommand per repo publish gate', () {
+    late MockGgDoPublish mockGgDoPublish;
+    late MockGgDoCommit mockGgDoCommit;
+    late MockGgDoPush mockGgDoPush;
+    late MockUnlocalizeRefs mockUnlocalizeRefs;
+    late MockRestorePublishTo mockRestorePublishTo;
+    late MockSortedProcessingList mockSortedProcessingList;
+    late MockProcessRunner mockProcessRunner;
+    late MockCanPublishCommand mockCanPublishCommand;
+    late MockDoReviewCommand mockDoReviewCommand;
+    late MockGetVersion mockGetVersion;
+    late MockSetRefVersion mockSetRefVersion;
+    late MockGetRefVersion mockGetRefVersion;
+    late MockPubDevChecker mockPubDevChecker;
+
+    /// Every call the ordering assertions care about, in the order it
+    /// happened, as `<step>:<repo>`.
+    late List<String> calls;
+
+    String repoOf(Invocation invocation) => path.basename(
+          (invocation.namedArguments[#directory] as Directory).path,
+        );
+
+    setUp(() {
+      calls = [];
+      mockGgDoPublish = MockGgDoPublish();
+      mockGgDoCommit = MockGgDoCommit();
+      mockGgDoPush = MockGgDoPush();
+      mockUnlocalizeRefs = MockUnlocalizeRefs();
+      mockRestorePublishTo = MockRestorePublishTo();
+      mockSortedProcessingList = MockSortedProcessingList();
+      mockProcessRunner = MockProcessRunner();
+      _stubPubUpgrade(mockProcessRunner);
+      _stubRepoSnapshot(mockProcessRunner);
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['push', 'origin', '--delete', 'TICKPB'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      mockCanPublishCommand = MockCanPublishCommand();
+      mockDoReviewCommand = MockDoReviewCommand();
+      mockGetVersion = MockGetVersion();
+      mockSetRefVersion = MockSetRefVersion();
+      mockGetRefVersion = MockGetRefVersion();
+      mockPubDevChecker = MockPubDevChecker();
+
+      when(
+        () => mockDoReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          verbose: any(named: 'verbose'),
+        ),
+      ).thenAnswer((_) async {});
+
+      stubCanPublish(mockCanPublishCommand);
+
+      when(
+        () => mockRestorePublishTo.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      // B depends on A, so A is published first.
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          for (final name in ['A', 'B'])
+            Node(
+              name: name,
+              directory: Directory(path.join(ticketDir.path, name)),
+              manifest: DartPackageManifest(pubspec: Pubspec(name)),
+            ),
+        ],
+      );
+
+      // Record the order of the steps around the gate.
+      when(
+        () => mockUnlocalizeRefs.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((i) async => calls.add('unlocalize:${repoOf(i)}'));
+
+      when(
+        () => mockGgDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((i) async => calls.add('commit:${repoOf(i)}'));
+
+      when(
+        () => mockCanPublishCommand.checkRepo(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((i) async => calls.add('gate:${repoOf(i)}'));
+
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((i) async => calls.add('push:${repoOf(i)}'));
+
+      when(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((i) async => calls.add('publish:${repoOf(i)}'));
+
+      when(
+        () => mockGetVersion.get(directory: any(named: 'directory')),
+      ).thenAnswer((_) async => '1.0.0');
+
+      when(
+        () => mockGetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+        ),
+      ).thenAnswer((_) async => null);
+
+      when(
+        () => mockSetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+          version: any(named: 'version'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockPubDevChecker.getPackagePublishInfo(
+          packageName: any(named: 'packageName'),
+        ),
+      ).thenAnswer(
+        (invocation) async => PackagePublishInfo(
+          packageName: invocation.namedArguments[#packageName] as String,
+          waitsForPubDev: false,
+        ),
+      );
+    });
+
+    CommandRunner<void> buildRunner() =>
+        CommandRunner<void>('test', 'do publish ticket')
+          ..addCommand(
+            DoPublishCommand(
+              ggLog: ggLog,
+              ensureInRegistry: mockEnsureInRegistry,
+              ggDoPublish: mockGgDoPublish,
+              ggDoCommit: mockGgDoCommit,
+              ggDoPush: mockGgDoPush,
+              unlocalizeRefs: mockUnlocalizeRefs,
+              restorePublishTo: mockRestorePublishTo,
+              sortedProcessingList: mockSortedProcessingList,
+              processRunner: mockProcessRunner.call,
+              canPublishCommand: mockCanPublishCommand,
+              doReviewCommand: mockDoReviewCommand,
+              getVersionCommand: mockGetVersion,
+              setRefVersionCommand: mockSetRefVersion,
+              getRefVersionCommand: mockGetRefVersion,
+              pubDevChecker: mockPubDevChecker,
+            ),
+          );
+
+    test('defers the check to the repos instead of running it up front',
+        () async {
+      await buildRunner().run(['publish', '--input', ticketDir.path]);
+
+      verify(
+        () => mockCanPublishCommand.checkTicket(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          verbose: any(named: 'verbose'),
+          includeCanPublish: false,
+        ),
+      ).called(1);
+      verify(
+        () => mockCanPublishCommand.checkRepo(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).called(2);
+    });
+
+    test(
+        'checks a repo after its refs point at pub.dev and after its '
+        'dependencies were published', () async {
+      await buildRunner().run(['publish', '--input', ticketDir.path]);
+
+      // Within a repo: the gate sits between the force-commit and the push.
+      expect(
+        calls,
+        containsAllInOrder([
+          'unlocalize:B',
+          'commit:B',
+          'gate:B',
+          'push:B',
+          'publish:B',
+        ]),
+      );
+
+      // Across repos: A is on the registry before B is even asked. This is
+      // the whole point — pana can only resolve B's constraint on A once A
+      // is published.
+      expect(calls.indexOf('publish:A'), lessThan(calls.indexOf('gate:B')));
+    });
+
+    test('passes a logging ggLog to the gate', () async {
+      // The gate is what makes the run fail, so its detail must be visible
+      // without --verbose.
+      when(
+        () => mockCanPublishCommand.checkRepo(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((invocation) async {
+        final log = invocation.namedArguments[#ggLog] as void Function(String);
+        log('gate detail');
+      });
+
+      await buildRunner().run(['publish', '--input', ticketDir.path]);
+
+      expect(messages, contains('gate detail'));
+    });
+
+    test(
+        'marks only the rejected repo failed and leaves the earlier one '
+        'published', () async {
+      when(
+        () => mockCanPublishCommand.checkRepo(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((i) async {
+        calls.add('gate:${repoOf(i)}');
+        if (repoOf(i) == 'B') {
+          throw Exception('Cannot publish: B (Exception: pana failed)');
+        }
+      });
+
+      await expectLater(
+        () => buildRunner().run(['publish', '--input', ticketDir.path]),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Cannot publish: B'),
+          ),
+        ),
+      );
+
+      // A got all the way through; B never reached anything irreversible.
+      expect(calls, contains('publish:A'));
+      expect(calls, isNot(contains('push:B')));
+      expect(calls, isNot(contains('publish:B')));
+      verifyNever(
+        () => mockEnsureInRegistry.ensure(
+          directory: Directory(path.join(ticketDir.path, 'B')),
+          ggLog: any(named: 'ggLog'),
+        ),
+      );
+
+      // The ticket file carries both outcomes, so --continue resumes at B.
+      final config = jsonDecode(
+        File(path.join(ticketDir.path, '.gg', 'gg-publish.json'))
+            .readAsStringSync(),
+      ) as Map<String, dynamic>;
+      final repos = config['repos'] as Map<String, dynamic>;
+      expect((repos['A'] as Map<String, dynamic>)['status'], 'published');
+      expect((repos['B'] as Map<String, dynamic>)['status'], 'failed');
+
+      // The reason is reported where the failure is recorded.
+      expect(messages.any((m) => m.contains('❌ Publishing B failed')), isTrue);
+      expect(
+        messages.any((m) => m.contains('Cannot publish: B')),
+        isTrue,
+      );
+      expect(
+        messages.any((m) => m.contains('gg do publish --continue')),
+        isTrue,
+      );
+    });
+
+    group('on --continue', () {
+      /// Marks the run as resumable and gives repo [name] gg_one step
+      /// progress, as a repo that failed mid-publish would have.
+      void writeProgress({required String repoWithSteps}) {
+        File(path.join(ticketDir.path, '.gg', 'gg-publish.json'))
+            .writeAsStringSync(
+          jsonEncode({
+            'version_increment': 'patch',
+            'merge_message': 'test merge',
+            'repos': {
+              'B': {'status': 'failed'},
+            },
+          }),
+        );
+        Directory(path.join(ticketDir.path, repoWithSteps, '.gg'))
+            .createSync(recursive: true);
+        File(
+          path.join(ticketDir.path, repoWithSteps, '.gg', 'gg-publish.json'),
+        ).writeAsStringSync(
+          jsonEncode({
+            'version_increment': 'patch',
+            'merge_message': 'test merge',
+            'done_steps': ['prepare_version'],
+          }),
+        );
+      }
+
+      test('skips the gate for a repo that already made publish progress',
+          () async {
+        writeProgress(repoWithSteps: 'B');
+
+        await buildRunner().run(
+          ['publish', '--input', ticketDir.path, '--continue'],
+        );
+
+        // B is past the point where the gate could still say anything
+        // useful — its version is bumped already.
+        expect(calls, contains('gate:A'));
+        expect(calls, isNot(contains('gate:B')));
+        expect(calls, contains('publish:B'));
+      });
+
+      test('re-checks a repo that made no publish progress', () async {
+        File(path.join(ticketDir.path, '.gg', 'gg-publish.json'))
+            .writeAsStringSync(
+          jsonEncode({
+            'version_increment': 'patch',
+            'merge_message': 'test merge',
+            'repos': {
+              'A': {'status': 'published'},
+            },
+          }),
+        );
+
+        await buildRunner().run(
+          ['publish', '--input', ticketDir.path, '--continue'],
+        );
+
+        // Re-validating on resume is the point: B is checked again.
+        expect(calls, contains('gate:B'));
+      });
+    });
+  });
 }
 
 // Mock for ProcessRunner
@@ -6937,6 +7294,28 @@ class MockProcessRunner extends Mock {
     String? workingDirectory,
     Map<String, String>? environment,
   });
+}
+
+/// Stubs both halves of the publish gate on [mock] so they succeed: the
+/// ticket wide `checkTicket` `do publish` runs up front, and the per-repo
+/// `checkRepo` it runs inside `_publishRepo`. A test that is about one of
+/// them overrides just that one afterwards.
+void stubCanPublish(MockCanPublishCommand mock) {
+  when(
+    () => mock.checkTicket(
+      directory: any(named: 'directory'),
+      ggLog: any(named: 'ggLog'),
+      verbose: any(named: 'verbose'),
+      includeCanPublish: any(named: 'includeCanPublish'),
+    ),
+  ).thenAnswer((_) async {});
+
+  when(
+    () => mock.checkRepo(
+      directory: any(named: 'directory'),
+      ggLog: any(named: 'ggLog'),
+    ),
+  ).thenAnswer((_) async {});
 }
 
 /// Stubs `dart pub upgrade` on [runner] so it succeeds for any working

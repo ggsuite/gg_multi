@@ -85,6 +85,24 @@ class AddCommand extends Command<dynamic> {
       help: 'Enable verbose logging.',
       defaultsTo: false,
     );
+    argParser.addFlag(
+      'localize',
+      help: 'Localize the references of all repos in the ticket after '
+          'copying (default). Use --no-localize to only copy the repos.',
+      defaultsTo: true,
+      negatable: true,
+    );
+    argParser.addMultiOption(
+      'org',
+      help: 'Add all repositories of the given organization folder of the '
+          'master workspace to the ticket. Can be given multiple times.',
+    );
+    argParser.addFlag(
+      'all',
+      help: 'Add all repositories of the master workspace to the ticket.',
+      defaultsTo: false,
+      negatable: false,
+    );
   }
 
   /// The log function.
@@ -137,18 +155,33 @@ class AddCommand extends Command<dynamic> {
       'from the specified organization into the master workspace-and if run '
       'from inside a ticket, also into that ticket workspace. After adding, '
       'all repositories in the ticket are unlocalized and then localized '
-      'with --git in two passes.';
+      'again in two passes; --no-localize copies them without touching the '
+      'references. Inside a ticket, --org <name> adds all repos of an '
+      'organization folder of the master workspace and --all adds all of '
+      'its repos.';
 
   @override
   Future<void> run() async {
-    if (argResults!.rest.isEmpty) {
-      throw UsageException('Missing target parameter.', usage);
-    }
-
     final targets = argResults!.rest;
     final bool force = argResults!['force'] as bool;
     final String? ticketPath = WorkspaceUtils.detectTicketPath(executionPath);
     final bool verbose = argResults!['verbose'] as bool? ?? false;
+    final bool localize = argResults!['localize'] as bool? ?? true;
+    final orgs = argResults!['org'] as List<String>;
+    final bool all = argResults!['all'] as bool;
+
+    if (targets.isEmpty && !all && orgs.isEmpty) {
+      throw UsageException('Missing target parameter.', usage);
+    }
+
+    // Both options take their repositories from the master workspace and
+    // copy them into a ticket, so outside of one there is nothing to do.
+    if (ticketPath == null && (all || orgs.isNotEmpty)) {
+      throw UsageException(
+        '--all and --org can only be used from inside a ticket workspace.',
+        usage,
+      );
+    }
 
     // Maintenance: a workspace created before gg grouped its repositories by
     // organization still holds them flat. Move them first, so everything
@@ -187,6 +220,21 @@ class AddCommand extends Command<dynamic> {
         requestedRepoNames.add(repoName);
       }
     }
+
+    // --all and --org name repos that are already in the master workspace, so
+    // they join the requested ones after the cloning step below.
+    if (all) {
+      requestedRepoNames.addAll(_allMasterRepoNames());
+    }
+    if (orgs.isNotEmpty) {
+      requestedRepoNames.addAll(_masterRepoNamesOfOrgs(orgs));
+    }
+
+    if (requestedRepoNames.isEmpty) {
+      ggLog(yellow('No repositories to add.'));
+      return;
+    }
+
     await runWithLimit(
       targets,
       4,
@@ -292,15 +340,66 @@ class AddCommand extends Command<dynamic> {
     );
 
     // Finally perform a single re-localization pass for the whole ticket.
-    await GgStatusPrinter<void>(
-      message: 'Set dependencies to path, committing',
-      ggLog: ggLog,
-    ).run(
-      () => _relocalizeAllReposInTicket(
-        ticketDir: ticketDir,
-        ggLog: taskLog,
-      ),
-    );
+    if (localize) {
+      await GgStatusPrinter<void>(
+        message: 'Set dependencies to path, committing',
+        ggLog: ggLog,
+      ).run(
+        () => _relocalizeAllReposInTicket(
+          ticketDir: ticketDir,
+          ggLog: taskLog,
+        ),
+      );
+      return;
+    }
+
+    // Without localization the ticket description is still kept current — it
+    // describes which repos the ticket holds, not how they reference another.
+    await _writeTicketJson(ticketDir: ticketDir, ggLog: taskLog);
+    ggLog(yellow('Skipped localizing references (--no-localize).'));
+  }
+
+  /// Folder names of all repositories of the master workspace.
+  Set<String> _allMasterRepoNames() => <String>{
+        for (final repoDir in RepoFolderResolver.repoDirs(masterWorkspacePath))
+          path.basename(repoDir.path),
+      };
+
+  /// Folder names of the repositories that sit in one of the `<master>/<org>`
+  /// folders named in [orgs]. Repositories that still lie flat in the master
+  /// workspace belong to no organization folder and are never returned.
+  Set<String> _masterRepoNamesOfOrgs(List<String> orgs) {
+    final result = <String>{};
+
+    for (final org in orgs) {
+      final namesOfOrg = <String>{};
+
+      for (final repoDir in RepoFolderResolver.repoDirs(masterWorkspacePath)) {
+        final segments = path.split(
+          RepoFolderResolver.relativePath(
+            workspacePath: masterWorkspacePath,
+            repoDir: repoDir,
+          ),
+        );
+        if (segments.length < 2) {
+          continue;
+        }
+        if (segments.first.toLowerCase() == org.toLowerCase()) {
+          namesOfOrg.add(segments.last);
+        }
+      }
+
+      // A typo in the organization name would otherwise silently add nothing.
+      if (namesOfOrg.isEmpty) {
+        ggLog(
+          yellow('No repositories found for organization $org '
+              'in the master workspace.'),
+        );
+      }
+      result.addAll(namesOfOrg);
+    }
+
+    return result;
   }
 
   // Ticket support helpers
@@ -879,6 +978,35 @@ class AddCommand extends Command<dynamic> {
     );
   }
 
+  /// Writes the ticket description next to the repos. It is overwritten on
+  /// every `do add`, keeping the repo list current, and it stays local: no
+  /// repo carries it, so it is never committed and never pushed.
+  ///
+  /// Returns the repositories of the ticket in processing order, or an empty
+  /// list when the ticket holds none.
+  Future<List<Node>> _writeTicketJson({
+    required Directory ticketDir,
+    required GgLog ggLog,
+  }) async {
+    final nodes = await _sortedProcessingList.get(
+      directory: ticketDir,
+      ggLog: ggLog,
+    );
+
+    if (nodes.isEmpty) {
+      ggLog(yellow('⚠️ No repos in this ticket'));
+      return nodes;
+    }
+
+    final repoDirs = nodes.map((n) => n.directory).toList();
+    writeTicketJson(
+      ticketDir,
+      buildTicketJson(ticketDir: ticketDir, repoDirs: repoDirs),
+    );
+
+    return nodes;
+  }
+
   /// Re-localizes all ticket repos in two passes (sorted order):
   /// 1) unlocalize, 2) localize --git + pub upgrade + commit.
   Future<void> _relocalizeAllReposInTicket({
@@ -887,25 +1015,11 @@ class AddCommand extends Command<dynamic> {
   }) async {
     final ticketName = path.basename(ticketDir.path);
 
-    // Collect repositories in processing order.
-    final nodes = await _sortedProcessingList.get(
-      directory: ticketDir,
-      ggLog: ggLog,
-    );
+    final nodes = await _writeTicketJson(ticketDir: ticketDir, ggLog: ggLog);
 
     if (nodes.isEmpty) {
-      ggLog(yellow('⚠️ No repos in this ticket'));
       return;
     }
-
-    // Write the ticket description next to the repos. It is overwritten on
-    // every `do add`, keeping the repo list current, and it stays local: no
-    // repo carries it, so it is never committed and never pushed.
-    final repoDirs = nodes.map((n) => n.directory).toList();
-    writeTicketJson(
-      ticketDir,
-      buildTicketJson(ticketDir: ticketDir, repoDirs: repoDirs),
-    );
 
     // Iteration 1: Unlocalize all ---------------------------------------------
     for (final node in nodes) {

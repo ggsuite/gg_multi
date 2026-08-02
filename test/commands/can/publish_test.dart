@@ -26,6 +26,8 @@ class MockGgCanMerge extends Mock implements gg.CanMerge {}
 
 class MockGgCanPublish extends Mock implements gg.CanPublish {}
 
+class MockGgNpmLoggedIn extends Mock implements gg.NpmLoggedIn {}
+
 class MockGgMergeMainIntoFeat extends Mock
     implements gg_publish.MergeMainIntoFeat {}
 
@@ -949,6 +951,269 @@ void main() {
         );
       },
     );
+  });
+
+  // ...........................................................................
+  group('CanPublishCommand (per repo gate)', () {
+    late MockGgCanMerge mockGgCanMerge;
+    late MockGgCanPublish mockGgCanPublish;
+    late MockGgNpmLoggedIn mockGgNpmLoggedIn;
+    late MockGgMergeMainIntoFeat mockGgMergeMainIntoFeat;
+    late MockSortedProcessingList mockSortedProcessingList;
+    late MockProcessRunner mockProcessRunner;
+    late MockDidCommitCommand mockDidCommitCommand;
+    late MockDoPushCommand mockDoPushCommand;
+
+    /// A command whose collaborators all succeed, so a test only has to
+    /// override the one it is about.
+    CanPublishCommand command() => CanPublishCommand(
+          ggLog: ggLog,
+          ggCanMerge: mockGgCanMerge,
+          ggCanPublish: mockGgCanPublish,
+          ggNpmLoggedIn: mockGgNpmLoggedIn,
+          ggMergeMainIntoFeat: mockGgMergeMainIntoFeat,
+          sortedProcessingList: mockSortedProcessingList,
+          processRunner: mockProcessRunner.call,
+          didCommitCommand: mockDidCommitCommand,
+          doPushCommand: mockDoPushCommand,
+        );
+
+    Directory repoDir(String name) =>
+        Directory(path.join(ticketDir.path, name));
+
+    setUp(() {
+      mockGgCanMerge = MockGgCanMerge();
+      mockGgCanPublish = MockGgCanPublish();
+      mockGgNpmLoggedIn = MockGgNpmLoggedIn();
+      mockGgMergeMainIntoFeat = MockGgMergeMainIntoFeat();
+      mockSortedProcessingList = MockSortedProcessingList();
+      mockProcessRunner = MockProcessRunner();
+      mockDidCommitCommand = MockDidCommitCommand();
+      mockDoPushCommand = MockDoPushCommand();
+
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: repoDir('A'),
+            manifest: DartPackageManifest(pubspec: Pubspec('A')),
+          ),
+          Node(
+            name: 'B',
+            directory: repoDir('B'),
+            manifest: DartPackageManifest(pubspec: Pubspec('B')),
+          ),
+        ],
+      );
+
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['status', '--porcelain'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(1, 0, '', ''));
+
+      for (final stub in [
+        () => mockDidCommitCommand.exec(
+              directory: any(named: 'directory'),
+              ggLog: any(named: 'ggLog'),
+            ),
+        () => mockGgMergeMainIntoFeat.exec(
+              directory: any(named: 'directory'),
+              ggLog: any(named: 'ggLog'),
+            ),
+        () => mockDoPushCommand.exec(
+              directory: any(named: 'directory'),
+              ggLog: any(named: 'ggLog'),
+            ),
+        () => mockGgCanMerge.exec(
+              directory: any(named: 'directory'),
+              ggLog: any(named: 'ggLog'),
+            ),
+        () => mockGgCanPublish.exec(
+              directory: any(named: 'directory'),
+              ggLog: any(named: 'ggLog'),
+            ),
+        () => mockGgNpmLoggedIn.exec(
+              directory: any(named: 'directory'),
+              ggLog: any(named: 'ggLog'),
+            ),
+      ]) {
+        when(stub).thenAnswer((_) async {});
+      }
+    });
+
+    group('checkTicket(includeCanPublish: false)', () {
+      test('runs the ticket wide steps but not gg can publish', () async {
+        await command().checkTicket(
+          directory: ticketDir,
+          ggLog: ggLog,
+          verbose: true,
+          includeCanPublish: false,
+        );
+
+        verify(
+          () => mockGgCanMerge.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).called(2);
+        verify(
+          () => mockDoPushCommand.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).called(1);
+
+        // The deferred step must not even print its status line.
+        verifyNever(
+          () => mockGgCanPublish.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        );
+        expect(messages.any((m) => m.contains('Can merge?')), isTrue);
+        expect(messages.any((m) => m.contains('Can publish?')), isFalse);
+      });
+
+      test('still checks the npm login of every repo', () async {
+        await command().checkTicket(
+          directory: ticketDir,
+          ggLog: ggLog,
+          verbose: true,
+          includeCanPublish: false,
+        );
+
+        verify(
+          () => mockGgNpmLoggedIn.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).called(2);
+        expect(messages.any((m) => m.contains('Logged in to npm?')), isTrue);
+      });
+    });
+
+    test('get() still runs the complete check', () async {
+      final runner = CommandRunner<void>('test', 'can publish ticket')
+        ..addCommand(command());
+      await runner.run(['publish', '--verbose', '--input', ticketDir.path]);
+
+      verify(
+        () => mockGgCanPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).called(2);
+      verify(
+        () => mockGgNpmLoggedIn.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).called(2);
+      expect(messages, contains('✅ All repos can be published'));
+    });
+
+    test('throws when a repo is not logged in to npm', () async {
+      when(
+        () => mockGgNpmLoggedIn.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((invocation) {
+        final dir = invocation.namedArguments[#directory] as Directory;
+        if (path.basename(dir.path) == 'B') {
+          throw Exception('Not logged in to the npm registry');
+        }
+        return Future.value();
+      });
+
+      await expectLater(
+        () => command().checkTicket(
+          directory: ticketDir,
+          ggLog: ggLog,
+          verbose: true,
+        ),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Not logged in to npm: B ('),
+          ),
+        ),
+      );
+      expect(
+        messages.any((m) => m.contains('❌ Not logged in to npm for B')),
+        isTrue,
+      );
+
+      // The npm sweep runs before `Can publish?`, so that step never starts.
+      verifyNever(
+        () => mockGgCanPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      );
+    });
+
+    group('checkRepo()', () {
+      test('passes for a publish-ready repo', () async {
+        final dir = repoDir('A');
+        await command().checkRepo(directory: dir, ggLog: ggLog);
+
+        verify(
+          () => mockGgCanPublish.exec(
+            directory: dir,
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).called(1);
+        expect(messages, contains('A:'));
+      });
+
+      test('throws the ticket wide message for one repo', () async {
+        when(
+          () => mockGgCanPublish.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenThrow(Exception('pana failed'));
+
+        await expectLater(
+          () => command().checkRepo(directory: repoDir('B'), ggLog: ggLog),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              'Exception: Cannot publish: B (Exception: pana failed)',
+            ),
+          ),
+        );
+        expect(
+          messages,
+          contains('❌ Cannot publish B: Exception: pana failed'),
+        );
+      });
+
+      test('works outside a ticket folder', () async {
+        // It takes a repository, so it must not look for a ticket around it.
+        final loneRepo = Directory(path.join(tempDir.path, 'lone'))
+          ..createSync();
+        await command().checkRepo(directory: loneRepo, ggLog: ggLog);
+
+        verify(
+          () => mockGgCanPublish.exec(
+            directory: loneRepo,
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).called(1);
+      });
+    });
   });
 }
 
