@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Do not write dart specific code into pure typescript .gitattributes
+- Throw an error when added repo in master is not clean
+- Either copy symlinks or throw an exception that symlinks are not supported
+
+### Fixed
+
+- Fix gg do add errors
 ## 7.7.0 - 2026-08-02
 
 ### Changed
