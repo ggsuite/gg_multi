@@ -15,7 +15,7 @@ dependencies:
   gg_args: ^2.0.5
   gg_git: ^3.2.0
   gg_localize_refs: ^3.3.0
-  gg_local_package_dependencies: ^2.0.0
+  gg_local_package_dependencies: ^2.1.0
   gg_log: ^1.0.6
   gg_publish: ^3.9.2
   gg_status_printer: ^1.1.4
