@@ -29,13 +29,16 @@ typedef EditMessage = Future<String?> Function(String initialMessage);
 /// every repo up front. `do publish` runs this automatically when no
 /// configuration is supplied, so all decisions are made before the long
 /// (unattended) publish starts.
+/// `--message` pre-fills every repo's merge-message prompt and is used for a
+/// prompt that is left empty. `--merge-only` configures a
+/// `gg do publish --merge-only` run: no version increment is asked for,
+/// because a merge releases nothing.
 class DoConfigurePublishCommand extends DirCommand<void> {
   /// Constructor
   DoConfigurePublishCommand({
     required super.ggLog,
     super.name = 'configure-publish',
-    super.description = 'Interactively create the .gg/gg-publish.json publish '
-        'configuration for the current ticket.',
+    super.description = 'Create the publish configuration of the ticket',
     SortedProcessingList? sortedProcessingList,
     PublishedVersion? publishedVersion,
     gg.VersionSelector? versionSelector,
@@ -115,7 +118,7 @@ class DoConfigurePublishCommand extends DirCommand<void> {
         throw Exception(
           'An unfinished publish left progress in ${existingFile.path}. '
           'Resume it with "gg do publish --continue", or discard it with '
-          '"gg do publish --reconfigure".',
+          '"gg do publish --restart".',
         );
       }
     }
@@ -234,14 +237,11 @@ class DoConfigurePublishCommand extends DirCommand<void> {
     argParser.addOption(
       'message',
       abbr: 'm',
-      help: 'Default merge message that pre-fills every repo\'s merge-message '
-          'prompt (and is used when a prompt is left empty). Takes precedence '
-          'over the ticket description.',
+      help: 'Default merge message for every repo prompt',
     );
     argParser.addFlag(
       'merge-only',
-      help: 'Configure a »gg do publish --merge-only« run: no version '
-          'increment is asked for, because a merge creates no release.',
+      help: 'Configure a merge-only run, without increments',
       defaultsTo: false,
       negatable: false,
     );

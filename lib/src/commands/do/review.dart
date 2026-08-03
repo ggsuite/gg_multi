@@ -99,6 +99,7 @@ class DoReviewCommand extends DirCommand<void> {
     CanReviewCommand? canReviewCommand,
     ChangeRefsToPubDev? unlocalizeRefs,
     ChangeRefsToGitFeatureBranch? localizeRefsToGit,
+    ChangeRefsToLocal? localizeRefsToLocal,
     SortedProcessingList? sortedProcessingList,
     gg.DoCommit? ggDoCommit,
     gg.DoPush? ggDoPush,
@@ -108,6 +109,8 @@ class DoReviewCommand extends DirCommand<void> {
   })  : _canReviewCommand = canReviewCommand ?? CanReviewCommand(ggLog: ggLog),
         _localizeRefsToGit =
             localizeRefsToGit ?? ChangeRefsToGitFeatureBranch(ggLog: ggLog),
+        _localizeRefsToLocal =
+            localizeRefsToLocal ?? ChangeRefsToLocal(ggLog: ggLog),
         _sortedProcessingList =
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
         _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
@@ -124,6 +127,9 @@ class DoReviewCommand extends DirCommand<void> {
 
   /// Instance of ChangeRefsToGitFeatureBranch
   final ChangeRefsToGitFeatureBranch _localizeRefsToGit;
+
+  /// Sets refs back to local path dependencies, used by `--abort`.
+  final ChangeRefsToLocal _localizeRefsToLocal;
 
   /// Instance of SortedProcessingList
   final SortedProcessingList _sortedProcessingList;
@@ -151,11 +157,13 @@ class DoReviewCommand extends DirCommand<void> {
     required Directory directory,
     required GgLog ggLog,
     bool? verbose,
+    bool? abort,
   }) =>
       get(
         directory: directory,
         ggLog: ggLog,
         verbose: verbose,
+        abort: abort,
       );
 
   @override
@@ -163,8 +171,20 @@ class DoReviewCommand extends DirCommand<void> {
     required Directory directory,
     required GgLog ggLog,
     bool? verbose,
+    bool? abort,
   }) async {
     verbose ??= argResults?['verbose'] as bool? ?? false;
+    abort ??= argResults?['abort'] as bool? ?? false;
+
+    // `--abort` undoes what a previous review prepared, so it must branch off
+    // before any of the review steps below run.
+    if (abort) {
+      return _abort(
+        directory: directory,
+        ggLog: ggLog,
+        verbose: verbose,
+      );
+    }
 
     // Step 1: Detect ticket folder ------------------------------------------
     final String? ticketPath = WorkspaceUtils.detectTicketPath(
@@ -354,6 +374,13 @@ class DoReviewCommand extends DirCommand<void> {
       help: 'Show detailed log output.',
       defaultsTo: false,
       negatable: true,
+    );
+
+    argParser.addFlag(
+      'abort',
+      help: 'Set dependencies back to local paths and commit.',
+      defaultsTo: false,
+      negatable: false,
     );
   }
 
@@ -1031,6 +1058,137 @@ class DoReviewCommand extends DirCommand<void> {
   /// Refreshes dependencies for [repoDir] based on the detected project
   /// type. Runs `dart pub upgrade` for Dart/Flutter packages and the
   /// equivalent install command for TypeScript packages (npm/yarn/pnpm).
+  /// Reverts the review preparation: sets the refs of every ticket repo back
+  /// to local paths and commits the change.
+  Future<void> _abort({
+    required Directory directory,
+    required GgLog ggLog,
+    required bool verbose,
+  }) async {
+    final String? ticketPath = WorkspaceUtils.detectTicketPath(
+      path.absolute(directory.path),
+    );
+    if (ticketPath == null) {
+      ggLog(red('This command must be executed inside a ticket folder.'));
+      throw Exception('Not inside a ticket folder');
+    }
+
+    final ticketDir = Directory(ticketPath);
+    final ticketName = path.basename(ticketDir.path);
+
+    final nodes = await _sortedProcessingList.get(
+      directory: ticketDir,
+      ggLog: ggLog,
+    );
+
+    if (nodes.isEmpty) {
+      ggLog(yellow('⚠️ No repos in this ticket'));
+      return;
+    }
+
+    final GgLog taskLog = verbose ? ggLog : <String>[].add;
+
+    await GgStatusPrinter<void>(
+      message: 'Setting dependencies back to local paths and committing',
+      ggLog: ggLog,
+    ).run(
+      () async => _relocalizeAndCommitAll(
+        ticketName: ticketName,
+        nodes: nodes,
+        ggLog: taskLog,
+      ),
+    );
+  }
+
+  /// Re-localizes all repos and commits the changes without pushing.
+  Future<void> _relocalizeAndCommitAll({
+    required String ticketName,
+    required List<Node> nodes,
+    required GgLog ggLog,
+  }) async {
+    for (final node in nodes) {
+      final repoDir = node.directory;
+      final repoName = path.basename(repoDir.path);
+
+      try {
+        await _localizeRefsToLocal.get(directory: repoDir, ggLog: ggLog);
+        ggLog(green('Localized refs to local paths for $repoName'));
+      } catch (e) {
+        ggLog(
+          red(
+            'Failed to localize refs to local paths for $repoName: $e',
+          ),
+        );
+        throw Exception('Failed to cancel review in: $repoName');
+      }
+
+      // node_modules will be stale after rewriting package.json — refresh.
+      await _refreshTypeScriptDependencies(
+        repoDir: repoDir,
+        repoName: repoName,
+        ticketName: ticketName,
+        ggLog: ggLog,
+      );
+
+      try {
+        await _ggDoCommit.exec(
+          directory: repoDir,
+          ggLog: ggLog,
+          message: '#gg: changed references to local',
+          force: true,
+          // Bookkeeping, not a change of the package — keep it out of
+          // CHANGELOG.md (»gg do commit --no-log«).
+          updateChangeLog: false,
+        );
+        ggLog(green('Committed $repoName'));
+      } catch (e) {
+        ggLog(red('Failed to commit $repoName: $e'));
+        throw Exception('Failed to cancel review in: $repoName');
+      }
+    }
+
+    ggLog('✅ All repos re-localized and committed');
+  }
+
+  /// Runs the package manager's install command for TypeScript projects so
+  /// that node_modules reflects the freshly-rewritten local path
+  /// dependencies. Dart packages are skipped because pub resolves lazily.
+  Future<void> _refreshTypeScriptDependencies({
+    required Directory repoDir,
+    required String repoName,
+    required String ticketName,
+    required GgLog ggLog,
+  }) async {
+    final gg.ProjectType projectType;
+    try {
+      // Cross-language bridge repos are refreshed via their TypeScript package
+      // manager here, symmetrically to the review's _refreshDependencies, so an
+      // aborted review leaves node_modules consistent.
+      projectType = gg.checkProjectType(repoDir);
+    } catch (_) {
+      return;
+    }
+    if (projectType != gg.ProjectType.typescript) return;
+
+    final pm = gg.detectTypeScriptPackageManager(repoDir);
+    final result = await _processRunner(
+      pm.executable,
+      <String>['install'],
+      workingDirectory: repoDir.path,
+    );
+    final cmd = '${pm.executable} install';
+    if (result.exitCode == 0) {
+      ggLog(green('Executed $cmd in $repoName.'));
+    } else {
+      ggLog(
+        red(
+          'Failed to execute $cmd in $repoName: ${result.stderr}',
+        ),
+      );
+      throw Exception('Failed to cancel review in: $repoName');
+    }
+  }
+
   Future<void> _refreshDependencies({
     required Directory repoDir,
     required String repoName,

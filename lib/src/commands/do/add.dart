@@ -17,6 +17,8 @@ import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 import 'package:pubspec_parse/pubspec_parse.dart';
 
+import '../../backend/dependency_repo_url.dart';
+import '../../backend/git_attributes.dart';
 import '../../backend/git_handler.dart' hide ProcessRunner;
 import '../../backend/add_repository_helper.dart';
 import '../../backend/filesystem_utils.dart';
@@ -28,8 +30,6 @@ import '../../backend/repo_setup.dart';
 import '../../backend/ticket_json.dart';
 import '../../backend/workspace_migration.dart';
 import '../../backend/workspace_utils.dart';
-import 'add_deps.dart' show fetchDependencyRepoUrl;
-import 'install_gitattributes.dart' hide ProcessRunner;
 
 /// Resolves the repository URL of a hosted dependency.
 /// Subset of [fetchDependencyRepoUrl] without named args, for test stubs.
@@ -38,6 +38,9 @@ typedef FetchRepoUrl = Future<String?> Function(String packageName);
 /// Command to add a repo or all repos of an organization to master+ticket.
 /// In ticket mode it also auto-clones transitive deps and re-localizes refs.
 /// Use `--force` to overwrite an existing repo in the master workspace.
+/// `--organization` may be given multiple times to add all repos of several
+/// organization folders of the master workspace at once. `--no-localize`
+/// copies the repos without rewriting their references to local paths.
 class AddCommand extends Command<dynamic> {
   /// Constructor for AddCommand.
   AddCommand({
@@ -87,15 +90,13 @@ class AddCommand extends Command<dynamic> {
     );
     argParser.addFlag(
       'localize',
-      help: 'Localize the references of all repos in the ticket after '
-          'copying (default). Use --no-localize to only copy the repos.',
+      help: 'Localize the refs after copying (default)',
       defaultsTo: true,
       negatable: true,
     );
     argParser.addMultiOption(
       'org',
-      help: 'Add all repositories of the given organization folder of the '
-          'master workspace to the ticket. Can be given multiple times.',
+      help: 'Add all repos of a master organization folder',
     );
     argParser.addFlag(
       'all',
@@ -151,14 +152,7 @@ class AddCommand extends Command<dynamic> {
   String get name => 'add';
 
   @override
-  String get description => 'Adds the specified git repo or all git repos '
-      'from the specified organization into the master workspace-and if run '
-      'from inside a ticket, also into that ticket workspace. After adding, '
-      'all repositories in the ticket are unlocalized and then localized '
-      'again in two passes; --no-localize copies them without touching the '
-      'references. Inside a ticket, --org <name> adds all repos of an '
-      'organization folder of the master workspace and --all adds all of '
-      'its repos.';
+  String get description => 'Add a repo or a whole organization to the ticket';
 
   @override
   Future<void> run() async {
@@ -1132,13 +1126,11 @@ class AddCommand extends Command<dynamic> {
       removeLegacyGitHooks(repoDir: node.directory, ggLog: ggLog);
     }
 
-    await DoInstallGitattributesCommand(
+    await installGitattributes(
+      directory: ticketDir,
       ggLog: ggLog,
       sortedProcessingList: _sortedProcessingList,
       processRunner: processRunner,
-    ).exec(
-      directory: ticketDir,
-      ggLog: ggLog,
     );
   }
 }

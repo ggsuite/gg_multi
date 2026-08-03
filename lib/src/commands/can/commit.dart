@@ -21,8 +21,7 @@ class CanCommitCommand extends DirCommand<void> {
   CanCommitCommand({
     required super.ggLog,
     super.name = 'commit',
-    super.description =
-        'Checks if all repositories in the current ticket can be committed.',
+    super.description = 'Check if all ticket repos can be committed',
     gg.CanCommit? ggCanCommit,
     SortedProcessingList? sortedProcessingList,
   })  : _ggCanCommit = ggCanCommit ?? gg.CanCommit(ggLog: ggLog),

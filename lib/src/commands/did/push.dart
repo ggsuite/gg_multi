@@ -21,8 +21,7 @@ class DidPushCommand extends DirCommand<void> {
   DidPushCommand({
     required super.ggLog,
     super.name = 'push',
-    super.description =
-        'Checks if all repositories in the current ticket were pushed.',
+    super.description = 'Check if all ticket repos were pushed',
     gg.DidPush? ggDidPush,
     SortedProcessingList? sortedProcessingList,
   })  : _ggDidPush = ggDidPush ?? gg.DidPush(ggLog: ggLog),

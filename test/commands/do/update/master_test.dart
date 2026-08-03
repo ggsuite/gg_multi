@@ -108,7 +108,7 @@ void main() {
       expect(command.name, 'master');
       expect(
         command.description,
-        'Add new and remove deleted repos of all registered organizations.',
+        'Sync master with the registered organizations',
       );
     });
 

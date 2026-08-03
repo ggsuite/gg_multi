@@ -7,8 +7,8 @@
 import 'package:args/command_runner.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
-import '../../backend/list_backend.dart';
-import '../../backend/workspace_utils.dart';
+import '../../../backend/list_backend.dart';
+import '../../../backend/workspace_utils.dart';
 
 /// Command to list all organizations from repos in the master workspace.
 class ListOrganizationsCommand extends Command<dynamic> {
@@ -28,11 +28,10 @@ class ListOrganizationsCommand extends Command<dynamic> {
   final String workspacePath;
 
   @override
-  String get name => 'organizations';
+  String get name => 'orgs';
 
   @override
-  String get description =>
-      'Lists all organizations from the repos in the master workspace.';
+  String get description => 'List all organizations of the master workspace';
 
   @override
   Future<void> run() async {

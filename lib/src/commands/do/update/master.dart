@@ -50,8 +50,7 @@ class UpdateMasterCommand extends Command<void> {
       'dry-run',
       abbr: 'n',
       negatable: false,
-      help: 'Report what would be added and removed without changing '
-          'anything.',
+      help: 'Report the changes without applying them',
     );
   }
 
@@ -61,8 +60,7 @@ class UpdateMasterCommand extends Command<void> {
 
   // ...........................................................................
   @override
-  String get description =>
-      'Add new and remove deleted repos of all registered organizations.';
+  String get description => 'Sync master with the registered organizations';
 
   /// Log sink.
   final GgLog ggLog;

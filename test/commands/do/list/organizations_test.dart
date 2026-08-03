@@ -10,10 +10,10 @@ import 'package:args/command_runner.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:gg_multi/src/backend/constants.dart';
 import 'package:test/test.dart';
-import 'package:gg_multi/src/commands/list/organizations.dart';
+import 'package:gg_multi/src/commands/do/list/organizations.dart';
 import 'package:path/path.dart' as path;
 
-import '../../rm_console_colors_helper.dart';
+import '../../../rm_console_colors_helper.dart';
 
 void main() {
   group('ListOrganizationsCommand', () {
@@ -71,7 +71,7 @@ void main() {
           workspacePath: masterPath,
         ),
       );
-      await runner.run(['organizations']);
+      await runner.run(['orgs']);
 
       expect(
         messages,
@@ -103,7 +103,7 @@ void main() {
           workspacePath: masterPath,
         ),
       );
-      await runner.run(['organizations']);
+      await runner.run(['orgs']);
 
       // The repository organization should be 'unknown'
       expect(messages, contains('unknown'));
@@ -122,7 +122,7 @@ void main() {
           workspacePath: masterDir.path,
         ),
       );
-      await runner.run(['organizations']);
+      await runner.run(['orgs']);
       expect(messages, contains('No organizations found.'));
     });
 
@@ -139,10 +139,13 @@ void main() {
       );
       final output = await capturePrint(
         code: () async {
-          await runner.run(['organizations', '--help']);
+          await runner.run(['orgs', '--help']);
         },
       );
-      expect(output.first, contains('Lists all organizations'));
+      expect(
+        output.first,
+        contains('List all organizations of the master workspace'),
+      );
     });
   });
 }

@@ -21,8 +21,7 @@ class DidCommitCommand extends DirCommand<void> {
   DidCommitCommand({
     required super.ggLog,
     super.name = 'commit',
-    super.description =
-        'Checks if all repositories in the current ticket were committed.',
+    super.description = 'Check if all ticket repos were committed',
     gg.DidCommit? ggDidCommit,
     SortedProcessingList? sortedProcessingList,
   })  : _ggDidCommit = ggDidCommit ?? gg.DidCommit(ggLog: ggLog),

@@ -190,7 +190,7 @@ void main() {
     test('has the expected name and description', () {
       final cmd = build();
       expect(cmd.name, 'checkout');
-      expect(cmd.description, contains('Reproduces a ticket'));
+      expect(cmd.description, contains('Reproduce a ticket'));
     });
 
     test('throws UsageException when no name is given', () async {

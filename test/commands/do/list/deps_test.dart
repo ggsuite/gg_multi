@@ -11,7 +11,7 @@ import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:gg_multi/src/backend/constants.dart';
 import 'package:test/test.dart';
 import 'package:path/path.dart' as path;
-import 'package:gg_multi/src/commands/list/deps.dart';
+import 'package:gg_multi/src/commands/do/list/deps.dart';
 
 void main() {
   group('ListDepsCommand', () {
@@ -131,7 +131,7 @@ dev_dependencies:
           await runner.run(['deps', '--help']);
         },
       );
-      expect(output.first, contains('Lists dependencies and dev_dependencies'));
+      expect(output.first, contains('List the dependencies of a master repo'));
     });
 
     test('throws UsageException when target repository parameter is missing',

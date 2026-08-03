@@ -12,7 +12,7 @@ import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:gg_multi/src/backend/constants.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-import 'package:gg_multi/src/commands/ls.dart';
+import 'package:gg_multi/src/commands/do/ls.dart';
 
 void main() {
   group('ListCommand', () {
@@ -41,7 +41,7 @@ void main() {
       );
       // Update the directory path to use the correct path separator
       final commandsDir = Directory(
-        path.join('lib', 'src', 'commands', 'list'),
+        path.join('lib', 'src', 'commands', 'do', 'list'),
       );
       final (subCommands, errorMessage) = await missingSubCommands(
         directory: commandsDir,

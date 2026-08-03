@@ -7,8 +7,6 @@
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:gg_multi/src/commands/do/add.dart';
-import 'package:gg_multi/src/commands/do/add_deps.dart';
-import 'package:gg_multi/src/commands/do/cancel_review.dart';
 import 'package:gg_multi/src/commands/do/checkout.dart';
 import 'package:gg_multi/src/commands/do/claude.dart';
 import 'package:gg_multi/src/commands/do/code.dart';
@@ -23,7 +21,7 @@ import 'do/push.dart';
 import 'do/publish.dart';
 import 'do/review.dart';
 import 'do/maintain.dart';
-import 'do/install_gitattributes.dart';
+import 'do/ls.dart';
 
 /// Command to perform actions such as committing
 /// and pushing across ticket repositories.
@@ -42,8 +40,7 @@ class Do extends Command<void> {
 
   /// The description of the command
   @override
-  final description = 'Perform actions like committing, pushing or '
-      'reviewing across ticket repositories.';
+  final description = 'Act on all repos of the current ticket';
 
   // ...........................................................................
   void _initSubCommands() {
@@ -52,11 +49,8 @@ class Do extends Command<void> {
     addSubcommand(DoPublishCommand(ggLog: ggLog));
     addSubcommand(DoConfigurePublishCommand(ggLog: ggLog));
     addSubcommand(DoReviewCommand(ggLog: ggLog));
-    addSubcommand(DoCancelReviewCommand(ggLog: ggLog));
     addSubcommand(MaintainCommand(ggLog: ggLog));
-    addSubcommand(DoInstallGitattributesCommand(ggLog: ggLog));
     addSubcommand(DoClaudeCommand(ggLog: ggLog));
-    addSubcommand(AddDepsCommand(ggLog: ggLog));
     addSubcommand(AddCommand(ggLog: ggLog));
     addSubcommand(DoCheckoutCommand(ggLog: ggLog));
     addSubcommand(CodeCommand(ggLog: ggLog));
@@ -64,5 +58,6 @@ class Do extends Command<void> {
     addSubcommand(InitCommand(ggLog: ggLog));
     addSubcommand(RemoveCommand(ggLog: ggLog));
     addSubcommand(UpdateCommand(ggLog: ggLog));
+    addSubcommand(ListCommand(ggLog: ggLog));
   }
 }

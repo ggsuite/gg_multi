@@ -7,8 +7,8 @@
 import 'package:args/command_runner.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
-import '../../backend/list_backend.dart';
-import '../../backend/workspace_utils.dart';
+import '../../../backend/list_backend.dart';
+import '../../../backend/workspace_utils.dart';
 
 /// Command to list all repositories in the master workspace.
 class ListReposCommand extends Command<dynamic> {

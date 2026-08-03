@@ -24,8 +24,7 @@ class Did extends Command<void> {
   String get name => 'did';
 
   @override
-  String get description =>
-      'Checks if you already committed or pushed for the current ticket.';
+  String get description => 'Check what you already did in the ticket';
 
   /// Registers all did subcommands.
   void _initSubCommands() {
