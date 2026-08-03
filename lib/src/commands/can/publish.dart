@@ -134,7 +134,7 @@ class CanPublishCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      ggLog(red('This command must be executed inside a ticket folder.'));
+      ggLog(cError('This command must be executed inside a ticket folder.'));
       throw Exception(cError('Not inside a ticket folder'));
     }
 
@@ -308,7 +308,7 @@ class CanPublishCommand extends DirCommand<void> {
     try {
       await _didCommitCommand.exec(directory: ticketDir, ggLog: ggLog);
     } catch (e) {
-      ggLog(red('gg_multi did commit failed: $e'));
+      ggLog(cError('gg_multi did commit failed: $e'));
       throw Exception(cError('gg_multi did commit failed'));
     }
   }
@@ -327,7 +327,7 @@ class CanPublishCommand extends DirCommand<void> {
         await _ggMergeMainIntoFeat.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
         ggLog(
-          red(
+          cError(
             'gg merge main into feat failed for $repoName in ticket '
             '$ticketName: $e',
           ),
@@ -345,7 +345,7 @@ class CanPublishCommand extends DirCommand<void> {
     try {
       await _doPushCommand.exec(directory: ticketDir, ggLog: ggLog);
     } catch (e) {
-      ggLog(red('gg_multi do push failed: $e'));
+      ggLog(cError('gg_multi do push failed: $e'));
       throw Exception(cError('gg_multi do push failed'));
     }
   }
@@ -366,7 +366,7 @@ class CanPublishCommand extends DirCommand<void> {
       await _ggCanPublish.exec(directory: repoDir, ggLog: ggLog);
       return null;
     } catch (e) {
-      ggLog(red('✗ Cannot publish $repoName: $e'));
+      ggLog(cError('✗ Cannot publish $repoName: $e'));
       return '$repoName ($e)';
     }
   }
@@ -405,7 +405,7 @@ class CanPublishCommand extends DirCommand<void> {
       try {
         await _ggNpmLoggedIn.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
-        ggLog(red('✗ Not logged in to npm for $repoName: $e'));
+        ggLog(cError('✗ Not logged in to npm for $repoName: $e'));
         failedRepos.add('$repoName ($e)');
       }
     }
@@ -430,14 +430,14 @@ class CanPublishCommand extends DirCommand<void> {
       try {
         await _ggCanMerge.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
-        ggLog(red('✗ Cannot merge $repoName: $e'));
+        ggLog(cError('✗ Cannot merge $repoName: $e'));
         failedMergeRepos.add(repoName);
       }
     }
     if (failedMergeRepos.isNotEmpty) {
-      ggLog(red('✗ Merge check failed in:'));
+      ggLog(cError('✗ Merge check failed in:'));
       for (final repoName in failedMergeRepos) {
-        ggLog(red(' - $repoName'));
+        ggLog(cError(' - $repoName'));
       }
       throw Exception(
         cError(

@@ -6,11 +6,11 @@
 
 import 'dart:io';
 
-import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
@@ -67,7 +67,7 @@ class DoPushCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      ggLog(red('This command must be executed inside a ticket folder.'));
+      ggLog(cError('This command must be executed inside a ticket folder.'));
       throw Exception(cError('Not inside a ticket folder'));
     }
 
@@ -132,7 +132,7 @@ class DoPushCommand extends DirCommand<void> {
           force: force,
         );
       } catch (e) {
-        ggLog(red('✗ Failed to push $repoName: $e'));
+        ggLog(cError('✗ Failed to push $repoName: $e'));
         failedRepos.add(repoName);
       }
     }
@@ -141,9 +141,9 @@ class DoPushCommand extends DirCommand<void> {
     if (failedRepos.isEmpty) {
       ggLog('✓ All repos pushed');
     } else {
-      ggLog(red('✗ Push failed in:'));
+      ggLog(cError('✗ Push failed in:'));
       for (final repoName in failedRepos) {
-        ggLog(red(' - $repoName'));
+        ggLog(cError(' - $repoName'));
       }
       throw Exception(cError('Failed to push in: ${failedRepos.join(', ')}'));
     }

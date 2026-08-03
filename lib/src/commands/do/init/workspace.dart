@@ -51,13 +51,13 @@ class InitWorkspaceCommand extends Command<void> {
     }
 
     if (rootDir.listSync().isNotEmpty) {
-      ggLog(red('The directory must be empty to initialize a workspace.'));
+      ggLog(cError('The directory must be empty to initialize a workspace.'));
       return;
     }
 
     if (WorkspaceUtils.isInsideExistingWorkspace(rootDir.path)) {
       ggLog(
-        red('Cannot initialize a new workspace inside an existing Gg Multi '
+        cError('Cannot initialize a new workspace inside an existing Gg Multi '
             'workspace.'),
       );
       return;

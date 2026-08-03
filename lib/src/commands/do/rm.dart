@@ -5,11 +5,13 @@
 // found in the LICENSE file in the root of this package.
 
 import 'dart:io';
+
 import 'package:args/command_runner.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
+
 import '../../backend/add_repository_helper.dart';
 import '../../backend/constants.dart';
 import '../../backend/dependency_overrides.dart';
@@ -101,7 +103,7 @@ class RemoveCommand extends Command<void> {
         resolved ?? directoryFactory(path.join(_root, repoName));
     if (!ticketRepoDir.existsSync()) {
       ggLog(
-        red(
+        cError(
           'Repository $repoName is not part of ticket '
           '${path.basename(_root)}.',
         ),
@@ -216,7 +218,7 @@ class RemoveCommand extends Command<void> {
     }
 
     ggLog(
-      red(
+      cError(
         'Repository $repoName connects other repos of ticket '
         '${path.basename(_root)}:',
       ),
@@ -228,7 +230,7 @@ class RemoveCommand extends Command<void> {
       ggLog(' - $repoName depends on $dependency');
     }
     ggLog(
-      red(
+      cError(
         'Please remove ${dependents.join(', ')} first.',
       ),
     );
@@ -286,7 +288,7 @@ class RemoveCommand extends Command<void> {
     final existsInMaster = masterRepoDir.existsSync();
 
     if (ticketsContainingRepo.isEmpty && !existsInMaster) {
-      ggLog(red('Repository $repoName not found in any workspace.'));
+      ggLog(cError('Repository $repoName not found in any workspace.'));
       return;
     }
 
@@ -305,7 +307,7 @@ class RemoveCommand extends Command<void> {
       ggLog(' - $ticket');
     }
     ggLog(
-      red(
+      cError(
         'Please remove it from those tickets first '
         '(or run `gg multi do rm $repoName` from inside the ticket).',
       ),

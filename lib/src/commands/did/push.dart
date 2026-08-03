@@ -6,11 +6,11 @@
 
 import 'dart:io';
 
-import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:path/path.dart' as path;
 
 import '../../backend/workspace_utils.dart';
@@ -53,7 +53,7 @@ class DidPushCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      ggLog(red('This command must be executed inside a ticket folder.'));
+      ggLog(cError('This command must be executed inside a ticket folder.'));
       throw Exception(cError('Not inside a ticket folder'));
     }
 
@@ -75,7 +75,7 @@ class DidPushCommand extends DirCommand<void> {
       try {
         await _ggDidPush.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
-        ggLog(red('✗ $repoName was not pushed: $e'));
+        ggLog(cError('✗ $repoName was not pushed: $e'));
         rethrow;
       }
     }

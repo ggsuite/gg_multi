@@ -118,7 +118,7 @@ Future<void> installGitattributes({
     path.absolute(directory.path),
   );
   if (ticketPath == null) {
-    ggLog(red('This command must be executed inside a ticket folder.'));
+    ggLog(cError('This command must be executed inside a ticket folder.'));
     throw Exception(cError('Not inside a ticket folder'));
   }
 
@@ -194,7 +194,7 @@ Future<void> installGitattributes({
 
     if (result.exitCode != 0) {
       ggLog(
-        red(
+        cError(
           'Failed to configure merge.ours driver in $repoName: '
           '${result.stderr}',
         ),

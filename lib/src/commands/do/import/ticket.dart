@@ -200,7 +200,7 @@ class DoCheckoutCommand extends Command<dynamic> {
       try {
         await _fetch.get(directory: repo, ggLog: ggLog);
       } catch (e) {
-        ggLog(red('Failed to fetch ${path.basename(repo.path)}: $e'));
+        ggLog(cError('Failed to fetch ${path.basename(repo.path)}: $e'));
         continue;
       }
       final exists = await _remoteBranchExists.get(
@@ -377,7 +377,7 @@ class DoCheckoutCommand extends Command<dynamic> {
     for (final repo in ticket.repositories) {
       final masterRepoDir = await _ensureMasterRepo(repo);
       if (masterRepoDir == null) {
-        ggLog(red('Could not obtain repository ${repo.name}; skipping.'));
+        ggLog(cError('Could not obtain repository ${repo.name}; skipping.'));
         failed.add(repo.name);
         continue;
       }
@@ -402,7 +402,7 @@ class DoCheckoutCommand extends Command<dynamic> {
       ggLog(green('✓ Checked out ticket $ticketName'));
     } else {
       ggLog(
-        red(
+        cError(
           '⚠️ Checked out ticket $ticketName, but ${failed.length} repo(s) '
           'failed: ${failed.join(', ')}',
         ),
@@ -434,7 +434,7 @@ class DoCheckoutCommand extends Command<dynamic> {
     try {
       await gitHandler.cloneRepo(repo.url, target);
     } catch (e) {
-      ggLog(red('Failed to clone ${repo.name} from ${repo.url}: $e'));
+      ggLog(cError('Failed to clone ${repo.name} from ${repo.url}: $e'));
       return null;
     }
     return Directory(target);
@@ -469,7 +469,7 @@ class DoCheckoutCommand extends Command<dynamic> {
     try {
       await _checkout.get(directory: destDir, ggLog: ggLog, branch: branch);
     } catch (e) {
-      ggLog(red('Failed to checkout $branch in $repoName: $e'));
+      ggLog(cError('Failed to checkout $branch in $repoName: $e'));
       return null;
     }
 

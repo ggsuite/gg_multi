@@ -46,7 +46,7 @@ List<String> migrateToOrgFolders({
     final organization = _organizationOf(repoDir);
     if (organization == null) {
       ggLog(
-        red(
+        cError(
           'Cannot determine the organization of $repoName. '
           'Leaving it where it is.',
         ),
@@ -59,7 +59,7 @@ List<String> migrateToOrgFolders({
     );
     if (target.existsSync()) {
       ggLog(
-        red(
+        cError(
           'Cannot move $repoName to $organization/$repoName: '
           'the folder already exists.',
         ),
@@ -71,7 +71,7 @@ List<String> migrateToOrgFolders({
       target.parent.createSync(recursive: true);
       repoDir.renameSync(target.path);
     } catch (e) {
-      ggLog(red('Failed to move $repoName to $organization/$repoName: $e'));
+      ggLog(cError('Failed to move $repoName to $organization/$repoName: $e'));
       continue;
     }
 

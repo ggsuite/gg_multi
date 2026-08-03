@@ -213,6 +213,7 @@ class DoConfigurePublishCommand extends DirCommand<void> {
   }
 
   /// Opens the shared message editor for the merge message.
+  // coverage:ignore-start
   static Future<String?> _defaultEditMessage(String initialMessage) =>
       editMessage(
         initialMessage,
@@ -220,6 +221,7 @@ class DoConfigurePublishCommand extends DirCommand<void> {
         subject: 'the merge message prompt',
         hint: 'pass -m <message> or provide a config file via --config',
       );
+  // coverage:ignore-end
 
   /// Adds command line arguments.
   void _addArgs() {

@@ -263,7 +263,7 @@ class AddCommand extends Command<dynamic> {
       );
     } catch (e) {
       ggLog(
-        red('Failed to build dependency graph: $e'),
+        cError('Failed to build dependency graph: $e'),
       );
       allNodes = const {};
     }
@@ -689,7 +689,7 @@ class AddCommand extends Command<dynamic> {
       repoName: repoName,
     );
     if (srcDir == null) {
-      ggLog(red('Repository $repoName not found in master workspace.'));
+      ggLog(cError('Repository $repoName not found in master workspace.'));
       return;
     }
 
@@ -720,7 +720,7 @@ class AddCommand extends Command<dynamic> {
     try {
       await gitCloner.checkoutBranch(ticketName, destDir.path);
     } catch (e) {
-      ggLog(red('Failed to checkout branch $ticketName: $e'));
+      ggLog(cError('Failed to checkout branch $ticketName: $e'));
     }
 
     // Install deps for every package manager the repo uses (Dart and/or TS).
@@ -805,7 +805,7 @@ class AddCommand extends Command<dynamic> {
     // steps report it as well.
     if (result.exitCode != 0) {
       ggLog(
-        red(
+        cError(
           'Failed to execute git status in $repoName in master workspace: '
           '${result.stderr}',
         ),
@@ -823,13 +823,13 @@ class AddCommand extends Command<dynamic> {
     }
 
     ggLog(
-      red(
+      cError(
         'The repository $repoName in the master workspace has uncommitted '
         'changes:',
       ),
     );
     for (final change in changes) {
-      ggLog(red('  $change'));
+      ggLog(cError('  $change'));
     }
     ggLog(
       cAction(
@@ -861,7 +861,7 @@ class AddCommand extends Command<dynamic> {
     );
 
     if (result.exitCode != 0) {
-      ggLog(red('Failed to execute $failureLabel: ${result.stderr}'));
+      ggLog(cError('Failed to execute $failureLabel: ${result.stderr}'));
     } else {
       ggLog(darkGray(successMessage));
     }
@@ -1041,7 +1041,7 @@ class AddCommand extends Command<dynamic> {
           await _unlocalizeRefs.get(directory: repoDir, ggLog: ggLog);
         }
       } catch (e) {
-        ggLog(red('Failed to unlocalize refs for $repoName: $e'));
+        ggLog(cError('Failed to unlocalize refs for $repoName: $e'));
         throw Exception(cError('Failed to relocalize ticket'));
       }
     }
@@ -1054,7 +1054,7 @@ class AddCommand extends Command<dynamic> {
         await _backupPublishTo.exec(directory: repoDir, ggLog: ggLog);
         await _localizeRefs.get(directory: repoDir, ggLog: ggLog);
       } catch (e) {
-        ggLog(red('Failed to localize refs for $repoName: $e'));
+        ggLog(cError('Failed to localize refs for $repoName: $e'));
         throw Exception(cError('Failed to relocalize ticket'));
       }
 
@@ -1077,7 +1077,7 @@ class AddCommand extends Command<dynamic> {
           updateChangeLog: false,
         );
       } catch (e) {
-        ggLog(red('Failed to commit $repoName: $e'));
+        ggLog(cError('Failed to commit $repoName: $e'));
       }
     }
 

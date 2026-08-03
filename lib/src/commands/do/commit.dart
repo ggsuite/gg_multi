@@ -81,7 +81,7 @@ class DoCommitCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      ggLog(red('This command must be executed inside a ticket folder.'));
+      ggLog(cError('This command must be executed inside a ticket folder.'));
       throw Exception(cError('Not inside a ticket folder'));
     }
 
@@ -119,7 +119,7 @@ class DoCommitCommand extends DirCommand<void> {
           force: false,
         );
       } catch (e) {
-        ggLog(red('✗ Failed to commit $repoName: $e'));
+        ggLog(cError('✗ Failed to commit $repoName: $e'));
         failedRepos.add(repoName);
       }
     }
@@ -128,9 +128,9 @@ class DoCommitCommand extends DirCommand<void> {
     if (failedRepos.isEmpty) {
       ggLog('\nAll repos committed\n');
     } else {
-      ggLog(red('✗ Commit failed in:'));
+      ggLog(cError('✗ Commit failed in:'));
       for (final repoName in failedRepos) {
-        ggLog(red(' - $repoName'));
+        ggLog(cDetail(' - ${cCmd(repoName)}'));
       }
       throw Exception(cError('Failed to commit in: ${failedRepos.join(', ')}'));
     }
@@ -163,6 +163,7 @@ class DoCommitCommand extends DirCommand<void> {
   }
 
   /// Opens the shared message editor for the commit message.
+  // coverage:ignore-start
   static Future<String?> _defaultEditMessage(String initialMessage) =>
       editMessage(
         initialMessage,
@@ -170,6 +171,7 @@ class DoCommitCommand extends DirCommand<void> {
         subject: 'the commit message prompt',
         hint: 'pass -m <message>',
       );
+  // coverage:ignore-end
 
   // Adds command line arguments
   void _addArgs() {

@@ -53,7 +53,7 @@ class DidCommitCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      ggLog(red('This command must be executed inside a ticket folder.'));
+      ggLog(cError('This command must be executed inside a ticket folder.'));
       throw Exception(cError('Not inside a ticket folder'));
     }
 
@@ -75,7 +75,7 @@ class DidCommitCommand extends DirCommand<void> {
       try {
         await _ggDidCommit.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
-        ggLog(red('✗ $repoName was not committed: $e'));
+        ggLog(cError('✗ $repoName was not committed: $e'));
         rethrow;
       }
     }

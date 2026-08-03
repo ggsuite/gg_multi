@@ -54,7 +54,7 @@ Future<void> installRepoDependencies({
     if (result.exitCode == 0) {
       ggLog(darkGray('Executed $cmd in $repoName.'));
     } else {
-      ggLog(red('Failed to execute $cmd in $repoName: ${result.stderr}'));
+      ggLog(cError('Failed to execute $cmd in $repoName: ${result.stderr}'));
     }
   }
 }

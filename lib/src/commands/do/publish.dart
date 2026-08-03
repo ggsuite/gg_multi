@@ -6,14 +6,14 @@
 
 import 'dart:io';
 
-import 'package:gg_one/gg_one.dart' as gg;
-import 'package:gg_lang/gg_lang.dart' as gg_lang;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
+import 'package:gg_lang/gg_lang.dart' as gg_lang;
 // ignore: lines_longer_than_80_chars
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
@@ -645,7 +645,7 @@ class DoPublishCommand extends DirCommand<void> {
       } catch (e) {
         allMoved = false;
         ggLog(
-          red(
+          cError(
             'Failed to move repository $repoName of ticket $ticketName to '
             'the trash: $e',
           ),
@@ -668,7 +668,7 @@ class DoPublishCommand extends DirCommand<void> {
       } catch (e) {
         allMoved = false;
         ggLog(
-          red('Failed to move the VS Code workspace of $ticketName: $e'),
+          cError('Failed to move the VS Code workspace of $ticketName: $e'),
         );
       }
     }
@@ -1254,7 +1254,7 @@ class DoPublishCommand extends DirCommand<void> {
   }) {
     final reason = error.toString().replaceAll('Exception: ', '').trim();
     ggLog(
-      red(
+      cError(
         '✗ ${mergeOnly ? 'Merging' : 'Publishing'} $repoName failed'
         '${reason.isEmpty ? '.' : ':\n$reason'}',
       ),
@@ -1295,7 +1295,7 @@ class DoPublishCommand extends DirCommand<void> {
         manual.write(' + "git stash apply --index ${snapshot.stash}"');
       }
       ggLog(
-        red(
+        cError(
           'Restoring $repoName after the failed publish failed — restore it '
           'manually ($manual): $e',
         ),

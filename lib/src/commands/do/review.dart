@@ -191,7 +191,7 @@ class DoReviewCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      ggLog(red('This command must be executed inside a ticket folder.'));
+      ggLog(cError('This command must be executed inside a ticket folder.'));
       throw Exception(cError('Not inside a ticket folder'));
     }
 
@@ -447,7 +447,7 @@ class DoReviewCommand extends DirCommand<void> {
         rethrow;
       } catch (e) {
         errorLog(
-          red(
+          cError(
             'Failed to merge main into $repoName for ticket '
             '$ticketName: $e',
           ),
@@ -473,7 +473,7 @@ class DoReviewCommand extends DirCommand<void> {
           );
         } catch (e) {
           errorLog(
-            red(
+            cError(
               'Merging main into $repoName broke "gg can commit": $e',
             ),
           );
@@ -626,7 +626,7 @@ class DoReviewCommand extends DirCommand<void> {
       );
     } catch (e) {
       errorLog(
-        red(
+        cError(
           'Restoring the state before the review failed — '
           'restore it manually: $e',
         ),
@@ -735,7 +735,7 @@ class DoReviewCommand extends DirCommand<void> {
     try {
       await _canReviewCommand.exec(directory: ticketDir, ggLog: ggLog);
     } catch (e) {
-      errorLog(red('gg_multi can review failed: $e'));
+      errorLog(cError('gg_multi can review failed: $e'));
       throw Exception(cError('gg_multi can review failed: $e'));
     }
   }
@@ -766,7 +766,7 @@ class DoReviewCommand extends DirCommand<void> {
         ggLog(green('Localized refs for $repoName'));
       } catch (e) {
         errorLog(
-          red(
+          cError(
             'Failed to localize refs to git feature branch for '
             '$repoName: $e',
           ),
@@ -801,7 +801,7 @@ class DoReviewCommand extends DirCommand<void> {
         );
         ggLog(green('Committed $repoName'));
       } catch (e) {
-        errorLog(red('Failed to commit $repoName: $e'));
+        errorLog(cError('Failed to commit $repoName: $e'));
         throw Exception(
           cError('Failed to review in: $repoName (commit failed: $e)'),
         );
@@ -822,7 +822,7 @@ class DoReviewCommand extends DirCommand<void> {
         pushedRepos.add(repoName);
         ggLog(green('Pushed $repoName'));
       } catch (e) {
-        errorLog(red('Failed to push $repoName: $e'));
+        errorLog(cError('Failed to push $repoName: $e'));
         throw Exception(
           cError('Failed to review in: $repoName (push failed: $e)'),
         );
@@ -913,7 +913,7 @@ class DoReviewCommand extends DirCommand<void> {
       );
       final stderrStr = pull.stderr?.toString() ?? '';
       errorLog(
-        red(
+        cError(
           'Failed to integrate origin/$branch into $repoName before '
           'push: $stderrStr',
         ),
@@ -1036,7 +1036,7 @@ class DoReviewCommand extends DirCommand<void> {
     if (push.exitCode != 0) {
       final stderrStr = push.stderr?.toString() ?? '';
       errorLog(
-        red(
+        cError(
           'Failed to replace the obsolete branch origin/$branch of '
           '$repoName: $stderrStr',
         ),
@@ -1087,7 +1087,7 @@ class DoReviewCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      ggLog(red('This command must be executed inside a ticket folder.'));
+      ggLog(cError('This command must be executed inside a ticket folder.'));
       throw Exception(cError('Not inside a ticket folder'));
     }
 
@@ -1134,7 +1134,7 @@ class DoReviewCommand extends DirCommand<void> {
         ggLog(green('Localized refs to local paths for $repoName'));
       } catch (e) {
         ggLog(
-          red(
+          cError(
             'Failed to localize refs to local paths for $repoName: $e',
           ),
         );
@@ -1161,7 +1161,7 @@ class DoReviewCommand extends DirCommand<void> {
         );
         ggLog(green('Committed $repoName'));
       } catch (e) {
-        ggLog(red('Failed to commit $repoName: $e'));
+        ggLog(cError('Failed to commit $repoName: $e'));
         throw Exception(cError('Failed to cancel review in: $repoName'));
       }
     }
@@ -1200,7 +1200,7 @@ class DoReviewCommand extends DirCommand<void> {
       ggLog(green('Executed $cmd in $repoName.'));
     } else {
       ggLog(
-        red(
+        cError(
           'Failed to execute $cmd in $repoName: ${result.stderr}',
         ),
       );
@@ -1271,7 +1271,7 @@ class DoReviewCommand extends DirCommand<void> {
         final out = result.stdout?.toString().trim() ?? '';
         final detail = err.isNotEmpty ? err : out;
         errorLog(
-          red(
+          cError(
             'Failed to execute $cmd in '
             '$repoName: $detail',
           ),

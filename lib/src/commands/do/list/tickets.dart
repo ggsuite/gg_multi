@@ -53,7 +53,7 @@ class ListTicketsCommand extends Command<void> {
       final ticketName = path.basename(d.path);
       final ticketFile = File(path.join(d.path, '.ticket'));
       if (!ticketFile.existsSync()) {
-        ggLog(red('Missing .ticket file for ticket $ticketName'));
+        ggLog(cError('Missing .ticket file for ticket $ticketName'));
         continue;
       }
       try {
@@ -62,7 +62,7 @@ class ListTicketsCommand extends Command<void> {
         final desc = data['description'] as String? ?? '';
         ggLog('$ticketName    $desc'); // four spaces between name and desc
       } catch (e) {
-        ggLog(red('Error parsing .ticket for ticket $ticketName: $e'));
+        ggLog(cError('Error parsing .ticket for ticket $ticketName: $e'));
       }
     }
   }

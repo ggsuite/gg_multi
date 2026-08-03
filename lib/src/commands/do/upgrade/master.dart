@@ -161,7 +161,7 @@ class UpdateMasterCommand extends Command<void> {
 
     for (var i = 0; i < organizations.length; i++) {
       if (errors[i] != null) {
-        ggLog(red('Skipped ${organizations[i].name}: ${errors[i]}'));
+        ggLog(cError('Skipped ${organizations[i].name}: ${errors[i]}'));
       }
     }
 

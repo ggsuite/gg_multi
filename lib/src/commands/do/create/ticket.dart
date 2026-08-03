@@ -89,7 +89,7 @@ class TicketCommand extends DirCommand<void> {
 
     if (dir.existsSync() && ticketFile.existsSync()) {
       ggLog(
-        red(
+        cError(
           'Error: Ticket $issueId already exists at '
           '$relPath',
         ),

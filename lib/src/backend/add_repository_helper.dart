@@ -12,8 +12,9 @@ import 'package:gg_multi/src/backend/url_parser.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 import 'package:interact/interact.dart';
 import 'package:path/path.dart' as path;
-import 'git_handler.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
+
+import 'git_handler.dart';
 import 'git_platform.dart';
 import 'organization.dart';
 import 'organization_utils.dart';
@@ -182,7 +183,7 @@ Future<void> addRepositoryHelper({
       }
       if (!anySuccess) {
         ggLog(
-          red('Failed to clone repository '
+          cError('Failed to clone repository '
               '$repoName from any known organizations.'),
         );
       }
@@ -440,7 +441,7 @@ Pubspec? getPubspecFromWorkspace({
   final pubspecFile = File(pubspecPath);
   if (!pubspecFile.existsSync()) {
     ggLog(
-      red('pubspec.yaml not found in '
+      cError('pubspec.yaml not found in '
           'project $repoName in workspace $workspacePath.'),
     );
     return null;
@@ -449,7 +450,7 @@ Pubspec? getPubspecFromWorkspace({
     final content = pubspecFile.readAsStringSync();
     return Pubspec.parse(content);
   } catch (e) {
-    ggLog(red('Error parsing pubspec.yaml: $e'));
+    ggLog(cError('Error parsing pubspec.yaml: $e'));
     return null;
   }
 }
