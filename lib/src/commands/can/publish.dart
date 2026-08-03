@@ -292,7 +292,7 @@ class CanPublishCommand extends DirCommand<void> {
       }
     }
     if (uncommitted.isNotEmpty) {
-      ggLog(cWarn('Uncommitted changes in:'));
+      ggLog(cWarn('Uncommitted changes in'));
       for (final name in uncommitted) {
         ggLog(cDetail(' - $name'));
       }

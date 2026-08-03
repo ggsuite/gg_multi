@@ -670,7 +670,7 @@ void main() {
       );
       expect(
         messages.any(
-          (m) => m.contains('Uncommitted changes in:'),
+          (m) => m.contains('Uncommitted changes in'),
         ),
         isTrue,
       );

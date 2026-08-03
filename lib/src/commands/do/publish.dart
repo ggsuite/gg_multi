@@ -387,8 +387,9 @@ class DoPublishCommand extends DirCommand<void> {
         // The reason was printed by the review itself — re-wrapping it would
         // print it a second time behind a nested prefix.
         ggLog(
-          [cError('✗ Review failed'), cDetail(rmControls('$e'))].join('\n'),
+          [cError('\n${(e as dynamic).message}\n')].join('\n'),
         );
+        ggLog(cAction('\nPlease fix the issues above.\n'));
         throw Exception(cDetail('Review failed.'));
       }
 
@@ -400,8 +401,10 @@ class DoPublishCommand extends DirCommand<void> {
         );
       } catch (e) {
         ggLog(
-          [cError('✗ Cannot publish'), cDetail(rmControls('$e'))].join('\n'),
+          [cError(rmControls('$e'))].join('\n'),
         );
+        ggLog(cAction('\nPlease fix the issues above.\n'));
+
         throw Exception(cDetail('Cannot publish.'));
       }
     }

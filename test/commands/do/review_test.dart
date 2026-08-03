@@ -469,7 +469,7 @@ void main() {
         );
         expect(
           messages.any(
-            (m) => m.contains('Gg Multi can review?'),
+            (m) => m.contains('Can review?'),
           ),
           isTrue,
         );
@@ -597,9 +597,7 @@ void main() {
           isA<Exception>().having(
             (e) => rmControls(e.toString()),
             'message',
-            contains(
-              'Failed to merge main in: A',
-            ),
+            contains('Failed to merge main.'),
           ),
         ),
       );
@@ -607,7 +605,7 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            'Failed to merge main into A for ticket TICKDR: '
+            '✗ Failed to merge main into A\n'
             'Exception: merge failed',
           ),
         ),
@@ -799,7 +797,7 @@ void main() {
             isA<Exception>().having(
               (e) => rmControls(e.toString()),
               'message',
-              contains('gg_multi can review failed'),
+              contains('can review failed'),
             ),
           ),
         );
@@ -807,8 +805,8 @@ void main() {
         expect(
           messages.any(
             (m) => m.contains(
-              'gg_multi can review failed: '
-              'Exception: can review failed',
+              // The cause is printed as it is — no nested prefix.
+              'can review failed',
             ),
           ),
           isTrue,
@@ -907,7 +905,7 @@ void main() {
 
       expect(
         messages.any(
-          (m) => m.contains('Failed to commit A: Exception: commit failed'),
+          (m) => m.contains('✗ Failed to commit A\nException: commit failed'),
         ),
         isTrue,
       );
@@ -1020,7 +1018,7 @@ void main() {
 
       expect(
         messages.any(
-          (m) => m.contains('Failed to push A: Exception: push failed'),
+          (m) => m.contains('✗ Failed to push A\nException: push failed'),
         ),
         isTrue,
       );
@@ -1127,8 +1125,8 @@ void main() {
         expect(
           messages.any(
             (m) => m.contains(
-              'Failed to localize refs to git feature branch for A: '
-              'Exception: localize git failed',
+              '✗ Failed to localize refs to git in A\n'
+              'localize git failed',
             ),
           ),
           isTrue,
@@ -1372,7 +1370,7 @@ void main() {
         expect(
           messages.any(
             (m) => m.contains(
-              'Failed to execute dart pub upgrade in A: upgrade error',
+              '✗ Failed to execute dart pub upgrade in A\nupgrade error',
             ),
           ),
           isTrue,
@@ -1628,7 +1626,7 @@ void main() {
             isA<Exception>().having(
               (e) => rmControls(e.toString()),
               'message',
-              contains('ERR_PNPM_EXOTIC_SUBDEP blocked'),
+              contains('Failed to refresh the dependencies.'),
             ),
           ),
         );
@@ -1637,7 +1635,7 @@ void main() {
         expect(
           messages.any(
             (m) => m.contains(
-              'Failed to execute npm install in A: '
+              '✗ Failed to execute npm install in A\n'
               'ERR_PNPM_EXOTIC_SUBDEP blocked',
             ),
           ),
@@ -2244,7 +2242,7 @@ void main() {
             isA<Exception>().having(
               (e) => rmControls(e.toString()),
               'message',
-              contains('git push origin --delete TICKDR'),
+              contains('Failed to replace the obsolete branch.'),
             ),
           ),
         );
@@ -2252,7 +2250,7 @@ void main() {
         expect(
           messages.any(
             (m) => m.contains(
-              'Failed to replace the obsolete branch origin/TICKDR of A',
+              '✗ Failed to replace the obsolete branch origin/TICKDR',
             ),
           ),
           isTrue,
@@ -2383,7 +2381,7 @@ void main() {
             isA<Exception>().having(
               (e) => rmControls(e.toString()),
               'message',
-              contains('could not rebase onto origin/TICKDR'),
+              contains('Failed to integrate the remote branch.'),
             ),
           ),
         );
@@ -2391,7 +2389,7 @@ void main() {
         expect(
           messages.any(
             (m) => m.contains(
-              'Failed to integrate origin/TICKDR into A before push',
+              '✗ Failed to integrate origin/TICKDR into A',
             ),
           ),
           isTrue,
@@ -2551,7 +2549,7 @@ void main() {
         expect(
           messages.any(
             (m) => m.contains(
-              'Verified A still passes "gg can commit" after merging main',
+              '✓ Verified A after merging main',
             ),
           ),
           isTrue,
@@ -2705,7 +2703,7 @@ void main() {
             isA<Exception>().having(
               (e) => rmControls(e.toString()),
               'message',
-              contains('merged state no longer passes "gg can commit"'),
+              contains('Merged state does not pass can commit.'),
             ),
           ),
         );
@@ -2789,12 +2787,13 @@ void main() {
       ).called(1);
 
       expect(messages, [
+        '\nPublishing ...',
         '⌛️ Saving the state before the review',
         '✓ Saving the state before the review',
         '⌛️ Merging origin/main into feature branches',
         '✓ Merging origin/main into feature branches',
-        '⌛️ Gg Multi can review?',
-        '✓ Gg Multi can review?',
+        '⌛️ Can review?',
+        '✓ Can review?',
         '⌛️ Setting dependencies to git, committing and pushing',
         '✓ Setting dependencies to git, committing and pushing',
         '⌛️ Creating pull requests',
@@ -3064,7 +3063,7 @@ void main() {
           isA<Exception>().having(
             (e) => rmControls(e.toString()),
             'message',
-            contains('Failed to merge main in: B'),
+            contains('Failed to merge main.'),
           ),
         ),
       );
@@ -3312,7 +3311,7 @@ void main() {
           isA<Exception>().having(
             (e) => rmControls(e.toString()),
             'message',
-            contains('Failed to review in: B'),
+            contains('Failed to commit.'),
           ),
         ),
       );
@@ -3397,7 +3396,7 @@ void main() {
           isA<Exception>().having(
             (e) => rmControls(e.toString()),
             'message',
-            contains('localize refs to git failed'),
+            contains('Failed to localize refs to git.'),
           ),
         ),
       );
@@ -3437,7 +3436,7 @@ void main() {
           isA<Exception>().having(
             (e) => rmControls(e.toString()),
             'message',
-            contains('Failed to save the state of A before the review'),
+            contains('Failed to save the state.'),
           ),
         ),
       );
@@ -3755,9 +3754,7 @@ void main() {
           isA<Exception>().having(
             (e) => rmControls(e.toString()),
             'message',
-            contains(
-              'Failed to cancel review in: A',
-            ),
+            contains('Failed to localize refs to local.'),
           ),
         ),
       );
@@ -3765,7 +3762,7 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            'Failed to localize refs to local paths for A: '
+            '✗ Failed to localize refs to local in A\n'
             'Exception: localize failed',
           ),
         ),
@@ -3842,16 +3839,14 @@ void main() {
           isA<Exception>().having(
             (e) => rmControls(e.toString()),
             'message',
-            contains(
-              'Failed to cancel review in: A',
-            ),
+            contains('Failed to commit.'),
           ),
         ),
       );
 
       expect(
         messages.any(
-          (m) => m.contains('Failed to commit A: Exception: commit failed'),
+          (m) => m.contains('✗ Failed to commit A\nException: commit failed'),
         ),
         isTrue,
       );
@@ -4120,7 +4115,7 @@ void main() {
 
         expect(
           messages.any(
-            (m) => m.contains('Failed to execute npm install in A: '
+            (m) => m.contains('✗ Failed to execute npm install in A\n'
                 'install error'),
           ),
           isTrue,
