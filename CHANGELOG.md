@@ -4,6 +4,7 @@
 
 ### Changed
 
+- dart pub upgrade --major-versions --tighten
 - replace do cancel-review with do review --abort
 - move ls under do
 - refactor: rename publish --reconfigure to --restart
