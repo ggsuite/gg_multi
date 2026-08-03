@@ -38,7 +38,7 @@ void main() {
         expect(
           messages.first,
           contains(
-            'List repos, organizations, or dependencies.',
+            'List repos, organizations or dependencies',
           ),
         );
       });

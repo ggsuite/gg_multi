@@ -248,7 +248,7 @@ void main() {
       );
       expect(
         output.first,
-        contains('Create a ticket folder and save ticket data as JSON.'),
+        contains('Create a ticket folder with its ticket data'),
       );
     });
   });

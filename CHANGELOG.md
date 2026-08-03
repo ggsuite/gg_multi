@@ -14,6 +14,8 @@
 - move do exec to do exec cmd
 - move do checkout to do import ticket
 - move do init to do init workspace and do claude to do init claude
+- reword the remaining command descriptions to the same terse imperative
+  the rest of the CLI uses
 
 ### Removed
 

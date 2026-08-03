@@ -29,7 +29,7 @@ class TicketCommand extends DirCommand<void> {
     String? rootPath,
     DirectoryFactory? directoryFactory,
     super.name = 'ticket',
-    super.description = 'Create a ticket folder and save ticket data as JSON.',
+    super.description = 'Create a ticket folder with its ticket data',
     // coverage:ignore-start
   })  : rootPath = rootPath ?? WorkspaceUtils.defaultGgMultiWorkspacePath(),
         directoryFactory = directoryFactory ?? Directory.new

@@ -69,7 +69,7 @@ void main() {
       );
       expect(
         output.first,
-        contains('List repos, organizations, or dependencies'),
+        contains('List repos, organizations or dependencies'),
       );
     });
   });

@@ -129,7 +129,7 @@ class DoPublishCommand extends DirCommand<void> {
   DoPublishCommand({
     required super.ggLog,
     super.name = 'publish',
-    super.description = 'Publishes all repositories in the current ticket.',
+    super.description = 'Publish all repos of the current ticket',
     this.mergeOnly = false,
     gg.DoCommit? ggDoCommit,
     ChangeRefsToPubDev? unlocalizeRefs,
