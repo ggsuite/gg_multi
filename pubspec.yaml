@@ -18,7 +18,7 @@ dependencies:
   gg_local_package_dependencies: ^2.1.0
   gg_log: ^1.0.6
   gg_publish: ^3.9.2
-  gg_status_printer: ^1.4.0
+  gg_status_printer: ^1.4.1
   pub_semver: ^2.2.0
   mocktail: ^1.0.5
   http: ^1.6.0
