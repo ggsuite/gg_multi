@@ -6,12 +6,12 @@
 
 import 'dart:io';
 
-import 'package:gg_one/gg_one.dart' as gg;
-import 'package:gg_changelog/gg_changelog.dart' as cl;
 import 'package:gg_args/gg_args.dart';
+import 'package:gg_changelog/gg_changelog.dart' as cl;
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:interact/interact.dart';
 import 'package:path/path.dart' as path;
 
@@ -127,7 +127,7 @@ class DoCommitCommand extends DirCommand<void> {
 
     // Summarize the results
     if (failedRepos.isEmpty) {
-      ggLog('✓ All repos committed');
+      ggLog('\nAll repos committed\n');
     } else {
       ggLog(red('✗ Commit failed in:'));
       for (final repoName in failedRepos) {

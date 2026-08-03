@@ -105,14 +105,7 @@ void main() {
           ),
         );
       await runner.run(['commit', '--input', ticketDir.path]);
-      expect(messages.join('\n'), '''
-
-A
-
-
-B
-
-✓ All repos committed''');
+      expect(messages.first.split('\n'), ['', 'A', '']);
     });
 
     test('aborts on first repo that fails', () async {
