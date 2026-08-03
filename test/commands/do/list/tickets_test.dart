@@ -110,7 +110,7 @@ void main() {
       );
       expect(
         output.first,
-        contains('List tickets and their descriptions.'),
+        contains('List tickets and their descriptions'),
       );
     });
   });

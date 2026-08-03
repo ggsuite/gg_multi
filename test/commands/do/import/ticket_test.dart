@@ -10,7 +10,7 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:gg_git/gg_git.dart' as gg_git;
 import 'package:gg_multi/src/backend/git_handler.dart';
-import 'package:gg_multi/src/commands/do/checkout.dart';
+import 'package:gg_multi/src/commands/do/import/ticket.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
@@ -178,7 +178,7 @@ void main() {
 
   Future<void> runCmd(DoCheckoutCommand cmd, List<String> args) async {
     final runner = CommandRunner<dynamic>('gg', 'gg')..addCommand(cmd);
-    await runner.run(['checkout', ...args]);
+    await runner.run(['ticket', ...args]);
   }
 
   Directory ticketDirOf(String name) =>
@@ -189,7 +189,7 @@ void main() {
   group('DoCheckoutCommand', () {
     test('has the expected name and description', () {
       final cmd = build();
-      expect(cmd.name, 'checkout');
+      expect(cmd.name, 'ticket');
       expect(cmd.description, contains('Reproduce a ticket'));
     });
 

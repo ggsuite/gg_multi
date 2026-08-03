@@ -7,11 +7,11 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg_multi/src/commands/do/claude.dart';
+import 'package:gg_multi/src/commands/do/init/claude.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 
-import '../../rm_console_colors_helper.dart';
+import '../../../rm_console_colors_helper.dart';
 
 void main() {
   late Directory tempDir;

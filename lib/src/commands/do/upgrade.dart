@@ -7,15 +7,14 @@
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
 
-import 'maintain/exec.dart';
+import 'upgrade/master.dart';
 
-/// Command that groups the maintenance tasks for the repositories of the
-/// current ticket. Without a subcommand it prints the ones available.
-class MaintainCommand extends Command<void> {
+/// Command to bring parts of the workspace in sync with their remotes.
+class UpgradeCommand extends Command<void> {
   /// Constructor accepting a log function.
-  MaintainCommand({required this.ggLog}) {
+  UpgradeCommand({required this.ggLog}) {
     addSubcommand(
-      DoExecuteCommand(ggLog: ggLog),
+      UpdateMasterCommand(ggLog: ggLog),
     );
   }
 
@@ -23,8 +22,8 @@ class MaintainCommand extends Command<void> {
   final GgLog ggLog;
 
   @override
-  String get name => 'maintain';
+  String get name => 'upgrade';
 
   @override
-  String get description => 'Maintain the repositories of the current ticket.';
+  String get description => 'Upgrade parts of the workspace';
 }

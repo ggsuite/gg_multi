@@ -7,20 +7,18 @@
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:gg_multi/src/commands/do/add.dart';
-import 'package:gg_multi/src/commands/do/checkout.dart';
-import 'package:gg_multi/src/commands/do/claude.dart';
+import 'package:gg_multi/src/commands/do/import.dart';
 import 'package:gg_multi/src/commands/do/code.dart';
-import 'package:gg_multi/src/commands/do/configure_publish.dart';
 import 'package:gg_multi/src/commands/do/create.dart';
 import 'package:gg_multi/src/commands/do/init.dart';
 import 'package:gg_multi/src/commands/do/rm.dart';
-import 'package:gg_multi/src/commands/do/update.dart';
+import 'package:gg_multi/src/commands/do/upgrade.dart';
 
 import 'do/commit.dart';
 import 'do/push.dart';
 import 'do/publish.dart';
 import 'do/review.dart';
-import 'do/maintain.dart';
+import 'do/exec.dart';
 import 'do/ls.dart';
 
 /// Command to perform actions such as committing
@@ -47,17 +45,15 @@ class Do extends Command<void> {
     addSubcommand(DoCommitCommand(ggLog: ggLog));
     addSubcommand(DoPushCommand(ggLog: ggLog));
     addSubcommand(DoPublishCommand(ggLog: ggLog));
-    addSubcommand(DoConfigurePublishCommand(ggLog: ggLog));
     addSubcommand(DoReviewCommand(ggLog: ggLog));
-    addSubcommand(MaintainCommand(ggLog: ggLog));
-    addSubcommand(DoClaudeCommand(ggLog: ggLog));
+    addSubcommand(ExecCommand(ggLog: ggLog));
     addSubcommand(AddCommand(ggLog: ggLog));
-    addSubcommand(DoCheckoutCommand(ggLog: ggLog));
+    addSubcommand(ImportCommand(ggLog: ggLog));
     addSubcommand(CodeCommand(ggLog: ggLog));
     addSubcommand(CreateCommand(ggLog: ggLog));
     addSubcommand(InitCommand(ggLog: ggLog));
     addSubcommand(RemoveCommand(ggLog: ggLog));
-    addSubcommand(UpdateCommand(ggLog: ggLog));
+    addSubcommand(UpgradeCommand(ggLog: ggLog));
     addSubcommand(ListCommand(ggLog: ggLog));
   }
 }

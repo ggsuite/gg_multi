@@ -41,5 +41,5 @@ class ListCommand extends Command<dynamic> {
   String get name => 'ls';
 
   @override
-  String get description => 'List repos, organizations, or dependencies.';
+  String get description => 'List repos, organizations or dependencies';
 }

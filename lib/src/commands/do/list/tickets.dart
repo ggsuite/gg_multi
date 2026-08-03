@@ -34,7 +34,7 @@ class ListTicketsCommand extends Command<void> {
   String get name => 'tickets';
 
   @override
-  String get description => 'List tickets and their descriptions.';
+  String get description => 'List tickets and their descriptions';
 
   @override
   Future<void> run() async {

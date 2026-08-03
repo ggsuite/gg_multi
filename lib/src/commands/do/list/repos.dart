@@ -31,8 +31,7 @@ class ListReposCommand extends Command<dynamic> {
   String get name => 'repos';
 
   @override
-  String get description =>
-      'Lists all repos in the master workspace, sorted by name.';
+  String get description => 'List all repos of the master workspace';
 
   @override
   Future<void> run() async {

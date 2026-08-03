@@ -29,5 +29,5 @@ class CreateCommand extends Command<void> {
   String get name => 'create';
 
   @override
-  String get description => 'Create resources like tickets.';
+  String get description => 'Create tickets and other resources';
 }

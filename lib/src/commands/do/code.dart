@@ -56,8 +56,7 @@ class CodeCommand extends Command<void> {
   String get name => 'code';
 
   @override
-  String get description =>
-      'Open all repos under a ticket, or a single repo, in VS Code.';
+  String get description => 'Open a ticket or a single repo in VS Code';
 
   @override
   Future<void> run() async {

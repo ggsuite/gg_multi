@@ -14,14 +14,14 @@ import 'package:http/http.dart' as http;
 import 'package:interact/interact.dart';
 import 'package:path/path.dart' as path;
 
-import '../../backend/constants.dart';
-import '../../backend/filesystem_utils.dart';
-import '../../backend/git_handler.dart' hide ProcessRunner;
-import '../../backend/repo_folder_resolver.dart';
-import '../../backend/repo_setup.dart';
-import '../../backend/ticket_json.dart';
-import '../../backend/workspace_migration.dart';
-import '../../backend/workspace_utils.dart';
+import '../../../backend/constants.dart';
+import '../../../backend/filesystem_utils.dart';
+import '../../../backend/git_handler.dart' hide ProcessRunner;
+import '../../../backend/repo_folder_resolver.dart';
+import '../../../backend/repo_setup.dart';
+import '../../../backend/ticket_json.dart';
+import '../../../backend/workspace_migration.dart';
+import '../../../backend/workspace_utils.dart';
 
 /// Lets the user pick one branch from [branches]; returns null on cancel.
 typedef BranchSelector = Future<String?> Function(List<String> branches);
@@ -111,7 +111,7 @@ class DoCheckoutCommand extends Command<dynamic> {
   final TicketJsonFetcher _fetchTicketJson;
 
   @override
-  String get name => 'checkout';
+  String get name => 'ticket';
 
   @override
   String get description => 'Reproduce a ticket from a ticket.json path or URL';

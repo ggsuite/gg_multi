@@ -106,7 +106,7 @@ void main() {
           await runner.run(['repos', '--help']);
         },
       );
-      expect(output.first, contains('Lists all repos'));
+      expect(output.first, contains('List all repos'));
     });
   });
 }

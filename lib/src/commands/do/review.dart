@@ -95,7 +95,7 @@ class DoReviewCommand extends DirCommand<void> {
   DoReviewCommand({
     required super.ggLog,
     super.name = 'review',
-    super.description = 'Reviews all repositories in the current ticket.',
+    super.description = 'Review all repos of the current ticket',
     CanReviewCommand? canReviewCommand,
     ChangeRefsToPubDev? unlocalizeRefs,
     ChangeRefsToGitFeatureBranch? localizeRefsToGit,

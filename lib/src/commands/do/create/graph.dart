@@ -81,7 +81,7 @@ class GraphCommand extends DirCommand<void> {
   GraphCommand({
     required super.ggLog,
     super.name = 'graph',
-    super.description = 'Writes the dependency graph to stdout or file.',
+    super.description = 'Write the dependency graph to stdout or a file',
     Graph? graph,
   }) : _graph = graph ?? Graph(ggLog: _warn) {
     _addArgs();

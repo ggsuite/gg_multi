@@ -46,7 +46,16 @@ void main() {
         ],
       );
 
-      expect(subCommands, isEmpty, reason: errorMessage);
+      // Files in do/ that are deliberately not registered as subcommands.
+      // missingSubCommands derives its expectation from the file names, so
+      // it reports them although that is exactly what we want.
+      const notRegistered = ['configure-publish'];
+
+      expect(
+        subCommands.where((c) => !notRegistered.contains(c)),
+        isEmpty,
+        reason: errorMessage,
+      );
     });
 
     test('prints help message when --help is passed', () async {

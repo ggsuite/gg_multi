@@ -7,7 +7,7 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg_multi/src/commands/do/maintain/exec.dart';
+import 'package:gg_multi/src/commands/do/exec/cmd.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
@@ -63,7 +63,7 @@ void main() {
           ),
         );
       await expectLater(
-        () async => await runner.run(['exec', '--input', tempDir.path, 'echo']),
+        () async => await runner.run(['cmd', '--input', tempDir.path, 'echo']),
         throwsA(
           isA<Exception>().having(
             (e) => e.toString(),
@@ -83,7 +83,7 @@ void main() {
         ..addCommand(DoExecuteCommand(ggLog: ggLog));
 
       await expectLater(
-        () async => await runner.run(['exec', '--input', ticketDir.path]),
+        () async => await runner.run(['cmd', '--input', ticketDir.path]),
         throwsA(isA<UsageException>()),
       );
     });
@@ -97,7 +97,7 @@ void main() {
             ggLog: ggLog,
           ),
         );
-      await runner.run(['exec', '--input', emptyTicket.path, 'echo', 'x']);
+      await runner.run(['cmd', '--input', emptyTicket.path, 'echo', 'x']);
       expect(
         messages,
         contains('⚠️ No repos in this ticket'),
@@ -121,7 +121,7 @@ void main() {
             processRunner: mockRunner.call,
           ),
         );
-      await runner.run(['exec', '--input', ticketDir.path, 'echo', 'hi']);
+      await runner.run(['cmd', '--input', ticketDir.path, 'echo', 'hi']);
 
       // Verify calls for both repos with correct working directories
       verify(
@@ -176,7 +176,7 @@ void main() {
 
       await expectLater(
         () async =>
-            await runner.run(['exec', '--input', ticketDir.path, 'echo']),
+            await runner.run(['cmd', '--input', ticketDir.path, 'echo']),
         throwsA(isA<Exception>()),
       );
 

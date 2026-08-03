@@ -28,8 +28,8 @@ class DoExecuteCommand extends DirCommand<void> {
   /// Constructor
   DoExecuteCommand({
     required super.ggLog,
-    super.name = 'exec',
-    super.description = 'Execute a command in all ticket repos',
+    super.name = 'cmd',
+    super.description = 'Run a shell command in all ticket repos',
     SortedProcessingList? sortedProcessingList,
     ProcessRunner? processRunner,
   })  : _sortedProcessingList =

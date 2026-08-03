@@ -13,7 +13,7 @@ import 'package:gg_log/gg_log.dart';
 import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
-import '../../backend/workspace_utils.dart';
+import '../../../backend/workspace_utils.dart';
 
 /// Creates a ticket-level CLAUDE.md file from all repositories in a ticket.
 class DoClaudeCommand extends DirCommand<void> {
