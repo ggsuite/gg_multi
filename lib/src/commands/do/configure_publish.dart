@@ -180,7 +180,9 @@ class DoConfigurePublishCommand extends DirCommand<void> {
     final config = gg.PublishConfig(repos: repos);
     final file = configFileFor(ticketDir);
     await config.save(file: file);
-    ggLog(cDetail('✓ Wrote publish configuration to ${file.path}'));
+    // Where the answers are stored is an implementation detail of the
+    // publish — the user just answered the questions and does not need a
+    // path back.
     return config;
   }
 
