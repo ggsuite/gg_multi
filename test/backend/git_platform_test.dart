@@ -23,7 +23,6 @@ class MockProcessRunner extends Mock {
 void main() {
   group('GitHubPlatform', () {
     test('buildRepoUrl returns correct URL', () {
-      expect(1, 0);
       final platform = GitHubPlatform();
       final url = platform.buildRepoUrl('myorg', 'myrepo');
       expect(url, equals('https://github.com/myorg/myrepo.git'));

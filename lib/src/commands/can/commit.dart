@@ -82,7 +82,7 @@ class CanCommitCommand extends DirCommand<void> {
         // The reason is printed once, right under the repo it belongs to.
         // The exception only ends the run.
         ggLog(
-          [cDetail('✗ Cannot commit'), cError(rmControls('$e'))].join('\n'),
+          [cDetail('✗ Cannot commit'), cDetail(rmControls('$e'))].join('\n'),
         );
         ggLog(cAction('\nPlease fix the issues above.\n'));
         throw Exception(cDetail('Cannot commit.'));
