@@ -451,8 +451,8 @@ class DoReviewCommand extends DirCommand<void> {
         // The reason is printed once, right under the repo it belongs to.
         errorLog(
           [
-            cError('✗ Failed to merge main into $repoName'),
-            cDetail(rmControls('$e')),
+            cDetail('✗ Failed to merge main into $repoName'),
+            cError(rmControls('$e')),
           ].join('\n'),
         );
         throw Exception(cDetail('Failed to merge main.'));
@@ -474,8 +474,8 @@ class DoReviewCommand extends DirCommand<void> {
         } catch (e) {
           errorLog(
             [
-              cError('✗ Merging main into $repoName broke "gg can commit"'),
-              cDetail(rmControls('$e')),
+              cDetail('✗ Merging main into $repoName broke "gg can commit"'),
+              cError(rmControls('$e')),
             ].join('\n'),
           );
           errorLog(
@@ -581,8 +581,8 @@ class DoReviewCommand extends DirCommand<void> {
       } catch (e) {
         ggLog(
           [
-            cError('✗ Failed to save the state of $repoName'),
-            cDetail(rmControls('$e')),
+            cDetail('✗ Failed to save the state of $repoName'),
+            cError(rmControls('$e')),
           ].join('\n'),
         );
         ggLog(cAction('Nothing was changed.'));
@@ -770,8 +770,8 @@ class DoReviewCommand extends DirCommand<void> {
       } catch (e) {
         errorLog(
           [
-            cError('✗ Failed to localize refs to git in $repoName'),
-            cDetail(rmControls('${(e as dynamic).message}')),
+            cDetail('✗ Failed to localize refs to git in $repoName'),
+            cError(rmControls('${(e as dynamic).message}')),
           ].join('\n'),
         );
         throw Exception(cDetail('Failed to localize refs to git.'));
@@ -801,8 +801,8 @@ class DoReviewCommand extends DirCommand<void> {
       } catch (e) {
         errorLog(
           [
-            cError('✗ Failed to commit $repoName'),
-            cDetail(rmControls('$e')),
+            cDetail('✗ Failed to commit $repoName'),
+            cError(rmControls('$e')),
           ].join('\n'),
         );
         throw Exception(cDetail('Failed to commit.'));
@@ -825,8 +825,8 @@ class DoReviewCommand extends DirCommand<void> {
       } catch (e) {
         errorLog(
           [
-            cError('✗ Failed to push $repoName'),
-            cDetail(rmControls('$e')),
+            cDetail('✗ Failed to push $repoName'),
+            cError(rmControls('$e')),
           ].join('\n'),
         );
         throw Exception(cDetail('Failed to push.'));
@@ -918,8 +918,8 @@ class DoReviewCommand extends DirCommand<void> {
       final stderrStr = pull.stderr?.toString() ?? '';
       errorLog(
         [
-          cError('✗ Failed to integrate origin/$branch into $repoName'),
-          cDetail(rmControls(stderrStr)),
+          cDetail('✗ Failed to integrate origin/$branch into $repoName'),
+          cError(rmControls(stderrStr)),
         ].join('\n'),
       );
       errorLog(
@@ -1041,8 +1041,8 @@ class DoReviewCommand extends DirCommand<void> {
       final stderrStr = push.stderr?.toString() ?? '';
       errorLog(
         [
-          cError('✗ Failed to replace the obsolete branch origin/$branch'),
-          cDetail(rmControls(stderrStr)),
+          cDetail('✗ Failed to replace the obsolete branch origin/$branch'),
+          cError(rmControls(stderrStr)),
         ].join('\n'),
       );
       errorLog(
@@ -1141,8 +1141,8 @@ class DoReviewCommand extends DirCommand<void> {
       } catch (e) {
         ggLog(
           [
-            cError('✗ Failed to localize refs to local in $repoName'),
-            cDetail(rmControls('$e')),
+            cDetail('✗ Failed to localize refs to local in $repoName'),
+            cError(rmControls('$e')),
           ].join('\n'),
         );
         throw Exception(cDetail('Failed to localize refs to local.'));
@@ -1170,8 +1170,8 @@ class DoReviewCommand extends DirCommand<void> {
       } catch (e) {
         ggLog(
           [
-            cError('✗ Failed to commit $repoName'),
-            cDetail(rmControls('$e')),
+            cDetail('✗ Failed to commit $repoName'),
+            cError(rmControls('$e')),
           ].join('\n'),
         );
         throw Exception(cDetail('Failed to commit.'));
@@ -1213,8 +1213,8 @@ class DoReviewCommand extends DirCommand<void> {
     } else {
       ggLog(
         [
-          cError('✗ Failed to execute $cmd in $repoName'),
-          cDetail(rmControls('${result.stderr}')),
+          cDetail('✗ Failed to execute $cmd in $repoName'),
+          cError(rmControls('${result.stderr}')),
         ].join('\n'),
       );
       throw Exception(cDetail('Failed to install the dependencies.'));
@@ -1285,8 +1285,8 @@ class DoReviewCommand extends DirCommand<void> {
         final detail = err.isNotEmpty ? err : out;
         errorLog(
           [
-            cError('✗ Failed to execute $cmd in $repoName'),
-            cDetail(rmControls(detail)),
+            cDetail('✗ Failed to execute $cmd in $repoName'),
+            cError(rmControls(detail)),
           ].join('\n'),
         );
         throw Exception(cDetail('Failed to refresh the dependencies.'));

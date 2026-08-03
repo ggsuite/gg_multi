@@ -308,7 +308,7 @@ class CanPublishCommand extends DirCommand<void> {
     try {
       await _didCommitCommand.exec(directory: ticketDir, ggLog: ggLog);
     } catch (e) {
-      ggLog([cError('✗ Not committed'), cDetail(rmControls('$e'))].join('\n'));
+      ggLog([cDetail('✗ Not committed'), cError(rmControls('$e'))].join('\n'));
       throw Exception(cDetail('Not committed.'));
     }
   }
@@ -328,8 +328,8 @@ class CanPublishCommand extends DirCommand<void> {
       } catch (e) {
         ggLog(
           [
-            cError('✗ Cannot merge main into $repoName'),
-            cDetail(rmControls('$e')),
+            cDetail('✗ Cannot merge main into $repoName'),
+            cError(rmControls('$e')),
           ].join('\n'),
         );
         throw Exception(cDetail('Cannot merge main into feature branch.'));
@@ -345,7 +345,7 @@ class CanPublishCommand extends DirCommand<void> {
     try {
       await _doPushCommand.exec(directory: ticketDir, ggLog: ggLog);
     } catch (e) {
-      ggLog([cError('✗ Failed to push'), cDetail(rmControls('$e'))].join('\n'));
+      ggLog([cDetail('✗ Failed to push'), cError(rmControls('$e'))].join('\n'));
       throw Exception(cDetail('Failed to push.'));
     }
   }
@@ -368,7 +368,7 @@ class CanPublishCommand extends DirCommand<void> {
     } catch (e) {
       // The reason is printed once, right under the repo it belongs to.
       // What travels on is only the name.
-      ggLog([cError('✗ Cannot publish'), cDetail(rmControls('$e'))].join('\n'));
+      ggLog([cDetail('✗ Cannot publish'), cError(rmControls('$e'))].join('\n'));
       return repoName;
     }
   }
@@ -410,8 +410,8 @@ class CanPublishCommand extends DirCommand<void> {
       } catch (e) {
         ggLog(
           [
-            cError('✗ Not logged in to npm'),
-            cDetail(rmControls('$e')),
+            cDetail('✗ Not logged in to npm'),
+            cError(rmControls('$e')),
           ].join('\n'),
         );
         failedRepos.add(repoName);
@@ -437,7 +437,7 @@ class CanPublishCommand extends DirCommand<void> {
       try {
         await _ggCanMerge.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
-        ggLog([cError('✗ Cannot merge'), cDetail(rmControls('$e'))].join('\n'));
+        ggLog([cDetail('✗ Cannot merge'), cError(rmControls('$e'))].join('\n'));
         failedMergeRepos.add(repoName);
       }
     }

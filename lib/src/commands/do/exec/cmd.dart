@@ -125,7 +125,7 @@ class DoExecuteCommand extends DirCommand<void> {
         final stdoutStr = result.stdout?.toString() ?? '';
         final errMsg = stderrStr.isNotEmpty ? stderrStr : stdoutStr;
         ggLog(
-          [cError('✗ Failed to execute'), cDetail(rmControls(errMsg))]
+          [cDetail('✗ Failed to execute'), cError(rmControls(errMsg))]
               .join('\n'),
         );
         failed.add(repoName);

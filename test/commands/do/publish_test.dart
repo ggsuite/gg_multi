@@ -2410,7 +2410,10 @@ void main() {
         (m) => m.contains('gg do publish --continue'),
       );
       expect(hintIndex, reasonIndex + 1);
-      expect(messages[hintIndex], contains('marked as »failed«'));
+      expect(
+        messages[hintIndex],
+        contains('Fix the problem and resume with:'),
+      );
 
       final restoreIndex = messages.indexWhere(
         (m) => m.contains('Restoring B after the failed publish'),
@@ -2418,8 +2421,10 @@ void main() {
       expect(restoreIndex, isNonNegative);
       expect(reasonIndex, lessThan(restoreIndex));
 
-      // The reason is red, the hint yellow with the command in blue.
-      expect(coloredMessages[reasonIndex], startsWith('\x1B[31m'));
+      // The »✗ … failed« line is a detail, the reason below it red, the
+      // hint yellow with the command in blue.
+      expect(coloredMessages[reasonIndex], startsWith('\x1B[90m'));
+      expect(coloredMessages[reasonIndex], contains('\x1B[31m'));
       expect(coloredMessages[hintIndex], startsWith('\x1B[33m'));
       expect(
         coloredMessages[hintIndex],
@@ -6961,12 +6966,14 @@ void main() {
       // ... and the failure is worded for the mode.
       expect(messages.any((m) => m.contains('✗ Merging B failed')), isTrue);
       expect(
-        messages.any((m) => m.contains('The merge is marked as »failed«')),
+        messages.any(
+          (m) => m.contains('gg do publish --merge-only --continue'),
+        ),
         isTrue,
       );
       expect(messages.any((m) => m.contains('✗ Publishing B')), isFalse);
       expect(
-        messages.any((m) => m.contains('The publish is marked')),
+        messages.any((m) => m.contains('✗ Publishing B failed')),
         isFalse,
       );
     });

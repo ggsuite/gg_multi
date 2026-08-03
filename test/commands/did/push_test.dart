@@ -143,7 +143,7 @@ void main() {
       );
       expect(
         messages,
-        contains('✗ B was not pushed: Exception: Failed did push for B'),
+        contains('✗ B was not pushed\nException: Failed did push for B'),
       );
     });
   });

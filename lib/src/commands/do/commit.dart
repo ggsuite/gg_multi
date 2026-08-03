@@ -123,7 +123,7 @@ class DoCommitCommand extends DirCommand<void> {
         );
       } catch (e) {
         ggLog(
-          [cError('✗ Failed to commit'), cDetail(rmControls('$e'))].join('\n'),
+          [cDetail('✗ Failed to commit'), cError(rmControls('$e'))].join('\n'),
         );
         failedRepos.add(repoName);
       }

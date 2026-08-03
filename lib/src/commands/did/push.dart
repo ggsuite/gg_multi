@@ -12,6 +12,7 @@ import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart
 import 'package:gg_log/gg_log.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 import 'package:path/path.dart' as path;
+import 'package:gg_status_printer/gg_status_printer.dart';
 
 import '../../backend/workspace_utils.dart';
 
@@ -75,7 +76,12 @@ class DidPushCommand extends DirCommand<void> {
       try {
         await _ggDidPush.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
-        ggLog(cError('✗ $repoName was not pushed: $e'));
+        ggLog(
+          [
+            cDetail('✗ $repoName was not pushed'),
+            cError(rmControls('$e')),
+          ].join('\n'),
+        );
         rethrow;
       }
     }

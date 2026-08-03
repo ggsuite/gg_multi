@@ -1281,7 +1281,7 @@ class DoPublishCommand extends DirCommand<void> {
         [
           'Fix the problem and resume with:',
           '  ${cCmd('$_command --continue')}',
-          '  ${cCmd('$_command --resetart')}',
+          '  ${cCmd('$_command --restart')}',
         ].join('\n'),
       ),
     );

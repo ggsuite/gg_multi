@@ -81,7 +81,7 @@ class CanPushCommand extends DirCommand<void> {
       } catch (e) {
         // The reason is printed once, right under the repo it belongs to.
         // The exception only ends the run.
-        ggLog([cError('✗ Cannot push'), cDetail(rmControls('$e'))].join('\n'));
+        ggLog([cDetail('✗ Cannot push'), cError(rmControls('$e'))].join('\n'));
         ggLog(cAction('\nPlease fix the issues above.\n'));
         throw Exception(cDetail('Cannot push.'));
       }

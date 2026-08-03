@@ -137,7 +137,7 @@ void main() {
       );
       expect(
         messages,
-        contains('✗ B was not committed: Exception: Failed did commit for B'),
+        contains('✗ B was not committed\nException: Failed did commit for B'),
       );
     });
   });
