@@ -6,22 +6,23 @@
 
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:args/command_runner.dart';
-import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_console_colors/gg_console_colors.dart';
 // ignore: lines_longer_than_80_chars
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 import 'package:pubspec_parse/pubspec_parse.dart';
 
+import '../../backend/add_repository_helper.dart';
 import '../../backend/dependency_repo_url.dart';
+import '../../backend/filesystem_utils.dart';
 import '../../backend/git_attributes.dart';
 import '../../backend/git_handler.dart' hide ProcessRunner;
-import '../../backend/add_repository_helper.dart';
-import '../../backend/filesystem_utils.dart';
 import '../../backend/git_platform.dart' hide ProcessRunner;
 import '../../backend/legacy_git_hooks.dart';
 import '../../backend/organization_utils.dart';
@@ -156,6 +157,8 @@ class AddCommand extends Command<dynamic> {
 
   @override
   Future<void> run() async {
+    ggLog(cDetail('\n✓ Copying repos'));
+
     final targets = argResults!.rest;
     final bool force = argResults!['force'] as bool;
     final String? ticketPath = WorkspaceUtils.detectTicketPath(executionPath);
@@ -313,8 +316,6 @@ class AddCommand extends Command<dynamic> {
 
     final GgLog taskLog = verbose ? ggLog : <String>[].add;
 
-    ggLog(yellow('Copying the following repos:'));
-
     await _copyReposToTicket(
       ticketPath: ticketPath,
       repoNames: finalToCopy,
@@ -326,6 +327,7 @@ class AddCommand extends Command<dynamic> {
     await GgStatusPrinter<void>(
       message: 'Writing project config files',
       ggLog: ggLog,
+      dark: true,
     ).run(
       () => _writeProjectConfigFiles(
         ticketDir: ticketDir,
@@ -336,21 +338,23 @@ class AddCommand extends Command<dynamic> {
     // Finally perform a single re-localization pass for the whole ticket.
     if (localize) {
       await GgStatusPrinter<void>(
-        message: 'Set dependencies to path, committing',
+        message: 'Localize dependencies',
         ggLog: ggLog,
+        dark: true,
       ).run(
         () => _relocalizeAllReposInTicket(
           ticketDir: ticketDir,
           ggLog: taskLog,
         ),
       );
-      return;
+    } else {
+      // Without localization the ticket description is still kept current — it
+      // describes which repos the ticket holds, not how they reference another.
+      await _writeTicketJson(ticketDir: ticketDir, ggLog: taskLog);
+      ggLog(cDetail('Skip localizing references (--no-localize).'));
     }
 
-    // Without localization the ticket description is still kept current — it
-    // describes which repos the ticket holds, not how they reference another.
-    await _writeTicketJson(ticketDir: ticketDir, ggLog: taskLog);
-    ggLog(yellow('Skipped localizing references (--no-localize).'));
+    ggLog(cDetail('✔ Successfully added repos'));
   }
 
   /// Folder names of all repositories of the master workspace.
@@ -662,7 +666,7 @@ class AddCommand extends Command<dynamic> {
           ticketPath: ticketPath,
           ggLog: ggLog,
         );
-        reportLog(blue('✓ $repoName'));
+        reportLog(cDetail('  ✓ $repoName'));
       }
     }
 

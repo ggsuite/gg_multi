@@ -145,7 +145,7 @@ class DoConfigurePublishCommand extends DirCommand<void> {
     for (final repo in subs) {
       final repoDir = repo.directory;
       final repoName = path.basename(repoDir.path);
-      ggLog('\n${cyan(repoName)}:');
+      ggLog('\n${cH1(repoName)}\n');
 
       // A merge-only run releases nothing — no version bump, no changelog
       // heading, no tag. Asking for an increment would offer a version that

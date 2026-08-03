@@ -6,3 +6,5 @@
 dependency_overrides:
   gg_one:
     path: ../gg_one
+  gg_test:
+    path: ../gg_test
