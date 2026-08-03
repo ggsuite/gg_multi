@@ -235,6 +235,7 @@ class DoReviewCommand extends DirCommand<void> {
       await GgStatusPrinter<void>(
         message: 'Merging origin/main into feature branches',
         ggLog: ggLog,
+        dark: true,
       ).run(
         () async => _mergeMainIntoRepos(
           ticketName: ticketName,
@@ -248,6 +249,7 @@ class DoReviewCommand extends DirCommand<void> {
       await GgStatusPrinter<void>(
         message: 'Gg Multi can review?',
         ggLog: ggLog,
+        dark: true,
       ).run(
         () async => _runCanReview(
           ticketDir: ticketDir,
@@ -260,6 +262,7 @@ class DoReviewCommand extends DirCommand<void> {
       await GgStatusPrinter<void>(
         message: 'Setting dependencies to git, committing and pushing',
         ggLog: ggLog,
+        dark: true,
       ).run(
         () async => _localizeAndCommitAll(
           ticketName: ticketName,
@@ -617,6 +620,7 @@ class DoReviewCommand extends DirCommand<void> {
       await GgStatusPrinter<void>(
         message: 'Restoring the state before the review',
         ggLog: ggLog,
+        dark: true,
       ).run(
         () async => _restoreState(
           snapshots: snapshots,
