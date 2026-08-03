@@ -400,20 +400,11 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            '✗ Cannot merge B: Exception: Merge check failed for B',
+            '✗ Cannot merge\nException: Merge check failed for B',
           ),
         ),
         isTrue,
       );
-      expect(
-        messages.any(
-          (m) => m.contains(
-            '✗ Merge check failed in:',
-          ),
-        ),
-        isTrue,
-      );
-      expect(messages.any((m) => m.contains(' - B')), isTrue);
     });
 
     test('fails when did commit throws exception', () async {
@@ -499,7 +490,7 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            'gg_multi did commit failed: Exception: Did commit failed',
+            '✗ Not committed\nException: Did commit failed',
           ),
         ),
         isTrue,
@@ -602,8 +593,8 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            'gg merge main into feat failed for B in ticket '
-            'TICKPB: Exception: Merge main into feat failed',
+            '✗ Cannot merge main into B\n'
+            'Exception: Merge main into feat failed',
           ),
         ),
         isTrue,
@@ -708,7 +699,7 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            'gg_multi do push failed: Exception: do push failed',
+            '✗ Failed to push\nException: do push failed',
           ),
         ),
         isTrue,
@@ -820,7 +811,7 @@ void main() {
         throwsA(isA<Exception>()),
       );
       expect(
-        messages.any((m) => m.contains('✗ Cannot publish B')),
+        messages.any((m) => m.contains('✗ Cannot publish')),
         isTrue,
       );
       expect(
@@ -1137,12 +1128,12 @@ void main() {
           isA<Exception>().having(
             (e) => rmControls(e.toString()),
             'message',
-            contains('Not logged in to npm: B ('),
+            contains('Not logged in to npm.'),
           ),
         ),
       );
       expect(
-        messages.any((m) => m.contains('✗ Not logged in to npm for B')),
+        messages.any((m) => m.contains('✗ Not logged in to npm')),
         isTrue,
       );
 
@@ -1186,13 +1177,13 @@ void main() {
             isA<Exception>().having(
               (e) => rmControls(e.toString()),
               'message',
-              'Exception: Cannot publish: B (Exception: pana failed)',
+              'Exception: Cannot publish.',
             ),
           ),
         );
         expect(
           messages,
-          contains('✗ Cannot publish B: Exception: pana failed'),
+          contains('✗ Cannot publish\nException: pana failed'),
         );
       });
 

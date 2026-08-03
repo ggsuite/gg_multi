@@ -384,7 +384,12 @@ class DoPublishCommand extends DirCommand<void> {
         // is the actionable one, so do not bury it in a publish error.
         rethrow;
       } catch (e) {
-        throw Exception(cError('gg_multi do review failed: $e'));
+        // The reason was printed by the review itself — re-wrapping it would
+        // print it a second time behind a nested prefix.
+        ggLog(
+          [cError('✗ Review failed'), cDetail(rmControls('$e'))].join('\n'),
+        );
+        throw Exception(cDetail('Review failed.'));
       }
 
       try {
@@ -394,7 +399,10 @@ class DoPublishCommand extends DirCommand<void> {
           includeCanPublish: false,
         );
       } catch (e) {
-        throw Exception(cError('gg_multi can publish failed: $e'));
+        ggLog(
+          [cError('✗ Cannot publish'), cDetail(rmControls('$e'))].join('\n'),
+        );
+        throw Exception(cDetail('Cannot publish.'));
       }
     }
 
@@ -1254,12 +1262,14 @@ class DoPublishCommand extends DirCommand<void> {
     required Object error,
     required GgLog ggLog,
   }) {
-    final reason = error.toString().replaceAll('Exception: ', '').trim();
+    final reason = rmControls(
+      error.toString().replaceAll('Exception: ', ''),
+    ).trim();
     ggLog(
-      cError(
-        '✗ ${mergeOnly ? 'Merging' : 'Publishing'} $repoName failed'
-        '${reason.isEmpty ? '.' : ':\n$reason'}',
-      ),
+      [
+        cError('✗ ${mergeOnly ? 'Merging' : 'Publishing'} $repoName failed'),
+        if (reason.isNotEmpty) cDetail(reason),
+      ].join('\n'),
     );
     ggLog(
       cWarn(

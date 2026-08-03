@@ -270,7 +270,7 @@ class CanPublishCommand extends DirCommand<void> {
   }) async {
     final failure = await _canPublishFailure(repoDir: directory, ggLog: ggLog);
     if (failure != null) {
-      throw Exception(cError('Cannot publish: $failure'));
+      throw Exception(cDetail('Cannot publish.'));
     }
   }
 
@@ -296,7 +296,7 @@ class CanPublishCommand extends DirCommand<void> {
       for (final name in uncommitted) {
         ggLog(cDetail(' - $name'));
       }
-      throw Exception(cError('Uncommitted changes found'));
+      throw Exception(cDetail('Uncommitted changes found.'));
     }
   }
 
@@ -308,8 +308,8 @@ class CanPublishCommand extends DirCommand<void> {
     try {
       await _didCommitCommand.exec(directory: ticketDir, ggLog: ggLog);
     } catch (e) {
-      ggLog(cError('gg_multi did commit failed: $e'));
-      throw Exception(cError('gg_multi did commit failed'));
+      ggLog([cError('✗ Not committed'), cDetail(rmControls('$e'))].join('\n'));
+      throw Exception(cDetail('Not committed.'));
     }
   }
 
@@ -327,12 +327,12 @@ class CanPublishCommand extends DirCommand<void> {
         await _ggMergeMainIntoFeat.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
         ggLog(
-          cError(
-            'gg merge main into feat failed for $repoName in ticket '
-            '$ticketName: $e',
-          ),
+          [
+            cError('✗ Cannot merge main into $repoName'),
+            cDetail(rmControls('$e')),
+          ].join('\n'),
         );
-        throw Exception(cError('gg merge main into feat failed: $e'));
+        throw Exception(cDetail('Cannot merge main into feature branch.'));
       }
     }
   }
@@ -345,8 +345,8 @@ class CanPublishCommand extends DirCommand<void> {
     try {
       await _doPushCommand.exec(directory: ticketDir, ggLog: ggLog);
     } catch (e) {
-      ggLog(cError('gg_multi do push failed: $e'));
-      throw Exception(cError('gg_multi do push failed'));
+      ggLog([cError('✗ Failed to push'), cDetail(rmControls('$e'))].join('\n'));
+      throw Exception(cDetail('Failed to push.'));
     }
   }
 
@@ -366,8 +366,10 @@ class CanPublishCommand extends DirCommand<void> {
       await _ggCanPublish.exec(directory: repoDir, ggLog: ggLog);
       return null;
     } catch (e) {
-      ggLog(cError('✗ Cannot publish $repoName: $e'));
-      return '$repoName ($e)';
+      // The reason is printed once, right under the repo it belongs to.
+      // What travels on is only the name.
+      ggLog([cError('✗ Cannot publish'), cDetail(rmControls('$e'))].join('\n'));
+      return repoName;
     }
   }
 
@@ -388,7 +390,8 @@ class CanPublishCommand extends DirCommand<void> {
       }
     }
     if (failedRepos.isNotEmpty) {
-      throw Exception(cError('Cannot publish: ${failedRepos.join('; ')}'));
+      ggLog(cAction('\nPlease fix the issues above.\n'));
+      throw Exception(cDetail('Cannot publish.'));
     }
   }
 
@@ -405,14 +408,18 @@ class CanPublishCommand extends DirCommand<void> {
       try {
         await _ggNpmLoggedIn.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
-        ggLog(cError('✗ Not logged in to npm for $repoName: $e'));
-        failedRepos.add('$repoName ($e)');
+        ggLog(
+          [
+            cError('✗ Not logged in to npm'),
+            cDetail(rmControls('$e')),
+          ].join('\n'),
+        );
+        failedRepos.add(repoName);
       }
     }
     if (failedRepos.isNotEmpty) {
-      throw Exception(
-        cError('Not logged in to npm: ${failedRepos.join('; ')}'),
-      );
+      ggLog(cAction('\nPlease fix the issues above.\n'));
+      throw Exception(cDetail('Not logged in to npm.'));
     }
   }
 
@@ -430,20 +437,13 @@ class CanPublishCommand extends DirCommand<void> {
       try {
         await _ggCanMerge.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
-        ggLog(cError('✗ Cannot merge $repoName: $e'));
+        ggLog([cError('✗ Cannot merge'), cDetail(rmControls('$e'))].join('\n'));
         failedMergeRepos.add(repoName);
       }
     }
     if (failedMergeRepos.isNotEmpty) {
-      ggLog(cError('✗ Merge check failed in:'));
-      for (final repoName in failedMergeRepos) {
-        ggLog(cError(' - $repoName'));
-      }
-      throw Exception(
-        cError(
-          'Failed to check merge in: ${failedMergeRepos.join(', ')}',
-        ),
-      );
+      ggLog(cAction('\nPlease fix the issues above.\n'));
+      throw Exception(cDetail('Cannot merge.'));
     }
   }
 

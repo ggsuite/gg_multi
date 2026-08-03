@@ -277,7 +277,7 @@ void main() {
           isA<Exception>().having(
             (e) => rmControls(e.toString()),
             'message',
-            contains('stop after can publish'),
+            contains('Cannot publish.'),
           ),
         ),
       );
@@ -338,7 +338,7 @@ void main() {
           isA<Exception>().having(
             (e) => rmControls(e.toString()),
             'message',
-            contains('gg_multi do review failed: Exception: review failed'),
+            contains('Review failed.'),
           ),
         ),
       );
@@ -2222,7 +2222,7 @@ void main() {
           isA<Exception>().having(
             (e) => rmControls(e.toString()),
             'message',
-            contains('gg_multi can publish failed:'),
+            contains('Cannot publish.'),
           ),
         ),
       );
