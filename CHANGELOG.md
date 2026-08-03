@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 7.9.1 - 2026-08-03
 
 ### Changed
 
