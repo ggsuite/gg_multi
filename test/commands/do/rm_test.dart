@@ -226,7 +226,7 @@ void main() {
           runnerAt(alphaDir.path).run(['rm', 'b']),
           throwsA(
             isA<Exception>().having(
-              (e) => e.toString(),
+              (e) => rmC(e.toString()),
               'message',
               allOf(contains('Cannot remove b'), contains('sits between')),
             ),

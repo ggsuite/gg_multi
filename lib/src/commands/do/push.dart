@@ -68,7 +68,7 @@ class DoPushCommand extends DirCommand<void> {
     );
     if (ticketPath == null) {
       ggLog(red('This command must be executed inside a ticket folder.'));
-      throw Exception('Not inside a ticket folder');
+      throw Exception(cError('Not inside a ticket folder'));
     }
 
     final ticketDir = Directory(ticketPath);
@@ -82,7 +82,7 @@ class DoPushCommand extends DirCommand<void> {
     );
 
     if (nodes.isEmpty) {
-      ggLog(yellow('⚠️ No repos in this ticket'));
+      ggLog(cWarn('⚠️ No repos in this ticket'));
       return;
     }
 
@@ -92,9 +92,9 @@ class DoPushCommand extends DirCommand<void> {
 
     final GgLog taskLog = verbose ? ggLog : <String>[].add;
 
-    ggLog(yellow('Pushing the following repos:'));
+    ggLog(cDetail('Pushing the following repos:'));
     for (final name in repoNames) {
-      ggLog(yellow(' - $name'));
+      ggLog(cDetail(' - $name'));
     }
 
     // Perform the push wrapped in a status printer --------------------------
@@ -145,7 +145,7 @@ class DoPushCommand extends DirCommand<void> {
       for (final repoName in failedRepos) {
         ggLog(red(' - $repoName'));
       }
-      throw Exception('Failed to push in: ${failedRepos.join(', ')}');
+      throw Exception(cError('Failed to push in: ${failedRepos.join(', ')}'));
     }
   }
 

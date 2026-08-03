@@ -83,7 +83,7 @@ class DoCommitCommand extends DirCommand<void> {
     );
     if (ticketPath == null) {
       ggLog(red('This command must be executed inside a ticket folder.'));
-      throw Exception('Not inside a ticket folder');
+      throw Exception(cError('Not inside a ticket folder'));
     }
 
     final ticketDir = Directory(ticketPath);
@@ -95,7 +95,7 @@ class DoCommitCommand extends DirCommand<void> {
     );
 
     if (nodes.isEmpty) {
-      ggLog(yellow('⚠️ No repos in this ticket'));
+      ggLog(cWarn('⚠️ No repos in this ticket'));
       return;
     }
 
@@ -133,7 +133,7 @@ class DoCommitCommand extends DirCommand<void> {
       for (final repoName in failedRepos) {
         ggLog(red(' - $repoName'));
       }
-      throw Exception('Failed to commit in: ${failedRepos.join(', ')}');
+      throw Exception(cError('Failed to commit in: ${failedRepos.join(', ')}'));
     }
   }
 

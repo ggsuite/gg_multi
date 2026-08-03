@@ -1,3 +1,4 @@
+import 'package:gg_console_colors/gg_console_colors.dart';
 // @license
 // Copyright (c) 2019 - 2025 Dr. Gabriel Gatzsche. All Rights Reserved.
 //
@@ -41,7 +42,9 @@ class GitHandler {
     );
     if (result.exitCode != 0) {
       throw Exception(
-        'Failed to clone repo from $repoUrl: ${result.stderr}',
+        cError(
+          'Failed to clone repo from $repoUrl: ${result.stderr}',
+        ),
       );
     }
   }
@@ -74,7 +77,10 @@ class GitHandler {
     );
     if (result.exitCode != 0) {
       throw Exception(
-        'Failed to checkout branch $branchName in $repoPath: ${result.stderr}',
+        cError(
+          'Failed to checkout branch $branchName in $repoPath: '
+          '${result.stderr}',
+        ),
       );
     }
   }

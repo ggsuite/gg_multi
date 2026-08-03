@@ -301,7 +301,7 @@ class DoPublishCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      throw Exception('Not inside a ticket folder');
+      throw Exception(cError('Not inside a ticket folder'));
     }
 
     final ticketDir = Directory(ticketPath);
@@ -331,7 +331,7 @@ class DoPublishCommand extends DirCommand<void> {
     );
 
     if (subs.isEmpty) {
-      ggLog(yellow('⚠️ No repos in this ticket'));
+      ggLog(cWarn('⚠️ No repos in this ticket'));
       return;
     }
 
@@ -384,7 +384,7 @@ class DoPublishCommand extends DirCommand<void> {
         // is the actionable one, so do not bury it in a publish error.
         rethrow;
       } catch (e) {
-        throw Exception('gg_multi do review failed: $e');
+        throw Exception(cError('gg_multi do review failed: $e'));
       }
 
       try {
@@ -394,7 +394,7 @@ class DoPublishCommand extends DirCommand<void> {
           includeCanPublish: false,
         );
       } catch (e) {
-        throw Exception('gg_multi can publish failed: $e');
+        throw Exception(cError('gg_multi can publish failed: $e'));
       }
     }
 
@@ -430,7 +430,7 @@ class DoPublishCommand extends DirCommand<void> {
         ggLog('\n${cH1(repoName)} already $_done — skipping.');
       } else if (skipDecision?.skip ?? false) {
         ggLog(
-          '\n${cH1(repoName)} ${yellow('not $_done')} — '
+          '\n${cH1(repoName)} ${cDetail('not $_done')} — '
           '${skipDecision!.reason}.',
         );
         publishConfig = publishConfig.withRepoStatus(repoName, 'skipped');
@@ -533,7 +533,7 @@ class DoPublishCommand extends DirCommand<void> {
             }
           } catch (e) {
             ggLog(
-              yellow(
+              cWarn(
                 'Could not check registry visibility of $packageName ($e); '
                 'dependent repos will not wait for it. Publish is unaffected.',
               ),
@@ -541,7 +541,7 @@ class DoPublishCommand extends DirCommand<void> {
           }
         }
       } catch (e) {
-        throw Exception('Failed to get version of $repoName: $e');
+        throw Exception(cError('Failed to get version of $repoName: $e'));
       }
     }
 
@@ -549,7 +549,7 @@ class DoPublishCommand extends DirCommand<void> {
     // publish never looks like repos were forgotten.
     if (skippedRepos.isNotEmpty) {
       ggLog(
-        yellow(
+        cWarn(
           'Not $_done because unchanged: ${skippedRepos.join(', ')}',
         ),
       );
@@ -627,7 +627,7 @@ class DoPublishCommand extends DirCommand<void> {
           );
         } else {
           taskLog(
-            yellow('Kept remote branch $ticketName for $repoName.'),
+            cDetail('Kept remote branch $ticketName for $repoName.'),
           );
         }
 
@@ -675,7 +675,7 @@ class DoPublishCommand extends DirCommand<void> {
 
     if (!allMoved) {
       ggLog(
-        yellow(
+        cWarn(
           'Ticket $ticketName was not deleted because not everything could '
           'be moved to the trash.',
         ),
@@ -715,16 +715,20 @@ class DoPublishCommand extends DirCommand<void> {
   }) async {
     if (continueRun && (configArg != null || restart)) {
       throw Exception(
-        '--continue cannot be combined with --config or --restart. '
-        'Resume with "--continue" alone, or start a fresh run without it.',
+        cError(
+          '--continue cannot be combined with --config or --restart. '
+          'Resume with "--continue" alone, or start a fresh run without it.',
+        ),
       );
     }
 
     if (continueRun) {
       if (!runtimeFile.existsSync()) {
         throw Exception(
-          'Nothing to continue: ${runtimeFile.path} does not exist. Start a '
-          'normal "$_command" first.',
+          cError(
+            'Nothing to continue: ${runtimeFile.path} does not exist. Start a '
+            'normal "$_command" first.',
+          ),
         );
       }
       return (
@@ -765,9 +769,11 @@ class DoPublishCommand extends DirCommand<void> {
       // unfinished run — do not silently reuse it as plain config.
       if (config.repos.values.any((r) => r.status != null)) {
         throw Exception(
-          'An unfinished publish left progress in ${runtimeFile.path}. '
-          'Resume it with "$_command --continue", or discard it with '
-          '"$_command --restart".',
+          cError(
+            'An unfinished publish left progress in ${runtimeFile.path}. '
+            'Resume it with "$_command --continue", or discard it with '
+            '"$_command --restart".',
+          ),
         );
       }
       return (config: config, sourcePath: runtimeFile.path);
@@ -807,9 +813,11 @@ class DoPublishCommand extends DirCommand<void> {
     );
     if (existing.repos.values.any((r) => r.status != null)) {
       throw Exception(
-        'An unfinished publish left progress in ${runtimeFile.path}. '
-        'Resume it with "$_command --continue", or discard it with '
-        '"$_command --restart".',
+        cError(
+          'An unfinished publish left progress in ${runtimeFile.path}. '
+          'Resume it with "$_command --continue", or discard it with '
+          '"$_command --restart".',
+        ),
       );
     }
   }
@@ -964,13 +972,13 @@ class DoPublishCommand extends DirCommand<void> {
       await _unlocalizeRefs.get(directory: repoDir, ggLog: taskLog);
       taskLog(green('$repoName: unlocalized refs.'));
     } catch (e) {
-      throw Exception('Failed to unlocalize refs for $repoName: $e');
+      throw Exception(cError('Failed to unlocalize refs for $repoName: $e'));
     }
 
     try {
       await _restorePublishTo.exec(directory: repoDir, ggLog: taskLog);
     } catch (e) {
-      throw Exception('Failed to restore publish_to for $repoName: $e');
+      throw Exception(cError('Failed to restore publish_to for $repoName: $e'));
     }
 
     // Apply all known reference versions to this repo if it depends on them
@@ -994,8 +1002,10 @@ class DoPublishCommand extends DirCommand<void> {
           );
         }
       } catch (e) {
-        throw Exception('Failed to update version of $refName '
-            'in $repoName: $e');
+        throw Exception(
+          cError('Failed to update version of $refName '
+              'in $repoName: $e'),
+        );
       }
     }
 
@@ -1052,7 +1062,7 @@ class DoPublishCommand extends DirCommand<void> {
         );
       } catch (e) {
         ggLog(
-          yellow(
+          cWarn(
             'Could not point the references of $repoName at the published '
             'versions ($e). Its ${gg.NoPubspecOverrides.fileName} may still '
             'refer to the deleted feature branch.',
@@ -1080,13 +1090,15 @@ class DoPublishCommand extends DirCommand<void> {
     }
 
     throw Exception(
-      [
-        'These projects depend on other local projects: '
-            '${localized.join(', ')}.',
-        'Just merging is not possible.',
-        '  - Either run ${blue('gg do publish')} ',
-        '  - Or merge anyway adding ${blue('--force')} option.',
-      ].join('\n'),
+      cError(
+        [
+          'These projects depend on other local projects: '
+              '${localized.join(', ')}.',
+          'Just merging is not possible.',
+          '  - Either run ${cCmd('gg do publish')} ',
+          '  - Or merge anyway adding ${cCmd('--force')} option.',
+        ].join('\n'),
+      ),
     );
   }
 
@@ -1223,9 +1235,11 @@ class DoPublishCommand extends DirCommand<void> {
       );
     } catch (e) {
       throw Exception(
-        'Failed to save the state of $repoName before publishing — $repoName '
-        'was not changed (repositories published earlier in this run stay '
-        'published): $e',
+        cError(
+          'Failed to save the state of $repoName before publishing — $repoName '
+          'was not changed (repositories published earlier in this run stay '
+          'published): $e',
+        ),
       );
     }
   }
@@ -1247,9 +1261,9 @@ class DoPublishCommand extends DirCommand<void> {
       ),
     );
     ggLog(
-      yellow(
+      cWarn(
         'The $_action is marked as »failed«. Fix the problem and resume it '
-        'with ${blue('$_command --continue')}.',
+        'with ${cCmd('$_command --continue')}.',
       ),
     );
   }
@@ -1397,7 +1411,7 @@ class DoPublishCommand extends DirCommand<void> {
         reason = 'the feature branch was already pushed to origin';
       }
       ggLog(
-        yellow(
+        cWarn(
           '$repoName: back on ${s.branch}, but all commits were kept '
           'because $reason. Re-running "$_command" resumes the $_action.',
         ),
@@ -1449,7 +1463,7 @@ class DoPublishCommand extends DirCommand<void> {
 
     taskLog(green('Restored the state before the publish in $repoName'));
     ggLog(
-      yellow(
+      cWarn(
         '$repoName: pushes to origin are not rolled back; the next run '
         'integrates them.',
       ),
@@ -1575,7 +1589,9 @@ class DoPublishCommand extends DirCommand<void> {
         ggLog(green('Executed $cmd in $repoName.'));
       } else {
         throw Exception(
-          'Failed to execute $cmd in $repoName: ${result.stderr}',
+          cError(
+            'Failed to execute $cmd in $repoName: ${result.stderr}',
+          ),
         );
       }
     }
@@ -1611,7 +1627,7 @@ class DoPublishCommand extends DirCommand<void> {
       final stderr = '${result.stderr}';
       if (stderr.contains('remote ref does not exist')) {
         ggLog(
-          yellow(
+          cWarn(
             'Remote branch $branchName for $repoName is already deleted.',
           ),
         );
@@ -1619,8 +1635,10 @@ class DoPublishCommand extends DirCommand<void> {
       }
 
       throw Exception(
-        'Failed to delete remote branch $branchName for $repoName: '
-        '$stderr',
+        cError(
+          'Failed to delete remote branch $branchName for $repoName: '
+          '$stderr',
+        ),
       );
     }
 

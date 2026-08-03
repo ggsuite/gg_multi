@@ -234,8 +234,10 @@ class RemoveCommand extends Command<void> {
     );
 
     throw Exception(
-      'Cannot remove $repoName: it sits between '
-      '${dependents.join(', ')} and ${dependencies.join(', ')}.',
+      cError(
+        'Cannot remove $repoName: it sits between '
+        '${dependents.join(', ')} and ${dependencies.join(', ')}.',
+      ),
     );
   }
 

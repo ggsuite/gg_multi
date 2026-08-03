@@ -104,7 +104,7 @@ void main() {
         () async => await runner.run(['review', '--input', tempDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),

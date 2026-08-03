@@ -119,7 +119,7 @@ Future<void> installGitattributes({
   );
   if (ticketPath == null) {
     ggLog(red('This command must be executed inside a ticket folder.'));
-    throw Exception('Not inside a ticket folder');
+    throw Exception(cError('Not inside a ticket folder'));
   }
 
   final ticketDir = Directory(ticketPath);
@@ -132,7 +132,7 @@ Future<void> installGitattributes({
   );
 
   if (nodes.isEmpty) {
-    ggLog(yellow('⚠️ No repos in this ticket'));
+    ggLog(cWarn('⚠️ No repos in this ticket'));
     return;
   }
 
@@ -177,7 +177,7 @@ Future<void> installGitattributes({
     final gitDir = Directory(path.join(repoDir.path, '.git'));
     if (!gitDir.existsSync()) {
       ggLog(
-        yellow(
+        cWarn(
           'Skipping merge.ours driver config for $repoName because no '
           '.git directory was found.',
         ),
@@ -200,7 +200,9 @@ Future<void> installGitattributes({
         ),
       );
       throw Exception(
-        'git config merge.ours.driver true failed in $repoName',
+        cError(
+          'git config merge.ours.driver true failed in $repoName',
+        ),
       );
     }
 

@@ -37,7 +37,7 @@ List<String> migrateToOrgFolders({
   }
 
   ggLog(
-    yellow('Moving repositories into their organization folders ...'),
+    cDetail('Moving repositories into their organization folders ...'),
   );
 
   final moved = <String>[];

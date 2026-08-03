@@ -326,7 +326,7 @@ void main() {
         runner.run(['review', '--input', tempDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -595,7 +595,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains(
               'Failed to merge main in: A',
@@ -698,7 +698,7 @@ void main() {
           ]),
           throwsA(
             isA<MergeConflictException>().having(
-              (e) => e.toString(),
+              (e) => rmC(e.toString()),
               'message',
               contains('gg do commit -m"Merge main" --no-log'),
             ),
@@ -797,7 +797,7 @@ void main() {
           ]),
           throwsA(
             isA<Exception>().having(
-              (e) => e.toString(),
+              (e) => rmC(e.toString()),
               'message',
               contains('gg_multi can review failed'),
             ),
@@ -1626,7 +1626,7 @@ void main() {
           ]),
           throwsA(
             isA<Exception>().having(
-              (e) => e.toString(),
+              (e) => rmC(e.toString()),
               'message',
               contains('ERR_PNPM_EXOTIC_SUBDEP blocked'),
             ),
@@ -2242,7 +2242,7 @@ void main() {
           ).run(['review', '--verbose', '--input', ticketDir.path]),
           throwsA(
             isA<Exception>().having(
-              (e) => e.toString(),
+              (e) => rmC(e.toString()),
               'message',
               contains('git push origin --delete TICKDR'),
             ),
@@ -2381,7 +2381,7 @@ void main() {
           ]),
           throwsA(
             isA<Exception>().having(
-              (e) => e.toString(),
+              (e) => rmC(e.toString()),
               'message',
               contains('could not rebase onto origin/TICKDR'),
             ),
@@ -2703,7 +2703,7 @@ void main() {
           ]),
           throwsA(
             isA<Exception>().having(
-              (e) => e.toString(),
+              (e) => rmC(e.toString()),
               'message',
               contains('merged state no longer passes "gg can commit"'),
             ),
@@ -3053,7 +3053,7 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('Failed to merge main in: B'),
           ),
@@ -3301,7 +3301,7 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('Failed to review in: B'),
           ),
@@ -3386,7 +3386,7 @@ void main() {
         // The review failure stays the primary error.
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('localize refs to git failed'),
           ),
@@ -3426,7 +3426,7 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('Failed to save the state of A before the review'),
           ),
@@ -3580,7 +3580,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -3744,7 +3744,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains(
               'Failed to cancel review in: A',
@@ -3831,7 +3831,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains(
               'Failed to cancel review in: A',

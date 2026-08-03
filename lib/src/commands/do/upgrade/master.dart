@@ -98,9 +98,9 @@ class UpdateMasterCommand extends Command<void> {
     final organizations = OrganizationUtils.readOrganizations(masterPath);
     if (organizations.isEmpty) {
       ggLog(
-        yellow('No organizations registered. Run ') +
-            blue('gg do add <org-url>') +
-            yellow(' first.'),
+        cAction('No organizations registered. Run ') +
+            cCmd('gg do add <org-url>') +
+            cAction(' first.'),
       );
       return;
     }
@@ -181,7 +181,7 @@ class UpdateMasterCommand extends Command<void> {
           project: org.projectName,
         );
       default:
-        throw Exception('unsupported platform "$platform"');
+        throw Exception(cError('unsupported platform "$platform"'));
     }
   }
 
@@ -270,7 +270,7 @@ class UpdateMasterCommand extends Command<void> {
       ).replaceAll(r'\', '/');
 
       ggLog(
-        yellow('${dryRun ? 'Would move' : 'Moving'} $label to the trash'),
+        cDetail('${dryRun ? 'Would move' : 'Moving'} $label to the trash'),
       );
       removed.add(label);
       if (dryRun) {

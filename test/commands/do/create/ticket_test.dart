@@ -95,15 +95,16 @@ void main() {
         messages,
         [
           '✓ Created ticket CDM-128',
-          '  → Change to ticket: cd tickets/CDM-128',
-          '  → Add repos: gg do add repo1 repo2 ...',
-          '  → Open vscode: code tickets/CDM-128/CDM-128.code-workspace',
+          '  Please run:',
+          '    cd tickets/CDM-128',
+          '    gg do add <repo1> <repo2> ...',
+          '    code CDM-128.code-workspace',
         ],
       );
       expect(
         messages,
         contains(
-          'cd $ticketRelPath',
+          '    cd $ticketRelPath',
         ),
       );
     });
@@ -161,9 +162,10 @@ void main() {
 
       expect(messages, [
         '✓ Created ticket INSIDE-1',
-        '  → Change to ticket: cd INSIDE-1',
-        '  → Add repos: gg do add repo1 repo2 ...',
-        '  → Open vscode: code INSIDE-1/INSIDE-1.code-workspace',
+        '  Please run:',
+        '    cd INSIDE-1',
+        '    gg do add <repo1> <repo2> ...',
+        '    code INSIDE-1.code-workspace',
       ]);
     });
 

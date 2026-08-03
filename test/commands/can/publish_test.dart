@@ -79,7 +79,7 @@ void main() {
         () async => await runner.run(['publish', '--input', tempDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -298,14 +298,8 @@ void main() {
           ggLog: any(named: 'ggLog'),
         ),
       ).called(2);
-      expect(
-        messages.any((m) => m.contains('A:')),
-        isTrue,
-      );
-      expect(
-        messages.any((m) => m.contains('B:')),
-        isTrue,
-      );
+      expect(messages.any((m) => m.contains('A')), isTrue);
+      expect(messages.any((m) => m.contains('B')), isTrue);
     });
 
     test('fails on can merge check for specific repos', () async {
@@ -1141,7 +1135,7 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('Not logged in to npm: B ('),
           ),
@@ -1172,7 +1166,7 @@ void main() {
             ggLog: any(named: 'ggLog'),
           ),
         ).called(1);
-        expect(messages.join('\n'), '\nA:');
+        expect(messages.join('\n'), '\nA\n');
       });
 
       test('throws the ticket wide message for one repo', () async {
@@ -1187,7 +1181,7 @@ void main() {
           () => command().checkRepo(directory: repoDir('B'), ggLog: ggLog),
           throwsA(
             isA<Exception>().having(
-              (e) => e.toString(),
+              (e) => rmC(e.toString()),
               'message',
               'Exception: Cannot publish: B (Exception: pana failed)',
             ),

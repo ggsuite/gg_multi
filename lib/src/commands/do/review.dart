@@ -192,7 +192,7 @@ class DoReviewCommand extends DirCommand<void> {
     );
     if (ticketPath == null) {
       ggLog(red('This command must be executed inside a ticket folder.'));
-      throw Exception('Not inside a ticket folder');
+      throw Exception(cError('Not inside a ticket folder'));
     }
 
     final ticketDir = Directory(ticketPath);
@@ -205,7 +205,7 @@ class DoReviewCommand extends DirCommand<void> {
     );
 
     if (subs.isEmpty) {
-      ggLog(yellow('⚠️ No repos in this ticket'));
+      ggLog(cWarn('⚠️ No repos in this ticket'));
       return;
     }
 
@@ -352,13 +352,13 @@ class DoReviewCommand extends DirCommand<void> {
     if (urls.isNotEmpty) {
       ggLog(green('Pull requests:'));
       for (final entry in urls.entries) {
-        ggLog(' - ${entry.key}: ${blue(entry.value)}');
+        ggLog(' - ${entry.key}: ${cPath(entry.value)}');
       }
     }
 
     for (final entry in failures.entries) {
       ggLog(
-        yellow(
+        cWarn(
           'No pull request for ${entry.key}: ${entry.value}. '
           'Create it manually, or run "gg do review" again.',
         ),
@@ -433,7 +433,7 @@ class DoReviewCommand extends DirCommand<void> {
             );
           }
 
-          throw Exception(errMsg);
+          throw Exception(cError(errMsg));
         }
 
         ggLog(
@@ -450,7 +450,7 @@ class DoReviewCommand extends DirCommand<void> {
             '$ticketName: $e',
           ),
         );
-        throw Exception('Failed to merge main in: $repoName: $e');
+        throw Exception(cError('Failed to merge main in: $repoName: $e'));
       }
 
       // If the merge actually moved HEAD (i.e. it was not a no-op), re-verify
@@ -476,11 +476,13 @@ class DoReviewCommand extends DirCommand<void> {
             ),
           );
           throw Exception(
-            'Failed to merge main in: $repoName (merged state no longer '
-            'passes "gg can commit" — the merge likely corrupted a file. '
-            'The repo is rolled back to before the review; to fix, merge '
-            'origin/main manually ("git merge origin/main"), resolve the '
-            'problem, then re-run): $e',
+            cError(
+              'Failed to merge main in: $repoName (merged state no longer '
+              'passes "gg can commit" — the merge likely corrupted a file. '
+              'The repo is rolled back to before the review; to fix, merge '
+              'origin/main manually ("git merge origin/main"), resolve the '
+              'problem, then re-run): $e',
+            ),
           );
         }
       }
@@ -507,13 +509,13 @@ class DoReviewCommand extends DirCommand<void> {
     required List<String> conflicts,
     required GgLog errorLog,
   }) {
-    errorLog(yellow('Please resolve merge conflicts:'));
+    errorLog(cAction('Please resolve merge conflicts:'));
     for (final file in conflicts) {
-      errorLog(' - ${blue('$repoName/$file')}');
+      errorLog(' - ${cPath('$repoName/$file')}');
     }
     errorLog(
-      yellow('After merging execute: ') +
-          blue('gg do commit -m"Merge main" --no-log'),
+      cAction('After merging execute: ') +
+          cCmd('gg do commit -m"Merge main" --no-log'),
     );
   }
 
@@ -576,8 +578,10 @@ class DoReviewCommand extends DirCommand<void> {
         ggLog(green('Saved state of $repoName'));
       } catch (e) {
         throw Exception(
-          'Failed to save the state of $repoName before the review — '
-          'nothing was changed: $e',
+          cError(
+            'Failed to save the state of $repoName before the review — '
+            'nothing was changed: $e',
+          ),
         );
       }
     }
@@ -628,7 +632,7 @@ class DoReviewCommand extends DirCommand<void> {
     }
     if (pushedRepos.isNotEmpty) {
       errorLog(
-        yellow(
+        cWarn(
           'Already pushed and not rolled back: ${pushedRepos.join(', ')}. '
           'The next "gg do review" integrates these pushes automatically.',
         ),
@@ -712,8 +716,10 @@ class DoReviewCommand extends DirCommand<void> {
     }
     if (failures.isNotEmpty) {
       throw Exception(
-        'Could not restore the state before the review in:\n'
-        '${failures.map((f) => ' - $f').join('\n')}',
+        cError(
+          'Could not restore the state before the review in:\n'
+          '${failures.map((f) => ' - $f').join('\n')}',
+        ),
       );
     }
   }
@@ -728,7 +734,7 @@ class DoReviewCommand extends DirCommand<void> {
       await _canReviewCommand.exec(directory: ticketDir, ggLog: ggLog);
     } catch (e) {
       errorLog(red('gg_multi can review failed: $e'));
-      throw Exception('gg_multi can review failed: $e');
+      throw Exception(cError('gg_multi can review failed: $e'));
     }
   }
 
@@ -764,8 +770,10 @@ class DoReviewCommand extends DirCommand<void> {
           ),
         );
         throw Exception(
-          'Failed to review in: $repoName '
-          '(localize refs to git failed: $e)',
+          cError(
+            'Failed to review in: $repoName '
+            '(localize refs to git failed: $e)',
+          ),
         );
       }
 
@@ -792,7 +800,9 @@ class DoReviewCommand extends DirCommand<void> {
         ggLog(green('Committed $repoName'));
       } catch (e) {
         errorLog(red('Failed to commit $repoName: $e'));
-        throw Exception('Failed to review in: $repoName (commit failed: $e)');
+        throw Exception(
+          cError('Failed to review in: $repoName (commit failed: $e)'),
+        );
       }
 
       // Integrate remote feature-branch commits before pushing --------------
@@ -811,7 +821,9 @@ class DoReviewCommand extends DirCommand<void> {
         ggLog(green('Pushed $repoName'));
       } catch (e) {
         errorLog(red('Failed to push $repoName: $e'));
-        throw Exception('Failed to review in: $repoName (push failed: $e)');
+        throw Exception(
+          cError('Failed to review in: $repoName (push failed: $e)'),
+        );
       }
     }
   }
@@ -905,9 +917,11 @@ class DoReviewCommand extends DirCommand<void> {
         ),
       );
       throw Exception(
-        'Failed to review in: $repoName (could not rebase onto '
-        'origin/$branch before pushing — resolve the divergence manually, '
-        'e.g. "git pull --rebase origin $branch", then re-run): $stderrStr',
+        cError(
+          'Failed to review in: $repoName (could not rebase onto '
+          'origin/$branch before pushing — resolve the divergence manually, '
+          'e.g. "git pull --rebase origin $branch", then re-run): $stderrStr',
+        ),
       );
     }
     ggLog(green('Integrated origin/$branch into $repoName before push'));
@@ -1026,14 +1040,16 @@ class DoReviewCommand extends DirCommand<void> {
         ),
       );
       throw Exception(
-        'Failed to review in: $repoName (origin/$branch is a leftover of an '
-        'already merged ticket, but replacing it failed — delete it manually '
-        'with "git push origin --delete $branch", then re-run): $stderrStr',
+        cError(
+          'Failed to review in: $repoName (origin/$branch is a leftover of an '
+          'already merged ticket, but replacing it failed — delete it manually '
+          'with "git push origin --delete $branch", then re-run): $stderrStr',
+        ),
       );
     }
 
     ggLog(
-      yellow(
+      cWarn(
         'origin/$branch of $repoName was a leftover of an already merged '
         'ticket — replaced it with the current branch instead of rebasing '
         'onto it.',
@@ -1070,7 +1086,7 @@ class DoReviewCommand extends DirCommand<void> {
     );
     if (ticketPath == null) {
       ggLog(red('This command must be executed inside a ticket folder.'));
-      throw Exception('Not inside a ticket folder');
+      throw Exception(cError('Not inside a ticket folder'));
     }
 
     final ticketDir = Directory(ticketPath);
@@ -1082,7 +1098,7 @@ class DoReviewCommand extends DirCommand<void> {
     );
 
     if (nodes.isEmpty) {
-      ggLog(yellow('⚠️ No repos in this ticket'));
+      ggLog(cWarn('⚠️ No repos in this ticket'));
       return;
     }
 
@@ -1119,7 +1135,7 @@ class DoReviewCommand extends DirCommand<void> {
             'Failed to localize refs to local paths for $repoName: $e',
           ),
         );
-        throw Exception('Failed to cancel review in: $repoName');
+        throw Exception(cError('Failed to cancel review in: $repoName'));
       }
 
       // node_modules will be stale after rewriting package.json — refresh.
@@ -1143,7 +1159,7 @@ class DoReviewCommand extends DirCommand<void> {
         ggLog(green('Committed $repoName'));
       } catch (e) {
         ggLog(red('Failed to commit $repoName: $e'));
-        throw Exception('Failed to cancel review in: $repoName');
+        throw Exception(cError('Failed to cancel review in: $repoName'));
       }
     }
 
@@ -1185,7 +1201,7 @@ class DoReviewCommand extends DirCommand<void> {
           'Failed to execute $cmd in $repoName: ${result.stderr}',
         ),
       );
-      throw Exception('Failed to cancel review in: $repoName');
+      throw Exception(cError('Failed to cancel review in: $repoName'));
     }
   }
 
@@ -1258,7 +1274,9 @@ class DoReviewCommand extends DirCommand<void> {
           ),
         );
         throw Exception(
-          'Failed to review in: $repoName ($cmd failed: $detail)',
+          cError(
+            'Failed to review in: $repoName ($cmd failed: $detail)',
+          ),
         );
       }
     }

@@ -159,7 +159,7 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -275,7 +275,7 @@ void main() {
         () => runner.run(['publish', '--input', ticketDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('stop after can publish'),
           ),
@@ -336,7 +336,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('gg_multi do review failed: Exception: review failed'),
           ),
@@ -388,7 +388,7 @@ void main() {
         ]),
         throwsA(
           isA<MergeConflictException>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             allOf(
               contains('gg do commit -m"Merge main" --no-log'),
@@ -2220,7 +2220,7 @@ void main() {
         () async => await runner.run(['publish', '--input', ticketDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('gg_multi can publish failed:'),
           ),
@@ -2389,7 +2389,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('Exception: Publish failed for B'),
           ),
@@ -2597,7 +2597,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('Failed to unlocalize refs for B: '
                 'Exception: Unlocalize failed for B'),
@@ -2747,7 +2747,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('Failed to get version of A: Exception: '
                 'version read failed'),
@@ -3096,7 +3096,7 @@ void main() {
           ]),
           throwsA(
             isA<Exception>().having(
-              (e) => e.toString(),
+              (e) => rmC(e.toString()),
               'message',
               contains('Failed to update version of A in B: '
                   'Exception: update failed'),
@@ -3837,7 +3837,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('Failed to restore publish_to for A'),
           ),
@@ -3928,7 +3928,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('Failed to execute dart pub upgrade in A'),
           ),
@@ -4708,7 +4708,7 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('publish failed'),
           ),
@@ -4768,7 +4768,7 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('Cannot publish: A'),
           ),
@@ -4972,7 +4972,7 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('Failed to save the state of A before publishing'),
           ),
@@ -5040,7 +5040,7 @@ void main() {
         // The publish failure stays the primary error.
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('publish failed'),
           ),
@@ -5580,7 +5580,7 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('Nothing to continue'),
           ),
@@ -5616,7 +5616,7 @@ void main() {
       );
 
       // A was already published — it is skipped, only B is published.
-      expect(messages, contains('\nA: already published — skipping.'));
+      expect(messages, contains('\nA already published — skipping.'));
       verify(
         () => mockGgDoPublish.exec(
           directory: any(named: 'directory'),
@@ -5744,7 +5744,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('cannot be combined'),
           ),
@@ -5763,7 +5763,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('cannot be combined'),
           ),
@@ -5787,7 +5787,7 @@ void main() {
         () => buildRunner().run(['publish', '--input', ticketDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('unfinished publish left progress'),
           ),
@@ -6035,7 +6035,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('unfinished publish left progress'),
           ),
@@ -6363,7 +6363,7 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            'A: not published — no dependency needs a constraint update',
+            'A not published — no dependency needs a constraint update',
           ),
         ),
         isTrue,
@@ -6585,7 +6585,7 @@ void main() {
 
       expect(
         messages,
-        contains('\nB: already published — skipping.'),
+        contains('\nB already published — skipping.'),
       );
     });
   });
@@ -6858,7 +6858,7 @@ void main() {
         () => buildRunner().run(['publish', '--input', ticketDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             allOf(
               contains('These projects depend on other local projects: B'),
@@ -7259,7 +7259,7 @@ void main() {
         () => buildRunner().run(['publish', '--input', ticketDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('Cannot publish: B'),
           ),

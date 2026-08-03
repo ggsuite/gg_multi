@@ -176,7 +176,7 @@ void main() {
           ensureInRegistry(answers: ['q']).ensure(directory: d, ggLog: ggLog),
           throwsA(
             isA<Exception>().having(
-              (e) => e.toString(),
+              (e) => rmC(e.toString()),
               'message',
               contains(
                 'Publishing aborted: »test_pkg« has no version on pub.dev.',
@@ -196,7 +196,7 @@ void main() {
           ),
           throwsA(
             isA<Exception>().having(
-              (e) => e.toString(),
+              (e) => rmC(e.toString()),
               'message',
               contains('Cannot show the first-publish prompt'),
             ),

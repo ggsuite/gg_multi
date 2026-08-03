@@ -65,7 +65,7 @@ void main() {
         () async => await runner.run(['push', '--input', tempDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -140,9 +140,11 @@ Pushing the following repos:
  - A
  - B
 
-A:
+A
 
-B:
+
+B
+
 ✓ All repos pushed''',
       );
     });

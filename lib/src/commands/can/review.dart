@@ -115,7 +115,7 @@ class CanReviewCommand extends DirCommand<void> {
     );
     if (ticketPath == null) {
       ggLog(red('This command must be executed inside a ticket folder.'));
-      throw Exception('Not inside a ticket folder');
+      throw Exception(cError('Not inside a ticket folder'));
     }
 
     final ticketDir = Directory(ticketPath);
@@ -126,7 +126,7 @@ class CanReviewCommand extends DirCommand<void> {
     );
 
     if (subs.isEmpty) {
-      ggLog(yellow('⚠️ No repos in this ticket'));
+      ggLog(cWarn('⚠️ No repos in this ticket'));
       return;
     }
 
@@ -219,12 +219,14 @@ class CanReviewCommand extends DirCommand<void> {
       notOnFeatureBranch.add(repoName);
     }
     if (notOnFeatureBranch.isNotEmpty) {
-      ggLog(yellow('Not on a feature branch:'));
+      ggLog(cWarn('Not on a feature branch:'));
       for (final name in notOnFeatureBranch) {
-        ggLog(yellow(' - $name'));
+        ggLog(cDetail(' - $name'));
       }
       throw Exception(
-        'Not on a feature branch: ${notOnFeatureBranch.join(', ')}',
+        cError(
+          'Not on a feature branch: ${notOnFeatureBranch.join(', ')}',
+        ),
       );
     }
   }
@@ -278,12 +280,14 @@ class CanReviewCommand extends DirCommand<void> {
       }
     }
     if (uncommitted.isNotEmpty) {
-      ggLog(yellow('Uncommitted changes in:'));
+      ggLog(cWarn('Uncommitted changes in:'));
       for (final name in uncommitted) {
-        ggLog(yellow(' - $name'));
+        ggLog(cDetail(' - $name'));
       }
       throw Exception(
-        'Uncommitted changes in: ${uncommitted.join(', ')}',
+        cError(
+          'Uncommitted changes in: ${uncommitted.join(', ')}',
+        ),
       );
     }
   }

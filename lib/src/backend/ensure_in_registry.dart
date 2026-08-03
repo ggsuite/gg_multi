@@ -88,23 +88,25 @@ class EnsureInRegistry {
     final name = await _packageName(directory);
 
     ggLog(
-      yellow(
+      cWarn(
         '»$name« has no version published on $registry yet.\n'
         'Please publish the first version manually directly out of the '
         'current working folder:',
       ),
     );
-    ggLog(blue('  cd ${directory.absolute.path}'));
-    ggLog(blue('  ${await _publishCommand(directory, type)}'));
+    ggLog(cCmd('  cd ${directory.absolute.path}'));
+    ggLog(cCmd('  ${await _publishCommand(directory, type)}'));
 
     while (true) {
       ggLog(
-        yellow('Press ⏎ once the package is published, »q« + ⏎ to abort.'),
+        cAction('Press ⏎ once the package is published, »q« + ⏎ to abort.'),
       );
       final answer = (_readLineFromStdIn() ?? '').trim().toLowerCase();
       if (answer == 'q') {
         throw Exception(
-          'Publishing aborted: »$name« has no version on $registry.',
+          cError(
+            'Publishing aborted: »$name« has no version on $registry.',
+          ),
         );
       }
 
@@ -113,12 +115,12 @@ class EnsureInRegistry {
         ggLog: ggLog,
       );
       if (inRegistryNow == true) {
-        ggLog(yellow('»$name« is now available on $registry. Continuing.'));
+        ggLog(cDetail('»$name« is now available on $registry. Continuing.'));
         return;
       }
 
       ggLog(
-        yellow(
+        cWarn(
           '»$name« is not yet visible on $registry. A fresh publish can '
           'take a few minutes to appear. Please try again.',
         ),

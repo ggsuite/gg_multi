@@ -71,7 +71,7 @@ void main() {
         () async => callInstall(tempDir),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -262,7 +262,7 @@ void main() {
         () async => callInstall(ticketDir),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('git config merge.ours.driver true failed in A'),
           ),

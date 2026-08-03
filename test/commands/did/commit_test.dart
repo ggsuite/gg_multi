@@ -59,7 +59,7 @@ void main() {
         () async => await runner.run(['commit', '--input', tempDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -107,9 +107,11 @@ void main() {
       await runner.run(['commit', '--input', ticketDir.path]);
       expect(messages.join('\n'), '''
 
-A:
+A
 
-B:
+
+B
+
 ✓ All repos committed''');
     });
 

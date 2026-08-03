@@ -46,7 +46,7 @@ class InitWorkspaceCommand extends Command<void> {
     final wsDir = Directory(wsPath);
 
     if (wsDir.existsSync()) {
-      ggLog(yellow('Master workspace already exists at: ${_rel(wsPath)}'));
+      ggLog(cWarn('Master workspace already exists at: ${_rel(wsPath)}'));
       return;
     }
 

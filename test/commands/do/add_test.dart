@@ -1151,7 +1151,7 @@ version: 1.0.0
         () async => runner.run(['add', '--verbose', repoName]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains(
               'Repository $repoName in the master workspace is not clean',
@@ -3594,7 +3594,7 @@ version: 1.0.0
         );
         expect(
           logMessages,
-          contains('Skipped localizing references (--no-localize).'),
+          contains('Skip localizing references (--no-localize).'),
         );
       });
 

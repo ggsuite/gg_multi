@@ -228,7 +228,7 @@ class AddCommand extends Command<dynamic> {
     }
 
     if (requestedRepoNames.isEmpty) {
-      ggLog(yellow('No repositories to add.'));
+      ggLog(cWarn('No repositories to add.'));
       return;
     }
 
@@ -390,7 +390,7 @@ class AddCommand extends Command<dynamic> {
       // A typo in the organization name would otherwise silently add nothing.
       if (namesOfOrg.isEmpty) {
         ggLog(
-          yellow('No repositories found for organization $org '
+          cWarn('No repositories found for organization $org '
               'in the master workspace.'),
         );
       }
@@ -731,7 +731,7 @@ class AddCommand extends Command<dynamic> {
       processRunner: processRunner,
     );
 
-    ggLog(blue('Added repository $repoName to ticket workspace.'));
+    ggLog(cDetail('Added repository $repoName to ticket workspace.'));
   }
 
   /// Prepares the master repository state before copying it into a ticket.
@@ -773,7 +773,7 @@ class AddCommand extends Command<dynamic> {
     if (stalePublishProgress.existsSync()) {
       stalePublishProgress.deleteSync();
       ggLog(
-        yellow(
+        cWarn(
           'Removed stale publish progress '
           '(.gg/gg-publish.json) in $repoName.',
         ),
@@ -832,14 +832,16 @@ class AddCommand extends Command<dynamic> {
       ggLog(red('  $change'));
     }
     ggLog(
-      yellow(
+      cAction(
         'Commit, stash or revert them before running "gg do add" — '
         'otherwise they would be lost.',
       ),
     );
 
     throw Exception(
-      'Repository $repoName in the master workspace is not clean',
+      cError(
+        'Repository $repoName in the master workspace is not clean',
+      ),
     );
   }
 
@@ -992,7 +994,7 @@ class AddCommand extends Command<dynamic> {
     );
 
     if (nodes.isEmpty) {
-      ggLog(yellow('⚠️ No repos in this ticket'));
+      ggLog(cWarn('⚠️ No repos in this ticket'));
       return nodes;
     }
 
@@ -1040,7 +1042,7 @@ class AddCommand extends Command<dynamic> {
         }
       } catch (e) {
         ggLog(red('Failed to unlocalize refs for $repoName: $e'));
-        throw Exception('Failed to relocalize ticket');
+        throw Exception(cError('Failed to relocalize ticket'));
       }
     }
 
@@ -1053,7 +1055,7 @@ class AddCommand extends Command<dynamic> {
         await _localizeRefs.get(directory: repoDir, ggLog: ggLog);
       } catch (e) {
         ggLog(red('Failed to localize refs for $repoName: $e'));
-        throw Exception('Failed to relocalize ticket');
+        throw Exception(cError('Failed to relocalize ticket'));
       }
 
       // Refresh deps after relocalize (dart pub upgrade and/or pm install).

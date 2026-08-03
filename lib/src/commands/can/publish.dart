@@ -135,7 +135,7 @@ class CanPublishCommand extends DirCommand<void> {
     );
     if (ticketPath == null) {
       ggLog(red('This command must be executed inside a ticket folder.'));
-      throw Exception('Not inside a ticket folder');
+      throw Exception(cError('Not inside a ticket folder'));
     }
 
     final ticketDir = Directory(ticketPath);
@@ -148,7 +148,7 @@ class CanPublishCommand extends DirCommand<void> {
     );
 
     if (subs.isEmpty) {
-      ggLog(yellow('⚠️ No repos in this ticket'));
+      ggLog(cWarn('⚠️ No repos in this ticket'));
       return;
     }
 
@@ -263,7 +263,7 @@ class CanPublishCommand extends DirCommand<void> {
   }) async {
     final failure = await _canPublishFailure(repoDir: directory, ggLog: ggLog);
     if (failure != null) {
-      throw Exception('Cannot publish: $failure');
+      throw Exception(cError('Cannot publish: $failure'));
     }
   }
 
@@ -285,11 +285,11 @@ class CanPublishCommand extends DirCommand<void> {
       }
     }
     if (uncommitted.isNotEmpty) {
-      ggLog(yellow('Uncommitted changes in:'));
+      ggLog(cWarn('Uncommitted changes in:'));
       for (final name in uncommitted) {
-        ggLog(yellow(' - $name'));
+        ggLog(cDetail(' - $name'));
       }
-      throw Exception('Uncommitted changes found');
+      throw Exception(cError('Uncommitted changes found'));
     }
   }
 
@@ -302,7 +302,7 @@ class CanPublishCommand extends DirCommand<void> {
       await _didCommitCommand.exec(directory: ticketDir, ggLog: ggLog);
     } catch (e) {
       ggLog(red('gg_multi did commit failed: $e'));
-      throw Exception('gg_multi did commit failed');
+      throw Exception(cError('gg_multi did commit failed'));
     }
   }
 
@@ -325,7 +325,7 @@ class CanPublishCommand extends DirCommand<void> {
             '$ticketName: $e',
           ),
         );
-        throw Exception('gg merge main into feat failed: $e');
+        throw Exception(cError('gg merge main into feat failed: $e'));
       }
     }
   }
@@ -339,7 +339,7 @@ class CanPublishCommand extends DirCommand<void> {
       await _doPushCommand.exec(directory: ticketDir, ggLog: ggLog);
     } catch (e) {
       ggLog(red('gg_multi do push failed: $e'));
-      throw Exception('gg_multi do push failed');
+      throw Exception(cError('gg_multi do push failed'));
     }
   }
 
@@ -381,7 +381,7 @@ class CanPublishCommand extends DirCommand<void> {
       }
     }
     if (failedRepos.isNotEmpty) {
-      throw Exception('Cannot publish: ${failedRepos.join('; ')}');
+      throw Exception(cError('Cannot publish: ${failedRepos.join('; ')}'));
     }
   }
 
@@ -403,7 +403,9 @@ class CanPublishCommand extends DirCommand<void> {
       }
     }
     if (failedRepos.isNotEmpty) {
-      throw Exception('Not logged in to npm: ${failedRepos.join('; ')}');
+      throw Exception(
+        cError('Not logged in to npm: ${failedRepos.join('; ')}'),
+      );
     }
   }
 
@@ -431,7 +433,9 @@ class CanPublishCommand extends DirCommand<void> {
         ggLog(red(' - $repoName'));
       }
       throw Exception(
-        'Failed to check merge in: ${failedMergeRepos.join(', ')}',
+        cError(
+          'Failed to check merge in: ${failedMergeRepos.join(', ')}',
+        ),
       );
     }
   }

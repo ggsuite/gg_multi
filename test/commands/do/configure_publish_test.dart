@@ -139,7 +139,7 @@ void main() {
         () => command.configure(directory: tempDir, ggLog: ggLog),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('Not inside a ticket folder'),
           ),
@@ -406,7 +406,7 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             contains('unfinished publish left progress'),
           ),

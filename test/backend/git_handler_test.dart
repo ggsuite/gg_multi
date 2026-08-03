@@ -6,6 +6,7 @@
 
 import 'dart:io';
 
+import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 import 'package:gg_multi/src/backend/git_handler.dart';
@@ -103,7 +104,7 @@ void main() {
             predicate(
               (e) =>
                   e is Exception &&
-                  e.toString() ==
+                  rmC(e.toString()) ==
                       'Exception: Failed to clone repo from $repoUrl: '
                           'Error cloning repository',
             ),
@@ -246,7 +247,7 @@ void main() {
           predicate(
             (e) =>
                 e is Exception &&
-                e.toString() ==
+                rmC(e.toString()) ==
                     'Exception: Failed to checkout branch bug in repoDir: '
                         'err message',
           ),

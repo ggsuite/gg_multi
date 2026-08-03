@@ -88,7 +88,7 @@ class DoExecuteCommand extends DirCommand<void> {
     );
     if (ticketPath == null) {
       ggLog(red('This command must be executed inside a ticket folder.'));
-      throw Exception('Not inside a ticket folder');
+      throw Exception(cError('Not inside a ticket folder'));
     }
 
     final ticketDir = Directory(ticketPath);
@@ -101,7 +101,7 @@ class DoExecuteCommand extends DirCommand<void> {
     );
 
     if (nodes.isEmpty) {
-      ggLog(yellow('⚠️ No repos in this ticket'));
+      ggLog(cWarn('⚠️ No repos in this ticket'));
       return;
     }
 
@@ -140,7 +140,9 @@ class DoExecuteCommand extends DirCommand<void> {
       for (final name in failed) {
         ggLog(red(' - $name'));
       }
-      throw Exception('Failed to execute command in: ${failed.join(', ')}');
+      throw Exception(
+        cError('Failed to execute command in: ${failed.join(', ')}'),
+      );
     }
   }
 

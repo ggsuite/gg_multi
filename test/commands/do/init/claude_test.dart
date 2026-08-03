@@ -58,7 +58,7 @@ void main() {
         () async => await runner.run(['claude', '--input', tempDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -119,7 +119,7 @@ void main() {
         () async => await runner.run(['claude', '--input', ticketDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             'Exception: Please start claude and run /init in the repo B. '
                 'Then execute this command again.',

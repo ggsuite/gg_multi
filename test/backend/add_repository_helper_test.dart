@@ -313,9 +313,9 @@ void main() {
           ),
           throwsA(
             predicate(
-              (e) => e.toString().contains(
-                    'Failed to fetch repositories for organization myorg',
-                  ),
+              (e) => rmC(e.toString()).contains(
+                'Failed to fetch repositories for organization myorg',
+              ),
             ),
           ),
         );
@@ -668,9 +668,9 @@ void main() {
           ),
           throwsA(
             predicate(
-              (e) => e.toString().contains(
-                    'Invalid organization URL provided: http://github.com',
-                  ),
+              (e) => rmC(e.toString()).contains(
+                'Invalid organization URL provided: http://github.com',
+              ),
             ),
           ),
         );
@@ -694,9 +694,9 @@ void main() {
           ),
           throwsA(
             predicate(
-              (e) => e.toString().contains(
-                    'Invalid organization URL provided: http://github.com/',
-                  ),
+              (e) => rmC(e.toString()).contains(
+                'Invalid organization URL provided: http://github.com/',
+              ),
             ),
           ),
         );

@@ -40,13 +40,13 @@ class ListTicketsCommand extends Command<void> {
   Future<void> run() async {
     final ticketsDir = Directory(path.join(workspacePath, ggMultiTicketFolder));
     if (!ticketsDir.existsSync()) {
-      ggLog(yellow('No tickets found.'));
+      ggLog(cDetail('No tickets found.'));
       return;
     }
     final subs = ticketsDir.listSync().whereType<Directory>().toList()
       ..sort((a, b) => path.basename(a.path).compareTo(path.basename(b.path)));
     if (subs.isEmpty) {
-      ggLog(yellow('No tickets found.'));
+      ggLog(cDetail('No tickets found.'));
       return;
     }
     for (final d in subs) {

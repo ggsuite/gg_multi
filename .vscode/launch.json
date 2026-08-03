@@ -6,7 +6,15 @@
 
   "configurations": [
     {
-      "name": "Test Current File",
+      "name": "gg_multi.dart",
+      "type": "dart",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/gg_multi.dart",
+      "args": ["can", "publish"],
+      "console": "debugConsole"
+    },
+    {
+      "name": "Current File",
       "type": "dart",
       "request": "launch",
       "program": "${file}"

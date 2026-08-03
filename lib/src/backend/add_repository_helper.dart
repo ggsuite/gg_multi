@@ -210,7 +210,7 @@ Future<void> addRepositoryHelper({
     final uri = parsedUri;
     if (uri.pathSegments.isEmpty ||
         uri.pathSegments.every((segment) => segment.trim().isEmpty)) {
-      throw Exception('Invalid organization URL provided: $cleanedUrl');
+      throw Exception(cError('Invalid organization URL provided: $cleanedUrl'));
     }
     if (parsedUrl.repo == null &&
         parsedUrl.org != null &&
@@ -221,7 +221,7 @@ Future<void> addRepositoryHelper({
             await gitHubPlatform.fetchOrgRepos(parsedUrl.org!);
         if (repos.isEmpty) {
           ggLog(
-            yellow('No repositories found for organization '
+            cWarn('No repositories found for organization '
                 '${parsedUrl.org!}'),
           );
           return;
@@ -237,7 +237,7 @@ Future<void> addRepositoryHelper({
         // print it cleanly and stop instead of aborting with a stack trace
         // (mirrors the Azure branch below).
         if (e.toString().contains('Bitte installiere die GitHub CLI')) {
-          ggLog(yellow(e.toString().replaceAll('Exception: ', '')));
+          ggLog(cWarn(e.toString().replaceAll('Exception: ', '')));
           return;
         } else {
           rethrow;
@@ -255,7 +255,7 @@ Future<void> addRepositoryHelper({
         );
         if (repos.isEmpty) {
           ggLog(
-            yellow('No repositories found for organization '
+            cWarn('No repositories found for organization '
                 '${parsedUrl.org!} and project ${parsedUrl.project}'),
           );
           return;
@@ -268,7 +268,7 @@ Future<void> addRepositoryHelper({
         );
       } catch (e) {
         if (e.toString().contains('Bitte installiere die Azure CLI')) {
-          ggLog(yellow(e.toString().replaceAll('Exception: ', '')));
+          ggLog(cWarn(e.toString().replaceAll('Exception: ', '')));
           return;
         } else {
           rethrow;
@@ -320,7 +320,7 @@ Future<void> addRepositoryHelper({
     if (owners.length > 1) {
       final chosen = await selectOrganization(targetArg, owners);
       if (chosen == null) {
-        ggLog(yellow('No organization chosen for $targetArg.'));
+        ggLog(cWarn('No organization chosen for $targetArg.'));
         return;
       }
       await attemptClone(

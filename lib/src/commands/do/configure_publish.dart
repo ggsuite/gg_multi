@@ -100,7 +100,7 @@ class DoConfigurePublishCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      throw Exception('Not inside a ticket folder');
+      throw Exception(cError('Not inside a ticket folder'));
     }
 
     final ticketDir = Directory(ticketPath);
@@ -116,9 +116,11 @@ class DoConfigurePublishCommand extends DirCommand<void> {
       );
       if (existing.repos.values.any((r) => r.status != null)) {
         throw Exception(
-          'An unfinished publish left progress in ${existingFile.path}. '
-          'Resume it with "gg do publish --continue", or discard it with '
-          '"gg do publish --restart".',
+          cError(
+            'An unfinished publish left progress in ${existingFile.path}. '
+            'Resume it with "gg do publish --continue", or discard it with '
+            '"gg do publish --restart".',
+          ),
         );
       }
     }
@@ -138,7 +140,7 @@ class DoConfigurePublishCommand extends DirCommand<void> {
       ggLog: ggLog,
     );
     if (subs.isEmpty) {
-      ggLog(yellow('⚠️ No repos in this ticket'));
+      ggLog(cWarn('⚠️ No repos in this ticket'));
     }
 
     final repos = <String, gg.RepoOverride>{};
@@ -202,7 +204,7 @@ class DoConfigurePublishCommand extends DirCommand<void> {
       return await _publishedVersion.get(directory: repoDir, ggLog: ggLog);
     } on Exception catch (e) {
       ggLog(
-        yellow(
+        cWarn(
           '⚠️ Could not determine the published version, assuming 0.0.0: $e',
         ),
       );

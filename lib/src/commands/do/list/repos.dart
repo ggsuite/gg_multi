@@ -38,7 +38,7 @@ class ListReposCommand extends Command<dynamic> {
     final repoInfos = await getAllRepoInfos(workspacePath);
     repoInfos.sort((a, b) => a.name.compareTo(b.name));
     if (repoInfos.isEmpty) {
-      ggLog(yellow('No repositories found in the master workspace.'));
+      ggLog(cDetail('No repositories found in the master workspace.'));
     } else {
       for (final repo in repoInfos) {
         ggLog('${repo.name} ${repo.version} '

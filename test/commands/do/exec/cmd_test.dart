@@ -65,7 +65,7 @@ void main() {
         () async => await runner.run(['cmd', '--input', tempDir.path, 'echo']),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmC(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -140,9 +140,11 @@ void main() {
 
       expect(messages.join('\n'), '''
 
-A:
+A
 
-B:
+
+B
+
 ✓ Command executed successfully in all repositories in ticket TICKX.''');
     });
 
