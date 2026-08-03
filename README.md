@@ -52,8 +52,8 @@ whenever you are inside a workspace.
 ```
 gg_multi
 ├── can   commit | push | publish | review
-├── did   commit | push
-└── do    commit | push | publish | review [--abort]
+├── did   commit | push | review
+└── do    commit | push | publish | review
           add | rm | create ticket
           init workspace | init claude | code
           exec cmd
@@ -102,7 +102,7 @@ order.
 | `gg_multi can commit`    | run `gg can commit` in every ticket repo (analyze + format + tests)    |
 | `gg_multi can push`      | check that every ticket repo is push-ready                             |
 | `gg_multi can publish`   | check that every publishable repo is publish-ready                     |
-| `gg_multi can review`    | check that every repo is `localized` and has no uncommitted changes    |
+| `gg_multi can review`    | check that every repo is on a feature branch and committed             |
 
 Each `can` command aborts on the first failure so you find out early
 when a repo is in a bad state.
@@ -112,10 +112,12 @@ when a repo is in a bad state.
 | Command                              | Purpose                                                                              |
 | ------------------------------------ | ------------------------------------------------------------------------------------ |
 | `gg_multi do commit [-m <message>]`  | commit every ticket repo with the same message (defaults to the ticket description)  |
-| `gg_multi do push [--force]`         | push every ticket repo                                                               |
-| `gg_multi do review`                 | unlocalise → localise as Git refs → `pub upgrade` → commit → push, for every repo    |
-| `gg_multi do review --abort`         | revert a review and return to local working mode                                     |
-| `gg_multi do publish`                | publish every publishable package of the ticket                                      |
+| `gg_multi do push [--force]`         | merge the main branches into the feature branches and push every ticket repo         |
+| `gg_multi do review`                 | push (incl. main merge), open a pull request per repo and record the review          |
+| `gg_multi do publish`                | publish every publishable package of the ticket (requires `did review`)              |
+
+`do review` runs `do push` automatically before it opens the pull
+requests; a `do push` after the review updates them.
 
 ### `gg_multi did` — reporting
 
@@ -123,6 +125,7 @@ when a repo is in a bad state.
 | -------------------- | ---------------------------------------------------------------- |
 | `gg_multi did commit` | report which repos have new commits since the last reference    |
 | `gg_multi did push`   | report which repos have new pushed commits                      |
+| `gg_multi did review` | report whether the current ticket state was reviewed            |
 
 ## Folder layout
 
@@ -248,33 +251,33 @@ gg_multi do commit
 # Edit commit message (Simplify login flow) ›
 ```
 
-### 6. Push
-
-```bash
-gg_multi can push
-gg_multi do push
-```
-
-### 7. Review
+### 6. Review
 
 ```bash
 gg_multi do review
 ```
 
-For every ticket repo this runs:
+This runs:
 
-1. Unlocalise references (back to original form via
-   `gg_localize_refs`), status → `unlocalized`.
-2. Re-localise as Git references, status → `git-localized`.
-3. `dart pub upgrade` (if `pubspec.yaml` exists).
-4. `gg do commit` with a default review message.
-5. `gg do push`.
+1. `can review` — every repo must be on a feature branch and committed.
+2. `do push` — the remote main branch is merged into every feature
+   branch, then every repo is pushed.
+3. A pull request is opened (or reused) per repo and its url printed.
+4. The ticket state is recorded as reviewed (`did review`).
 
-Need to keep working after starting a review?
+The repos keep their local path references — a reviewer who wants to
+run the ticket recreates the whole setup with
+`gg_multi do import ticket <path|url>` from the ticket's `ticket.json`.
+
+### 7. Iterate on review feedback
 
 ```bash
-gg_multi do review --abort
+gg_multi do commit -m 'Address review comments'
+gg_multi do push
 ```
+
+`do push` merges the main branches into the feature branches and pushes
+every repo — the open pull requests pick the new commits up.
 
 ### 8. Publish (when approved)
 
@@ -284,7 +287,9 @@ gg_multi do publish
 ```
 
 Publish is meant to be triggered manually by a human after review
-approval.
+approval. It refuses to run when the current ticket state was not
+reviewed — commits made after the last `gg_multi do review` require
+another review round first.
 
 #### Unchanged repos are not published
 

@@ -19,9 +19,9 @@ import 'package:gg_multi/src/backend/publish_skip_check.dart';
 import 'package:gg_multi/src/commands/can/publish.dart';
 import 'package:gg_multi/src/commands/do/configure_publish.dart'
     show DoConfigurePublishCommand;
+import 'package:gg_multi/src/commands/did/review.dart';
 import 'package:gg_multi/src/commands/do/publish.dart';
 import 'package:gg_multi/src/commands/do/push.dart';
-import 'package:gg_multi/src/commands/do/review.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
@@ -47,9 +47,6 @@ class MockCanPublishCommand extends Mock implements CanPublishCommand {}
 
 /// Mock for DoPushCommand
 class MockDoPushCommand extends Mock implements DoPushCommand {}
-
-/// Mock for DoReviewCommand
-class MockDoReviewCommand extends Mock implements DoReviewCommand {}
 
 /// Mock for DoConfigurePublishCommand
 class MockConfigurePublishCommand extends Mock
@@ -91,6 +88,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(FakeDirectory());
+    registerFallbackValue(<Node>[]);
   });
 
   // Collects log messages while removing color codes.
@@ -170,7 +168,7 @@ void main() {
     test('logs when there are no repositories', () async {
       final emptyTicket = Directory(path.join(ticketsDir.path, 'EMPTY'))
         ..createSync();
-      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockConfigure = MockConfigurePublishCommand();
@@ -185,10 +183,9 @@ void main() {
       ).thenAnswer((_) async => gg.PublishConfig());
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
 
@@ -206,7 +203,7 @@ void main() {
           DoPublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
-            doReviewCommand: mockDoReviewCommand,
+            didReviewCommand: mockDidReviewCommand,
             canPublishCommand: mockCanPublishCommand,
             sortedProcessingList: mockSortedProcessingList,
             doConfigurePublishCommand: mockConfigure,
@@ -219,16 +216,15 @@ void main() {
       );
     });
 
-    test('runs gg_multi do review before gg_multi can publish', () async {
-      final mockDoReviewCommand = MockDoReviewCommand();
+    test('checks did review before gg_multi can publish', () async {
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockSortedProcessingList = MockSortedProcessingList();
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
 
@@ -265,7 +261,7 @@ void main() {
           DoPublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
-            doReviewCommand: mockDoReviewCommand,
+            didReviewCommand: mockDidReviewCommand,
             canPublishCommand: mockCanPublishCommand,
             sortedProcessingList: mockSortedProcessingList,
           ),
@@ -283,10 +279,9 @@ void main() {
       );
 
       verifyInOrder([
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
               directory: any(named: 'directory'),
               ggLog: any(named: 'ggLog'),
-              verbose: any(named: 'verbose'),
             ),
         () => mockCanPublishCommand.checkTicket(
               directory: any(named: 'directory'),
@@ -306,25 +301,32 @@ void main() {
       );
     });
 
-    test('aborts if do review fails before can publish', () async {
-      final mockDoReviewCommand = MockDoReviewCommand();
+    test('aborts when the current state was not reviewed', () async {
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockCanPublishCommand = MockCanPublishCommand();
+      final mockConfigure = MockConfigurePublishCommand();
 
+      // No config exists — the run would have to configure interactively.
+      File(path.join(ticketDir.path, '.gg', 'gg-publish.json')).deleteSync();
+
+      // The gate delegates to `gg did review`, whose chain reports the most
+      // fundamental missing step — e.g. a missing commit — with its own
+      // suggestion.
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
-      ).thenThrow(Exception('review failed'));
+      ).thenThrow(Exception('Please run gg do commit.'));
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
-            doReviewCommand: mockDoReviewCommand,
+            didReviewCommand: mockDidReviewCommand,
             canPublishCommand: mockCanPublishCommand,
+            doConfigurePublishCommand: mockConfigure,
           ),
         );
 
@@ -338,11 +340,22 @@ void main() {
           isA<Exception>().having(
             (e) => rmControls(e.toString()),
             'message',
-            contains('Review failed.'),
+            contains('Please run gg do commit.'),
           ),
         ),
       );
 
+      // The gate fires before the configuration is resolved: the interactive
+      // version increment / merge message questions are never asked for a
+      // state the publish refuses.
+      verifyNever(
+        () => mockConfigure.configure(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          defaultMergeMessage: any(named: 'defaultMergeMessage'),
+          mergeOnly: any(named: 'mergeOnly'),
+        ),
+      );
       verifyNever(
         () => mockCanPublishCommand.checkTicket(
           directory: any(named: 'directory'),
@@ -353,20 +366,32 @@ void main() {
       );
     });
 
-    test('surfaces a merge conflict of do review unwrapped', () async {
-      final mockDoReviewCommand = MockDoReviewCommand();
+    test('surfaces a merge conflict of the ticket checks unwrapped', () async {
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockCanPublishCommand = MockCanPublishCommand();
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      // The push inside `can publish`'s ticket checks merges main into the
+      // feature branches — a conflict there must reach the user unwrapped.
+      when(
+        () => mockCanPublishCommand.checkTicket(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           verbose: any(named: 'verbose'),
+          includeCanPublish: any(named: 'includeCanPublish'),
         ),
       ).thenThrow(
         MergeConflictException(
-          'Merging origin/main into A produced conflicts. Resolve them, '
-          'then run: gg do commit -m"Merge main" --no-log',
+          'Merging origin/main into A produced conflicts:\n'
+          ' - A/pubspec.yaml\n'
+          'Please resolve the conflicts. Then execute: '
+          'gg do commit -m"Merge main" --no-log',
         ),
       );
 
@@ -375,7 +400,7 @@ void main() {
           DoPublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
-            doReviewCommand: mockDoReviewCommand,
+            didReviewCommand: mockDidReviewCommand,
             canPublishCommand: mockCanPublishCommand,
           ),
         );
@@ -392,18 +417,9 @@ void main() {
             'message',
             allOf(
               contains('gg do commit -m"Merge main" --no-log'),
-              isNot(contains('gg_multi do review failed')),
+              isNot(contains('Cannot publish.')),
             ),
           ),
-        ),
-      );
-
-      verifyNever(
-        () => mockCanPublishCommand.checkTicket(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
-          includeCanPublish: any(named: 'includeCanPublish'),
         ),
       );
     });
@@ -421,17 +437,16 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
 
@@ -571,7 +586,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            doReviewCommand: mockDoReviewCommand,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -639,17 +654,16 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
 
@@ -789,7 +803,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            doReviewCommand: mockDoReviewCommand,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -849,17 +863,16 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
 
@@ -999,7 +1012,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            doReviewCommand: mockDoReviewCommand,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -1121,17 +1134,16 @@ void main() {
         _stubPubUpgrade(mockProcessRunner);
         _stubRepoSnapshot(mockProcessRunner);
         final mockCanPublishCommand = MockCanPublishCommand();
-        final mockDoReviewCommand = MockDoReviewCommand();
+        final mockDidReviewCommand = MockDidReviewCommand();
         final mockGetVersion = MockGetVersion();
         final mockSetRefVersion = MockSetRefVersion();
         final mockGetRefVersion = MockGetRefVersion();
         final mockPubDevChecker = MockPubDevChecker();
 
         when(
-          () => mockDoReviewCommand.exec(
+          () => mockDidReviewCommand.exec(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
-            verbose: any(named: 'verbose'),
           ),
         ).thenAnswer((_) async {});
         stubCanPublish(mockCanPublishCommand);
@@ -1239,7 +1251,7 @@ void main() {
               sortedProcessingList: mockSortedProcessingList,
               processRunner: mockProcessRunner.call,
               canPublishCommand: mockCanPublishCommand,
-              doReviewCommand: mockDoReviewCommand,
+              didReviewCommand: mockDidReviewCommand,
               getVersionCommand: mockGetVersion,
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
@@ -1290,7 +1302,7 @@ void main() {
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
@@ -1298,10 +1310,9 @@ void main() {
       final mockNpmChecker = MockNpmRegistryChecker();
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
       stubCanPublish(mockCanPublishCommand);
@@ -1430,7 +1441,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            doReviewCommand: mockDoReviewCommand,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -1480,17 +1491,16 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
 
@@ -1590,7 +1600,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            doReviewCommand: mockDoReviewCommand,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -1645,17 +1655,16 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
       stubCanPublish(mockCanPublishCommand);
@@ -1755,7 +1764,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            doReviewCommand: mockDoReviewCommand,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -1827,17 +1836,16 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
 
@@ -1937,7 +1945,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            doReviewCommand: mockDoReviewCommand,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -1978,7 +1986,7 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
@@ -1988,10 +1996,9 @@ void main() {
       final bDir = Directory(path.join(ticketDir.path, 'B'));
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
 
@@ -2112,7 +2119,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            doReviewCommand: mockDoReviewCommand,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -2142,17 +2149,16 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
 
@@ -2209,7 +2215,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            doReviewCommand: mockDoReviewCommand,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -2239,17 +2245,16 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
 
@@ -2374,7 +2379,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            doReviewCommand: mockDoReviewCommand,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -2452,17 +2457,16 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
 
@@ -2587,7 +2591,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            doReviewCommand: mockDoReviewCommand,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -2621,17 +2625,16 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
 
@@ -2736,7 +2739,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            doReviewCommand: mockDoReviewCommand,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -2773,17 +2776,16 @@ void main() {
         _stubPubUpgrade(mockProcessRunner);
         _stubRepoSnapshot(mockProcessRunner);
         final mockCanPublishCommand = MockCanPublishCommand();
-        final mockDoReviewCommand = MockDoReviewCommand();
+        final mockDidReviewCommand = MockDidReviewCommand();
         final mockGetVersion = MockGetVersion();
         final mockSetRefVersion = MockSetRefVersion();
         final mockGetRefVersion = MockGetRefVersion();
         final mockPubDevChecker = MockPubDevChecker();
 
         when(
-          () => mockDoReviewCommand.exec(
+          () => mockDidReviewCommand.exec(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
-            verbose: any(named: 'verbose'),
           ),
         ).thenAnswer((_) async {});
 
@@ -2912,7 +2914,7 @@ void main() {
               sortedProcessingList: mockSortedProcessingList,
               processRunner: mockProcessRunner.call,
               canPublishCommand: mockCanPublishCommand,
-              doReviewCommand: mockDoReviewCommand,
+              didReviewCommand: mockDidReviewCommand,
               getVersionCommand: mockGetVersion,
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
@@ -2948,17 +2950,16 @@ void main() {
         _stubPubUpgrade(mockProcessRunner);
         _stubRepoSnapshot(mockProcessRunner);
         final mockCanPublishCommand = MockCanPublishCommand();
-        final mockDoReviewCommand = MockDoReviewCommand();
+        final mockDidReviewCommand = MockDidReviewCommand();
         final mockGetVersion = MockGetVersion();
         final mockSetRefVersion = MockSetRefVersion();
         final mockGetRefVersion = MockGetRefVersion();
         final mockPubDevChecker = MockPubDevChecker();
 
         when(
-          () => mockDoReviewCommand.exec(
+          () => mockDidReviewCommand.exec(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
-            verbose: any(named: 'verbose'),
           ),
         ).thenAnswer((_) async {});
 
@@ -3085,7 +3086,7 @@ void main() {
               sortedProcessingList: mockSortedProcessingList,
               processRunner: mockProcessRunner.call,
               canPublishCommand: mockCanPublishCommand,
-              doReviewCommand: mockDoReviewCommand,
+              didReviewCommand: mockDidReviewCommand,
               getVersionCommand: mockGetVersion,
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
@@ -3123,7 +3124,7 @@ void main() {
         _stubPubUpgrade(mockProcessRunner);
         _stubRepoSnapshot(mockProcessRunner);
         final mockCanPublishCommand = MockCanPublishCommand();
-        final mockDoReviewCommand = MockDoReviewCommand();
+        final mockDidReviewCommand = MockDidReviewCommand();
         final mockGetVersion = MockGetVersion();
         final mockSetRefVersion = MockSetRefVersion();
         final mockGetRefVersion = MockGetRefVersion();
@@ -3131,10 +3132,9 @@ void main() {
         final mockDirB = MockDirectory();
 
         when(
-          () => mockDoReviewCommand.exec(
+          () => mockDidReviewCommand.exec(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
-            verbose: any(named: 'verbose'),
           ),
         ).thenAnswer((_) async {});
 
@@ -3270,7 +3270,7 @@ void main() {
               sortedProcessingList: mockSortedProcessingList,
               processRunner: mockProcessRunner.call,
               canPublishCommand: mockCanPublishCommand,
-              doReviewCommand: mockDoReviewCommand,
+              didReviewCommand: mockDidReviewCommand,
               getVersionCommand: mockGetVersion,
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
@@ -3318,17 +3318,16 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
       stubCanPublish(mockCanPublishCommand);
@@ -3432,7 +3431,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            doReviewCommand: mockDoReviewCommand,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -3472,17 +3471,16 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
       stubCanPublish(mockCanPublishCommand);
@@ -3593,7 +3591,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            doReviewCommand: mockDoReviewCommand,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -3630,17 +3628,16 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
 
@@ -3752,7 +3749,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            doReviewCommand: mockDoReviewCommand,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -3780,13 +3777,12 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockDidReviewCommand = MockDidReviewCommand();
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
       stubCanPublish(mockCanPublishCommand);
@@ -3830,7 +3826,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            doReviewCommand: mockDoReviewCommand,
+            didReviewCommand: mockDidReviewCommand,
           ),
         );
 
@@ -3860,13 +3856,12 @@ void main() {
       final mockProcessRunner = MockProcessRunner();
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockDidReviewCommand = MockDidReviewCommand();
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
       stubCanPublish(mockCanPublishCommand);
@@ -3921,7 +3916,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            doReviewCommand: mockDoReviewCommand,
+            didReviewCommand: mockDidReviewCommand,
           ),
         );
 
@@ -3970,7 +3965,7 @@ void main() {
       final mockProcessRunner = MockProcessRunner();
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockSetRefVersion = MockSetRefVersion();
@@ -3979,10 +3974,9 @@ void main() {
       final repoADir = Directory(path.join(ticketDir.path, 'A'));
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
       stubCanPublish(mockCanPublishCommand);
@@ -4087,7 +4081,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            doReviewCommand: mockDoReviewCommand,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -4132,7 +4126,7 @@ void main() {
       final mockProcessRunner = MockProcessRunner();
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockSetRefVersion = MockSetRefVersion();
@@ -4141,10 +4135,9 @@ void main() {
       final repoADir = Directory(path.join(ticketDir.path, 'A'));
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
       stubCanPublish(mockCanPublishCommand);
@@ -4236,7 +4229,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            doReviewCommand: mockDoReviewCommand,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -4283,7 +4276,7 @@ void main() {
       final mockProcessRunner = MockProcessRunner();
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockDoReviewCommand = MockDoReviewCommand();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockSetRefVersion = MockSetRefVersion();
@@ -4292,10 +4285,9 @@ void main() {
       final repoADir = Directory(path.join(ticketDir.path, 'A'));
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
       stubCanPublish(mockCanPublishCommand);
@@ -4408,7 +4400,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            doReviewCommand: mockDoReviewCommand,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -4451,7 +4443,7 @@ void main() {
     late MockRestorePublishTo mockRestorePublishTo;
     late MockSortedProcessingList mockSortedProcessingList;
     late MockCanPublishCommand mockCanPublishCommand;
-    late MockDoReviewCommand mockDoReviewCommand;
+    late MockDidReviewCommand mockDidReviewCommand;
     late MockGetVersion mockGetVersion;
     late MockSetRefVersion mockSetRefVersion;
     late MockGetRefVersion mockGetRefVersion;
@@ -4474,7 +4466,7 @@ void main() {
               sortedProcessingList: mockSortedProcessingList,
               processRunner: m.call,
               canPublishCommand: mockCanPublishCommand,
-              doReviewCommand: mockDoReviewCommand,
+              didReviewCommand: mockDidReviewCommand,
               getVersionCommand: mockGetVersion,
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
@@ -4524,7 +4516,7 @@ void main() {
       mockRestorePublishTo = MockRestorePublishTo();
       mockSortedProcessingList = MockSortedProcessingList();
       mockCanPublishCommand = MockCanPublishCommand();
-      mockDoReviewCommand = MockDoReviewCommand();
+      mockDidReviewCommand = MockDidReviewCommand();
       mockGetVersion = MockGetVersion();
       mockSetRefVersion = MockSetRefVersion();
       mockGetRefVersion = MockGetRefVersion();
@@ -4532,10 +4524,9 @@ void main() {
       dirA = path.join(ticketDir.path, 'A');
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
       stubCanPublish(mockCanPublishCommand);
@@ -5406,7 +5397,7 @@ void main() {
     late MockSortedProcessingList mockSortedProcessingList;
     late MockProcessRunner mockProcessRunner;
     late MockCanPublishCommand mockCanPublishCommand;
-    late MockDoReviewCommand mockDoReviewCommand;
+    late MockDidReviewCommand mockDidReviewCommand;
     late MockGetVersion mockGetVersion;
     late MockSetRefVersion mockSetRefVersion;
     late MockGetRefVersion mockGetRefVersion;
@@ -5430,7 +5421,7 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       mockCanPublishCommand = MockCanPublishCommand();
-      mockDoReviewCommand = MockDoReviewCommand();
+      mockDidReviewCommand = MockDidReviewCommand();
       mockGetVersion = MockGetVersion();
       mockSetRefVersion = MockSetRefVersion();
       mockGetRefVersion = MockGetRefVersion();
@@ -5439,10 +5430,9 @@ void main() {
       runtimeFile = File(path.join(ticketDir.path, '.gg', 'gg-publish.json'));
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
       stubCanPublish(mockCanPublishCommand);
@@ -5531,7 +5521,7 @@ void main() {
               sortedProcessingList: mockSortedProcessingList,
               processRunner: mockProcessRunner.call,
               canPublishCommand: mockCanPublishCommand,
-              doReviewCommand: mockDoReviewCommand,
+              didReviewCommand: mockDidReviewCommand,
               getVersionCommand: mockGetVersion,
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
@@ -5640,10 +5630,9 @@ void main() {
       ).called(1);
       // Review + can-publish are skipped when resuming.
       verifyNever(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       );
     });
@@ -5817,12 +5806,11 @@ void main() {
         ['publish', '--input', ticketDir.path, '--continue'],
       );
 
-      // No repo was published yet, so review must still run.
+      // No repo was published yet, so the review gate must still run.
       verify(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).called(1);
     });
@@ -5980,10 +5968,9 @@ void main() {
       );
 
       verifyNever(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       );
     });
@@ -6008,12 +5995,12 @@ void main() {
         ['publish', '--input', ticketDir.path, '--continue'],
       );
 
-      // An unreadable file cannot prove progress — review still runs.
+      // An unreadable file cannot prove progress — the review gate still
+      // runs.
       verify(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).called(1);
     });
@@ -6166,7 +6153,7 @@ void main() {
     late MockSortedProcessingList mockSortedProcessingList;
     late MockProcessRunner mockProcessRunner;
     late MockCanPublishCommand mockCanPublishCommand;
-    late MockDoReviewCommand mockDoReviewCommand;
+    late MockDidReviewCommand mockDidReviewCommand;
     late MockGetVersion mockGetVersion;
     late MockSetRefVersion mockSetRefVersion;
     late MockGetRefVersion mockGetRefVersion;
@@ -6188,7 +6175,7 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       mockCanPublishCommand = MockCanPublishCommand();
-      mockDoReviewCommand = MockDoReviewCommand();
+      mockDidReviewCommand = MockDidReviewCommand();
       mockGetVersion = MockGetVersion();
       mockSetRefVersion = MockSetRefVersion();
       mockGetRefVersion = MockGetRefVersion();
@@ -6196,10 +6183,9 @@ void main() {
       mockSkipCheck = MockPublishSkipCheck();
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
 
@@ -6328,7 +6314,7 @@ void main() {
               sortedProcessingList: mockSortedProcessingList,
               processRunner: mockProcessRunner.call,
               canPublishCommand: mockCanPublishCommand,
-              doReviewCommand: mockDoReviewCommand,
+              didReviewCommand: mockDidReviewCommand,
               getVersionCommand: mockGetVersion,
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
@@ -6611,7 +6597,7 @@ void main() {
     late MockSortedProcessingList mockSortedProcessingList;
     late MockProcessRunner mockProcessRunner;
     late MockCanPublishCommand mockCanPublishCommand;
-    late MockDoReviewCommand mockDoReviewCommand;
+    late MockDidReviewCommand mockDidReviewCommand;
     late MockGetVersion mockGetVersion;
     late MockSetRefVersion mockSetRefVersion;
     late MockGetRefVersion mockGetRefVersion;
@@ -6636,17 +6622,16 @@ void main() {
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
       mockCanPublishCommand = MockCanPublishCommand();
-      mockDoReviewCommand = MockDoReviewCommand();
+      mockDidReviewCommand = MockDidReviewCommand();
       mockGetVersion = MockGetVersion();
       mockSetRefVersion = MockSetRefVersion();
       mockGetRefVersion = MockGetRefVersion();
       mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
 
@@ -6753,7 +6738,7 @@ void main() {
               sortedProcessingList: mockSortedProcessingList,
               processRunner: mockProcessRunner.call,
               canPublishCommand: mockCanPublishCommand,
-              doReviewCommand: mockDoReviewCommand,
+              didReviewCommand: mockDidReviewCommand,
               getVersionCommand: mockGetVersion,
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
@@ -6783,7 +6768,7 @@ void main() {
               sortedProcessingList: mockSortedProcessingList,
               processRunner: mockProcessRunner.call,
               canPublishCommand: mockCanPublishCommand,
-              doReviewCommand: mockDoReviewCommand,
+              didReviewCommand: mockDidReviewCommand,
               getVersionCommand: mockGetVersion,
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
@@ -6886,12 +6871,11 @@ void main() {
         ),
       );
 
-      // The guard runs before the review — nothing was touched.
+      // The guard runs before the review gate — nothing was touched.
       verifyNever(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       );
     });
@@ -6927,10 +6911,9 @@ void main() {
       await buildRunner().run(['publish', '--input', ticketDir.path]);
 
       verify(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).called(1);
     });
@@ -7020,7 +7003,7 @@ void main() {
     late MockSortedProcessingList mockSortedProcessingList;
     late MockProcessRunner mockProcessRunner;
     late MockCanPublishCommand mockCanPublishCommand;
-    late MockDoReviewCommand mockDoReviewCommand;
+    late MockDidReviewCommand mockDidReviewCommand;
     late MockGetVersion mockGetVersion;
     late MockSetRefVersion mockSetRefVersion;
     late MockGetRefVersion mockGetRefVersion;
@@ -7053,17 +7036,16 @@ void main() {
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
       mockCanPublishCommand = MockCanPublishCommand();
-      mockDoReviewCommand = MockDoReviewCommand();
+      mockDidReviewCommand = MockDidReviewCommand();
       mockGetVersion = MockGetVersion();
       mockSetRefVersion = MockSetRefVersion();
       mockGetRefVersion = MockGetRefVersion();
       mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockDoReviewCommand.exec(
+        () => mockDidReviewCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          verbose: any(named: 'verbose'),
         ),
       ).thenAnswer((_) async {});
 
@@ -7188,7 +7170,7 @@ void main() {
               sortedProcessingList: mockSortedProcessingList,
               processRunner: mockProcessRunner.call,
               canPublishCommand: mockCanPublishCommand,
-              doReviewCommand: mockDoReviewCommand,
+              didReviewCommand: mockDidReviewCommand,
               getVersionCommand: mockGetVersion,
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,

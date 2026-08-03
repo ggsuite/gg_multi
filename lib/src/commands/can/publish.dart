@@ -11,7 +11,6 @@ import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:gg_one/gg_one.dart' as gg;
-import 'package:gg_publish/gg_publish.dart' as gg_publish;
 import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
@@ -53,7 +52,6 @@ class CanPublishCommand extends DirCommand<void> {
     gg.CanPublish? ggCanPublish,
     gg.NpmLoggedIn? ggNpmLoggedIn,
     gg.PubGetOffline? ggPubGetOffline,
-    gg_publish.MergeMainIntoFeat? ggMergeMainIntoFeat,
     SortedProcessingList? sortedProcessingList,
     ProcessRunner? processRunner,
     DidCommitCommand? didCommitCommand,
@@ -62,8 +60,6 @@ class CanPublishCommand extends DirCommand<void> {
         _ggCanPublish = ggCanPublish ?? gg.CanPublish(ggLog: ggLog),
         _ggNpmLoggedIn = ggNpmLoggedIn ?? gg.NpmLoggedIn(ggLog: ggLog),
         _ggPubGetOffline = ggPubGetOffline ?? gg.PubGetOffline(ggLog: ggLog),
-        _ggMergeMainIntoFeat =
-            ggMergeMainIntoFeat ?? gg_publish.MergeMainIntoFeat(ggLog: ggLog),
         _sortedProcessingList =
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
         _processRunner = processRunner ?? _defaultProcessRunner,
@@ -83,9 +79,6 @@ class CanPublishCommand extends DirCommand<void> {
 
   /// Instance of gg PubGetOffline (syncs the lock file with the manifest)
   final gg.PubGetOffline _ggPubGetOffline;
-
-  /// Instance of gg MergeMainIntoFeat
-  final gg_publish.MergeMainIntoFeat _ggMergeMainIntoFeat;
 
   /// Instance of SortedProcessingList
   final SortedProcessingList _sortedProcessingList;
@@ -139,12 +132,11 @@ class CanPublishCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      ggLog(cError('This command must be executed inside a ticket folder.'));
-      throw Exception(cError('Not inside a ticket folder'));
+      ggLog(cAction('Please run this command inside a ticket folder.'));
+      throw Exception(cDetail('Not inside a ticket folder'));
     }
 
     final ticketDir = Directory(ticketPath);
-    final ticketName = path.basename(ticketDir.path);
 
     // Get sorted repos ------------------------------------------------------
     final subs = await _sortedProcessingList.get(
@@ -197,33 +189,9 @@ class CanPublishCommand extends DirCommand<void> {
       ),
     );
 
-    // Step 5: Run gg merge main into feat -----------------------------------
-    await GgStatusPrinter<void>(
-      message: 'Merge main into feat?',
-      ggLog: ggLog,
-      dark: true,
-    ).run(
-      () async => _runMergeMainIntoFeat(
-        ticketName: ticketName,
-        subs: subs,
-        ggLog: taskLog,
-      ),
-    );
-
-    // Step 6: Run gg can merge per repo -------------------------------------
-    await GgStatusPrinter<void>(
-      message: 'Can merge?',
-      ggLog: ggLog,
-      dark: true,
-    ).run(
-      () async => _checkCanMerge(
-        ticketName: ticketName,
-        subs: subs,
-        ggLog: taskLog,
-      ),
-    );
-
-    // Step 7: Run gg_multi do push ---------------------------------------
+    // Step 5: Run gg_multi do push ------------------------------------------
+    // The push merges the main branches into the feature branches and brings
+    // every repo onto the remote — there is no separate merge step anymore.
     await GgStatusPrinter<void>(
       message: 'Running do push',
       ggLog: ggLog,
@@ -235,9 +203,21 @@ class CanPublishCommand extends DirCommand<void> {
       ),
     );
 
-    // Step 8: Check the npm authentication ----------------------------------
+    // Step 6: Run gg can merge per repo -------------------------------------
+    await GgStatusPrinter<void>(
+      message: 'Can merge?',
+      ggLog: ggLog,
+      dark: true,
+    ).run(
+      () async => _checkCanMerge(
+        subs: subs,
+        ggLog: taskLog,
+      ),
+    );
+
+    // Step 7: Check the npm authentication ----------------------------------
     // This is the one publish blocker that has nothing to do with dependency
-    // resolution, so it stays ticket wide even when step 9 is deferred to
+    // resolution, so it stays ticket wide even when step 8 is deferred to
     // `do publish`'s per-repo gate: finding out about a missing npm login
     // after the first packages went to a registry is the worst failure mode
     // this command has. Repos not publishing to npm are skipped by gg_one.
@@ -252,7 +232,7 @@ class CanPublishCommand extends DirCommand<void> {
       ),
     );
 
-    // Step 9: Run gg can publish per repo -----------------------------------
+    // Step 8: Run gg can publish per repo -----------------------------------
     // Verifies each repo's publish readiness (feature branch, CHANGELOG,
     // pana, npm authentication).
     if (includeCanPublish) {
@@ -406,37 +386,18 @@ class CanPublishCommand extends DirCommand<void> {
     }
   }
 
-  /// Executes gg merge main into feat for every repository in the ticket.
-  Future<void> _runMergeMainIntoFeat({
-    required String ticketName,
-    required List<Node> subs,
-    required GgLog ggLog,
-  }) async {
-    for (final repo in subs) {
-      final repoDir = repo.directory;
-      final repoName = path.basename(repoDir.path);
-
-      try {
-        await _ggMergeMainIntoFeat.exec(directory: repoDir, ggLog: ggLog);
-      } catch (e) {
-        ggLog(
-          [
-            cDetail('✗ Cannot merge main into $repoName'),
-            cError(rmControls('$e')),
-          ].join('\n'),
-        );
-        throw Exception(cDetail('Cannot merge main into feature branch.'));
-      }
-    }
-  }
-
-  /// Executes gg_multi do push for the ticket.
+  /// Executes gg_multi do push for the ticket — it merges the main branches
+  /// into the feature branches and pushes every repo.
   Future<void> _runDoPush({
     required Directory ticketDir,
     required GgLog ggLog,
   }) async {
     try {
       await _doPushCommand.exec(directory: ticketDir, ggLog: ggLog);
+    } on MergeConflictException {
+      // The exception carries the actionable conflict report and the
+      // half-merged working tree must survive — pass it through unwrapped.
+      rethrow;
     } catch (e) {
       ggLog([cDetail('✗ Failed to push'), cError(rmControls('$e'))].join('\n'));
       throw Exception(cDetail('Failed to push.'));
@@ -518,7 +479,6 @@ class CanPublishCommand extends DirCommand<void> {
 
   /// Runs gg can merge for every repository in the ticket.
   Future<void> _checkCanMerge({
-    required String ticketName,
     required List<Node> subs,
     required GgLog ggLog,
   }) async {

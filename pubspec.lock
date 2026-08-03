@@ -277,7 +277,7 @@ packages:
       path: "../gg_one"
       relative: true
     source: path
-    version: "12.5.1"
+    version: "12.5.3"
   gg_process:
     dependency: transitive
     description:
@@ -313,10 +313,10 @@ packages:
     dependency: transitive
     description:
       name: gg_test
-      sha256: "0a74a39bebf7136e08e61153a4ec6cd0f7f9d8c296a90079975a39990b4e5595"
+      sha256: "46fb43aa9b93e02aa951ed7d602f84c2cfc7052e11fed7128a775ab0e7e09cdc"
       url: "https://pub.dev"
     source: hosted
-    version: "2.3.1"
+    version: "2.3.2"
   gg_version:
     dependency: transitive
     description:
