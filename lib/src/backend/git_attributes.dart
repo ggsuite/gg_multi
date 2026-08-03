@@ -119,7 +119,7 @@ Future<void> installGitattributes({
   );
   if (ticketPath == null) {
     ggLog(cError('This command must be executed inside a ticket folder.'));
-    throw Exception(cError('Not inside a ticket folder'));
+    throw Exception(cDetail('Not inside a ticket folder'));
   }
 
   final ticketDir = Directory(ticketPath);
