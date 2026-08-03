@@ -11,7 +11,7 @@ import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:gg_multi/src/backend/constants.dart';
 import 'package:test/test.dart';
 import 'package:path/path.dart' as path;
-import 'package:gg_multi/src/commands/list/deps.dart';
+import 'package:gg_multi/src/commands/do/list/deps.dart';
 
 void main() {
   group('ListDepsCommand', () {

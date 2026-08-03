@@ -11,9 +11,9 @@ import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:gg_multi/src/backend/constants.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-import 'package:gg_multi/src/commands/list/repos.dart';
+import 'package:gg_multi/src/commands/do/list/repos.dart';
 
-import '../../rm_console_colors_helper.dart';
+import '../../../rm_console_colors_helper.dart';
 
 void main() {
   group('ListReposCommand', () {

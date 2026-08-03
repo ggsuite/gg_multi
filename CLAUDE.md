@@ -37,12 +37,11 @@ Gg Multi is a multi-repository workspace management CLI for Dart/Flutter project
 bin/gg_multi.dart
   └─ GgMulti (lib/src/gg_multi.dart)
        ├─ Can   – validate before acting (can commit, can push, can publish, can review)
-       ├─ Do    – execute across all repos (do commit, do push, do publish [--merge-only], do review, do add, do checkout, do claude, …)
+       ├─ Do    – execute across all repos (do commit, do push, do publish [--merge-only], do review, do add, do checkout, do claude, do ls, …)
        ├─ Did   – report what happened (did commit, did push)
-       └─ Ls    – list workspace contents (repos, organizations, deps)
 ```
 
-Each command group lives in `lib/src/commands/gg_multi_can.dart`, `gg_multi_do.dart`, `gg_multi_did.dart`, and `ls.dart`. Subcommands are in `lib/src/commands/<group>/<name>.dart`.
+Each command group lives in `lib/src/commands/gg_multi_can.dart`, `gg_multi_do.dart` and `gg_multi_did.dart`. Subcommands are in `lib/src/commands/<group>/<name>.dart` — `ls` among them (`do/ls.dart`, with its own subcommands in `do/list/`), because listing a workspace is one of the actions `do` groups, not a group of its own.
 
 ### Workspace Hierarchy
 

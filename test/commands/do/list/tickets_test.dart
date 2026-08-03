@@ -10,10 +10,10 @@ import 'package:args/command_runner.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:gg_multi/src/backend/constants.dart';
 import 'package:test/test.dart';
-import 'package:gg_multi/src/commands/list/tickets.dart';
+import 'package:gg_multi/src/commands/do/list/tickets.dart';
 import 'package:path/path.dart' as path;
 
-import '../../rm_console_colors_helper.dart';
+import '../../../rm_console_colors_helper.dart';
 
 void main() {
   group('ListTicketsCommand', () {

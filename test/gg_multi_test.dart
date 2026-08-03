@@ -33,7 +33,7 @@ void main() {
       test('should allow to run the code from command line', () async {
         await capturePrint(
           ggLog: messages.add,
-          code: () async => await runner.run(['ggMulti', 'ls', '--help']),
+          code: () async => await runner.run(['ggMulti', 'do', 'ls', '--help']),
         );
         expect(
           messages.first,

@@ -51,27 +51,27 @@ whenever you are inside a workspace.
 
 ```
 gg_multi
-├── ls    repos | organizations | deps <target> | tickets
 ├── can   commit | push | publish | review
 ├── did   commit | push
 └── do    commit | push | publish | review [--abort]
           add | rm | create ticket
           init | code | claude
           maintain exec
+          ls repos | organizations | deps <target> | tickets
 ```
 
 All cross-repo commands run inside a ticket directory
 (`tickets/<id>/`) and iterate over the ticket's repos in dependency
 order.
 
-### `gg_multi ls`
+### `gg_multi do ls`
 
 | Command                                | Purpose                                                            |
 | -------------------------------------- | ------------------------------------------------------------------ |
-| `gg_multi ls repos`                    | list every repo in the master workspace, sorted by name            |
-| `gg_multi ls organizations`            | list every GitHub organisation represented in the master workspace |
-| `gg_multi ls deps <target>`            | list `dependencies` / `dev_dependencies` of `<target>`             |
-| `gg_multi ls tickets`                  | list every ticket workspace under `tickets/`                       |
+| `gg_multi do ls repos`                    | list every repo in the master workspace, sorted by name            |
+| `gg_multi do ls organizations`            | list every GitHub organisation represented in the master workspace |
+| `gg_multi do ls deps <target>`            | list `dependencies` / `dev_dependencies` of `<target>`             |
+| `gg_multi do ls tickets`                  | list every ticket workspace under `tickets/`                       |
 
 ### `gg_multi do` — workspace setup
 
@@ -446,7 +446,7 @@ gg_multi -h
 gg_multi do -h
 gg_multi do add -h
 gg_multi can -h
-gg_multi ls -h
+gg_multi do ls -h
 ```
 
 ## Further reading

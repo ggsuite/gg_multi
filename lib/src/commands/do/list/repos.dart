@@ -7,13 +7,13 @@
 import 'package:args/command_runner.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
-import '../../backend/list_backend.dart';
-import '../../backend/workspace_utils.dart';
+import '../../../backend/list_backend.dart';
+import '../../../backend/workspace_utils.dart';
 
-/// Command to list all organizations from repos in the master workspace.
-class ListOrganizationsCommand extends Command<dynamic> {
+/// Command to list all repositories in the master workspace.
+class ListReposCommand extends Command<dynamic> {
   /// Constructor with optional workspace path.
-  ListOrganizationsCommand({
+  ListReposCommand({
     required this.ggLog,
     String? workspacePath,
     // coverage:ignore-start
@@ -28,29 +28,22 @@ class ListOrganizationsCommand extends Command<dynamic> {
   final String workspacePath;
 
   @override
-  String get name => 'organizations';
+  String get name => 'repos';
 
   @override
   String get description =>
-      'Lists all organizations from the repos in the master workspace.';
+      'Lists all repos in the master workspace, sorted by name.';
 
   @override
   Future<void> run() async {
     final repoInfos = await getAllRepoInfos(workspacePath);
-    final orgSet = <String>{};
-    for (final repo in repoInfos) {
-      orgSet.add(repo.organization);
-    }
-    final orgs = orgSet.toList()..sort();
-    if (orgs.isEmpty) {
-      ggLog(yellow('No organizations found.'));
+    repoInfos.sort((a, b) => a.name.compareTo(b.name));
+    if (repoInfos.isEmpty) {
+      ggLog(yellow('No repositories found in the master workspace.'));
     } else {
-      for (final org in orgs) {
-        if (org != 'unknown') {
-          ggLog('$org -- https://github.com/orgs/$org/');
-        } else {
-          ggLog(org);
-        }
+      for (final repo in repoInfos) {
+        ggLog('${repo.name} ${repo.version} '
+            '(${repo.language}) from ${repo.organization}');
       }
     }
   }

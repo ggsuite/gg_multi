@@ -10,13 +10,11 @@ import 'package:gg_log/gg_log.dart';
 import './commands/gg_multi_can.dart';
 import './commands/gg_multi_did.dart';
 import './commands/gg_multi_do.dart';
-import 'commands/ls.dart';
 
 /// The command line interface for GgMulti
 class GgMulti extends Command<dynamic> {
   /// Constructor
   GgMulti({required this.ggLog}) {
-    addSubcommand(ListCommand(ggLog: ggLog));
     addSubcommand(Can(ggLog: ggLog));
     addSubcommand(Did(ggLog: ggLog));
     addSubcommand(Do(ggLog: ggLog));
