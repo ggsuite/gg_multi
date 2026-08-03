@@ -55,7 +55,7 @@ void main() {
         expect(repoDir.existsSync(), isFalse);
         expect(
           messages,
-          contains('Deleted repository project from master workspace.'),
+          ['✓ Deleted repository project from master workspace.'],
         );
       });
 
@@ -130,7 +130,7 @@ void main() {
         );
         expect(
           messages,
-          contains('Deleted repository shared from ticket alpha.'),
+          ['✓ Deleted repository shared from ticket alpha.'],
         );
       });
 
@@ -161,7 +161,7 @@ void main() {
         expect(repoDir.existsSync(), isFalse);
         expect(
           messages,
-          contains('Deleted repository shared from ticket alpha.'),
+          ['✓ Deleted repository shared from ticket alpha.'],
         );
       });
     });
@@ -181,7 +181,7 @@ void main() {
         expect(repoDir.existsSync(), isFalse);
         expect(
           messages,
-          contains('Deleted repository project from master workspace.'),
+          contains('✓ Deleted repository project from master workspace.'),
         );
       });
     });
@@ -250,7 +250,7 @@ void main() {
         expect(a.existsSync(), isFalse);
         expect(
           messages,
-          contains('Deleted repository a from ticket alpha.'),
+          contains('✓ Deleted repository a from ticket alpha.'),
         );
       });
 
@@ -260,7 +260,7 @@ void main() {
         expect(c.existsSync(), isFalse);
         expect(
           messages,
-          contains('Deleted repository c from ticket alpha.'),
+          contains('✓ Deleted repository c from ticket alpha.'),
         );
       });
 
@@ -271,7 +271,7 @@ void main() {
         expect(b.existsSync(), isFalse);
         expect(
           messages,
-          contains('Deleted repository b from ticket alpha.'),
+          contains('✓ Deleted repository b from ticket alpha.'),
         );
       });
 
@@ -335,7 +335,7 @@ void main() {
         expect(marker.repositories.map((r) => r.name), ['b']);
         expect(marker.issueId, 'alpha');
         expect(marker.description, 'Some ticket');
-        expect(messages, contains('Removed a from ticket.json.'));
+        expect(messages, contains('✓ Removed a from ticket.json.'));
       });
 
       test('never writes a ticket.json into a repository', () async {
@@ -392,7 +392,7 @@ void main() {
         );
         expect(
           messages,
-          contains('Removed a from pubspec_overrides.yaml of 2 repo(s).'),
+          contains('✓ Removed a from pubspec_overrides.yaml of 2 repo(s).'),
         );
       });
 
@@ -441,7 +441,7 @@ void main() {
         expect(dir.existsSync(), isFalse);
         expect(
           messages,
-          contains('Deleted repository foo from master workspace.'),
+          contains('✓ Deleted repository foo from master workspace.'),
         );
       });
 
@@ -471,7 +471,7 @@ void main() {
         expect(repo.existsSync(), isFalse);
         expect(
           messages,
-          contains('Deleted repository foo from ticket alpha.'),
+          contains('✓ Deleted repository foo from ticket alpha.'),
         );
       });
     });
@@ -538,7 +538,7 @@ void main() {
         );
         expect(
           messages,
-          contains('Deleted repository foo from ticket alpha.'),
+          contains('✓ Deleted repository foo from ticket alpha.'),
         );
       });
     });

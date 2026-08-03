@@ -399,7 +399,7 @@ class DoCheckoutCommand extends Command<dynamic> {
 
     final relPath = path.relative(ticketDir.path, from: executionPath);
     if (failed.isEmpty) {
-      ggLog(green('✓ Checked out ticket $ticketName'));
+      ggLog(cDetail('✓ Checked out ticket $ticketName'));
     } else {
       ggLog(
         cError(

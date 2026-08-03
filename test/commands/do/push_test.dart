@@ -135,17 +135,14 @@ void main() {
 
       expect(
         messages.where((m) => !m.contains('Pushing repos')).join('\n'),
-        '''
-Pushing the following repos:
- - A
- - B
-
-A
-
-
-B
-
-✓ All repos pushed''',
+        'Pushing the following repos:\n'
+        ' - A\n'
+        ' - B\n'
+        '\n'
+        'A\n'
+        '\n'
+        'B\n'
+        '✓ All repos pushed',
       );
     });
 

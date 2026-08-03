@@ -123,7 +123,7 @@ class DoPushCommand extends DirCommand<void> {
       final repoDir = node.directory;
       final repoName = path.basename(repoDir.path);
 
-      ggLog('\n${cH1(repoName)}\n');
+      ggLog('\n${cH1(repoName)}');
 
       try {
         await _ggDoPush.exec(

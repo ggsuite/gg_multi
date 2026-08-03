@@ -157,7 +157,7 @@ void main() {
         expect(decision.skip, isTrue);
         expect(
           decision.reason,
-          contains('no dependency needs a constraint update'),
+          contains('Nothing changed. Skip publishing.'),
         );
       });
 
@@ -978,7 +978,7 @@ void main() {
           refVersions: {'a': '1.1.0'},
         );
         expect(decision.skip, isTrue);
-        expect(decision.reason, contains('no manual changes'));
+        expect(decision.reason, contains('Nothing changed. Skip publishing.'));
       });
     });
   });

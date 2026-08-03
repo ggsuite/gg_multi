@@ -147,7 +147,7 @@ class DoConfigurePublishCommand extends DirCommand<void> {
     for (final repo in subs) {
       final repoDir = repo.directory;
       final repoName = path.basename(repoDir.path);
-      ggLog('\n${cH1(repoName)}\n');
+      ggLog('\n${cH1(repoName)}');
 
       // A merge-only run releases nothing — no version bump, no changelog
       // heading, no tag. Asking for an increment would offer a version that
@@ -180,7 +180,7 @@ class DoConfigurePublishCommand extends DirCommand<void> {
     final config = gg.PublishConfig(repos: repos);
     final file = configFileFor(ticketDir);
     await config.save(file: file);
-    ggLog(green('Wrote publish configuration to ${file.path}'));
+    ggLog(cDetail('✓ Wrote publish configuration to ${file.path}'));
     return config;
   }
 

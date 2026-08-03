@@ -111,7 +111,7 @@ class DoExecuteCommand extends DirCommand<void> {
       final repoDir = node.directory;
       final repoName = path.basename(repoDir.path);
 
-      ggLog('\n${cH1(repoName)}\n');
+      ggLog('\n${cH1(repoName)}');
 
       final result = await _processRunner(
         cmd,
@@ -130,8 +130,8 @@ class DoExecuteCommand extends DirCommand<void> {
 
     if (failed.isEmpty) {
       ggLog(
-        green(
-          '✓ Command executed successfully in all repositories in ticket '
+        cDetail(
+          '✓ Command executed successfully in all repos in ticket '
           '$ticketName.',
         ),
       );

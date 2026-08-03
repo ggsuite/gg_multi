@@ -430,8 +430,10 @@ class DoPublishCommand extends DirCommand<void> {
         ggLog('\n${cH1(repoName)} already $_done — skipping.');
       } else if (skipDecision?.skip ?? false) {
         ggLog(
-          '\n${cH1(repoName)} ${cDetail('not $_done')} — '
-          '${skipDecision!.reason}.',
+          [
+            '\n${cH1(repoName)}',
+            '${cDetail('✓ Not $_done.')} ${skipDecision!.reason}',
+          ].join('\n'),
         );
         publishConfig = publishConfig.withRepoStatus(repoName, 'skipped');
         await publishConfig.save(file: runtimeFile);
@@ -451,7 +453,7 @@ class DoPublishCommand extends DirCommand<void> {
           ggLog: ggLog,
         );
 
-        ggLog('\n${cH1(repoName)}\n');
+        ggLog('\n${cH1(repoName)}');
 
         // Save the repo state so a failed publish can restore it.
         final snapshot = await _saveRepoState(repoDir: repoDir, ggLog: taskLog);
@@ -492,7 +494,7 @@ class DoPublishCommand extends DirCommand<void> {
         // re-run this already-published repo on a later `--continue`.
         publishConfig = publishConfig.withRepoStatus(repoName, 'published');
         await publishConfig.save(file: runtimeFile);
-        taskLog(green('$repoName: $_done successfully.'));
+        taskLog(cDetail('✓ $repoName: $_done successfully.'));
       }
 
       // Capture the published version + registry visibility so later repos
@@ -550,7 +552,7 @@ class DoPublishCommand extends DirCommand<void> {
     if (skippedRepos.isNotEmpty) {
       ggLog(
         cWarn(
-          'Not $_done because unchanged: ${skippedRepos.join(', ')}',
+          '✓ Not $_done. Nothing changed.}',
         ),
       );
     }
@@ -571,8 +573,8 @@ class DoPublishCommand extends DirCommand<void> {
     if (runtimeFile.existsSync()) {
       runtimeFile.deleteSync();
       taskLog(
-        green(
-          'Removed ${path.basename(runtimeFile.path)} after the $_action.',
+        cDetail(
+          '✓ Removed ${path.basename(runtimeFile.path)} after the $_action.',
         ),
       );
     }
@@ -627,7 +629,7 @@ class DoPublishCommand extends DirCommand<void> {
           );
         } else {
           taskLog(
-            cDetail('Kept remote branch $ticketName for $repoName.'),
+            cDetail('✓ Kept remote branch $ticketName for $repoName.'),
           );
         }
 
@@ -637,7 +639,7 @@ class DoPublishCommand extends DirCommand<void> {
             ticketDir: ticketDir,
           );
           taskLog(
-            green(
+            cDetail(
               'Moved repository $repoName of ticket $ticketName to $target.',
             ),
           );
@@ -664,7 +666,7 @@ class DoPublishCommand extends DirCommand<void> {
           source: workspaceFile,
           ticketDir: ticketDir,
         );
-        taskLog(green('Moved ${path.basename(target)} to $target.'));
+        taskLog(cDetail('✓ Moved ${path.basename(target)} to $target.'));
       } catch (e) {
         allMoved = false;
         ggLog(
@@ -685,7 +687,7 @@ class DoPublishCommand extends DirCommand<void> {
 
     if (ticketDir.existsSync()) {
       ticketDir.deleteSync(recursive: true);
-      taskLog(green('Deleted ticket folder ${ticketDir.path}.'));
+      taskLog(cDetail('✓ Deleted ticket folder ${ticketDir.path}.'));
     }
   }
 
@@ -904,7 +906,7 @@ class DoPublishCommand extends DirCommand<void> {
     // Push
     await _ggDoPush.exec(directory: repoDir, ggLog: taskLog);
 
-    taskLog(green('$repoName: updated with new references.'));
+    taskLog(cDetail('✓ $repoName: updated with new references.'));
 
     // At least one version must already be on the registry. A package that
     // was never published is published manually by the user first — right
@@ -969,7 +971,7 @@ class DoPublishCommand extends DirCommand<void> {
   }) async {
     try {
       await _unlocalizeRefs.get(directory: repoDir, ggLog: taskLog);
-      taskLog(green('$repoName: unlocalized refs.'));
+      taskLog(cDetail('✓ $repoName: unlocalized refs.'));
     } catch (e) {
       throw Exception(cError('Failed to unlocalize refs for $repoName: $e'));
     }
@@ -1218,7 +1220,7 @@ class DoPublishCommand extends DirCommand<void> {
           .map((t) => t.trim())
           .where((t) => t.isNotEmpty)
           .toSet();
-      ggLog(green('Saved state of $repoName'));
+      ggLog(cDetail('✓ Saved state of $repoName'));
       return _RepoPublishSnapshot(
         directory: repoDir,
         branch: branch,
@@ -1460,7 +1462,7 @@ class DoPublishCommand extends DirCommand<void> {
       );
     }
 
-    taskLog(green('Restored the state before the publish in $repoName'));
+    taskLog(cDetail('✓ Restored the state before the publish in $repoName'));
     ggLog(
       cWarn(
         '$repoName: pushes to origin are not rolled back; the next run '
@@ -1585,7 +1587,7 @@ class DoPublishCommand extends DirCommand<void> {
       );
       final cmd = '$exe ${stepArgs.join(' ')}';
       if (result.exitCode == 0) {
-        ggLog(green('Executed $cmd in $repoName.'));
+        ggLog(cDetail('✓ Executed $cmd in $repoName.'));
       } else {
         throw Exception(
           cError(
@@ -1642,7 +1644,7 @@ class DoPublishCommand extends DirCommand<void> {
     }
 
     ggLog(
-      green(
+      cDetail(
         'Deleted remote branch $branchName for $repoName.',
       ),
     );

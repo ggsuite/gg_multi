@@ -127,7 +127,7 @@ void main() {
             path.join(masterPath, 'ggsuite', 'gg'),
           ),
         ).called(1);
-        expect(messages, contains('Adding ggsuite/gg'));
+        expect(messages, contains('✓ Adding ggsuite/gg'));
         expect(
           messages.last,
           contains('1 added, 0 moved to the trash, 1 organization(s)'),
@@ -294,8 +294,8 @@ void main() {
 
         expect(gone.existsSync(), isTrue);
         verifyNever(() => gitCloner.cloneRepo(any(), any()));
-        expect(messages, contains('Would add ggsuite/gg_new'));
-        expect(messages, contains('Would move ggsuite/gg_gone to the trash'));
+        expect(messages, contains('✓ Would add ggsuite/gg_new'));
+        expect(messages, contains('✓ Would move ggsuite/gg_gone to the trash'));
         expect(
           messages.last,
           contains('Would update the master workspace: 1 added, '

@@ -74,6 +74,8 @@ class DoCommitCommand extends DirCommand<void> {
     cl.LogType? logType,
     bool? updateChangeLog,
   }) async {
+    ggLog(cH1('\n Committing ...'));
+
     message ??= _messageOption;
 
     // Detect if we are inside a ticket folder
@@ -108,7 +110,7 @@ class DoCommitCommand extends DirCommand<void> {
     for (final node in nodes) {
       final repoDir = node.directory;
       final repoName = path.basename(repoDir.path);
-      ggLog('\n${cH1(repoName)}\n');
+      ggLog('\n${cH1(repoName)}');
       try {
         await _ggDoCommit.exec(
           directory: repoDir,

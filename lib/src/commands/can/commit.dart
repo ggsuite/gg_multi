@@ -74,7 +74,7 @@ class CanCommitCommand extends DirCommand<void> {
     for (final node in nodes) {
       final repoDir = node.directory;
       final repoName = path.basename(repoDir.path);
-      ggLog('\n${cH1(repoName)}\n');
+      ggLog('\n${cH1(repoName)}');
       try {
         await _ggCanCommit.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {

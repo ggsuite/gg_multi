@@ -105,14 +105,13 @@ void main() {
           ),
         );
       await runner.run(['push', '--input', ticketDir.path]);
-      expect(messages.join('\n'), '''
-
-A
-
-
-B
-
-✓ All repos pushed''');
+      expect(messages, [
+        '\n'
+            'A',
+        '\n'
+            'B',
+        '✓ All repos pushed',
+      ]);
     });
 
     test('aborts on first repo that fails', () async {

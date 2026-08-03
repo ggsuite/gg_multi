@@ -2788,11 +2788,20 @@ void main() {
         ),
       ).called(1);
 
-      expect(messages, contains('Pull requests:'));
-      expect(
-        messages,
-        contains(' - A: https://github.com/ggsuite/A/pull/7'),
-      );
+      expect(messages, [
+        '⌛️ Saving the state before the review',
+        '✓ Saving the state before the review',
+        '⌛️ Merging origin/main into feature branches',
+        '✓ Merging origin/main into feature branches',
+        '⌛️ Gg Multi can review?',
+        '✓ Gg Multi can review?',
+        '⌛️ Setting dependencies to git, committing and pushing',
+        '✓ Setting dependencies to git, committing and pushing',
+        '⌛️ Creating pull requests',
+        '✓ Creating pull requests',
+        '✓ Please open and review:',
+        ' - https://github.com/ggsuite/A/pull/7',
+      ]);
     });
 
     test('use the ticket description as message', () async {

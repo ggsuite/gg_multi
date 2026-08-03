@@ -90,7 +90,7 @@ void main() {
       expect(
         messages.last,
         contains(
-          'Opened workspace T1.code-workspace at ',
+          '✓ Opened workspace T1.code-workspace',
         ),
       );
     });
@@ -114,7 +114,7 @@ void main() {
       expect(
         messages.last,
         contains(
-          'Opened workspace T2.code-workspace at ',
+          '✓ Opened workspace T2.code-workspace',
         ),
       );
     });
@@ -133,7 +133,7 @@ void main() {
       expect(launched[0][2], isTrue);
       expect(
         messages.last,
-        contains('Opened MyRepo at'),
+        contains('✓ Opened MyRepo'),
       );
     });
 
@@ -153,7 +153,7 @@ void main() {
       expect(
         messages.last,
         contains(
-          'Opened SlashRepo at',
+          '✓ Opened SlashRepo at',
         ),
       );
     });
@@ -172,7 +172,7 @@ void main() {
 
       expect(launched.length, 1);
       expect(launched[0][1], r.path);
-      expect(messages.last, contains('Opened OrgRepo at'));
+      expect(messages.last, contains('✓ Opened OrgRepo'));
     });
 
     test('logs error when specified repo missing', () async {
@@ -233,8 +233,7 @@ void main() {
       expect(
         messages,
         contains(
-          'Opened workspace T_noArgs.code-workspace at '
-          'T_noArgs.code-workspace',
+          '✓ Opened workspace T_noArgs.code-workspace',
         ),
       );
     });

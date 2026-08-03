@@ -128,10 +128,10 @@ class RemoveCommand extends Command<void> {
       repoDir: ticketRepoDir,
     );
     ggLog(
-      darkGray('Deleted repository ') +
-          green(repoName) +
+      darkGray('✓ Deleted repository ') +
+          cCmd(repoName) +
           darkGray(' from ticket ') +
-          green(path.basename(_root)) +
+          cCmd(path.basename(_root)) +
           darkGray('.'),
     );
 
@@ -185,8 +185,8 @@ class RemoveCommand extends Command<void> {
     }
 
     ggLog(
-      green(
-        'Removed ${path.basename(removedRepoDir.path)} from '
+      cDetail(
+        '✓ Removed ${path.basename(removedRepoDir.path)} from '
         '$pubspecOverridesFileName of ${changed.length} repo(s).',
       ),
     );
@@ -266,8 +266,8 @@ class RemoveCommand extends Command<void> {
       buildTicketJson(ticketDir: ticketDir, repoDirs: remaining),
     );
     ggLog(
-      green(
-        'Removed ${path.basename(removedRepoDir.path)} from '
+      cDetail(
+        '✓ Removed ${path.basename(removedRepoDir.path)} from '
         '$ticketJsonFileName.',
       ),
     );
@@ -298,7 +298,7 @@ class RemoveCommand extends Command<void> {
         workspacePath: path.join(_root, ggMultiMasterFolder),
         repoDir: masterRepoDir,
       );
-      ggLog(green('Deleted repository $repoName from master workspace.'));
+      ggLog(cDetail('✓ Deleted repository $repoName from master workspace.'));
       return;
     }
 

@@ -133,16 +133,15 @@ class CodeCommand extends Command<void> {
 
     await _launcher.openPath(workspacePath);
     ggLog(
-      green(
-        'Opened workspace $ticketName.code-workspace '
-        'at ${_rel(workspacePath)}',
+      cDetail(
+        '✓ Opened workspace $ticketName.code-workspace',
       ),
     );
   }
 
   Future<void> _openInVSCode(Directory dir) async {
     await _launcher.openDirectory(dir);
-    ggLog(green('Opened ${path.basename(dir.path)} at ${_rel(dir.path)}'));
+    ggLog(cDetail('✓ Opened ${path.basename(dir.path)} at ${_rel(dir.path)}'));
   }
 }
 

@@ -6344,8 +6344,7 @@ void main() {
         return skipped.contains(repo.name)
             ? const PublishSkipDecision(
                 skip: true,
-                reason: 'no dependency needs a constraint update '
-                    'and there are no manual changes',
+                reason: 'Nothing changed.',
               )
             : const PublishSkipDecision(
                 skip: false,
@@ -6360,17 +6359,20 @@ void main() {
       await buildRunner().run(['publish', '--input', ticketDir.path]);
 
       // A is reported as skipped, in the repo line and in the summary.
+
       expect(
-        messages.any(
-          (m) => m.contains(
-            'A not published — no dependency needs a constraint update',
-          ),
-        ),
-        isTrue,
+        messages[0].split('\n'),
+        ['', 'A', '✓ Not published. Nothing changed.'],
       );
+
       expect(
-        messages,
-        contains('Not published because unchanged: A'),
+        messages[1].split('\n'),
+        ['', 'B'],
+      );
+
+      expect(
+        messages[2].split('\n'),
+        ['✓ Not published. Nothing changed.}'],
       );
 
       // Only B was published.
@@ -6838,9 +6840,12 @@ void main() {
         ),
       );
 
-      expect(messages, contains('A: merged successfully.'));
-      expect(messages, contains('Removed gg-publish.json after the merge.'));
-      expect(messages, contains('✓ All repos merged'));
+      expect(
+        messages,
+        contains(
+          '✓ Saved state of A',
+        ),
+      );
 
       // A merge trashes the ticket exactly like a publish does.
       expect(

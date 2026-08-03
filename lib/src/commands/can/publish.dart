@@ -361,7 +361,7 @@ class CanPublishCommand extends DirCommand<void> {
     required GgLog ggLog,
   }) async {
     final repoName = path.basename(repoDir.path);
-    ggLog('\n${cH1(repoName)}\n');
+    ggLog('\n${cH1(repoName)}');
     try {
       await _ggCanPublish.exec(directory: repoDir, ggLog: ggLog);
       return null;
@@ -401,7 +401,7 @@ class CanPublishCommand extends DirCommand<void> {
     for (final repo in subs) {
       final repoDir = repo.directory;
       final repoName = path.basename(repoDir.path);
-      ggLog('\n${cH1(repoName)}\n');
+      ggLog('\n${cH1(repoName)}');
       try {
         await _ggNpmLoggedIn.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
@@ -426,7 +426,7 @@ class CanPublishCommand extends DirCommand<void> {
     for (final repo in subs) {
       final repoDir = repo.directory;
       final repoName = path.basename(repoDir.path);
-      ggLog('\n${cH1(repoName)}\n');
+      ggLog('\n${cH1(repoName)}');
       try {
         await _ggCanMerge.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {

@@ -107,14 +107,13 @@ void main() {
           ),
         );
       await runner.run(['push', '--input', ticketDir.path]);
-      expect(messages.join('\n'), '''
-
-A
-
-
-B
-
-✓ All repos can be pushed''');
+      expect(messages, [
+        '\n'
+            'A',
+        '\n'
+            'B',
+        '✓ All repos can be pushed',
+      ]);
     });
 
     test('aborts on first repo that fails', () async {

@@ -211,7 +211,7 @@ class UpdateMasterCommand extends Command<void> {
     }
 
     for (final item in missing) {
-      ggLog(green('${dryRun ? 'Would add' : 'Adding'} ${item.label}'));
+      ggLog(cDetail('✓ ${dryRun ? 'Would add' : 'Adding'} ${item.label}'));
     }
     if (dryRun || missing.isEmpty) {
       return [for (final item in missing) item.label];
@@ -270,7 +270,7 @@ class UpdateMasterCommand extends Command<void> {
       ).replaceAll(r'\', '/');
 
       ggLog(
-        cDetail('${dryRun ? 'Would move' : 'Moving'} $label to the trash'),
+        cDetail('${dryRun ? '✓ Would move' : 'Moving'} $label to the trash'),
       );
       removed.add(label);
       if (dryRun) {

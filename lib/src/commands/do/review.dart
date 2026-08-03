@@ -355,9 +355,9 @@ class DoReviewCommand extends DirCommand<void> {
     });
 
     if (urls.isNotEmpty) {
-      ggLog(green('Pull requests:'));
+      ggLog(cAction('✓ Please open and review:'));
       for (final entry in urls.entries) {
-        ggLog(' - ${entry.key}: ${cPath(entry.value)}');
+        ggLog(' - ${cPath(entry.value)}');
       }
     }
 
@@ -443,7 +443,7 @@ class DoReviewCommand extends DirCommand<void> {
 
         ggLog(
           green(
-            'Merged main into $repoName for ticket $ticketName.',
+            '✓ Merged main into $repoName for ticket $ticketName.',
           ),
         );
       } on MergeConflictException {
@@ -471,7 +471,7 @@ class DoReviewCommand extends DirCommand<void> {
             saveState: false,
           );
           ggLog(
-            green('Verified $repoName still passes "gg can commit" after '
+            green('✓ Verified $repoName still passes "gg can commit" after '
                 'merging main.'),
           );
         } catch (e) {
@@ -580,7 +580,7 @@ class DoReviewCommand extends DirCommand<void> {
             stash: stash,
           ),
         );
-        ggLog(green('Saved state of $repoName'));
+        ggLog(green('✓ Saved state of $repoName'));
       } catch (e) {
         throw Exception(
           cError(
@@ -709,7 +709,7 @@ class DoReviewCommand extends DirCommand<void> {
             repoDir: s.directory,
           );
         }
-        ggLog(green('Restored the state before the review in $repoName'));
+        ggLog(green('✓ Restored the state before the review in $repoName'));
       } catch (e) {
         final manual = StringBuffer(
           'git checkout ${s.branch} && git reset --hard ${s.head}',
@@ -767,7 +767,7 @@ class DoReviewCommand extends DirCommand<void> {
           ggLog: ggLog,
           gitRef: ticketName,
         );
-        ggLog(green('Localized refs for $repoName'));
+        ggLog(green('✓ Localized refs for $repoName'));
       } catch (e) {
         errorLog(
           cError(
@@ -803,7 +803,7 @@ class DoReviewCommand extends DirCommand<void> {
           // CHANGELOG.md (»gg do commit --no-log«).
           updateChangeLog: false,
         );
-        ggLog(green('Committed $repoName'));
+        ggLog(green('✓ Committed $repoName'));
       } catch (e) {
         errorLog(cError('Failed to commit $repoName: $e'));
         throw Exception(
@@ -824,7 +824,7 @@ class DoReviewCommand extends DirCommand<void> {
       try {
         await _ggDoPush.exec(directory: repoDir, ggLog: ggLog);
         pushedRepos.add(repoName);
-        ggLog(green('Pushed $repoName'));
+        ggLog(green('✓ Pushed $repoName'));
       } catch (e) {
         errorLog(cError('Failed to push $repoName: $e'));
         throw Exception(
@@ -930,7 +930,7 @@ class DoReviewCommand extends DirCommand<void> {
         ),
       );
     }
-    ggLog(green('Integrated origin/$branch into $repoName before push'));
+    ggLog(green('✓ Integrated origin/$branch into $repoName before push'));
   }
 
   /// Whether `origin/<branch>` is a leftover of a ticket that was **already
@@ -1135,7 +1135,7 @@ class DoReviewCommand extends DirCommand<void> {
 
       try {
         await _localizeRefsToLocal.get(directory: repoDir, ggLog: ggLog);
-        ggLog(green('Localized refs to local paths for $repoName'));
+        ggLog(green('✓ Localized refs to local paths for $repoName'));
       } catch (e) {
         ggLog(
           cError(
@@ -1163,7 +1163,7 @@ class DoReviewCommand extends DirCommand<void> {
           // CHANGELOG.md (»gg do commit --no-log«).
           updateChangeLog: false,
         );
-        ggLog(green('Committed $repoName'));
+        ggLog(green('✓ Committed $repoName'));
       } catch (e) {
         ggLog(cError('Failed to commit $repoName: $e'));
         throw Exception(cError('Failed to cancel review in: $repoName'));
@@ -1201,7 +1201,7 @@ class DoReviewCommand extends DirCommand<void> {
     );
     final cmd = '${pm.executable} install';
     if (result.exitCode == 0) {
-      ggLog(green('Executed $cmd in $repoName.'));
+      ggLog(green('✓ Executed $cmd in $repoName.'));
     } else {
       ggLog(
         cError(
@@ -1267,7 +1267,7 @@ class DoReviewCommand extends DirCommand<void> {
       );
       final cmd = '$exe ${stepArgs.join(' ')}';
       if (result.exitCode == 0) {
-        ggLog(green('Executed $cmd in $repoName.'));
+        ggLog(green('✓ Executed $cmd in $repoName.'));
       } else {
         // pnpm prints its errors to stdout, so fall back to stdout when stderr
         // is empty — otherwise the real cause is swallowed ("... failed: ").
