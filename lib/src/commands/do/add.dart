@@ -24,6 +24,7 @@ import '../../backend/filesystem_utils.dart';
 import '../../backend/git_attributes.dart';
 import '../../backend/git_handler.dart' hide ProcessRunner;
 import '../../backend/git_platform.dart' hide ProcessRunner;
+import '../../backend/gitignore_lock_files.dart';
 import '../../backend/legacy_git_hooks.dart';
 import '../../backend/organization_utils.dart';
 import '../../backend/repo_folder_resolver.dart';
@@ -1117,6 +1118,12 @@ class AddCommand extends Command<dynamic> {
   /// blocked by the remote and merges go through pull requests — but a hook
   /// installed by an older `gg do add` survives in checkouts and would keep
   /// running on every push.
+  ///
+  /// Also drops the lock file entries from every repo's `.gitignore`
+  /// (`ensureLockFilesNotIgnored`). A lock file belongs into git, and while it
+  /// is ignored, every background `pub get` rewrites a file the checks cannot
+  /// see. Running it here migrates a repository the first time it enters a
+  /// ticket; the `#gg:` force commit that follows picks the lock file up.
   Future<void> _writeProjectConfigFiles({
     required Directory ticketDir,
     required GgLog ggLog,
@@ -1130,6 +1137,7 @@ class AddCommand extends Command<dynamic> {
 
     for (final node in nodes) {
       removeLegacyGitHooks(repoDir: node.directory, ggLog: ggLog);
+      ensureLockFilesNotIgnored(repoDir: node.directory, ggLog: ggLog);
     }
 
     await installGitattributes(
