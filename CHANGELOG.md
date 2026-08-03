@@ -6,7 +6,7 @@
 
 - dart pub upgrade --major-versions --tighten
 - shorten the long CLI messages and share the duplicated ones: one
-  unfinishedPublishMessage, one continueConflictMessage, one editMessage
+unfinishedPublishMessage, one continueConflictMessage, one editMessage
 - use the semantic colors of gg_console_colors: cAction for instructions,
 cWarn for warnings, cDetail for progress, cCmd/cPath inside a message
 - wrap every exception text in cError
@@ -31,6 +31,10 @@ are visually separated
 the rest of the CLI uses
 - Rework console colors
 - Improve cli log and colors
+
+### Fixed
+
+- Fix unit test errors
 
 ### Removed
 

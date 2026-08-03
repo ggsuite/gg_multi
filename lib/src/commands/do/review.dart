@@ -357,10 +357,11 @@ class DoReviewCommand extends DirCommand<void> {
     });
 
     if (urls.isNotEmpty) {
-      ggLog(cAction('✓ Please open and review:'));
+      ggLog(cAction('\n✓ Please open and review:'));
       for (final entry in urls.entries) {
-        ggLog(' - ${cPath(entry.value)}');
+        ggLog('  ${cPath(entry.value)}');
       }
+      ggLog('\n');
     }
 
     for (final entry in failures.entries) {

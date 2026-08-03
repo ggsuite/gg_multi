@@ -2787,7 +2787,8 @@ void main() {
       ).called(1);
 
       expect(messages, [
-        'Reviewing ...',
+        '\n'
+            'Reviewing ...',
         '⌛️ Saving the state before the review',
         '✓ Saving the state before the review',
         '⌛️ Merging origin/main into feature branches',
@@ -2798,8 +2799,11 @@ void main() {
         '✓ Setting dependencies to git, committing and pushing',
         '⌛️ Creating pull requests',
         '✓ Creating pull requests',
-        '✓ Please open and review:',
-        ' - https://github.com/ggsuite/A/pull/7',
+        '\n'
+            '✓ Please open and review:',
+        '  https://github.com/ggsuite/A/pull/7',
+        '\n'
+            ''
       ]);
     });
 

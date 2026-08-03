@@ -6361,17 +6361,22 @@ void main() {
       // A is reported as skipped, in the repo line and in the summary.
 
       expect(
-        messages[0].split('\n'),
-        ['', 'A', '✓ Not published. Nothing changed.'],
+        messages[0],
+        'Publishing ...',
       );
 
       expect(
         messages[1].split('\n'),
-        ['', 'B'],
+        ['', 'A', '✓ Not published. Nothing changed.'],
       );
 
       expect(
         messages[2].split('\n'),
+        ['', 'B'],
+      );
+
+      expect(
+        messages[3].split('\n'),
         ['✓ Not published. Nothing changed.}'],
       );
 
