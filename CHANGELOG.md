@@ -5,6 +5,8 @@
 ### Changed
 
 - dart pub upgrade --major-versions --tighten
+- use rmC from gg_console_colors in the tests instead of a local copy of
+  the color stripper
 - print a blank line before each cyan repo name so the per-repo blocks
   are visually separated
 - replace do cancel-review with do review --abort

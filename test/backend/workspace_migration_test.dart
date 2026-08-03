@@ -6,18 +6,17 @@
 
 import 'dart:io';
 
+import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_multi/src/backend/workspace_migration.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-
-import '../rm_console_colors_helper.dart';
 
 void main() {
   late Directory workspace;
   late List<String> logs;
 
   void ggLog(String message) {
-    logs.add(rmConsoleColors(message));
+    logs.add(rmC(message));
   }
 
   setUp(() {

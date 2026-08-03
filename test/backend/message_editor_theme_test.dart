@@ -14,13 +14,13 @@ void main() {
     test('prints the prompt in yellow', () {
       final styled = messageEditorTheme.messageStyle('Edit commit message');
       expect(styled, yellow('Edit commit message'));
-      expect(rmConsoleColors(styled), 'Edit commit message');
+      expect(rmC(styled), 'Edit commit message');
     });
 
     test('prints the entered message in blue', () {
       final styled = messageEditorTheme.valueStyle(' My message ');
       expect(styled, blue(' My message '));
-      expect(rmConsoleColors(styled), ' My message ');
+      expect(rmC(styled), ' My message ');
     });
 
     test('switches to blue after the prompt so the edit buffer is blue', () {
@@ -36,7 +36,7 @@ void main() {
 
     test('colorOff resets the terminal', () {
       expect(colorOff, '\x1B[0m');
-      expect(rmConsoleColors(colorOff), isEmpty);
+      expect(rmC(colorOff), isEmpty);
     });
   });
 }

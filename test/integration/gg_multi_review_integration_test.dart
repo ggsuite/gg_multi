@@ -9,6 +9,7 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_publish/gg_publish.dart';
 import 'package:gg_multi/src/backend/constants.dart';
@@ -27,8 +28,6 @@ import 'package:path/path.dart' as path;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:test/test.dart';
-
-import '../rm_console_colors_helper.dart';
 
 /// Integration test that executes the full "add" → "do review" flow
 /// for two local Dart packages `a` and `b`.
@@ -51,7 +50,7 @@ void main() {
         final logs = <String>[];
 
         void ggLog(String message) {
-          logs.add(rmConsoleColors(message));
+          logs.add(rmC(message));
           print(message);
         }
 

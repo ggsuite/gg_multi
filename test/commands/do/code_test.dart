@@ -6,12 +6,12 @@
 
 import 'dart:io';
 import 'package:args/command_runner.dart';
+import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_multi/src/backend/constants.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 import 'package:gg_multi/src/commands/do/code.dart';
 import 'package:gg_multi/src/backend/vscode_launcher.dart';
-import '../../rm_console_colors_helper.dart';
 
 void main() {
   group('CodeCommand', () {
@@ -28,7 +28,7 @@ void main() {
       launched.add(<Object?>[exe, ...args, runInShell]);
     }
 
-    void ggLog(String m) => messages.add(rmConsoleColors(m));
+    void ggLog(String m) => messages.add(rmC(m));
 
     setUp(() {
       tempRoot = Directory.systemTemp.createTempSync('code_test_');

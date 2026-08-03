@@ -6,13 +6,12 @@
 
 import 'dart:io';
 
+import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_multi/src/backend/ensure_in_registry.dart';
 import 'package:gg_publish/gg_publish.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-
-import '../rm_console_colors_helper.dart';
 
 class FakeDirectory extends Fake implements Directory {}
 
@@ -31,7 +30,7 @@ void main() {
   // Collects log messages while removing color codes.
   void ggLog(String msg) {
     coloredMessages.add(msg);
-    messages.add(rmConsoleColors(msg));
+    messages.add(rmC(msg));
   }
 
   // ...........................................................................

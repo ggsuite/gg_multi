@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 // ignore: lines_longer_than_80_chars
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
@@ -28,8 +29,6 @@ import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:test/test.dart';
 import 'package:gg_multi/src/commands/do/publish.dart';
 import 'package:gg_multi/src/commands/can/publish.dart';
-
-import '../../rm_console_colors_helper.dart';
 
 /// Mock for gg DoPublish
 class MockGgDoPublish extends Mock implements gg.DoPublish {}
@@ -97,7 +96,7 @@ void main() {
   // Collects log messages while removing color codes.
   void ggLog(String msg) {
     coloredMessages.add(msg);
-    messages.add(rmConsoleColors(msg));
+    messages.add(rmC(msg));
   }
 
   setUp(() {

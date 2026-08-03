@@ -12,6 +12,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_multi/src/backend/constants.dart';
 import 'package:gg_multi/src/backend/git_platform.dart' hide ProcessRunner;
@@ -27,8 +28,6 @@ import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:gg_multi/src/backend/repository.dart';
-
-import '../../rm_console_colors_helper.dart';
 
 class MockGitCloner extends Mock implements GitHandler {}
 
@@ -64,7 +63,7 @@ void main() {
     late String masterWorkspacePath;
 
     void ggLog(String message) {
-      logMessages.add(rmConsoleColors(message));
+      logMessages.add(rmC(message));
     }
 
     void createRunner({

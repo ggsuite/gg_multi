@@ -6,13 +6,12 @@
 
 import 'dart:io';
 import 'package:args/command_runner.dart';
+import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_multi/src/backend/constants.dart';
 import 'package:gg_multi/src/backend/ticket_json.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 import 'package:gg_multi/src/commands/do/rm.dart';
-
-import '../../rm_console_colors_helper.dart';
 
 void main() {
   group('RemoveCommand', () {
@@ -22,7 +21,7 @@ void main() {
     final messages = <String>[];
 
     void ggLog(String message) {
-      messages.add(rmConsoleColors(message));
+      messages.add(rmC(message));
     }
 
     CommandRunner<void> runnerAt(String rootPath) {

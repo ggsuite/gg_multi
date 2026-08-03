@@ -8,12 +8,11 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
+import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_multi/src/backend/constants.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 import 'package:gg_multi/src/commands/do/list/repos.dart';
-
-import '../../../rm_console_colors_helper.dart';
 
 void main() {
   group('ListReposCommand', () {
@@ -21,7 +20,7 @@ void main() {
     final messages = <String>[];
 
     void ggLog(String message) {
-      messages.add(rmConsoleColors(message));
+      messages.add(rmC(message));
     }
 
     setUp(() {

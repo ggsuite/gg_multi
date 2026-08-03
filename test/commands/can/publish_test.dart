@@ -7,6 +7,7 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_publish/gg_publish.dart' as gg_publish;
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
@@ -17,8 +18,6 @@ import 'package:test/test.dart';
 import 'package:gg_multi/src/commands/can/publish.dart';
 import 'package:gg_multi/src/commands/did/commit.dart';
 import 'package:gg_multi/src/commands/do/push.dart';
-
-import '../../rm_console_colors_helper.dart';
 
 class MockGgCanCommit extends Mock implements gg.CanCommit {}
 
@@ -49,7 +48,7 @@ void main() {
     registerFallbackValue(FakeDirectory());
   });
 
-  void ggLog(String msg) => messages.add(rmConsoleColors(msg));
+  void ggLog(String msg) => messages.add(rmC(msg));
 
   setUp(() {
     messages.clear();
@@ -922,7 +921,7 @@ void main() {
         ).thenAnswer((_) async {});
 
         final localMessages = <String>[];
-        void localLog(String msg) => localMessages.add(rmConsoleColors(msg));
+        void localLog(String msg) => localMessages.add(rmC(msg));
 
         final command = CanPublishCommand(
           ggLog: localLog,

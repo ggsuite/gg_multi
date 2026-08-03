@@ -7,6 +7,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:http/http.dart' as http;
 import 'package:gg_multi/src/backend/git_platform.dart';
 import 'package:mocktail/mocktail.dart';
@@ -16,8 +17,6 @@ import 'package:test/test.dart';
 import 'package:gg_multi/src/backend/add_repository_helper.dart';
 import 'package:gg_multi/src/backend/git_handler.dart';
 import 'package:gg_multi/src/backend/repository.dart';
-
-import '../rm_console_colors_helper.dart';
 
 // Create a mock for GitCloner
 class MockGitCloner extends Mock implements GitHandler {}
@@ -37,7 +36,7 @@ void main() {
 
   // Setup a simple ggLog function that appends messages to logs list
   void ggLog(String message) {
-    logs.add(rmConsoleColors(message));
+    logs.add(rmC(message));
   }
 
   setUp(() {

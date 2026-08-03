@@ -6,12 +6,11 @@
 
 import 'dart:io';
 import 'package:args/command_runner.dart';
+import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_multi/src/backend/constants.dart';
 import 'package:gg_multi/src/commands/do/init/workspace.dart';
 import 'package:test/test.dart';
 import 'package:path/path.dart' as path;
-
-import '../../../rm_console_colors_helper.dart';
 
 void main() {
   group('InitWorkspaceCommand', () {
@@ -19,7 +18,7 @@ void main() {
     final messages = <String>[];
 
     void ggLog(String message) {
-      messages.add(rmConsoleColors(message));
+      messages.add(rmC(message));
     }
 
     setUp(() {

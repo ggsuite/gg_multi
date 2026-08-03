@@ -7,6 +7,7 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_publish/gg_publish.dart' as gg_publish;
@@ -16,8 +17,6 @@ import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:test/test.dart';
 import 'package:gg_multi/src/backend/ticket_state.dart';
 import 'package:gg_multi/src/commands/can/review.dart';
-
-import '../../rm_console_colors_helper.dart';
 
 class MockSortedProcessingList extends Mock implements SortedProcessingList {}
 
@@ -76,7 +75,7 @@ void main() {
     registerFallbackValue(<Node>[]);
   });
 
-  void ggLog(String msg) => messages.add(rmConsoleColors(msg));
+  void ggLog(String msg) => messages.add(rmC(msg));
 
   setUp(() {
     messages.clear();
@@ -919,7 +918,7 @@ void main() {
       ).thenAnswer((_) async => true);
 
       final localMessages = <String>[];
-      void localLog(String msg) => localMessages.add(rmConsoleColors(msg));
+      void localLog(String msg) => localMessages.add(rmC(msg));
 
       final command = CanReviewCommand(
         ggLog: localLog,

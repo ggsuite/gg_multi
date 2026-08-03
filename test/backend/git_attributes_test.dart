@@ -6,11 +6,10 @@
 
 import 'dart:io';
 
+import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_multi/src/backend/git_attributes.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-
-import '../rm_console_colors_helper.dart';
 
 void main() {
   group('installGitattributes (ticket-wide)', () {
@@ -22,7 +21,7 @@ void main() {
     late List<String?> processWorkingDirs;
     late ProcessResult processResult;
 
-    void ggLog(String msg) => messages.add(rmConsoleColors(msg));
+    void ggLog(String msg) => messages.add(rmC(msg));
 
     Future<ProcessResult> fakeRunner(
       String executable,
