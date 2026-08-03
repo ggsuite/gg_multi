@@ -1268,18 +1268,21 @@ class DoPublishCommand extends DirCommand<void> {
     required GgLog ggLog,
   }) {
     final reason = rmControls(
-      error.toString().replaceAll('Exception: ', ''),
+      (error as dynamic).message.toString(),
     ).trim();
     ggLog(
       [
-        cError('✗ ${mergeOnly ? 'Merging' : 'Publishing'} $repoName failed'),
-        if (reason.isNotEmpty) cDetail(reason),
+        cDetail('✗ ${mergeOnly ? 'Merging' : 'Publishing'} $repoName failed'),
+        if (reason.isNotEmpty) cError(reason),
       ].join('\n'),
     );
     ggLog(
-      cWarn(
-        'The $_action is marked as »failed«. Fix the problem and resume it '
-        'with ${cCmd('$_command --continue')}.',
+      cAction(
+        [
+          'Fix the problem and resume with:',
+          '  ${cCmd('$_command --continue')}',
+          '  ${cCmd('$_command --resetart')}',
+        ].join('\n'),
       ),
     );
   }
