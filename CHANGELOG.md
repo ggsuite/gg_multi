@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 7.9.3 - 2026-08-03
 
 ### Fixed
 
@@ -9,6 +9,7 @@
 ### Removed
 
 - Remove ./ from test error paths to allow directly opening it in vscode
+
 ## 7.9.2 - 2026-08-03
 
 ### Changed
