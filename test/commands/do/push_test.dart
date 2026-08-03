@@ -139,7 +139,7 @@ A
 B
 ✓ Pushed
 
-✓ All repos pushed
+All repos pushed
 ''');
     });
 
@@ -255,7 +255,7 @@ A
 B
 ✓ Pushed
 
-✓ All repos pushed
+All repos pushed
 ''');
     });
   });

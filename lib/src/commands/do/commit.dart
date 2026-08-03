@@ -134,7 +134,7 @@ class DoCommitCommand extends DirCommand<void> {
       for (final repoName in failedRepos) {
         ggLog(cDetail(' - ${cCmd(repoName)}'));
       }
-      throw Exception(cError('Failed to commit in: ${failedRepos.join(', ')}'));
+      throw Exception(cDetail('Failed to commit'));
     }
   }
 
