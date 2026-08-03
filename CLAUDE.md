@@ -193,6 +193,12 @@ Once the `ticket.json` is in hand, it recreates the ticket folder + root `.ticke
 
 `DoExecuteCommand` (in `lib/src/commands/do/maintain/exec.dart`) runs one shell command in every ticket repo in dependency order (`SortedProcessingList`), logging each repo name before its output. It collects the repos whose command exited non-zero instead of stopping at the first one, then lists them and throws — so a `gg do maintain exec dart pub get` reports _every_ broken repo in one pass. The injectable `ProcessRunner` runs with `runInShell: true`; the `-l`/`--line-length` option exists only so an argument like `dart fmt -l 120` does not fail arg parsing before it reaches the tool.
 
+### `.gitattributes` upkeep
+
+`installGitattributes` (in `lib/src/backend/git_attributes.dart`) ensures every ticket repo carries the `.gitattributes` lines gg depends on (`* text=auto eol=lf`, `merge=ours` for `.gg/gg.json` and the lock files of the repo's languages, `merge=union` for `CHANGELOG.md`) and that `git config merge.ours.driver true` is set locally. Missing lines are appended individually, an already complete file is left untouched, and a repo without `.git` is skipped with a warning.
+
+It used to be the `do install-gitattributes` command. `do add` was its only real caller, so the command is gone and the function is called from `_writeProjectConfigFiles` — one less CLI verb that nobody was supposed to run by hand.
+
 ### `do commit` Command
 
 `DoCommitCommand` (in `lib/src/commands/do/commit.dart`) commits every ticket repo in dependency order with one shared message, delegating to gg_one's `gg do commit` per repo.

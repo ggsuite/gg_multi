@@ -6,15 +6,14 @@
 
 import 'dart:io';
 
-import 'package:args/command_runner.dart';
-import 'package:gg_multi/src/commands/do/install_gitattributes.dart';
+import 'package:gg_multi/src/backend/git_attributes.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 
-import '../../rm_console_colors_helper.dart';
+import '../rm_console_colors_helper.dart';
 
 void main() {
-  group('DoInstallGitattributesCommand (ticket-wide)', () {
+  group('installGitattributes (ticket-wide)', () {
     late Directory tempDir;
     late Directory ticketsDir;
     late Directory ticketDir;
@@ -36,7 +35,8 @@ void main() {
       return processResult;
     }
 
-    DoInstallGitattributesCommand newCommand() => DoInstallGitattributesCommand(
+    Future<void> callInstall(Directory dir) => installGitattributes(
+          directory: dir,
           ggLog: ggLog,
           processRunner: fakeRunner,
         );
@@ -68,13 +68,8 @@ void main() {
     });
 
     test('fails outside any ticket folder', () async {
-      final runner = CommandRunner<void>('test', 'do install-gitattributes')
-        ..addCommand(newCommand());
-
       await expectLater(
-        () async => runner.run(
-          <String>['install-gitattributes', '--input', tempDir.path],
-        ),
+        () async => callInstall(tempDir),
         throwsA(
           isA<Exception>().having(
             (e) => e.toString(),
@@ -94,12 +89,7 @@ void main() {
       final emptyTicket = Directory(path.join(ticketsDir.path, 'EMPTY'))
         ..createSync();
 
-      final runner = CommandRunner<void>('test', 'do install-gitattributes')
-        ..addCommand(newCommand());
-
-      await runner.run(
-        <String>['install-gitattributes', '--input', emptyTicket.path],
-      );
+      await callInstall(emptyTicket);
 
       expect(
         messages,
@@ -108,12 +98,7 @@ void main() {
     });
 
     test('creates .gitattributes and configures merge driver', () async {
-      final runner = CommandRunner<void>('test', 'do install-gitattributes')
-        ..addCommand(newCommand());
-
-      await runner.run(
-        <String>['install-gitattributes', '--input', ticketDir.path],
-      );
+      await callInstall(ticketDir);
 
       for (final name in <String>['A', 'B']) {
         final file = File(
@@ -164,12 +149,7 @@ void main() {
       File(path.join(tsRepo.path, 'pnpm-lock.yaml')).writeAsStringSync('');
       Directory(path.join(tsRepo.path, '.git')).createSync();
 
-      final runner = CommandRunner<void>('test', 'do install-gitattributes')
-        ..addCommand(newCommand());
-
-      await runner.run(
-        <String>['install-gitattributes', '--input', ticketDir.path],
-      );
+      await callInstall(ticketDir);
 
       expect(
         File(path.join(tsRepo.path, '.gitattributes')).readAsStringSync(),
@@ -185,12 +165,7 @@ void main() {
       );
       Directory(path.join(tsRepo.path, '.git')).createSync();
 
-      final runner = CommandRunner<void>('test', 'do install-gitattributes')
-        ..addCommand(newCommand());
-
-      await runner.run(
-        <String>['install-gitattributes', '--input', ticketDir.path],
-      );
+      await callInstall(ticketDir);
 
       expect(
         File(path.join(tsRepo.path, '.gitattributes')).readAsStringSync(),
@@ -211,12 +186,7 @@ void main() {
       file.writeAsStringSync(original);
       final originalMtime = file.lastModifiedSync();
 
-      final runner = CommandRunner<void>('test', 'do install-gitattributes')
-        ..addCommand(newCommand());
-
-      await runner.run(
-        <String>['install-gitattributes', '--input', ticketDir.path],
-      );
+      await callInstall(ticketDir);
 
       expect(file.readAsStringSync(), original);
       expect(
@@ -243,12 +213,7 @@ void main() {
         path.join(ticketDir.path, 'B', '.gitattributes'),
       )..writeAsStringSync('*.png binary');
 
-      final runner = CommandRunner<void>('test', 'do install-gitattributes')
-        ..addCommand(newCommand());
-
-      await runner.run(
-        <String>['install-gitattributes', '--input', ticketDir.path],
-      );
+      await callInstall(ticketDir);
 
       expect(
         fileA.readAsStringSync(),
@@ -274,12 +239,7 @@ void main() {
       Directory(path.join(ticketDir.path, 'A', '.git'))
           .deleteSync(recursive: true);
 
-      final runner = CommandRunner<void>('test', 'do install-gitattributes')
-        ..addCommand(newCommand());
-
-      await runner.run(
-        <String>['install-gitattributes', '--input', ticketDir.path],
-      );
+      await callInstall(ticketDir);
 
       expect(
         messages,
@@ -299,13 +259,8 @@ void main() {
     test('throws when git config fails', () async {
       processResult = ProcessResult(0, 1, '', 'boom');
 
-      final runner = CommandRunner<void>('test', 'do install-gitattributes')
-        ..addCommand(newCommand());
-
       await expectLater(
-        () async => runner.run(
-          <String>['install-gitattributes', '--input', ticketDir.path],
-        ),
+        () async => callInstall(ticketDir),
         throwsA(
           isA<Exception>().having(
             (e) => e.toString(),
@@ -323,11 +278,8 @@ void main() {
       );
     });
 
-    test('exec() is equivalent to running the command', () async {
-      await newCommand().exec(
-        directory: ticketDir,
-        ggLog: ggLog,
-      );
+    test('processes every repo when called directly', () async {
+      await callInstall(ticketDir);
 
       for (final name in <String>['A', 'B']) {
         final file = File(
@@ -338,12 +290,17 @@ void main() {
       expect(processCalls, hasLength(2));
     });
 
-    test('uses the real Process.run by default', () {
-      // Just ensure the default constructor wires up without error.
-      expect(
-        () => DoInstallGitattributesCommand(ggLog: ggLog),
-        returnsNormally,
+    test('falls back to the real Process.run and list by default', () async {
+      // An empty ticket exercises the default runner/list wiring without
+      // actually spawning git.
+      final emptyTicket = Directory(path.join(ticketsDir.path, 'EMPTY2'))
+        ..createSync();
+
+      await expectLater(
+        installGitattributes(directory: emptyTicket, ggLog: ggLog),
+        completes,
       );
+      expect(messages, contains('⚠️ No repos in this ticket'));
     });
   });
 }
