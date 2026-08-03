@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_multi/src/backend/ticket_state.dart';
+import 'package:gg_multi/src/commands/did/push.dart';
 import 'package:gg_multi/src/commands/did/review.dart';
 import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
@@ -26,6 +27,7 @@ void main() {
   late Directory ticketDir;
   late MockSortedProcessingList sortedProcessingList;
   late MockTicketState ticketState;
+  late MockDidPushCommand didPushCommand;
   final messages = <String>[];
 
   setUpAll(() {
@@ -39,6 +41,7 @@ void main() {
         ggLog: ggLog,
         sortedProcessingList: sortedProcessingList,
         ticketState: ticketState,
+        didPushCommand: didPushCommand,
       );
 
   CommandRunner<void> runner() =>
@@ -68,6 +71,16 @@ void main() {
     );
 
     ticketState = MockTicketState();
+
+    // The chained »did push« (which itself chains »did commit«) passes by
+    // default; tests about the chain override it.
+    didPushCommand = MockDidPushCommand();
+    when(
+      () => didPushCommand.exec(
+        directory: any(named: 'directory'),
+        ggLog: any(named: 'ggLog'),
+      ),
+    ).thenAnswer((_) async {});
   });
 
   tearDown(() {
@@ -115,6 +128,36 @@ void main() {
       expect(
         messages,
         contains('⚠️ No repos in this ticket'),
+      );
+    });
+
+    test('reports a missing push first and skips the review check', () async {
+      // A review presupposes pushed commits: the chain surfaces the push
+      // (or commit) error with its own suggestion first.
+      when(
+        () => didPushCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenThrow(Exception('Please run gg do push.'));
+
+      await expectLater(
+        () async => await runner().run(['review', '--input', ticketDir.path]),
+        throwsA(
+          isA<Exception>().having(
+            (e) => rmControls(e.toString()),
+            'message',
+            contains('Please run gg do push.'),
+          ),
+        ),
+      );
+
+      verifyNever(
+        () => ticketState.readSuccess(
+          ticketDir: any(named: 'ticketDir'),
+          subs: any(named: 'subs'),
+          key: any(named: 'key'),
+        ),
       );
     });
 

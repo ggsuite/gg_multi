@@ -15,8 +15,14 @@ import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
 import '../../backend/workspace_utils.dart';
+import 'commit.dart';
 
 /// Command to check if all repos in the ticket were pushed.
+///
+/// A push presupposes a commit, so `did commit` is checked first — the most
+/// fundamental missing step is what the user is told about, with its own
+/// suggestion (»Please run gg do commit«) instead of a misleading »not
+/// pushed«.
 class DidPushCommand extends DirCommand<void> {
   /// Creates a new did push command.
   DidPushCommand({
@@ -25,15 +31,20 @@ class DidPushCommand extends DirCommand<void> {
     super.description = 'Check if all ticket repos were pushed',
     gg.DidPush? ggDidPush,
     SortedProcessingList? sortedProcessingList,
+    DidCommitCommand? didCommitCommand,
   })  : _ggDidPush = ggDidPush ?? gg.DidPush(ggLog: ggLog),
         _sortedProcessingList =
-            sortedProcessingList ?? SortedProcessingList(ggLog: ggLog);
+            sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
+        _didCommitCommand = didCommitCommand ?? DidCommitCommand(ggLog: ggLog);
 
   /// gg command that checks whether a repository was pushed.
   final gg.DidPush _ggDidPush;
 
   /// Sorted processing list for repos.
   final SortedProcessingList _sortedProcessingList;
+
+  /// Checked first: without commits there is nothing to push.
+  final DidCommitCommand _didCommitCommand;
 
   @override
   Future<void> exec({
@@ -68,6 +79,10 @@ class DidPushCommand extends DirCommand<void> {
       ggLog(cWarn('⚠️ No repos in this ticket'));
       return;
     }
+
+    // Without commits there is nothing to push — report that first, with
+    // the commit suggestion.
+    await _didCommitCommand.exec(directory: ticketDir, ggLog: ggLog);
 
     for (final node in nodes) {
       final repoDir = node.directory;

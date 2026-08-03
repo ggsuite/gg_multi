@@ -255,7 +255,8 @@ void main() {
         '⌛️ Creating pull requests',
         '✓ Creating pull requests',
         '\n✓ Please open and review:',
-        '  https://github.com/ggsuite/A/pull/7',
+        // The printed url leads directly to the changes of the pull request.
+        '  https://github.com/ggsuite/A/pull/7/changes',
         '\n',
       ]);
     });
@@ -448,6 +449,54 @@ void main() {
           message: 'TICKDR',
         ),
       ).called(1);
+    });
+
+    test('link directly to the changes of a GitHub pull request', () async {
+      final bed = makeCommand(
+        createPullRequest: stubCreatePullRequest(
+          url: 'https://github.com/ggsuite/gg_multi/pull/59',
+        ),
+      );
+
+      await runner(bed.command).run(['review', '--input', ticketDir.path]);
+
+      expect(
+        messages,
+        contains('  https://github.com/ggsuite/gg_multi/pull/59/changes'),
+      );
+    });
+
+    test('link directly to the files of an Azure DevOps pull request',
+        () async {
+      final bed = makeCommand(
+        createPullRequest: stubCreatePullRequest(
+          url: 'https://dev.azure.com/org/p/_git/repo/pullrequest/42',
+        ),
+      );
+
+      await runner(bed.command).run(['review', '--input', ticketDir.path]);
+
+      expect(
+        messages,
+        contains(
+          '  https://dev.azure.com/org/p/_git/repo/pullrequest/42?_a=files',
+        ),
+      );
+    });
+
+    test('print the url of an unknown provider untouched', () async {
+      final bed = makeCommand(
+        createPullRequest: stubCreatePullRequest(
+          url: 'https://gitlab.example.com/repo/-/merge_requests/7',
+        ),
+      );
+
+      await runner(bed.command).run(['review', '--input', ticketDir.path]);
+
+      expect(
+        messages,
+        contains('  https://gitlab.example.com/repo/-/merge_requests/7'),
+      );
     });
 
     test('print nothing when the provider supports none', () async {

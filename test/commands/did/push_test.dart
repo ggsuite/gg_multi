@@ -7,6 +7,7 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:gg_multi/src/commands/did/commit.dart';
 import 'package:gg_multi/src/commands/did/push.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_status_printer/gg_status_printer.dart';
@@ -15,6 +16,18 @@ import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 
 class MockGgDidPush extends Mock implements gg.DidPush {}
+
+/// A [MockDidCommitCommand] whose check passes.
+MockDidCommitCommand stubDidCommit() {
+  final mock = MockDidCommitCommand();
+  when(
+    () => mock.exec(
+      directory: any(named: 'directory'),
+      ggLog: any(named: 'ggLog'),
+    ),
+  ).thenAnswer((_) async {});
+  return mock;
+}
 
 class FakeDirectory extends Fake implements Directory {}
 
@@ -87,6 +100,46 @@ void main() {
       );
     });
 
+    test('reports a missing commit first and skips the push check', () async {
+      // A push presupposes a commit: the chain surfaces the commit error
+      // with its own suggestion instead of a misleading »not pushed«.
+      final mockGgDidPush = MockGgDidPush();
+      final mockDidCommit = MockDidCommitCommand();
+      when(
+        () => mockDidCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenThrow(Exception('Please run gg do commit.'));
+
+      final runner = CommandRunner<void>('test', 'did push ticket')
+        ..addCommand(
+          DidPushCommand(
+            ggLog: ggLog,
+            ggDidPush: mockGgDidPush,
+            didCommitCommand: mockDidCommit,
+          ),
+        );
+
+      await expectLater(
+        () async => await runner.run(['push', '--input', ticketDir.path]),
+        throwsA(
+          isA<Exception>().having(
+            (e) => rmControls(e.toString()),
+            'message',
+            contains('Please run gg do commit.'),
+          ),
+        ),
+      );
+
+      verifyNever(
+        () => mockGgDidPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      );
+    });
+
     test('checks all repos successfully', () async {
       final mockGgDidPush = MockGgDidPush();
 
@@ -102,6 +155,7 @@ void main() {
           DidPushCommand(
             ggLog: ggLog,
             ggDidPush: mockGgDidPush,
+            didCommitCommand: stubDidCommit(),
           ),
         );
       await runner.run(['push', '--input', ticketDir.path]);
@@ -135,6 +189,7 @@ void main() {
           DidPushCommand(
             ggLog: ggLog,
             ggDidPush: mockGgDidPush,
+            didCommitCommand: stubDidCommit(),
           ),
         );
       await expectLater(

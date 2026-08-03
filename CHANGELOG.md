@@ -5,6 +5,7 @@
 ### Changed
 
 - Improve review workflow
+- Improve workflow
 
 ## 7.9.1 - 2026-08-03
 

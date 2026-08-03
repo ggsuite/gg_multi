@@ -19,7 +19,6 @@ import 'package:gg_multi/src/backend/publish_skip_check.dart';
 import 'package:gg_multi/src/commands/can/publish.dart';
 import 'package:gg_multi/src/commands/do/configure_publish.dart'
     show DoConfigurePublishCommand;
-import 'package:gg_multi/src/backend/ticket_state.dart';
 import 'package:gg_multi/src/commands/did/review.dart';
 import 'package:gg_multi/src/commands/do/publish.dart';
 import 'package:gg_multi/src/commands/do/push.dart';
@@ -169,7 +168,7 @@ void main() {
     test('logs when there are no repositories', () async {
       final emptyTicket = Directory(path.join(ticketsDir.path, 'EMPTY'))
         ..createSync();
-      final mockTicketState = MockTicketState();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockConfigure = MockConfigurePublishCommand();
@@ -184,12 +183,11 @@ void main() {
       ).thenAnswer((_) async => gg.PublishConfig());
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
 
       stubCanPublish(mockCanPublishCommand);
 
@@ -205,7 +203,7 @@ void main() {
           DoPublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
-            ticketState: mockTicketState,
+            didReviewCommand: mockDidReviewCommand,
             canPublishCommand: mockCanPublishCommand,
             sortedProcessingList: mockSortedProcessingList,
             doConfigurePublishCommand: mockConfigure,
@@ -219,17 +217,16 @@ void main() {
     });
 
     test('checks did review before gg_multi can publish', () async {
-      final mockTicketState = MockTicketState();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockSortedProcessingList = MockSortedProcessingList();
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
 
       stubCanPublish(mockCanPublishCommand);
 
@@ -264,7 +261,7 @@ void main() {
           DoPublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
-            ticketState: mockTicketState,
+            didReviewCommand: mockDidReviewCommand,
             canPublishCommand: mockCanPublishCommand,
             sortedProcessingList: mockSortedProcessingList,
           ),
@@ -282,10 +279,9 @@ void main() {
       );
 
       verifyInOrder([
-        () => mockTicketState.readSuccess(
-              ticketDir: any(named: 'ticketDir'),
-              subs: any(named: 'subs'),
-              key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+              directory: any(named: 'directory'),
+              ggLog: any(named: 'ggLog'),
             ),
         () => mockCanPublishCommand.checkTicket(
               directory: any(named: 'directory'),
@@ -306,24 +302,31 @@ void main() {
     });
 
     test('aborts when the current state was not reviewed', () async {
-      final mockTicketState = MockTicketState();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockCanPublishCommand = MockCanPublishCommand();
+      final mockConfigure = MockConfigurePublishCommand();
 
+      // No config exists — the run would have to configure interactively.
+      File(path.join(ticketDir.path, '.gg', 'gg-publish.json')).deleteSync();
+
+      // The gate delegates to `gg did review`, whose chain reports the most
+      // fundamental missing step — e.g. a missing commit — with its own
+      // suggestion.
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => false);
+      ).thenThrow(Exception('Please run gg do commit.'));
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
           DoPublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
-            ticketState: mockTicketState,
+            didReviewCommand: mockDidReviewCommand,
             canPublishCommand: mockCanPublishCommand,
+            doConfigurePublishCommand: mockConfigure,
           ),
         );
 
@@ -337,20 +340,22 @@ void main() {
           isA<Exception>().having(
             (e) => rmControls(e.toString()),
             'message',
-            contains('Not reviewed.'),
+            contains('Please run gg do commit.'),
           ),
         ),
       );
 
-      expect(
-        messages,
-        contains('The current state of the ticket was not reviewed.'),
+      // The gate fires before the configuration is resolved: the interactive
+      // version increment / merge message questions are never asked for a
+      // state the publish refuses.
+      verifyNever(
+        () => mockConfigure.configure(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          defaultMergeMessage: any(named: 'defaultMergeMessage'),
+          mergeOnly: any(named: 'mergeOnly'),
+        ),
       );
-      expect(
-        messages,
-        contains('Please run gg do review first.'),
-      );
-
       verifyNever(
         () => mockCanPublishCommand.checkTicket(
           directory: any(named: 'directory'),
@@ -362,16 +367,15 @@ void main() {
     });
 
     test('surfaces a merge conflict of the ticket checks unwrapped', () async {
-      final mockTicketState = MockTicketState();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockCanPublishCommand = MockCanPublishCommand();
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
 
       // The push inside `can publish`'s ticket checks merges main into the
       // feature branches — a conflict there must reach the user unwrapped.
@@ -396,7 +400,7 @@ void main() {
           DoPublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
-            ticketState: mockTicketState,
+            didReviewCommand: mockDidReviewCommand,
             canPublishCommand: mockCanPublishCommand,
           ),
         );
@@ -433,19 +437,18 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockTicketState = MockTicketState();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
 
       stubCanPublish(mockCanPublishCommand);
 
@@ -583,7 +586,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            ticketState: mockTicketState,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -651,19 +654,18 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockTicketState = MockTicketState();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
 
       stubCanPublish(mockCanPublishCommand);
 
@@ -801,7 +803,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            ticketState: mockTicketState,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -861,19 +863,18 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockTicketState = MockTicketState();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
 
       stubCanPublish(mockCanPublishCommand);
 
@@ -1011,7 +1012,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            ticketState: mockTicketState,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -1133,19 +1134,18 @@ void main() {
         _stubPubUpgrade(mockProcessRunner);
         _stubRepoSnapshot(mockProcessRunner);
         final mockCanPublishCommand = MockCanPublishCommand();
-        final mockTicketState = MockTicketState();
+        final mockDidReviewCommand = MockDidReviewCommand();
         final mockGetVersion = MockGetVersion();
         final mockSetRefVersion = MockSetRefVersion();
         final mockGetRefVersion = MockGetRefVersion();
         final mockPubDevChecker = MockPubDevChecker();
 
         when(
-          () => mockTicketState.readSuccess(
-            ticketDir: any(named: 'ticketDir'),
-            subs: any(named: 'subs'),
-            key: DidReviewCommand.stateKey,
+          () => mockDidReviewCommand.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
           ),
-        ).thenAnswer((_) async => true);
+        ).thenAnswer((_) async {});
         stubCanPublish(mockCanPublishCommand);
         when(
           () => mockSortedProcessingList.get(
@@ -1251,7 +1251,7 @@ void main() {
               sortedProcessingList: mockSortedProcessingList,
               processRunner: mockProcessRunner.call,
               canPublishCommand: mockCanPublishCommand,
-              ticketState: mockTicketState,
+              didReviewCommand: mockDidReviewCommand,
               getVersionCommand: mockGetVersion,
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
@@ -1302,7 +1302,7 @@ void main() {
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockTicketState = MockTicketState();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
@@ -1310,12 +1310,11 @@ void main() {
       final mockNpmChecker = MockNpmRegistryChecker();
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
       stubCanPublish(mockCanPublishCommand);
       when(
         () => mockSortedProcessingList.get(
@@ -1442,7 +1441,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            ticketState: mockTicketState,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -1492,19 +1491,18 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockTicketState = MockTicketState();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
 
       stubCanPublish(mockCanPublishCommand);
 
@@ -1602,7 +1600,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            ticketState: mockTicketState,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -1657,19 +1655,18 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockTicketState = MockTicketState();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
       stubCanPublish(mockCanPublishCommand);
       when(
         () => mockSortedProcessingList.get(
@@ -1767,7 +1764,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            ticketState: mockTicketState,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -1839,19 +1836,18 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockTicketState = MockTicketState();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
 
       stubCanPublish(mockCanPublishCommand);
 
@@ -1949,7 +1945,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            ticketState: mockTicketState,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -1990,7 +1986,7 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockTicketState = MockTicketState();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
@@ -2000,12 +1996,11 @@ void main() {
       final bDir = Directory(path.join(ticketDir.path, 'B'));
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
 
       stubCanPublish(mockCanPublishCommand);
 
@@ -2124,7 +2119,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            ticketState: mockTicketState,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -2154,19 +2149,18 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockTicketState = MockTicketState();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
 
       when(
         () => mockCanPublishCommand.checkTicket(
@@ -2221,7 +2215,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            ticketState: mockTicketState,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -2251,19 +2245,18 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockTicketState = MockTicketState();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
 
       stubCanPublish(mockCanPublishCommand);
 
@@ -2386,7 +2379,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            ticketState: mockTicketState,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -2464,19 +2457,18 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockTicketState = MockTicketState();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
 
       stubCanPublish(mockCanPublishCommand);
 
@@ -2599,7 +2591,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            ticketState: mockTicketState,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -2633,19 +2625,18 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockTicketState = MockTicketState();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
 
       stubCanPublish(mockCanPublishCommand);
 
@@ -2748,7 +2739,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            ticketState: mockTicketState,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -2785,19 +2776,18 @@ void main() {
         _stubPubUpgrade(mockProcessRunner);
         _stubRepoSnapshot(mockProcessRunner);
         final mockCanPublishCommand = MockCanPublishCommand();
-        final mockTicketState = MockTicketState();
+        final mockDidReviewCommand = MockDidReviewCommand();
         final mockGetVersion = MockGetVersion();
         final mockSetRefVersion = MockSetRefVersion();
         final mockGetRefVersion = MockGetRefVersion();
         final mockPubDevChecker = MockPubDevChecker();
 
         when(
-          () => mockTicketState.readSuccess(
-            ticketDir: any(named: 'ticketDir'),
-            subs: any(named: 'subs'),
-            key: DidReviewCommand.stateKey,
+          () => mockDidReviewCommand.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
           ),
-        ).thenAnswer((_) async => true);
+        ).thenAnswer((_) async {});
 
         stubCanPublish(mockCanPublishCommand);
 
@@ -2924,7 +2914,7 @@ void main() {
               sortedProcessingList: mockSortedProcessingList,
               processRunner: mockProcessRunner.call,
               canPublishCommand: mockCanPublishCommand,
-              ticketState: mockTicketState,
+              didReviewCommand: mockDidReviewCommand,
               getVersionCommand: mockGetVersion,
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
@@ -2960,19 +2950,18 @@ void main() {
         _stubPubUpgrade(mockProcessRunner);
         _stubRepoSnapshot(mockProcessRunner);
         final mockCanPublishCommand = MockCanPublishCommand();
-        final mockTicketState = MockTicketState();
+        final mockDidReviewCommand = MockDidReviewCommand();
         final mockGetVersion = MockGetVersion();
         final mockSetRefVersion = MockSetRefVersion();
         final mockGetRefVersion = MockGetRefVersion();
         final mockPubDevChecker = MockPubDevChecker();
 
         when(
-          () => mockTicketState.readSuccess(
-            ticketDir: any(named: 'ticketDir'),
-            subs: any(named: 'subs'),
-            key: DidReviewCommand.stateKey,
+          () => mockDidReviewCommand.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
           ),
-        ).thenAnswer((_) async => true);
+        ).thenAnswer((_) async {});
 
         stubCanPublish(mockCanPublishCommand);
 
@@ -3097,7 +3086,7 @@ void main() {
               sortedProcessingList: mockSortedProcessingList,
               processRunner: mockProcessRunner.call,
               canPublishCommand: mockCanPublishCommand,
-              ticketState: mockTicketState,
+              didReviewCommand: mockDidReviewCommand,
               getVersionCommand: mockGetVersion,
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
@@ -3135,7 +3124,7 @@ void main() {
         _stubPubUpgrade(mockProcessRunner);
         _stubRepoSnapshot(mockProcessRunner);
         final mockCanPublishCommand = MockCanPublishCommand();
-        final mockTicketState = MockTicketState();
+        final mockDidReviewCommand = MockDidReviewCommand();
         final mockGetVersion = MockGetVersion();
         final mockSetRefVersion = MockSetRefVersion();
         final mockGetRefVersion = MockGetRefVersion();
@@ -3143,12 +3132,11 @@ void main() {
         final mockDirB = MockDirectory();
 
         when(
-          () => mockTicketState.readSuccess(
-            ticketDir: any(named: 'ticketDir'),
-            subs: any(named: 'subs'),
-            key: DidReviewCommand.stateKey,
+          () => mockDidReviewCommand.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
           ),
-        ).thenAnswer((_) async => true);
+        ).thenAnswer((_) async {});
 
         stubCanPublish(mockCanPublishCommand);
 
@@ -3282,7 +3270,7 @@ void main() {
               sortedProcessingList: mockSortedProcessingList,
               processRunner: mockProcessRunner.call,
               canPublishCommand: mockCanPublishCommand,
-              ticketState: mockTicketState,
+              didReviewCommand: mockDidReviewCommand,
               getVersionCommand: mockGetVersion,
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
@@ -3330,19 +3318,18 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockTicketState = MockTicketState();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
       stubCanPublish(mockCanPublishCommand);
       when(
         () => mockSortedProcessingList.get(
@@ -3444,7 +3431,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            ticketState: mockTicketState,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -3484,19 +3471,18 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockTicketState = MockTicketState();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
       stubCanPublish(mockCanPublishCommand);
       when(
         () => mockSortedProcessingList.get(
@@ -3605,7 +3591,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            ticketState: mockTicketState,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -3642,19 +3628,18 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockTicketState = MockTicketState();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
 
       stubCanPublish(mockCanPublishCommand);
 
@@ -3764,7 +3749,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            ticketState: mockTicketState,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -3792,15 +3777,14 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockTicketState = MockTicketState();
+      final mockDidReviewCommand = MockDidReviewCommand();
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
       stubCanPublish(mockCanPublishCommand);
       when(
         () => mockSortedProcessingList.get(
@@ -3842,7 +3826,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            ticketState: mockTicketState,
+            didReviewCommand: mockDidReviewCommand,
           ),
         );
 
@@ -3872,15 +3856,14 @@ void main() {
       final mockProcessRunner = MockProcessRunner();
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockTicketState = MockTicketState();
+      final mockDidReviewCommand = MockDidReviewCommand();
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
       stubCanPublish(mockCanPublishCommand);
       when(
         () => mockSortedProcessingList.get(
@@ -3933,7 +3916,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            ticketState: mockTicketState,
+            didReviewCommand: mockDidReviewCommand,
           ),
         );
 
@@ -3982,7 +3965,7 @@ void main() {
       final mockProcessRunner = MockProcessRunner();
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockTicketState = MockTicketState();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockSetRefVersion = MockSetRefVersion();
@@ -3991,12 +3974,11 @@ void main() {
       final repoADir = Directory(path.join(ticketDir.path, 'A'));
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
       stubCanPublish(mockCanPublishCommand);
       when(
         () => mockSortedProcessingList.get(
@@ -4099,7 +4081,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            ticketState: mockTicketState,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -4144,7 +4126,7 @@ void main() {
       final mockProcessRunner = MockProcessRunner();
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockTicketState = MockTicketState();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockSetRefVersion = MockSetRefVersion();
@@ -4153,12 +4135,11 @@ void main() {
       final repoADir = Directory(path.join(ticketDir.path, 'A'));
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
       stubCanPublish(mockCanPublishCommand);
       when(
         () => mockSortedProcessingList.get(
@@ -4248,7 +4229,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            ticketState: mockTicketState,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -4295,7 +4276,7 @@ void main() {
       final mockProcessRunner = MockProcessRunner();
       _stubRepoSnapshot(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
-      final mockTicketState = MockTicketState();
+      final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockSetRefVersion = MockSetRefVersion();
@@ -4304,12 +4285,11 @@ void main() {
       final repoADir = Directory(path.join(ticketDir.path, 'A'));
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
       stubCanPublish(mockCanPublishCommand);
       when(
         () => mockSortedProcessingList.get(
@@ -4420,7 +4400,7 @@ void main() {
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
-            ticketState: mockTicketState,
+            didReviewCommand: mockDidReviewCommand,
             getVersionCommand: mockGetVersion,
             setRefVersionCommand: mockSetRefVersion,
             getRefVersionCommand: mockGetRefVersion,
@@ -4463,7 +4443,7 @@ void main() {
     late MockRestorePublishTo mockRestorePublishTo;
     late MockSortedProcessingList mockSortedProcessingList;
     late MockCanPublishCommand mockCanPublishCommand;
-    late MockTicketState mockTicketState;
+    late MockDidReviewCommand mockDidReviewCommand;
     late MockGetVersion mockGetVersion;
     late MockSetRefVersion mockSetRefVersion;
     late MockGetRefVersion mockGetRefVersion;
@@ -4486,7 +4466,7 @@ void main() {
               sortedProcessingList: mockSortedProcessingList,
               processRunner: m.call,
               canPublishCommand: mockCanPublishCommand,
-              ticketState: mockTicketState,
+              didReviewCommand: mockDidReviewCommand,
               getVersionCommand: mockGetVersion,
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
@@ -4536,7 +4516,7 @@ void main() {
       mockRestorePublishTo = MockRestorePublishTo();
       mockSortedProcessingList = MockSortedProcessingList();
       mockCanPublishCommand = MockCanPublishCommand();
-      mockTicketState = MockTicketState();
+      mockDidReviewCommand = MockDidReviewCommand();
       mockGetVersion = MockGetVersion();
       mockSetRefVersion = MockSetRefVersion();
       mockGetRefVersion = MockGetRefVersion();
@@ -4544,12 +4524,11 @@ void main() {
       dirA = path.join(ticketDir.path, 'A');
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
       stubCanPublish(mockCanPublishCommand);
       when(
         () => mockSortedProcessingList.get(
@@ -5418,7 +5397,7 @@ void main() {
     late MockSortedProcessingList mockSortedProcessingList;
     late MockProcessRunner mockProcessRunner;
     late MockCanPublishCommand mockCanPublishCommand;
-    late MockTicketState mockTicketState;
+    late MockDidReviewCommand mockDidReviewCommand;
     late MockGetVersion mockGetVersion;
     late MockSetRefVersion mockSetRefVersion;
     late MockGetRefVersion mockGetRefVersion;
@@ -5442,7 +5421,7 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       mockCanPublishCommand = MockCanPublishCommand();
-      mockTicketState = MockTicketState();
+      mockDidReviewCommand = MockDidReviewCommand();
       mockGetVersion = MockGetVersion();
       mockSetRefVersion = MockSetRefVersion();
       mockGetRefVersion = MockGetRefVersion();
@@ -5451,12 +5430,11 @@ void main() {
       runtimeFile = File(path.join(ticketDir.path, '.gg', 'gg-publish.json'));
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
       stubCanPublish(mockCanPublishCommand);
       when(
         () => mockSortedProcessingList.get(
@@ -5543,7 +5521,7 @@ void main() {
               sortedProcessingList: mockSortedProcessingList,
               processRunner: mockProcessRunner.call,
               canPublishCommand: mockCanPublishCommand,
-              ticketState: mockTicketState,
+              didReviewCommand: mockDidReviewCommand,
               getVersionCommand: mockGetVersion,
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
@@ -5652,10 +5630,9 @@ void main() {
       ).called(1);
       // Review + can-publish are skipped when resuming.
       verifyNever(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
       );
     });
@@ -5831,10 +5808,9 @@ void main() {
 
       // No repo was published yet, so the review gate must still run.
       verify(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
       ).called(1);
     });
@@ -5992,10 +5968,9 @@ void main() {
       );
 
       verifyNever(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
       );
     });
@@ -6023,10 +5998,9 @@ void main() {
       // An unreadable file cannot prove progress — the review gate still
       // runs.
       verify(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
       ).called(1);
     });
@@ -6179,7 +6153,7 @@ void main() {
     late MockSortedProcessingList mockSortedProcessingList;
     late MockProcessRunner mockProcessRunner;
     late MockCanPublishCommand mockCanPublishCommand;
-    late MockTicketState mockTicketState;
+    late MockDidReviewCommand mockDidReviewCommand;
     late MockGetVersion mockGetVersion;
     late MockSetRefVersion mockSetRefVersion;
     late MockGetRefVersion mockGetRefVersion;
@@ -6201,7 +6175,7 @@ void main() {
       _stubPubUpgrade(mockProcessRunner);
       _stubRepoSnapshot(mockProcessRunner);
       mockCanPublishCommand = MockCanPublishCommand();
-      mockTicketState = MockTicketState();
+      mockDidReviewCommand = MockDidReviewCommand();
       mockGetVersion = MockGetVersion();
       mockSetRefVersion = MockSetRefVersion();
       mockGetRefVersion = MockGetRefVersion();
@@ -6209,12 +6183,11 @@ void main() {
       mockSkipCheck = MockPublishSkipCheck();
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
 
       stubCanPublish(mockCanPublishCommand);
 
@@ -6341,7 +6314,7 @@ void main() {
               sortedProcessingList: mockSortedProcessingList,
               processRunner: mockProcessRunner.call,
               canPublishCommand: mockCanPublishCommand,
-              ticketState: mockTicketState,
+              didReviewCommand: mockDidReviewCommand,
               getVersionCommand: mockGetVersion,
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
@@ -6624,7 +6597,7 @@ void main() {
     late MockSortedProcessingList mockSortedProcessingList;
     late MockProcessRunner mockProcessRunner;
     late MockCanPublishCommand mockCanPublishCommand;
-    late MockTicketState mockTicketState;
+    late MockDidReviewCommand mockDidReviewCommand;
     late MockGetVersion mockGetVersion;
     late MockSetRefVersion mockSetRefVersion;
     late MockGetRefVersion mockGetRefVersion;
@@ -6649,19 +6622,18 @@ void main() {
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
       mockCanPublishCommand = MockCanPublishCommand();
-      mockTicketState = MockTicketState();
+      mockDidReviewCommand = MockDidReviewCommand();
       mockGetVersion = MockGetVersion();
       mockSetRefVersion = MockSetRefVersion();
       mockGetRefVersion = MockGetRefVersion();
       mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
 
       stubCanPublish(mockCanPublishCommand);
 
@@ -6766,7 +6738,7 @@ void main() {
               sortedProcessingList: mockSortedProcessingList,
               processRunner: mockProcessRunner.call,
               canPublishCommand: mockCanPublishCommand,
-              ticketState: mockTicketState,
+              didReviewCommand: mockDidReviewCommand,
               getVersionCommand: mockGetVersion,
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
@@ -6796,7 +6768,7 @@ void main() {
               sortedProcessingList: mockSortedProcessingList,
               processRunner: mockProcessRunner.call,
               canPublishCommand: mockCanPublishCommand,
-              ticketState: mockTicketState,
+              didReviewCommand: mockDidReviewCommand,
               getVersionCommand: mockGetVersion,
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
@@ -6901,10 +6873,9 @@ void main() {
 
       // The guard runs before the review gate — nothing was touched.
       verifyNever(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
       );
     });
@@ -6940,10 +6911,9 @@ void main() {
       await buildRunner().run(['publish', '--input', ticketDir.path]);
 
       verify(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
       ).called(1);
     });
@@ -7033,7 +7003,7 @@ void main() {
     late MockSortedProcessingList mockSortedProcessingList;
     late MockProcessRunner mockProcessRunner;
     late MockCanPublishCommand mockCanPublishCommand;
-    late MockTicketState mockTicketState;
+    late MockDidReviewCommand mockDidReviewCommand;
     late MockGetVersion mockGetVersion;
     late MockSetRefVersion mockSetRefVersion;
     late MockGetRefVersion mockGetRefVersion;
@@ -7066,19 +7036,18 @@ void main() {
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
       mockCanPublishCommand = MockCanPublishCommand();
-      mockTicketState = MockTicketState();
+      mockDidReviewCommand = MockDidReviewCommand();
       mockGetVersion = MockGetVersion();
       mockSetRefVersion = MockSetRefVersion();
       mockGetRefVersion = MockGetRefVersion();
       mockPubDevChecker = MockPubDevChecker();
 
       when(
-        () => mockTicketState.readSuccess(
-          ticketDir: any(named: 'ticketDir'),
-          subs: any(named: 'subs'),
-          key: DidReviewCommand.stateKey,
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => true);
+      ).thenAnswer((_) async {});
 
       stubCanPublish(mockCanPublishCommand);
 
@@ -7201,7 +7170,7 @@ void main() {
               sortedProcessingList: mockSortedProcessingList,
               processRunner: mockProcessRunner.call,
               canPublishCommand: mockCanPublishCommand,
-              ticketState: mockTicketState,
+              didReviewCommand: mockDidReviewCommand,
               getVersionCommand: mockGetVersion,
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,

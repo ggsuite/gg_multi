@@ -168,7 +168,10 @@ class DoReviewCommand extends DirCommand<void> {
   }
 
   /// Opens — or reuses — the pull request of every ticket repo and prints its
-  /// url, so a reviewer can be pointed at it immediately.
+  /// url, so a reviewer can be pointed at it immediately. The printed url
+  /// links directly to the **changes** of the pull request — see
+  /// [_changesUrl] — because looking at the diff is what a review starts
+  /// with.
   ///
   /// The pull requests are created **without** the auto-merge flag: the
   /// ticket is under review, not ready to land. `gg do publish` reuses them
@@ -209,7 +212,7 @@ class DoReviewCommand extends DirCommand<void> {
             message: message,
           );
           if (url != null) {
-            urls[repoName] = url;
+            urls[repoName] = _changesUrl(url);
           }
         } catch (e) {
           failures[repoName] = e.toString();
@@ -233,6 +236,23 @@ class DoReviewCommand extends DirCommand<void> {
         ),
       );
     }
+  }
+
+  /// Returns [url] pointing directly at the changes of the pull request, so
+  /// the reviewer lands on the diff instead of the conversation.
+  ///
+  /// GitHub appends `/changes` (`…/pull/59` → `…/pull/59/changes`), Azure
+  /// DevOps selects the Files tab via `?_a=files`. Urls of other providers
+  /// are printed untouched.
+  String _changesUrl(String url) {
+    if (url.startsWith('https://github.com/')) {
+      return '$url/changes';
+    }
+    // Azure DevOps pull request urls end in `/pullrequest/<id>`.
+    if (url.contains('/pullrequest/')) {
+      return '$url?_a=files';
+    }
+    return url;
   }
 
   /// Executes `gg_multi can review` for the given ticket directory.

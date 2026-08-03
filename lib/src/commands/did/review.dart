@@ -15,6 +15,7 @@ import 'package:path/path.dart' as path;
 
 import '../../backend/ticket_state.dart';
 import '../../backend/workspace_utils.dart';
+import 'push.dart';
 
 /// Command to check whether the current ticket state was reviewed.
 ///
@@ -22,6 +23,11 @@ import '../../backend/workspace_utils.dart';
 /// `<ticket>/.gg.json` once the review went through. This command compares
 /// that hash against the current ticket state, so it answers "was *this*
 /// state reviewed?" — a commit made after the review invalidates it.
+///
+/// A review presupposes that everything is committed and pushed, so
+/// `did push` (which itself checks `did commit` first) runs before the
+/// review state is read — the most fundamental missing step is what the
+/// user is told about, with its own suggestion.
 class DidReviewCommand extends DirCommand<void> {
   /// Creates a new did review command.
   DidReviewCommand({
@@ -30,9 +36,11 @@ class DidReviewCommand extends DirCommand<void> {
     super.description = 'Check if the current ticket state was reviewed',
     SortedProcessingList? sortedProcessingList,
     TicketState? ticketState,
+    DidPushCommand? didPushCommand,
   })  : _sortedProcessingList =
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
-        _ticketState = ticketState ?? TicketState(ggLog: ggLog);
+        _ticketState = ticketState ?? TicketState(ggLog: ggLog),
+        _didPushCommand = didPushCommand ?? DidPushCommand(ggLog: ggLog);
 
   /// State key used to persist the review success in `<ticketDir>/.gg.json`.
   static const String stateKey = 'didReview';
@@ -42,6 +50,9 @@ class DidReviewCommand extends DirCommand<void> {
 
   /// Reads the review state from `<ticketDir>/.gg.json`.
   final TicketState _ticketState;
+
+  /// Checked first: a review covers committed and pushed work.
+  final DidPushCommand _didPushCommand;
 
   @override
   Future<void> exec({
@@ -76,6 +87,10 @@ class DidReviewCommand extends DirCommand<void> {
       ggLog(cWarn('⚠️ No repos in this ticket'));
       return;
     }
+
+    // Committing and pushing come before reviewing — report the most
+    // fundamental missing step first, with its own suggestion.
+    await _didPushCommand.exec(directory: ticketDir, ggLog: ggLog);
 
     final wasReviewed = await GgStatusPrinter<bool>(
       message: 'The current state was reviewed',
