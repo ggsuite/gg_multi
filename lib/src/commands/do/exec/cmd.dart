@@ -12,6 +12,7 @@ import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
+import 'package:gg_status_printer/gg_status_printer.dart';
 
 import '../../../backend/workspace_utils.dart';
 
@@ -123,27 +124,21 @@ class DoExecuteCommand extends DirCommand<void> {
         final stderrStr = result.stderr?.toString() ?? '';
         final stdoutStr = result.stdout?.toString() ?? '';
         final errMsg = stderrStr.isNotEmpty ? stderrStr : stdoutStr;
-        ggLog(cError('✗ Failed to execute in $repoName: $errMsg'));
+        ggLog(
+          [cError('✗ Failed to execute'), cDetail(rmControls(errMsg))]
+              .join('\n'),
+        );
         failed.add(repoName);
       }
     }
 
     if (failed.isEmpty) {
-      ggLog(
-        cDetail(
-          '✓ Command executed successfully in all repos in ticket '
-          '$ticketName.',
-        ),
-      );
-    } else {
-      ggLog(cError('✗ Command failed in:'));
-      for (final name in failed) {
-        ggLog(cError(' - $name'));
-      }
-      throw Exception(
-        cError('Failed to execute command in: ${failed.join(', ')}'),
-      );
+      ggLog('\nCommand executed in all repos of $ticketName\n');
+      return;
     }
+
+    ggLog(cAction('\nPlease fix the issues above.\n'));
+    throw Exception(cDetail('Failed to execute the command.'));
   }
 
   /// Add passthrough flag so args like -l 120 don't break parsing.

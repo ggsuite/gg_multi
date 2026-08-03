@@ -112,7 +112,7 @@ void main() {
             'A',
         '\n'
             'B',
-        '✓ All repos can be pushed',
+        '\nAll repos can be pushed\n',
       ]);
     });
 
@@ -142,10 +142,13 @@ void main() {
         () async => await runner.run(['push', '--input', ticketDir.path]),
         throwsA(isA<Exception>()),
       );
-      expect(
-        messages,
-        contains('✗ Cannot push B: Exception: Failed to push B'),
-      );
+      expect(messages, [
+        '\nA',
+        '\nB',
+        // The reason is printed once, under the repo it belongs to.
+        '✗ Cannot push\nException: Failed to push B',
+        '\nPlease fix the issues above.\n',
+      ]);
     });
   });
 }

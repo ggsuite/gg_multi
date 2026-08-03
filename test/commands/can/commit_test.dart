@@ -135,10 +135,13 @@ void main() {
         () async => await runner.run(['commit', '--input', ticketDir.path]),
         throwsA(isA<Exception>()),
       );
-      expect(
-        messages,
-        contains('✗ Cannot commit B: Exception: Failed to commit B'),
-      );
+      expect(messages, [
+        '\nA',
+        '\nB',
+        // The reason is printed once, under the repo it belongs to.
+        '✗ Cannot commit\nException: Failed to commit B',
+        '\nPlease fix the issues above.\n',
+      ]);
     });
   });
 }

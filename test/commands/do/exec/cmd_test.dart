@@ -143,7 +143,7 @@ void main() {
             'A',
         '\n'
             'B',
-        '✓ Command executed successfully in all repos in ticket TICKX.',
+        '\nCommand executed in all repos of TICKX\n',
       ]);
     });
 
@@ -177,19 +177,13 @@ void main() {
         throwsA(isA<Exception>()),
       );
 
-      expect(
-        messages,
-        contains('✗ Failed to execute in B: error on B'),
-      );
-      expect(
-        messages.any(
-          (m) => m.contains(
-            '✗ Command failed in:',
-          ),
-        ),
-        isTrue,
-      );
-      expect(messages.any((m) => m.contains(' - B')), isTrue);
+      expect(messages, [
+        '\nA',
+        '\nB',
+        // The reason is printed once, under the repo it belongs to.
+        '✗ Failed to execute\nerror on B',
+        '\nPlease fix the issues above.\n',
+      ]);
     });
   });
 }

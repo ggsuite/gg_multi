@@ -196,12 +196,14 @@ void main() {
         ),
         throwsA(isA<Exception>()),
       );
-      expect(
-        messages,
-        contains('✗ Failed to commit B: Exception: Failed to commit B'),
-      );
-      expect(messages, contains('✗ Commit failed in:'));
-      expect(messages.any((m) => m.contains(' - B')), isTrue);
+      expect(messages, [
+        '\nCommitting ...',
+        '\nA',
+        '\nB',
+        // The reason is printed once, under the repo it belongs to.
+        '✗ Failed to commit\nException: Failed to commit B',
+        '\nPlease fix the issues above.\n',
+      ]);
     });
   });
 

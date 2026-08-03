@@ -12,6 +12,7 @@ import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:gg_one/gg_one.dart' as gg;
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
 import '../../backend/message_editor_theme.dart';
@@ -74,7 +75,7 @@ class DoCommitCommand extends DirCommand<void> {
     cl.LogType? logType,
     bool? updateChangeLog,
   }) async {
-    ggLog(cH1('\n Committing ...'));
+    ggLog(cH1('\nCommitting ...'));
 
     message ??= _messageOption;
 
@@ -121,7 +122,9 @@ class DoCommitCommand extends DirCommand<void> {
           force: false,
         );
       } catch (e) {
-        ggLog(cError('✗ Failed to commit $repoName: $e'));
+        ggLog(
+          [cError('✗ Failed to commit'), cDetail(rmControls('$e'))].join('\n'),
+        );
         failedRepos.add(repoName);
       }
     }
@@ -129,13 +132,11 @@ class DoCommitCommand extends DirCommand<void> {
     // Summarize the results
     if (failedRepos.isEmpty) {
       ggLog('\nAll repos committed\n');
-    } else {
-      ggLog(cError('✗ Commit failed in:'));
-      for (final repoName in failedRepos) {
-        ggLog(cDetail(' - ${cCmd(repoName)}'));
-      }
-      throw Exception(cDetail('Failed to commit'));
+      return;
     }
+
+    ggLog(cAction('\nPlease fix the issues above.\n'));
+    throw Exception(cDetail('Failed to commit.'));
   }
 
   /// Returns the commit message used for every repository of the ticket.

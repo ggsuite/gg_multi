@@ -12,6 +12,7 @@ import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart
 import 'package:gg_log/gg_log.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 import 'package:path/path.dart' as path;
+import 'package:gg_status_printer/gg_status_printer.dart';
 
 import '../../backend/workspace_utils.dart';
 
@@ -78,13 +79,18 @@ class CanCommitCommand extends DirCommand<void> {
       try {
         await _ggCanCommit.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
-        ggLog(cError('✗ Cannot commit $repoName: $e'));
-        rethrow;
+        // The reason is printed once, right under the repo it belongs to.
+        // The exception only ends the run.
+        ggLog(
+          [cError('✗ Cannot commit'), cDetail(rmControls('$e'))].join('\n'),
+        );
+        ggLog(cAction('\nPlease fix the issues above.\n'));
+        throw Exception(cDetail('Cannot commit.'));
       }
     }
 
     // All successful
-    ggLog('\nAll repos can be committed.\n');
+    ggLog('\nAll repos can be committed\n');
   }
 }
 
