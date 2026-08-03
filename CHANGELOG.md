@@ -13,6 +13,7 @@
 - rename do update to do upgrade — do upgrade master instead of do update master
 - move do exec to do exec cmd
 - move do checkout to do import ticket
+- move do init to do init workspace and do claude to do init claude
 
 ### Removed
 

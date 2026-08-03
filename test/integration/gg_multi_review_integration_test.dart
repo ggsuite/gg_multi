@@ -21,7 +21,7 @@ import 'package:gg_multi/src/commands/do/publish.dart';
 import 'package:gg_multi/src/commands/do/push.dart';
 import 'package:gg_multi/src/commands/do/review.dart';
 import 'package:gg_multi/src/commands/do/add.dart';
-import 'package:gg_multi/src/commands/do/init.dart';
+import 'package:gg_multi/src/commands/do/init/workspace.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:pub_semver/pub_semver.dart';
@@ -75,21 +75,22 @@ void main() {
 
         try {
           // -------------------------------------------------------------------
-          // 1) Initialize master workspace via InitCommand (gg_multi init)
+          // 1) Initialize master workspace via InitWorkspaceCommand
+          //    (gg_multi do init workspace)
 
-          print('------- Running gg_multi init -------');
+          print('------- Running gg_multi do init workspace -------');
 
           final initRunner = CommandRunner<void>(
             'gg_multi',
             'gg_multi integration init',
           )..addCommand(
-              InitCommand(
+              InitWorkspaceCommand(
                 ggLog: ggLog,
                 rootPath: tempRoot.path,
               ),
             );
 
-          await initRunner.run(<String>['init']);
+          await initRunner.run(<String>['workspace']);
 
           final masterDir = Directory(
             path.join(tempRoot.path, ggMultiMasterFolder),

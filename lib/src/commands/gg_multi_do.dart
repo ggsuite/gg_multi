@@ -8,7 +8,6 @@ import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:gg_multi/src/commands/do/add.dart';
 import 'package:gg_multi/src/commands/do/import.dart';
-import 'package:gg_multi/src/commands/do/claude.dart';
 import 'package:gg_multi/src/commands/do/code.dart';
 import 'package:gg_multi/src/commands/do/create.dart';
 import 'package:gg_multi/src/commands/do/init.dart';
@@ -48,7 +47,6 @@ class Do extends Command<void> {
     addSubcommand(DoPublishCommand(ggLog: ggLog));
     addSubcommand(DoReviewCommand(ggLog: ggLog));
     addSubcommand(ExecCommand(ggLog: ggLog));
-    addSubcommand(DoClaudeCommand(ggLog: ggLog));
     addSubcommand(AddCommand(ggLog: ggLog));
     addSubcommand(ImportCommand(ggLog: ggLog));
     addSubcommand(CodeCommand(ggLog: ggLog));

@@ -1,151 +1,54 @@
 // @license
-// Copyright (c) 2019 - 2025 Dr. Gabriel Gatzsche. All Rights Reserved.
+// Copyright (c) 2025 Göran Hegenberg. All Rights Reserved.
 //
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
 
 import 'dart:io';
+
 import 'package:args/command_runner.dart';
-import 'package:gg_multi/src/backend/constants.dart';
+import 'package:gg_args/gg_args.dart';
+import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:gg_multi/src/commands/do/init.dart';
 import 'package:test/test.dart';
-import 'package:path/path.dart' as path;
-
-import '../../rm_console_colors_helper.dart';
 
 void main() {
   group('InitCommand', () {
-    late Directory tempDir;
     final messages = <String>[];
 
-    void ggLog(String message) {
-      messages.add(rmConsoleColors(message));
-    }
-
-    setUp(() {
-      messages.clear();
-      tempDir = Directory.systemTemp.createTempSync('init_command_test');
-    });
-
-    tearDown(() {
-      if (tempDir.existsSync()) {
-        tempDir.deleteSync(recursive: true);
-      }
-    });
-
-    test('should create master workspace if not exists', () async {
-      final runner = CommandRunner<void>('test', 'InitCommand Test')
-        ..addCommand(
-          InitCommand(
-            ggLog: ggLog,
-            rootPath: tempDir.path,
-          ),
-        );
-      final wsPath = path.join(tempDir.path, ggMultiMasterFolder);
-      expect(Directory(wsPath).existsSync(), isFalse);
-
-      await runner.run(['init']);
-      expect(messages.any((m) => m.contains('initialized at')), isTrue);
-      expect(Directory(wsPath).existsSync(), isTrue);
-    });
-
-    test('should not recreate if already exists, and log accordingly',
-        () async {
-      final wsPath = path.join(tempDir.path, ggMultiMasterFolder);
-      Directory(wsPath).createSync(recursive: true);
-      final runner = CommandRunner<void>('test', 'InitCommand Test')
-        ..addCommand(
-          InitCommand(
-            ggLog: ggLog,
-            rootPath: tempDir.path,
-          ),
-        );
-
-      await runner.run(['init']);
-
-      expect(messages[0], contains('Master workspace already exists at:'));
-      expect(messages[0], contains(ggMultiMasterFolder));
-      expect(Directory(wsPath).existsSync(), isTrue);
-    });
-
-    test('should not allow init inside non-empty directory', () async {
-      // Arrange:
-      final nonEmptyDir = Directory(path.join(tempDir.path, 'not_empty'));
-      nonEmptyDir.createSync(recursive: true);
-      File(path.join(nonEmptyDir.path, 'some_file.txt'))
-          .writeAsStringSync('dummy');
-      final runner = CommandRunner<void>('test', 'InitCommand Test')
-        ..addCommand(
-          InitCommand(
-            ggLog: ggLog,
-            rootPath: nonEmptyDir.path,
-          ),
-        );
-      // Act
-      await runner.run(['init']);
-      // Assert
-      expect(
-        messages,
-        contains(
-          'The directory must be empty to initialize a workspace.',
-        ),
+    test('should register all subcommands', () async {
+      final initCommand = InitCommand(ggLog: messages.add);
+      final commandsDir = Directory(
+        'lib${Platform.pathSeparator}src${Platform.pathSeparator}'
+        'commands${Platform.pathSeparator}do${Platform.pathSeparator}init',
       );
-      expect(
-        Directory(path.join(nonEmptyDir.path, ggMultiMasterFolder))
-            .existsSync(),
-        isFalse,
+      final (subCommands, errorMessage) = await missingSubCommands(
+        directory: commandsDir,
+        command: initCommand,
       );
+      expect(subCommands, isEmpty, reason: errorMessage);
     });
 
-    test('should not allow init inside an existing workspace (nested)',
-        () async {
-      // Arrange:
-      // Create parent workspace
-      final parentWs = Directory(path.join(tempDir.path, 'parent'))
-        ..createSync();
-      final masterWs = Directory(path.join(parentWs.path, ggMultiMasterFolder))
-        ..createSync();
-      // Create child directory inside parent
-      final childDir = Directory(path.join(masterWs.path, 'child'))
-        ..createSync();
-      final runner = CommandRunner<void>('test', 'InitCommand Nested')
-        ..addCommand(
-          InitCommand(
-            ggLog: ggLog,
-            rootPath: childDir.path,
-          ),
-        );
-      // Directory is empty; master exists in ancestor
-      await runner.run(['init']);
-      expect(
-        messages,
-        contains(
-          'Cannot initialize a new workspace '
-          'inside an existing Gg Multi workspace.',
-        ),
-      );
-      // No child/master folder created
-      expect(
-        Directory(path.join(childDir.path, ggMultiMasterFolder)).existsSync(),
-        isFalse,
-      );
+    test('has the name and description of the group', () {
+      final initCommand = InitCommand(ggLog: messages.add);
+      expect(initCommand.name, 'init');
+      expect(initCommand.description, 'Initialize workspace or agent files');
     });
 
-    test('prints help when --help is passed', () async {
-      final runner = CommandRunner<void>('test', 'InitCommand Help')
-        ..addCommand(
-          InitCommand(
-            ggLog: ggLog,
-            rootPath: tempDir.path,
-          ),
-        );
+    test('prints help message including workspace and claude', () async {
+      final runner = CommandRunner<void>(
+        'test',
+        'InitCommand Help',
+      )..addCommand(InitCommand(ggLog: (_) {}));
 
-      expect(
-        () async {
+      final output = await capturePrint(
+        code: () async {
           await runner.run(['init', '--help']);
         },
-        returnsNormally,
       );
+
+      expect(output.join('\n'), contains('workspace'));
+      expect(output.join('\n'), contains('claude'));
     });
   });
 }

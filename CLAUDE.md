@@ -37,7 +37,7 @@ Gg Multi is a multi-repository workspace management CLI for Dart/Flutter project
 bin/gg_multi.dart
   └─ GgMulti (lib/src/gg_multi.dart)
        ├─ Can   – validate before acting (can commit, can push, can publish, can review)
-       ├─ Do    – execute across all repos (do commit, do push, do publish [--merge-only], do review, do add, do import ticket, do claude, do ls, …)
+       ├─ Do    – execute across all repos (do commit, do push, do publish [--merge-only], do review, do add, do import ticket, do init claude, do ls, …)
        ├─ Did   – report what happened (did commit, did push)
 ```
 
@@ -111,9 +111,9 @@ It runs at the start of `do add` (master **and** ticket) and of `do import ticke
 | `trash.dart`                 | `<root>/.trash/<ticket>` — where removed repos and workspace files go instead of being deleted. `moveFromMaster` adds the master side: a repo `do upgrade master` drops lands in `<root>/.trash/.master/<org>/<repo>`                                                                                                                                                                                                                                                                                                                                                        |
 | `dependency_overrides.dart`  | Removes packages from the `pubspec_overrides.yaml` of the repos that stay in a ticket                                                                                                                                                                                                                                                                                                                                                                 |
 
-### `do claude` Command
+### `do init claude` Command
 
-`DoClaudeCommand` (in `lib/src/commands/do/claude.dart`) generates an aggregated `CLAUDE.md` at the ticket-workspace root. It:
+`DoClaudeCommand` (in `lib/src/commands/do/init/claude.dart`, grouped under `InitCommand` in `lib/src/commands/do/init.dart`) generates an aggregated `CLAUDE.md` at the ticket-workspace root. It:
 
 1. Detects the ticket path via `WorkspaceUtils.detectTicketPath()`.
 2. Resolves repos in dependency order with `SortedProcessingList` (from `gg_local_package_dependencies`).

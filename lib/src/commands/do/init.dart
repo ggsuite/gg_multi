@@ -1,71 +1,29 @@
 // @license
-// Copyright (c) 2019 - 2025 Dr. Gabriel Gatzsche. All Rights Reserved.
+// Copyright (c) 2025 Göran Hegenberg. All Rights Reserved.
 //
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
 
-import 'dart:io';
 import 'package:args/command_runner.dart';
-import 'package:gg_console_colors/gg_console_colors.dart';
-import 'package:path/path.dart' as path;
 import 'package:gg_log/gg_log.dart';
 
-import '../../backend/constants.dart';
-import '../../backend/workspace_utils.dart';
-import 'package:path/path.dart' as p;
+import 'init/claude.dart';
+import 'init/workspace.dart';
 
-/// Command to initialize the master workspace
+/// Command that groups the things gg can initialize.
 class InitCommand extends Command<void> {
-  /// Constructor
-  InitCommand({
-    required this.ggLog,
-    String? rootPath,
-    // coverage:ignore-start
-  }) : rootPath = rootPath ?? Directory.current.path;
-  // coverage:ignore-end
+  /// Constructor accepting a log function.
+  InitCommand({required this.ggLog}) {
+    addSubcommand(InitWorkspaceCommand(ggLog: ggLog));
+    addSubcommand(DoClaudeCommand(ggLog: ggLog));
+  }
 
-  /// The log function
+  /// Log function
   final GgLog ggLog;
-
-  /// Optional root path for where to create the master workspace
-  final String rootPath;
-
-  String _rel(String absPath) => p.relative(absPath, from: rootPath);
 
   @override
   String get name => 'init';
 
   @override
-  String get description => 'Initializes the master workspace.';
-
-  @override
-  Future<void> run() async {
-    final rootDir = Directory(rootPath);
-
-    final wsPath = path.join(rootDir.path, ggMultiMasterFolder);
-    final wsDir = Directory(wsPath);
-
-    if (wsDir.existsSync()) {
-      ggLog(yellow('Master workspace already exists at: ${_rel(wsPath)}'));
-      return;
-    }
-
-    if (rootDir.listSync().isNotEmpty) {
-      ggLog(red('The directory must be empty to initialize a workspace.'));
-      return;
-    }
-
-    if (WorkspaceUtils.isInsideExistingWorkspace(rootDir.path)) {
-      ggLog(
-        red('Cannot initialize a new workspace inside an existing Gg Multi '
-            'workspace.'),
-      );
-      return;
-    }
-
-    // -----------------------------------------------------------------------
-    // Create the workspace ---------------------------------------------------
-    wsDir.createSync(recursive: true);
-    ggLog(green('Master workspace initialized at: ${_rel(wsPath)}'));
-  }
+  String get description => 'Initialize workspace or agent files';
 }
