@@ -9,6 +9,7 @@ import 'package:gg_log/gg_log.dart';
 
 import 'did/commit.dart';
 import 'did/push.dart';
+import 'did/review.dart';
 
 /// Commands to check whether actions were already completed.
 class Did extends Command<void> {
@@ -30,5 +31,6 @@ class Did extends Command<void> {
   void _initSubCommands() {
     addSubcommand(DidCommitCommand(ggLog: ggLog));
     addSubcommand(DidPushCommand(ggLog: ggLog));
+    addSubcommand(DidReviewCommand(ggLog: ggLog));
   }
 }

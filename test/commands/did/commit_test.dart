@@ -67,7 +67,7 @@ void main() {
       );
       expect(
         messages,
-        contains('This command must be executed inside a ticket folder.'),
+        contains('Please run this command inside a ticket folder.'),
       );
     });
 

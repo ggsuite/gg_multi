@@ -11,8 +11,8 @@ import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:gg_one/gg_one.dart' as gg;
-import 'package:path/path.dart' as path;
 import 'package:gg_status_printer/gg_status_printer.dart';
+import 'package:path/path.dart' as path;
 
 import '../../backend/workspace_utils.dart';
 
@@ -54,8 +54,8 @@ class DidCommitCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      ggLog(cError('This command must be executed inside a ticket folder.'));
-      throw Exception(cError('Not inside a ticket folder'));
+      ggLog(cAction('Please run this command inside a ticket folder.'));
+      throw Exception(cDetail('Not inside a ticket folder'));
     }
 
     final ticketDir = Directory(ticketPath);

@@ -99,7 +99,7 @@ class DoConfigurePublishCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      throw Exception(cError('Not inside a ticket folder'));
+      throw Exception(cDetail('Not inside a ticket folder'));
     }
 
     final ticketDir = Directory(ticketPath);

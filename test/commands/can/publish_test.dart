@@ -12,7 +12,6 @@ import 'package:gg_multi/src/commands/can/publish.dart';
 import 'package:gg_multi/src/commands/did/commit.dart';
 import 'package:gg_multi/src/commands/do/push.dart';
 import 'package:gg_one/gg_one.dart' as gg;
-import 'package:gg_publish/gg_publish.dart' as gg_publish;
 import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
@@ -26,9 +25,6 @@ class MockGgCanMerge extends Mock implements gg.CanMerge {}
 class MockGgCanPublish extends Mock implements gg.CanPublish {}
 
 class MockGgNpmLoggedIn extends Mock implements gg.NpmLoggedIn {}
-
-class MockGgMergeMainIntoFeat extends Mock
-    implements gg_publish.MergeMainIntoFeat {}
 
 class MockSortedProcessingList extends Mock implements SortedProcessingList {}
 
@@ -87,7 +83,7 @@ void main() {
       );
       expect(
         messages,
-        contains('This command must be executed inside a ticket folder.'),
+        contains('Please run this command inside a ticket folder.'),
       );
     });
 
@@ -110,7 +106,6 @@ void main() {
     test('checks uncommitted changes and fails if found', () async {
       final mockGgCanCommit = MockGgCanCommit();
       final mockGgCanMerge = MockGgCanMerge();
-      final mockGgMergeMainIntoFeat = MockGgMergeMainIntoFeat();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       final mockDidCommitCommand = MockDidCommitCommand();
@@ -158,7 +153,6 @@ void main() {
             ggLog: ggLog,
             ggCanCommit: mockGgCanCommit,
             ggCanMerge: mockGgCanMerge,
-            ggMergeMainIntoFeat: mockGgMergeMainIntoFeat,
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             didCommitCommand: mockDidCommitCommand,
@@ -185,12 +179,9 @@ void main() {
       expect(messages.any((m) => m.contains(' - A')), isTrue);
     });
 
-    test(
-        'executes did commit, merge main into feat, '
-        'do push, and can merge successfully', () async {
+    test('executes did commit, do push, and can merge successfully', () async {
       final mockGgCanCommit = MockGgCanCommit();
       final mockGgCanMerge = MockGgCanMerge();
-      final mockGgMergeMainIntoFeat = MockGgMergeMainIntoFeat();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       final mockDidCommitCommand = MockDidCommitCommand();
@@ -230,15 +221,6 @@ void main() {
           ggLog: any(named: 'ggLog'),
         ),
       ).thenAnswer((_) async {});
-
-      when(
-        () => mockGgMergeMainIntoFeat.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {
-        return;
-      });
 
       when(
         () => mockDoPushCommand.exec(
@@ -269,7 +251,6 @@ void main() {
             ggCanCommit: mockGgCanCommit,
             ggCanMerge: mockGgCanMerge,
             ggCanPublish: mockGgCanPublish,
-            ggMergeMainIntoFeat: mockGgMergeMainIntoFeat,
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             didCommitCommand: mockDidCommitCommand,
@@ -292,12 +273,6 @@ void main() {
           ggLog: any(named: 'ggLog'),
         ),
       ).called(2);
-      verify(
-        () => mockGgMergeMainIntoFeat.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).called(2);
       expect(messages.any((m) => m.contains('A')), isTrue);
       expect(messages.any((m) => m.contains('B')), isTrue);
     });
@@ -305,7 +280,6 @@ void main() {
     test('fails on can merge check for specific repos', () async {
       final mockGgCanCommit = MockGgCanCommit();
       final mockGgCanMerge = MockGgCanMerge();
-      final mockGgMergeMainIntoFeat = MockGgMergeMainIntoFeat();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       final mockDidCommitCommand = MockDidCommitCommand();
@@ -347,15 +321,6 @@ void main() {
       ).thenAnswer((_) async {});
 
       when(
-        () => mockGgMergeMainIntoFeat.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {
-        return;
-      });
-
-      when(
         () => mockDoPushCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
@@ -381,7 +346,6 @@ void main() {
             ggLog: ggLog,
             ggCanCommit: mockGgCanCommit,
             ggCanMerge: mockGgCanMerge,
-            ggMergeMainIntoFeat: mockGgMergeMainIntoFeat,
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             didCommitCommand: mockDidCommitCommand,
@@ -410,7 +374,6 @@ void main() {
     test('fails when did commit throws exception', () async {
       final mockGgCanCommit = MockGgCanCommit();
       final mockGgCanMerge = MockGgCanMerge();
-      final mockGgMergeMainIntoFeat = MockGgMergeMainIntoFeat();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       final mockDidCommitCommand = MockDidCommitCommand();
@@ -471,7 +434,6 @@ void main() {
             ggLog: ggLog,
             ggCanCommit: mockGgCanCommit,
             ggCanMerge: mockGgCanMerge,
-            ggMergeMainIntoFeat: mockGgMergeMainIntoFeat,
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             didCommitCommand: mockDidCommitCommand,
@@ -497,10 +459,9 @@ void main() {
       );
     });
 
-    test('fails when merge main into feat throws exception', () async {
+    test('passes a merge conflict of do push through unwrapped', () async {
       final mockGgCanCommit = MockGgCanCommit();
       final mockGgCanMerge = MockGgCanMerge();
-      final mockGgMergeMainIntoFeat = MockGgMergeMainIntoFeat();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       final mockDidCommitCommand = MockDidCommitCommand();
@@ -517,11 +478,6 @@ void main() {
             name: 'A',
             directory: Directory(path.join(ticketDir.path, 'A')),
             manifest: DartPackageManifest(pubspec: Pubspec('A')),
-          ),
-          Node(
-            name: 'B',
-            directory: Directory(path.join(ticketDir.path, 'B')),
-            manifest: DartPackageManifest(pubspec: Pubspec('B')),
           ),
         ],
       );
@@ -541,32 +497,23 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      when(
-        () => mockGgMergeMainIntoFeat.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((invocation) {
-        final repoDir = invocation.namedArguments[#directory] as Directory;
-        if (path.basename(repoDir.path) == 'B') {
-          throw Exception('Merge main into feat failed');
-        }
-        return Future.value();
-      });
-
+      // The push merges main into the feature branches — a conflict there
+      // must not be wrapped into the generic 'Failed to push.' error: its
+      // message carries the actionable report and the half-merged working
+      // tree must survive.
       when(
         () => mockDoPushCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockGgCanMerge.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
+      ).thenThrow(
+        MergeConflictException(
+          'Merging origin/main into A produced conflicts:\n'
+          ' - A/pubspec.yaml\n'
+          'Please resolve the conflicts. Then execute: '
+          'gg do commit -m"Merge main" --no-log',
         ),
-      ).thenAnswer((_) async {});
+      );
 
       final runner = CommandRunner<void>('test', 'can publish ticket')
         ..addCommand(
@@ -574,7 +521,6 @@ void main() {
             ggLog: ggLog,
             ggCanCommit: mockGgCanCommit,
             ggCanMerge: mockGgCanMerge,
-            ggMergeMainIntoFeat: mockGgMergeMainIntoFeat,
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             didCommitCommand: mockDidCommitCommand,
@@ -588,19 +534,20 @@ void main() {
           '--input',
           ticketDir.path,
         ]),
-        throwsA(isA<Exception>()),
-      );
-      expect(
-        messages.any(
-          (m) => m.contains(
-            '✗ Cannot merge main into B\n'
-            'Exception: Merge main into feat failed',
+        throwsA(
+          isA<MergeConflictException>().having(
+            (e) => rmControls(e.toString()),
+            'message',
+            allOf(
+              contains('gg do commit -m"Merge main" --no-log'),
+              isNot(contains('Failed to push.')),
+            ),
           ),
         ),
-        isTrue,
       );
+      // The conflict aborts the run before `can merge` is asked.
       verifyNever(
-        () => mockDoPushCommand.exec(
+        () => mockGgCanMerge.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
         ),
@@ -610,7 +557,6 @@ void main() {
     test('fails when do push throws exception', () async {
       final mockGgCanCommit = MockGgCanCommit();
       final mockGgCanMerge = MockGgCanMerge();
-      final mockGgMergeMainIntoFeat = MockGgMergeMainIntoFeat();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       final mockDidCommitCommand = MockDidCommitCommand();
@@ -650,15 +596,6 @@ void main() {
           ggLog: any(named: 'ggLog'),
         ),
       ).thenAnswer((_) async {});
-
-      when(
-        () => mockGgMergeMainIntoFeat.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {
-        return;
-      });
 
       when(
         () => mockDoPushCommand.exec(
@@ -680,7 +617,6 @@ void main() {
             ggLog: ggLog,
             ggCanCommit: mockGgCanCommit,
             ggCanMerge: mockGgCanMerge,
-            ggMergeMainIntoFeat: mockGgMergeMainIntoFeat,
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             didCommitCommand: mockDidCommitCommand,
@@ -711,7 +647,6 @@ void main() {
       final mockGgCanCommit = MockGgCanCommit();
       final mockGgCanMerge = MockGgCanMerge();
       final mockGgCanPublish = MockGgCanPublish();
-      final mockGgMergeMainIntoFeat = MockGgMergeMainIntoFeat();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       final mockDidCommitCommand = MockDidCommitCommand();
@@ -747,13 +682,6 @@ void main() {
 
       when(
         () => mockDidCommitCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockGgMergeMainIntoFeat.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
         ),
@@ -794,7 +722,6 @@ void main() {
             ggCanCommit: mockGgCanCommit,
             ggCanMerge: mockGgCanMerge,
             ggCanPublish: mockGgCanPublish,
-            ggMergeMainIntoFeat: mockGgMergeMainIntoFeat,
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             didCommitCommand: mockDidCommitCommand,
@@ -827,7 +754,6 @@ void main() {
       () async {
         final mockGgCanCommit = MockGgCanCommit();
         final mockGgCanMerge = MockGgCanMerge();
-        final mockGgMergeMainIntoFeat = MockGgMergeMainIntoFeat();
         final mockSortedProcessingList = MockSortedProcessingList();
         final mockProcessRunner = MockProcessRunner();
         final mockDidCommitCommand = MockDidCommitCommand();
@@ -875,15 +801,6 @@ void main() {
         ).thenAnswer((_) async {});
 
         when(
-          () => mockGgMergeMainIntoFeat.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-          ),
-        ).thenAnswer((_) async {
-          return;
-        });
-
-        when(
           () => mockDoPushCommand.exec(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
@@ -913,7 +830,6 @@ void main() {
           ggCanCommit: mockGgCanCommit,
           ggCanMerge: mockGgCanMerge,
           ggCanPublish: mockGgCanPublish,
-          ggMergeMainIntoFeat: mockGgMergeMainIntoFeat,
           sortedProcessingList: mockSortedProcessingList,
           processRunner: mockProcessRunner.call,
           didCommitCommand: mockDidCommitCommand,
@@ -942,7 +858,6 @@ void main() {
     late MockGgCanMerge mockGgCanMerge;
     late MockGgCanPublish mockGgCanPublish;
     late MockGgNpmLoggedIn mockGgNpmLoggedIn;
-    late MockGgMergeMainIntoFeat mockGgMergeMainIntoFeat;
     late MockSortedProcessingList mockSortedProcessingList;
     late MockProcessRunner mockProcessRunner;
     late MockDidCommitCommand mockDidCommitCommand;
@@ -955,7 +870,6 @@ void main() {
           ggCanMerge: mockGgCanMerge,
           ggCanPublish: mockGgCanPublish,
           ggNpmLoggedIn: mockGgNpmLoggedIn,
-          ggMergeMainIntoFeat: mockGgMergeMainIntoFeat,
           sortedProcessingList: mockSortedProcessingList,
           processRunner: mockProcessRunner.call,
           didCommitCommand: mockDidCommitCommand,
@@ -969,7 +883,6 @@ void main() {
       mockGgCanMerge = MockGgCanMerge();
       mockGgCanPublish = MockGgCanPublish();
       mockGgNpmLoggedIn = MockGgNpmLoggedIn();
-      mockGgMergeMainIntoFeat = MockGgMergeMainIntoFeat();
       mockSortedProcessingList = MockSortedProcessingList();
       mockProcessRunner = MockProcessRunner();
       mockDidCommitCommand = MockDidCommitCommand();
@@ -1005,10 +918,6 @@ void main() {
 
       for (final stub in [
         () => mockDidCommitCommand.exec(
-              directory: any(named: 'directory'),
-              ggLog: any(named: 'ggLog'),
-            ),
-        () => mockGgMergeMainIntoFeat.exec(
               directory: any(named: 'directory'),
               ggLog: any(named: 'ggLog'),
             ),

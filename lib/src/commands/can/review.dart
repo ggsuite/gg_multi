@@ -114,8 +114,8 @@ class CanReviewCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      ggLog(cError('This command must be executed inside a ticket folder.'));
-      throw Exception(cError('Not inside a ticket folder'));
+      ggLog(cAction('Please run this command inside a ticket folder.'));
+      throw Exception(cDetail('Not inside a ticket folder'));
     }
 
     final ticketDir = Directory(ticketPath);

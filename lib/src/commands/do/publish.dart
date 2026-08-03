@@ -25,8 +25,9 @@ import '../../backend/publish_skip_check.dart';
 import '../../backend/trash.dart';
 import '../../backend/workspace_utils.dart';
 import '../../commands/can/publish.dart';
+import '../did/review.dart';
 import 'configure_publish.dart' show DoConfigurePublishCommand;
-import 'review.dart';
+import 'push.dart' show MergeConflictException;
 
 /// Typedef for running processes (for injection & tests).
 typedef ProcessRunner = Future<ProcessResult> Function(
@@ -139,7 +140,7 @@ class DoPublishCommand extends DirCommand<void> {
     SortedProcessingList? sortedProcessingList,
     ProcessRunner? processRunner,
     CanPublishCommand? canPublishCommand,
-    DoReviewCommand? doReviewCommand,
+    DidReviewCommand? didReviewCommand,
     GetVersion? getVersionCommand,
     SetRefVersion? setRefVersionCommand,
     GetRefVersion? getRefVersionCommand,
@@ -158,7 +159,7 @@ class DoPublishCommand extends DirCommand<void> {
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
         _canPublishCommand =
             canPublishCommand ?? CanPublishCommand(ggLog: ggLog),
-        _doReviewCommand = doReviewCommand ?? DoReviewCommand(ggLog: ggLog),
+        _didReviewCommand = didReviewCommand ?? DidReviewCommand(ggLog: ggLog),
         _getVersion = getVersionCommand ?? GetVersion(ggLog: ggLog),
         _setRefVersion = setRefVersionCommand ?? SetRefVersion(ggLog: ggLog),
         _getRefVersion = getRefVersionCommand ?? GetRefVersion(ggLog: ggLog),
@@ -212,8 +213,8 @@ class DoPublishCommand extends DirCommand<void> {
   /// Instance of CanPublishCommand
   final CanPublishCommand _canPublishCommand;
 
-  /// Reviews all repositories in the ticket before validation starts.
-  final DoReviewCommand _doReviewCommand;
+  /// Answers whether the current ticket state was reviewed (`didReview`).
+  final DidReviewCommand _didReviewCommand;
 
   /// Reads the current package version from pubspec.yaml
   final GetVersion _getVersion;
@@ -303,13 +304,51 @@ class DoPublishCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      throw Exception(cError('Not inside a ticket folder'));
+      throw Exception(cDetail('Not inside a ticket folder'));
     }
 
     final ticketDir = Directory(ticketPath);
     final runtimeFile = DoConfigurePublishCommand.configFileFor(ticketDir);
 
-    // Step 2: Resolve the publish configuration up front so the rest of the
+    // Step 2: Get sorted repos.
+    final subs = await _sortedProcessingList.get(
+      directory: ticketDir,
+      ggLog: ggLog,
+    );
+
+    if (subs.isEmpty) {
+      ggLog(cWarn('⚠️ No repos in this ticket'));
+      return;
+    }
+
+    // A merge brings the ticket onto the main branches without releasing it.
+    // A repository that still redirects a dependency to a local working copy
+    // would therefore land on main referencing something nobody can resolve —
+    // that ticket has to be published, not merged. Checked before the review
+    // gate: no review can fix it, so its message must win.
+    if (isMergeOnly && !force) {
+      _throwOnLocalizedRefs(subs);
+    }
+
+    // Step 3: The review gate for fresh runs — *before* the configuration is
+    // resolved: resolving may ask the interactive version increment and
+    // merge message questions, and nobody should answer them for a state
+    // the publish then refuses. Two cases are judged later instead:
+    //   * `--continue` — after the config is loaded, because a resume with
+    //     irreversible progress skips the gate entirely (see below).
+    //   * a leftover runtime file with progress markers (without
+    //     `--restart`, which discards them) — the config resolution throws
+    //     the more specific »unfinished publish« error before any question.
+    if (!continueRun &&
+        (restart ||
+            !_ticketHasLeftoverProgress(
+              runtimeFile: runtimeFile,
+              ticketDir: ticketDir,
+            ))) {
+      await _throwUnlessReviewed(ticketDir: ticketDir, ggLog: ggLog);
+    }
+
+    // Step 4: Resolve the publish configuration up front so the rest of the
     // run is non-interactive. Precedence: --continue > --config > the runtime
     // .gg/gg-publish.json > the legacy <ticket>/.gg-publish.json > an
     // interactive `do configure-publish`.
@@ -325,27 +364,6 @@ class DoPublishCommand extends DirCommand<void> {
     gg.PublishConfig publishConfig = resolved.config;
     final String configSourcePath = resolved.sourcePath;
 
-    // Get sorted repos (needed before the review gate: the resume decision
-    // below inspects each repo's own step progress).
-    final subs = await _sortedProcessingList.get(
-      directory: ticketDir,
-      ggLog: ggLog,
-    );
-
-    if (subs.isEmpty) {
-      ggLog(cWarn('⚠️ No repos in this ticket'));
-      return;
-    }
-
-    // A merge brings the ticket onto the main branches without releasing it.
-    // A repository that still redirects a dependency to a local working copy
-    // would therefore land on main referencing something nobody can resolve —
-    // that ticket has to be published, not merged. Checked before `do review`
-    // runs, because reviewing replaces the path overrides with git refs.
-    if (isMergeOnly && !force) {
-      _throwOnLocalizedRefs(subs);
-    }
-
     // --restart discards not only the ticket-level config but also the
     // repo-level step progress gg_one recorded in an earlier run.
     if (restart) {
@@ -359,40 +377,29 @@ class DoPublishCommand extends DirCommand<void> {
       }
     }
 
-    // Step 3: Review + the ticket wide validation. The per-repo
-    // `gg can publish` gate is NOT part of this — it runs inside
+    // Step 5: The review gate for resumes + the ticket wide validation. The
+    // per-repo `gg can publish` gate is NOT part of this — it runs inside
     // _publishRepo, right before the repo is published (see there).
     // Skipped when genuinely resuming a run that
     // already made irreversible progress: a repo finished ('published'), or
     // a repo's own .gg/gg-publish.json records completed publish steps —
     // e.g. the FIRST repo failed after its registry publish or merge.
-    // Re-reviewing such a partially merged ticket would fail ("nothing to
-    // merge") and permanently block the resume. A `--continue` after a
-    // *review* failure — no progress anywhere — still reviews, so unreviewed
-    // code is never published. gg_one re-checks `did commit` per repo on
-    // resume, so raw commits added after the failure are still caught.
+    // Re-running the ticket wide checks — whose push step merges main into
+    // the feature branches — on such a partially merged ticket would fail
+    // and permanently block the resume; the mid-publish commits would also
+    // fail the `did review` hash. A `--continue` after a failure without
+    // progress still runs both, so an unreviewed state is never published.
+    // gg_one re-checks `did commit` per repo on resume, so raw commits added
+    // after the failure are still caught.
     final resumingMidPublish = continueRun &&
         (publishConfig.repos.values.any((r) => r.status == 'published') ||
             subs.any((repo) => _repoHasStepProgress(repo.directory)));
     if (!resumingMidPublish) {
-      try {
-        await _doReviewCommand.exec(
-          directory: ticketDir,
-          ggLog: ggLog,
-          verbose: verbose,
-        );
-      } on MergeConflictException {
-        // Conflicts are resolved by the user; the message the review printed
-        // is the actionable one, so do not bury it in a publish error.
-        rethrow;
-      } catch (e) {
-        // The reason was printed by the review itself — re-wrapping it would
-        // print it a second time behind a nested prefix.
-        ggLog(
-          [cError('\n${(e as dynamic).message}\n')].join('\n'),
-        );
-        ggLog(cAction('\nPlease fix the issues above.\n'));
-        throw Exception(cDetail('Review failed.'));
+      // A fresh run already passed the gate before the configuration was
+      // resolved (step 3); a `--continue` without irreversible progress is
+      // checked here.
+      if (continueRun) {
+        await _throwUnlessReviewed(ticketDir: ticketDir, ggLog: ggLog);
       }
 
       try {
@@ -401,6 +408,11 @@ class DoPublishCommand extends DirCommand<void> {
           ggLog: ggLog,
           includeCanPublish: false,
         );
+      } on MergeConflictException {
+        // Conflicts are resolved by the user; the report the push threw
+        // carries the actionable instructions, so do not bury it in a
+        // publish error.
+        rethrow;
       } catch (e) {
         ggLog(
           [cError(rmControls('$e'))].join('\n'),
@@ -422,7 +434,7 @@ class DoPublishCommand extends DirCommand<void> {
     // Map of reference name to version captured from repos processed so far.
     final refVersions = <String, String>{};
 
-    // Step 4: Iterate over each repository and publish (or resume).
+    // Step 6: Iterate over each repository and publish (or resume).
     for (final repo in subs) {
       final repoDir = repo.directory;
       final repoName = path.basename(repoDir.path);
@@ -570,10 +582,11 @@ class DoPublishCommand extends DirCommand<void> {
       );
     }
 
-    // Step 5: Every repo that was not published still carries the git refs of
-    // the review. The cleanup below deletes the very branch they point at, so
-    // they are pointed at the freshly published versions first — all versions
-    // of the ticket are known now that the loop is through.
+    // Step 7: Every repo that was not published still redirects its
+    // dependencies to the sibling checkouts. The cleanup below moves exactly
+    // those checkouts to the trash, so the repos are pointed at the freshly
+    // published versions first — all versions of the ticket are known now
+    // that the loop is through.
     await _changeRemainingRefsToPubDev(
       subs: subs,
       publishedRepos: refsChangedRepos,
@@ -582,7 +595,7 @@ class DoPublishCommand extends DirCommand<void> {
       taskLog: taskLog,
     );
 
-    // Step 6: All repos published — the resume anchor is no longer needed.
+    // Step 8: All repos published — the resume anchor is no longer needed.
     if (runtimeFile.existsSync()) {
       runtimeFile.deleteSync();
       taskLog(
@@ -592,7 +605,7 @@ class DoPublishCommand extends DirCommand<void> {
       );
     }
 
-    // Step 7: Clean the ticket up. The repos are never deleted outright —
+    // Step 9: Clean the ticket up. The repos are never deleted outright —
     // they move to <root>/.trash/<ticket>, so uncommitted leftovers stay
     // recoverable. The remote feature branch is deleted unless
     // --no-delete-remote-branch was passed.
@@ -811,20 +824,47 @@ class DoPublishCommand extends DirCommand<void> {
     return (config: config, sourcePath: runtimeFile.path);
   }
 
+  /// Throws when the *current* ticket state was not reviewed.
+  ///
+  /// Publishing does not review the ticket itself — it demands that the
+  /// state went through `gg do review` (the hash-based `didReview` state,
+  /// so a commit made after the review requires a new review before it can
+  /// be published). Delegates to `gg did review`, which checks the chain
+  /// `did commit` → `did push` → `did review` — so the most fundamental
+  /// missing step is what the user is told about (e.g. »Please run
+  /// gg do commit« instead of a generic »not reviewed«).
+  Future<void> _throwUnlessReviewed({
+    required Directory ticketDir,
+    required GgLog ggLog,
+  }) =>
+      _didReviewCommand.exec(directory: ticketDir, ggLog: ggLog);
+
+  /// Whether [runtimeFile] still carries per-repo progress markers of an
+  /// unfinished run.
+  bool _ticketHasLeftoverProgress({
+    required File runtimeFile,
+    required Directory ticketDir,
+  }) {
+    if (!runtimeFile.existsSync()) {
+      return false;
+    }
+    final existing = gg.PublishConfig.load(
+      configArg: runtimeFile.path,
+      fallbackDir: ticketDir.path,
+    );
+    return existing.repos.values.any((r) => r.status != null);
+  }
+
   /// Throws when [runtimeFile] still carries per-repo progress markers of an
   /// unfinished run — a fresh config source must not clobber them.
   void _throwOnLeftoverTicketProgress({
     required File runtimeFile,
     required Directory ticketDir,
   }) {
-    if (!runtimeFile.existsSync()) {
-      return;
-    }
-    final existing = gg.PublishConfig.load(
-      configArg: runtimeFile.path,
-      fallbackDir: ticketDir.path,
-    );
-    if (existing.repos.values.any((r) => r.status != null)) {
+    if (_ticketHasLeftoverProgress(
+      runtimeFile: runtimeFile,
+      ticketDir: ticketDir,
+    )) {
       throw Exception(
         cError(
           gg.unfinishedPublishMessage(
@@ -967,15 +1007,13 @@ class DoPublishCommand extends DirCommand<void> {
   /// [refVersions] entry is written as the dependency's version and the
   /// dependencies are refreshed so the lock file follows.
   ///
-  /// While the ticket is under review, `gg_localize_refs` redirects the
-  /// workspace dependencies through `pubspec_overrides.yaml` — first to the
-  /// sibling checkouts, then to the ticket's feature branch. Both are gone
-  /// after the publish: the checkouts move to the trash and the feature branch
-  /// is deleted on the remote (by `_cleanUpTicket`, and often by the provider
-  /// itself the moment the pull request is merged). A repo left pointing at
-  /// either fails its next `dart pub get` with an unresolvable reference,
-  /// which is why this runs for **every** repo of the ticket — see
-  /// [_changeRemainingRefsToPubDev] for the ones that are not published.
+  /// While the ticket is worked on, `gg_localize_refs` redirects the
+  /// workspace dependencies through `pubspec_overrides.yaml` to the sibling
+  /// checkouts. Those checkouts are gone after the publish: they move to the
+  /// trash (by `_cleanUpTicket`). A repo left pointing at them fails its next
+  /// `dart pub get` with an unresolvable reference, which is why this runs
+  /// for **every** repo of the ticket — see [_changeRemainingRefsToPubDev]
+  /// for the ones that are not published.
   Future<void> _changeRefsToPubDev({
     required Directory repoDir,
     required String repoName,
@@ -1035,11 +1073,11 @@ class DoPublishCommand extends DirCommand<void> {
   /// through [_publishRepo] — the ones the unchanged-repo check skipped and,
   /// on `--continue`, the ones an earlier run already published.
   ///
-  /// Without it exactly those repos keep the refs of the review: a
-  /// `pubspec_overrides.yaml` pinning the ticket's feature branch, which the
-  /// ticket cleanup deletes right after. The repos are moved to the trash
-  /// rather than deleted, so they stay usable — but only when their references
-  /// point at the versions that were just published.
+  /// Without it exactly those repos keep their localized refs: a
+  /// `pubspec_overrides.yaml` pointing at the sibling checkouts, which the
+  /// ticket cleanup moves to the trash right after. The repos are moved to
+  /// the trash rather than deleted, so they stay usable — but only when their
+  /// references point at the versions that were just published.
   ///
   /// [publishedRepos] are the repos that already did this inside their
   /// publish. Failures are reported and the remaining repos are still
@@ -1117,7 +1155,7 @@ class DoPublishCommand extends DirCommand<void> {
   }
 
   /// Runs git with [args] in [repoDir] and returns the trimmed stdout.
-  /// Delegates to the shared [git_snapshot.runGit] so `do review` and
+  /// Delegates to the shared [git_snapshot.runGit] so `do push` and
   /// `do publish` use one git runner. See there for [allowFailure].
   Future<String> _runGit(
     List<String> args, {
@@ -1563,8 +1601,8 @@ class DoPublishCommand extends DirCommand<void> {
     required String repoName,
     required GgLog ggLog,
   }) async {
-    // Bridge repos refresh via their TypeScript package manager, like
-    // do/review and do/cancel_review (checkProjectType: bridge → TS).
+    // Bridge repos refresh via their TypeScript package manager
+    // (checkProjectType: bridge → TS).
     final projectType = gg.checkProjectType(repoDir);
 
     final String executable;

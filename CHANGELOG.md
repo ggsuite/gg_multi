@@ -9,6 +9,12 @@
 ### Removed
 
 - Remove ./ from test error paths to allow directly opening it in vscode
+## 7.9.2 - 2026-08-03
+
+### Changed
+
+- Improve review workflow
+- Improve workflow
 
 ## 7.9.1 - 2026-08-03
 
