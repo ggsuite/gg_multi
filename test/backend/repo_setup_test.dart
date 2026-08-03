@@ -4,6 +4,7 @@
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:gg_multi/src/backend/repo_setup.dart';
@@ -120,7 +121,33 @@ void main() {
       );
       expect(
         file.readAsStringSync(),
-        '{"folders":[{"path":"a"},{"path":"b"}]}\n',
+        '{"folders":[{"path":"a"},{"path":"b"}],'
+        '"settings":{"dart.runPubGetOnPubspecChanges":"never"}}\n',
+      );
+    });
+
+    test('turns the automatic pub get of the Dart extension off', () {
+      // Its FileSystemWatcher fires on gg's own CLI writes too and rewrites
+      // the lock file a second later, right under the running command.
+      final ticketDir = Directory(path.join(tmp.path, 'settings_ticket'))
+        ..createSync();
+      writeCodeWorkspaceFile(ticketDir, ['a']);
+      final written = jsonDecode(
+        File(
+          path.join(ticketDir.path, 'settings_ticket.code-workspace'),
+        ).readAsStringSync(),
+      ) as Map<String, dynamic>;
+
+      expect(written['settings'], codeWorkspaceSettings);
+      expect(
+        (written['settings'] as Map<String, dynamic>)
+            .containsKey('dart.runPubGetOnPubspecChanges'),
+        isTrue,
+      );
+      expect(
+        (written['settings']
+            as Map<String, dynamic>)['dart.runPubGetOnPubspecChanges'],
+        'never',
       );
     });
 
@@ -133,7 +160,8 @@ void main() {
         File(
           path.join(ticketDir.path, 'empty_ticket.code-workspace'),
         ).readAsStringSync(),
-        '{"folders":[{"path":"."}]}\n',
+        '{"folders":[{"path":"."}],'
+        '"settings":{"dart.runPubGetOnPubspecChanges":"never"}}\n',
       );
     });
 
@@ -148,7 +176,8 @@ void main() {
       );
       expect(
         file.readAsStringSync(),
-        '{"folders":[{"path":"ggsuite/gg_foo"}]}\n',
+        '{"folders":[{"path":"ggsuite/gg_foo"}],'
+        '"settings":{"dart.runPubGetOnPubspecChanges":"never"}}\n',
       );
     });
   });

@@ -52,6 +52,7 @@ class CanPublishCommand extends DirCommand<void> {
     gg.CanMerge? ggCanMerge,
     gg.CanPublish? ggCanPublish,
     gg.NpmLoggedIn? ggNpmLoggedIn,
+    gg.PubGetOffline? ggPubGetOffline,
     gg_publish.MergeMainIntoFeat? ggMergeMainIntoFeat,
     SortedProcessingList? sortedProcessingList,
     ProcessRunner? processRunner,
@@ -60,6 +61,7 @@ class CanPublishCommand extends DirCommand<void> {
   })  : _ggCanMerge = ggCanMerge ?? gg.CanMerge(ggLog: ggLog),
         _ggCanPublish = ggCanPublish ?? gg.CanPublish(ggLog: ggLog),
         _ggNpmLoggedIn = ggNpmLoggedIn ?? gg.NpmLoggedIn(ggLog: ggLog),
+        _ggPubGetOffline = ggPubGetOffline ?? gg.PubGetOffline(ggLog: ggLog),
         _ggMergeMainIntoFeat =
             ggMergeMainIntoFeat ?? gg_publish.MergeMainIntoFeat(ggLog: ggLog),
         _sortedProcessingList =
@@ -78,6 +80,9 @@ class CanPublishCommand extends DirCommand<void> {
 
   /// Instance of gg NpmLoggedIn (ticket wide npm authentication check)
   final gg.NpmLoggedIn _ggNpmLoggedIn;
+
+  /// Instance of gg PubGetOffline (syncs the lock file with the manifest)
+  final gg.PubGetOffline _ggPubGetOffline;
 
   /// Instance of gg MergeMainIntoFeat
   final gg_publish.MergeMainIntoFeat _ggMergeMainIntoFeat;
@@ -155,7 +160,20 @@ class CanPublishCommand extends DirCommand<void> {
     // Only show task logs when verbose is enabled ---------------------------
     final GgLog taskLog = verbose ? ggLog : <String>[].add;
 
-    // Step 2: Check for uncommitted changes ---------------------------------
+    // Step 2: Sync the lock files with their manifests so the next check does
+    // not trip over a lockfile that is merely out of date -------------------
+    await GgStatusPrinter<void>(
+      message: 'dart pub get --offline',
+      ggLog: ggLog,
+      dark: true,
+    ).run(
+      () async => _pubGetOffline(
+        subs: subs,
+        ggLog: taskLog,
+      ),
+    );
+
+    // Step 3: Check for uncommitted changes ---------------------------------
     await GgStatusPrinter<void>(
       message: 'Uncommitted changes?',
       ggLog: ggLog,
@@ -167,7 +185,7 @@ class CanPublishCommand extends DirCommand<void> {
       ),
     );
 
-    // Step 3: Run gg_multi did commit ------------------------------------
+    // Step 4: Run gg_multi did commit ------------------------------------
     await GgStatusPrinter<void>(
       message: 'Did commit?',
       ggLog: ggLog,
@@ -179,7 +197,7 @@ class CanPublishCommand extends DirCommand<void> {
       ),
     );
 
-    // Step 4: Run gg merge main into feat -----------------------------------
+    // Step 5: Run gg merge main into feat -----------------------------------
     await GgStatusPrinter<void>(
       message: 'Merge main into feat?',
       ggLog: ggLog,
@@ -192,7 +210,7 @@ class CanPublishCommand extends DirCommand<void> {
       ),
     );
 
-    // Step 5: Run gg can merge per repo -------------------------------------
+    // Step 6: Run gg can merge per repo -------------------------------------
     await GgStatusPrinter<void>(
       message: 'Can merge?',
       ggLog: ggLog,
@@ -205,7 +223,7 @@ class CanPublishCommand extends DirCommand<void> {
       ),
     );
 
-    // Step 6: Run gg_multi do push ---------------------------------------
+    // Step 7: Run gg_multi do push ---------------------------------------
     await GgStatusPrinter<void>(
       message: 'Running do push',
       ggLog: ggLog,
@@ -217,9 +235,9 @@ class CanPublishCommand extends DirCommand<void> {
       ),
     );
 
-    // Step 7: Check the npm authentication ----------------------------------
+    // Step 8: Check the npm authentication ----------------------------------
     // This is the one publish blocker that has nothing to do with dependency
-    // resolution, so it stays ticket wide even when step 8 is deferred to
+    // resolution, so it stays ticket wide even when step 9 is deferred to
     // `do publish`'s per-repo gate: finding out about a missing npm login
     // after the first packages went to a registry is the worst failure mode
     // this command has. Repos not publishing to npm are skipped by gg_one.
@@ -234,7 +252,7 @@ class CanPublishCommand extends DirCommand<void> {
       ),
     );
 
-    // Step 8: Run gg can publish per repo -----------------------------------
+    // Step 9: Run gg can publish per repo -----------------------------------
     // Verifies each repo's publish readiness (feature branch, CHANGELOG,
     // pana, npm authentication).
     if (includeCanPublish) {
@@ -274,7 +292,35 @@ class CanPublishCommand extends DirCommand<void> {
     }
   }
 
+  /// Runs `dart pub get --offline` (or the Flutter equivalent) in all repos so
+  /// that each lock file matches its manifest before the uncommitted-changes
+  /// check runs.
+  ///
+  /// [gg.PubGetOffline] self-gates on the presence of a `pubspec.yaml`: pure
+  /// TypeScript repos are skipped, while bridge repos (pubspec.yaml +
+  /// package.json) do carry a Dart `pubspec.lock` that must be kept in sync.
+  /// So run it for every repo and let it self-gate — the same way `can review`
+  /// does.
+  Future<void> _pubGetOffline({
+    required List<Node> subs,
+    required GgLog ggLog,
+  }) async {
+    for (final repo in subs) {
+      await _ggPubGetOffline.exec(
+        directory: repo.directory,
+        ggLog: ggLog,
+      );
+    }
+  }
+
   /// Checks for uncommitted changes in all repos.
+  ///
+  /// A repo whose *only* dirty files are lock files is not reported: lock
+  /// files are tracked but derived, and a `pub get` running in the background
+  /// — the Dart VS Code extension fires one whenever a manifest is written —
+  /// rewrites them without anybody editing anything. Refusing to publish over
+  /// that was the whole problem. The drift is committed instead, which is what
+  /// the later `IsCommitted` of `gg do push` needs to see.
   Future<void> _checkUncommittedChanges({
     required List<Node> subs,
     required GgLog ggLog,
@@ -287,9 +333,21 @@ class CanPublishCommand extends DirCommand<void> {
         ['status', '--porcelain'],
         workingDirectory: repoDir.path,
       );
-      if (result.stdout.toString().trim().isNotEmpty) {
-        uncommitted.add(path.basename(repoDir.path));
+      final status = result.stdout.toString().trim();
+      if (status.isEmpty) {
+        continue;
       }
+
+      if (gg.isLockFileOnlyDrift(status)) {
+        await _commitLockFileDrift(
+          repoDir: repoDir,
+          lockFiles: gg.lockFilesInStatus(status),
+          ggLog: ggLog,
+        );
+        continue;
+      }
+
+      uncommitted.add(path.basename(repoDir.path));
     }
     if (uncommitted.isNotEmpty) {
       ggLog(cWarn('Uncommitted changes in'));
@@ -298,6 +356,41 @@ class CanPublishCommand extends DirCommand<void> {
       }
       throw Exception(cDetail('Uncommitted changes found.'));
     }
+  }
+
+  /// Stages and commits [lockFiles] of [repoDir] as `#gg: Update <files>`.
+  ///
+  /// The `#gg: ` prefix keeps `PublishSkipCheck` treating the commit as
+  /// generated, and lock files are part of its gg-owned allowlist, so this
+  /// never makes an otherwise unchanged repo look like it needs a release.
+  /// The recorded check results survive as well: `GgState.ignoreFiles` holds
+  /// the lock files, so the state hash is the same before and after.
+  Future<void> _commitLockFileDrift({
+    required Directory repoDir,
+    required List<String> lockFiles,
+    required GgLog ggLog,
+  }) async {
+    final repoName = path.basename(repoDir.path);
+    final files = lockFiles.join(', ');
+
+    await _processRunner(
+      'git',
+      ['add', '--', ...lockFiles],
+      workingDirectory: repoDir.path,
+    );
+    final result = await _processRunner(
+      'git',
+      ['commit', '-m', '#gg: Update $files'],
+      workingDirectory: repoDir.path,
+    );
+
+    if (result.exitCode != 0) {
+      throw Exception(
+        cError('Could not commit $files in $repoName: ${result.stderr}'),
+      );
+    }
+
+    ggLog(cDetail('Committed lock file drift in $repoName: $files'));
   }
 
   /// Executes gg_multi did commit for the ticket.
