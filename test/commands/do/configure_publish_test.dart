@@ -408,7 +408,7 @@ void main() {
           isA<Exception>().having(
             (e) => rmControls(e.toString()),
             'message',
-            contains('unfinished publish left progress'),
+            contains('Unfinished publish in'),
           ),
         ),
       );

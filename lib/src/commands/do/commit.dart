@@ -12,7 +12,6 @@ import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:gg_one/gg_one.dart' as gg;
-import 'package:interact/interact.dart';
 import 'package:path/path.dart' as path;
 
 import '../../backend/message_editor_theme.dart';
@@ -163,26 +162,14 @@ class DoCommitCommand extends DirCommand<void> {
     return resolved.isEmpty ? null : resolved;
   }
 
-  /// Opens the default editor with [initialMessage] and returns the result.
-  // coverage:ignore-start
-  static Future<String?> _defaultEditMessage(String initialMessage) async {
-    gg.throwWhenNotATerminal(
-      'the commit message prompt',
-      'pass -m <message>',
-    );
-    // Only initialText, no defaultValue: the message is already in the
-    // editable buffer, so the "(…)" hint would just repeat it.
-    try {
-      return Input.withTheme(
-        theme: messageEditorTheme,
+  /// Opens the shared message editor for the commit message.
+  static Future<String?> _defaultEditMessage(String initialMessage) =>
+      editMessage(
+        initialMessage,
         prompt: 'Edit commit message',
-        initialText: initialMessage,
-      ).interact();
-    } finally {
-      stdout.write(colorOff);
-    }
-  }
-  // coverage:ignore-end
+        subject: 'the commit message prompt',
+        hint: 'pass -m <message>',
+      );
 
   // Adds command line arguments
   void _addArgs() {

@@ -715,10 +715,7 @@ class DoPublishCommand extends DirCommand<void> {
   }) async {
     if (continueRun && (configArg != null || restart)) {
       throw Exception(
-        cError(
-          '--continue cannot be combined with --config or --restart. '
-          'Resume with "--continue" alone, or start a fresh run without it.',
-        ),
+        cError(gg.continueConflictMessage),
       );
     }
 
@@ -770,9 +767,10 @@ class DoPublishCommand extends DirCommand<void> {
       if (config.repos.values.any((r) => r.status != null)) {
         throw Exception(
           cError(
-            'An unfinished publish left progress in ${runtimeFile.path}. '
-            'Resume it with "$_command --continue", or discard it with '
-            '"$_command --restart".',
+            gg.unfinishedPublishMessage(
+              path: runtimeFile.path,
+              command: _command,
+            ),
           ),
         );
       }
@@ -814,9 +812,10 @@ class DoPublishCommand extends DirCommand<void> {
     if (existing.repos.values.any((r) => r.status != null)) {
       throw Exception(
         cError(
-          'An unfinished publish left progress in ${runtimeFile.path}. '
-          'Resume it with "$_command --continue", or discard it with '
-          '"$_command --restart".',
+          gg.unfinishedPublishMessage(
+            path: runtimeFile.path,
+            command: _command,
+          ),
         ),
       );
     }

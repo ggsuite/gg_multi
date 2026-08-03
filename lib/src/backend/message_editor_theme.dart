@@ -4,7 +4,10 @@
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
 
+import 'dart:io';
+
 import 'package:gg_console_colors/gg_console_colors.dart';
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:interact/interact.dart';
 
 /// SGR sequence switching the terminal back to its default colors.
@@ -29,3 +32,33 @@ final Theme messageEditorTheme = Theme.defaultTheme.copyWith(
   valueStyle: blue,
   inputSuffix: '${Theme.defaultTheme.inputSuffix}$_blueOn',
 );
+
+// .............................................................................
+/// Opens the interactive message editor with [initialMessage] and returns
+/// what the user leaves in the buffer.
+///
+/// [prompt] labels the editor, [subject] and [hint] describe the prompt in the
+/// error a headless run gets instead of hanging. `do commit` and
+/// `do configure-publish` share this — they differ only in those three words.
+///
+/// Only `initialText`, no `defaultValue`: the message is already in the
+/// editable buffer, so the "(…)" hint would just repeat it.
+// coverage:ignore-start
+Future<String?> editMessage(
+  String initialMessage, {
+  required String prompt,
+  required String subject,
+  required String hint,
+}) async {
+  gg.throwWhenNotATerminal(subject, hint);
+  try {
+    return Input.withTheme(
+      theme: messageEditorTheme,
+      prompt: prompt,
+      initialText: initialMessage,
+    ).interact();
+  } finally {
+    stdout.write(colorOff);
+  }
+}
+// coverage:ignore-end
