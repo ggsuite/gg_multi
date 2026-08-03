@@ -327,7 +327,7 @@ gg_multi do publish -m 'Release: unified publish flow'
 ```
 
 `-m` only applies while the config is being written interactively (a
-fresh run or `--reconfigure`); it takes precedence over the ticket
+fresh run or `--restart`); it takes precedence over the ticket
 description and is ignored once a config exists or is supplied via
 `--config`. `gg_multi do configure-publish` accepts the same `-m`.
 
@@ -344,7 +344,7 @@ repo that failed — and *within* that repo, gg_one resumes at the first
 open publish step (version bump, registry publish, merge, branch
 deletion, tag) recorded in the repo's own `.gg/.gg-publish.json`.
 Nothing already done is repeated. On a fully successful run the files
-are removed again. Use `--reconfigure` to discard an existing
+are removed again. Use `--restart` to discard an existing
 `.gg/.gg-publish.json` (ticket and repo level) and be asked again.
 
 #### Non-interactive publish via `--config`

@@ -6,6 +6,7 @@
 
 - refactor(gg_multi): replace do cancel-review with do review --abort
 - refactor(gg_multi): move ls under do
+- refactor: rename publish --reconfigure to --restart
 
 ### Removed
 

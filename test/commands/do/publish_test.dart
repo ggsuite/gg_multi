@@ -5644,7 +5644,7 @@ void main() {
       );
     });
 
-    test('--reconfigure ignores the saved config and reconfigures', () async {
+    test('--restart ignores the saved config and reconfigures', () async {
       when(
         () => mockConfigure.configure(
           directory: any(named: 'directory'),
@@ -5658,7 +5658,7 @@ void main() {
       );
 
       await buildRunner().run(
-        ['publish', '--input', ticketDir.path, '--reconfigure'],
+        ['publish', '--input', ticketDir.path, '--restart'],
       );
 
       verify(
@@ -5753,14 +5753,14 @@ void main() {
       );
     });
 
-    test('--continue rejects --reconfigure', () async {
+    test('--continue rejects --restart', () async {
       await expectLater(
         () => buildRunner().run([
           'publish',
           '--input',
           ticketDir.path,
           '--continue',
-          '--reconfigure',
+          '--restart',
         ]),
         throwsA(
           isA<Exception>().having(
@@ -6079,8 +6079,7 @@ void main() {
       ).called(1);
     });
 
-    test('--config with --reconfigure discards progress and proceeds',
-        () async {
+    test('--config with --restart discards progress and proceeds', () async {
       runtimeFile.writeAsStringSync('''
 {
   "repos": {
@@ -6102,7 +6101,7 @@ void main() {
         ticketDir.path,
         '--config',
         'fresh.json',
-        '--reconfigure',
+        '--restart',
       ]);
 
       verify(
@@ -6122,7 +6121,7 @@ void main() {
       ).called(1);
     });
 
-    test('--reconfigure removes the repo-level runtime files', () async {
+    test('--restart removes the repo-level runtime files', () async {
       final repoRuntime = File(
         path.join(ticketDir.path, 'A', '.gg', 'gg-publish.json'),
       )..createSync(recursive: true);
@@ -6147,7 +6146,7 @@ void main() {
       );
 
       await buildRunner().run(
-        ['publish', '--input', ticketDir.path, '--reconfigure'],
+        ['publish', '--input', ticketDir.path, '--restart'],
       );
 
       // Stale gg_one step progress must not seed the reconfigured run.

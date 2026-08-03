@@ -262,7 +262,7 @@ class DoPublishCommand extends DirCommand<void> {
     final bool isMergeOnly = this.mergeOnly;
     verbose ??= argResults?['verbose'] as bool? ?? false;
     final continueRun = argResults?['continue'] as bool? ?? false;
-    final reconfigure = argResults?['reconfigure'] as bool? ?? false;
+    final restart = argResults?['restart'] as bool? ?? false;
     final publishUnchanged = argResults?['publish-unchanged'] as bool? ?? false;
     final force = this.mergeOnly && (argResults?['force'] as bool? ?? false);
     final String? configArg = argResults?['config'] as String?;
@@ -298,7 +298,7 @@ class DoPublishCommand extends DirCommand<void> {
       runtimeFile: runtimeFile,
       configArg: configArg,
       continueRun: continueRun,
-      reconfigure: reconfigure,
+      restart: restart,
       messageArg: messageArg,
       ggLog: ggLog,
     );
@@ -326,9 +326,9 @@ class DoPublishCommand extends DirCommand<void> {
       _throwOnLocalizedRefs(subs);
     }
 
-    // --reconfigure discards not only the ticket-level config but also the
+    // --restart discards not only the ticket-level config but also the
     // repo-level step progress gg_one recorded in an earlier run.
-    if (reconfigure) {
+    if (restart) {
       for (final repo in subs) {
         final repoRuntime = gg.DoConfigurePublish.configFileFor(
           repo.directory,
@@ -677,7 +677,7 @@ class DoPublishCommand extends DirCommand<void> {
   /// Precedence: on `--continue` the runtime file must already exist; else an
   /// explicit `--config` file, then the runtime file, then the legacy
   /// `<ticket>/.gg-publish.json`, and finally an interactive
-  /// `do configure-publish`. `--reconfigure` skips the two implicit files so
+  /// `do configure-publish`. `--restart` skips the two implicit files so
   /// the user is asked again. User-supplied `--config` / legacy files are only
   /// read — the mutable runtime copy is what receives the progress markers.
   /// [messageArg] (from `-m`) is forwarded to `do configure-publish` as the
@@ -691,13 +691,13 @@ class DoPublishCommand extends DirCommand<void> {
     required File runtimeFile,
     required String? configArg,
     required bool continueRun,
-    required bool reconfigure,
+    required bool restart,
     required String? messageArg,
     required GgLog ggLog,
   }) async {
-    if (continueRun && (configArg != null || reconfigure)) {
+    if (continueRun && (configArg != null || restart)) {
       throw Exception(
-        '--continue cannot be combined with --config or --reconfigure. '
+        '--continue cannot be combined with --config or --restart. '
         'Resume with "--continue" alone, or start a fresh run without it.',
       );
     }
@@ -718,7 +718,7 @@ class DoPublishCommand extends DirCommand<void> {
       );
     }
 
-    if (reconfigure && runtimeFile.existsSync()) {
+    if (restart && runtimeFile.existsSync()) {
       // Explicit user choice: discard the previous config and progress.
       runtimeFile.deleteSync();
     }
@@ -738,7 +738,7 @@ class DoPublishCommand extends DirCommand<void> {
       return (config: config, sourcePath: configArg);
     }
 
-    if (!reconfigure && runtimeFile.existsSync()) {
+    if (!restart && runtimeFile.existsSync()) {
       final config = gg.PublishConfig.load(
         configArg: runtimeFile.path,
         fallbackDir: ticketDir.path,
@@ -749,14 +749,14 @@ class DoPublishCommand extends DirCommand<void> {
         throw Exception(
           'An unfinished publish left progress in ${runtimeFile.path}. '
           'Resume it with "$_command --continue", or discard it with '
-          '"$_command --reconfigure".',
+          '"$_command --restart".',
         );
       }
       return (config: config, sourcePath: runtimeFile.path);
     }
 
     final legacyFile = File(path.join(ticketDir.path, '.gg-publish.json'));
-    if (!reconfigure && legacyFile.existsSync()) {
+    if (!restart && legacyFile.existsSync()) {
       final config = gg.PublishConfig.load(
         configArg: legacyFile.path,
         fallbackDir: ticketDir.path,
@@ -791,7 +791,7 @@ class DoPublishCommand extends DirCommand<void> {
       throw Exception(
         'An unfinished publish left progress in ${runtimeFile.path}. '
         'Resume it with "$_command --continue", or discard it with '
-        '"$_command --reconfigure".',
+        '"$_command --restart".',
       );
     }
   }
@@ -1638,7 +1638,7 @@ class DoPublishCommand extends DirCommand<void> {
       'message',
       abbr: 'm',
       help: 'Default merge message used only when the .gg/gg-publish.json is '
-          'written interactively (a fresh run or --reconfigure). It seeds '
+          'written interactively (a fresh run or --restart). It seeds '
           'every repo\'s merge-message prompt. Ignored when a config already '
           'exists or is supplied via --config.',
     );
@@ -1695,7 +1695,7 @@ class DoPublishCommand extends DirCommand<void> {
       negatable: false,
     );
     argParser.addFlag(
-      'reconfigure',
+      'restart',
       help: 'Ignore an existing .gg/gg-publish.json and configure the '
           'publish again via do configure-publish.',
       defaultsTo: false,

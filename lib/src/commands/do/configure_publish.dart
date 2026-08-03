@@ -115,7 +115,7 @@ class DoConfigurePublishCommand extends DirCommand<void> {
         throw Exception(
           'An unfinished publish left progress in ${existingFile.path}. '
           'Resume it with "gg do publish --continue", or discard it with '
-          '"gg do publish --reconfigure".',
+          '"gg do publish --restart".',
         );
       }
     }
