@@ -55,7 +55,7 @@ gg_multi
 ├── can   commit | push | publish | review
 ├── did   commit | push
 └── do    commit | push | publish | review [--abort]
-          add | add-deps | rm | create ticket
+          add | rm | create ticket
           init | code | claude
           maintain exec
 ```
@@ -83,7 +83,6 @@ order.
 | `gg_multi do update master [-n|--dry-run]`             | sync `.master` with every registered organisation: clone new repos, trash gone ones   |
 | `gg_multi do create ticket <id> [-m <description>]`    | create `tickets/<id>/` with a `.ticket` file                                         |
 | `gg_multi do create graph [--format=…] [-o <file>]`    | write the dependency graph of the workspace to stdout or a file                      |
-| `gg_multi do add-deps <target>`                        | add every `dependencies` / `dev_dependencies` of `<target>` to the master workspace  |
 | `gg_multi do code`                                     | open the current ticket in VS Code                                                   |
 | `gg_multi do claude`                                   | aggregate each repo's `CLAUDE.md` into one ticket-level `CLAUDE.md`                  |
 | `gg_multi do maintain`                                 | list the maintenance tasks available for the current ticket                          |

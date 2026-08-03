@@ -17,6 +17,7 @@ import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 import 'package:pubspec_parse/pubspec_parse.dart';
 
+import '../../backend/dependency_repo_url.dart';
 import '../../backend/git_attributes.dart';
 import '../../backend/git_handler.dart' hide ProcessRunner;
 import '../../backend/add_repository_helper.dart';
@@ -29,7 +30,6 @@ import '../../backend/repo_setup.dart';
 import '../../backend/ticket_json.dart';
 import '../../backend/workspace_migration.dart';
 import '../../backend/workspace_utils.dart';
-import 'add_deps.dart' show fetchDependencyRepoUrl;
 
 /// Resolves the repository URL of a hosted dependency.
 /// Subset of [fetchDependencyRepoUrl] without named args, for test stubs.

@@ -9,6 +9,7 @@
 ### Removed
 
 - refactor(gg_multi): remove do install-git-attributes command
+- refactor(gg_multi): remove do add-deps command
 
 ## 7.9.0 - 2026-08-02
 
