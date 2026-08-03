@@ -160,7 +160,7 @@ gg do commit -m <message> # commit in all repos after checks pass
 gg can push # check for all repos if they are ready to push (checks + commit)
 gg do push # push in all repos after checks pass
 gg do review # start code review in all repos
-gg do cancel-review # cancel code review in all repos and return to work
+gg do review --abort # cancel code review in all repos and return to work
 gg do publish # publish all repos after review is approved (should be executed manually by a human)
 ```
 

@@ -43,7 +43,6 @@ void main() {
           'push',
           'publish',
           'review',
-          'cancel-review',
         ],
       );
 

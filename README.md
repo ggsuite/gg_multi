@@ -54,7 +54,7 @@ gg_multi
 ├── ls    repos | organizations | deps <target> | tickets
 ├── can   commit | push | publish | review
 ├── did   commit | push
-└── do    commit | push | publish | review | cancel-review
+└── do    commit | push | publish | review [--abort]
           add | add-deps | rm | create ticket
           init | code | claude
           maintain exec | install-gitattributes
@@ -117,7 +117,7 @@ when a repo is in a bad state.
 | `gg_multi do commit [-m <message>]`  | commit every ticket repo with the same message (defaults to the ticket description)  |
 | `gg_multi do push [--force]`         | push every ticket repo                                                               |
 | `gg_multi do review`                 | unlocalise → localise as Git refs → `pub upgrade` → commit → push, for every repo    |
-| `gg_multi do cancel-review`          | revert a review and return to local working mode                                     |
+| `gg_multi do review --abort`         | revert a review and return to local working mode                                     |
 | `gg_multi do publish`                | publish every publishable package of the ticket                                      |
 
 ### `gg_multi did` — reporting
@@ -276,7 +276,7 @@ For every ticket repo this runs:
 Need to keep working after starting a review?
 
 ```bash
-gg_multi do cancel-review
+gg_multi do review --abort
 ```
 
 ### 8. Publish (when approved)
