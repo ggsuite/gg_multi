@@ -588,7 +588,7 @@ void main() {
       expect(
         messages,
         contains(
-          '✅ All repos published',
+          '✓ All repos published',
         ),
       );
       expect(
@@ -806,7 +806,7 @@ void main() {
       expect(
         messages,
         contains(
-          '✅ All repos published',
+          '✓ All repos published',
         ),
       );
       expect(
@@ -1017,7 +1017,7 @@ void main() {
       expect(
         messages,
         contains(
-          '✅ All repos published',
+          '✓ All repos published',
         ),
       );
       expect(
@@ -2399,7 +2399,7 @@ void main() {
       // The reason is printed where »failed« is written into the config,
       // i.e. before the rollback output that would otherwise bury it.
       final reasonIndex = messages.indexWhere(
-        (m) => m.contains('❌ Publishing B failed'),
+        (m) => m.contains('✗ Publishing B failed'),
       );
       expect(reasonIndex, isNonNegative);
       expect(messages[reasonIndex], contains('Publish failed for B'));
@@ -6807,7 +6807,7 @@ void main() {
         ),
       ).called(2);
 
-      expect(messages, contains('✅ All repos merged'));
+      expect(messages, contains('✓ All repos merged'));
     });
 
     test('merges every repo without publishing or tagging', () async {
@@ -6840,7 +6840,7 @@ void main() {
 
       expect(messages, contains('A: merged successfully.'));
       expect(messages, contains('Removed gg-publish.json after the merge.'));
-      expect(messages, contains('✅ All repos merged'));
+      expect(messages, contains('✓ All repos merged'));
 
       // A merge trashes the ticket exactly like a publish does.
       expect(
@@ -6949,12 +6949,12 @@ void main() {
       ).called(2);
 
       // ... and the failure is worded for the mode.
-      expect(messages.any((m) => m.contains('❌ Merging B failed')), isTrue);
+      expect(messages.any((m) => m.contains('✗ Merging B failed')), isTrue);
       expect(
         messages.any((m) => m.contains('The merge is marked as »failed«')),
         isTrue,
       );
-      expect(messages.any((m) => m.contains('❌ Publishing B')), isFalse);
+      expect(messages.any((m) => m.contains('✗ Publishing B')), isFalse);
       expect(
         messages.any((m) => m.contains('The publish is marked')),
         isFalse,
@@ -7287,7 +7287,7 @@ void main() {
       expect((repos['B'] as Map<String, dynamic>)['status'], 'failed');
 
       // The reason is reported where the failure is recorded.
-      expect(messages.any((m) => m.contains('❌ Publishing B failed')), isTrue);
+      expect(messages.any((m) => m.contains('✗ Publishing B failed')), isTrue);
       expect(
         messages.any((m) => m.contains('Cannot publish: B')),
         isTrue,

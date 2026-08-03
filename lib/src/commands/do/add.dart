@@ -662,7 +662,7 @@ class AddCommand extends Command<dynamic> {
           ticketPath: ticketPath,
           ggLog: ggLog,
         );
-        reportLog(blue('✅ $repoName'));
+        reportLog(blue('✓ $repoName'));
       }
     }
 
@@ -1075,7 +1075,7 @@ class AddCommand extends Command<dynamic> {
       }
     }
 
-    ggLog('✅ Re-localized all repositories in ticket $ticketName.');
+    ggLog('✓ Re-localized all repositories in ticket $ticketName.');
   }
 
   /// Rewrites the VS Code `.code-workspace` file for the given [ticketDir]

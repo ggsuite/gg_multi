@@ -120,16 +120,16 @@ class DoCommitCommand extends DirCommand<void> {
           force: false,
         );
       } catch (e) {
-        ggLog(red('❌ Failed to commit $repoName: $e'));
+        ggLog(red('✗ Failed to commit $repoName: $e'));
         failedRepos.add(repoName);
       }
     }
 
     // Summarize the results
     if (failedRepos.isEmpty) {
-      ggLog('✅ All repos committed');
+      ggLog('✓ All repos committed');
     } else {
-      ggLog(red('❌ Commit failed in:'));
+      ggLog(red('✗ Commit failed in:'));
       for (final repoName in failedRepos) {
         ggLog(red(' - $repoName'));
       }

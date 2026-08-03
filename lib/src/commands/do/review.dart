@@ -1147,7 +1147,7 @@ class DoReviewCommand extends DirCommand<void> {
       }
     }
 
-    ggLog('✅ All repos re-localized and committed');
+    ggLog('✓ All repos re-localized and committed');
   }
 
   /// Runs the package manager's install command for TypeScript projects so

@@ -451,7 +451,7 @@ class DoPublishCommand extends DirCommand<void> {
           ggLog: ggLog,
         );
 
-        ggLog('\n${cyan(repoName)}:');
+        ggLog('\n${cH2(repoName)}');
 
         // Save the repo state so a failed publish can restore it.
         final snapshot = await _saveRepoState(repoDir: repoDir, ggLog: taskLog);
@@ -589,7 +589,7 @@ class DoPublishCommand extends DirCommand<void> {
       taskLog: taskLog,
     );
 
-    taskLog('✅ All repos $_done');
+    taskLog('✓ All repos $_done');
   }
 
   /// Moves everything the published ticket leaves behind into
@@ -1242,7 +1242,7 @@ class DoPublishCommand extends DirCommand<void> {
     final reason = error.toString().replaceAll('Exception: ', '').trim();
     ggLog(
       red(
-        '❌ ${mergeOnly ? 'Merging' : 'Publishing'} $repoName failed'
+        '✗ ${mergeOnly ? 'Merging' : 'Publishing'} $repoName failed'
         '${reason.isEmpty ? '.' : ':\n$reason'}',
       ),
     );

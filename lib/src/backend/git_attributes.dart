@@ -208,7 +208,7 @@ Future<void> installGitattributes({
   }
 
   ggLog(
-    '✅ Ensured .gitattributes for all repositories in ticket '
+    '✓ Ensured .gitattributes for all repositories in ticket '
     '$ticketName.',
   );
 }

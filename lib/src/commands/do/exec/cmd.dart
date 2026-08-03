@@ -123,7 +123,7 @@ class DoExecuteCommand extends DirCommand<void> {
         final stderrStr = result.stderr?.toString() ?? '';
         final stdoutStr = result.stdout?.toString() ?? '';
         final errMsg = stderrStr.isNotEmpty ? stderrStr : stdoutStr;
-        ggLog(red('❌ Failed to execute in $repoName: $errMsg'));
+        ggLog(red('✗ Failed to execute in $repoName: $errMsg'));
         failed.add(repoName);
       }
     }
@@ -131,12 +131,12 @@ class DoExecuteCommand extends DirCommand<void> {
     if (failed.isEmpty) {
       ggLog(
         green(
-          '✅ Command executed successfully in all repositories in ticket '
+          '✓ Command executed successfully in all repositories in ticket '
           '$ticketName.',
         ),
       );
     } else {
-      ggLog(red('❌ Command failed in:'));
+      ggLog(red('✗ Command failed in:'));
       for (final name in failed) {
         ggLog(red(' - $name'));
       }

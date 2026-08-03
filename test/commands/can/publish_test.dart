@@ -284,7 +284,7 @@ void main() {
       ]);
       expect(
         messages,
-        contains('✅ All repos can be published'),
+        contains('✓ All repos can be published'),
       );
       verify(
         () => mockGgCanPublish.exec(
@@ -406,7 +406,7 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            '❌ Cannot merge B: Exception: Merge check failed for B',
+            '✗ Cannot merge B: Exception: Merge check failed for B',
           ),
         ),
         isTrue,
@@ -414,7 +414,7 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            '❌ Merge check failed in:',
+            '✗ Merge check failed in:',
           ),
         ),
         isTrue,
@@ -826,7 +826,7 @@ void main() {
         throwsA(isA<Exception>()),
       );
       expect(
-        messages.any((m) => m.contains('❌ Cannot publish B')),
+        messages.any((m) => m.contains('✗ Cannot publish B')),
         isTrue,
       );
       expect(
@@ -945,7 +945,7 @@ void main() {
         expect(
           localMessages.last,
           contains(
-            '✅ Can publish?',
+            '✓ Can publish?',
           ),
         );
       },
@@ -1116,7 +1116,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
         ),
       ).called(2);
-      expect(messages, contains('✅ All repos can be published'));
+      expect(messages, contains('✓ All repos can be published'));
     });
 
     test('throws when a repo is not logged in to npm', () async {
@@ -1148,7 +1148,7 @@ void main() {
         ),
       );
       expect(
-        messages.any((m) => m.contains('❌ Not logged in to npm for B')),
+        messages.any((m) => m.contains('✗ Not logged in to npm for B')),
         isTrue,
       );
 
@@ -1195,7 +1195,7 @@ void main() {
         );
         expect(
           messages,
-          contains('❌ Cannot publish B: Exception: pana failed'),
+          contains('✗ Cannot publish B: Exception: pana failed'),
         );
       });
 

@@ -111,7 +111,7 @@ void main() {
 A:
 
 B:
-✅ All repos can be committed''');
+✓ All repos can be committed''');
     });
 
     test('aborts on first repo that fails', () async {
@@ -142,7 +142,7 @@ B:
       );
       expect(
         messages,
-        contains('❌ Cannot commit B: Exception: Failed to commit B'),
+        contains('✗ Cannot commit B: Exception: Failed to commit B'),
       );
     });
   });

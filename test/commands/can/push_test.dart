@@ -112,7 +112,7 @@ void main() {
 A:
 
 B:
-✅ All repos can be pushed''');
+✓ All repos can be pushed''');
     });
 
     test('aborts on first repo that fails', () async {
@@ -143,7 +143,7 @@ B:
       );
       expect(
         messages,
-        contains('❌ Cannot push B: Exception: Failed to push B'),
+        contains('✗ Cannot push B: Exception: Failed to push B'),
       );
     });
   });

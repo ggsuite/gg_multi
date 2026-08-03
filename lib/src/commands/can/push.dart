@@ -78,13 +78,13 @@ class CanPushCommand extends DirCommand<void> {
       try {
         await _ggCanPush.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
-        ggLog(red('❌ Cannot push $repoName: $e'));
+        ggLog(red('✗ Cannot push $repoName: $e'));
         rethrow;
       }
     }
 
     // All successful
-    ggLog('✅ All repos can be pushed');
+    ggLog('✓ All repos can be pushed');
   }
 }
 

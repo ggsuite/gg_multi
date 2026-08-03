@@ -78,13 +78,13 @@ class CanCommitCommand extends DirCommand<void> {
       try {
         await _ggCanCommit.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
-        ggLog(red('❌ Cannot commit $repoName: $e'));
+        ggLog(red('✗ Cannot commit $repoName: $e'));
         rethrow;
       }
     }
 
     // All successful
-    ggLog('✅ All repos can be committed');
+    ggLog('✓ All repos can be committed');
   }
 }
 

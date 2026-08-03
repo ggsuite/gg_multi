@@ -244,7 +244,7 @@ class CanPublishCommand extends DirCommand<void> {
     }
 
     // All successful --------------------------------------------------------
-    taskLog('✅ All repos can be published');
+    taskLog('✓ All repos can be published');
   }
 
   /// Checks whether the single repository [directory] can be published.
@@ -359,7 +359,7 @@ class CanPublishCommand extends DirCommand<void> {
       await _ggCanPublish.exec(directory: repoDir, ggLog: ggLog);
       return null;
     } catch (e) {
-      ggLog(red('❌ Cannot publish $repoName: $e'));
+      ggLog(red('✗ Cannot publish $repoName: $e'));
       return '$repoName ($e)';
     }
   }
@@ -398,7 +398,7 @@ class CanPublishCommand extends DirCommand<void> {
       try {
         await _ggNpmLoggedIn.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
-        ggLog(red('❌ Not logged in to npm for $repoName: $e'));
+        ggLog(red('✗ Not logged in to npm for $repoName: $e'));
         failedRepos.add('$repoName ($e)');
       }
     }
@@ -421,12 +421,12 @@ class CanPublishCommand extends DirCommand<void> {
       try {
         await _ggCanMerge.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
-        ggLog(red('❌ Cannot merge $repoName: $e'));
+        ggLog(red('✗ Cannot merge $repoName: $e'));
         failedMergeRepos.add(repoName);
       }
     }
     if (failedMergeRepos.isNotEmpty) {
-      ggLog(red('❌ Merge check failed in:'));
+      ggLog(red('✗ Merge check failed in:'));
       for (final repoName in failedMergeRepos) {
         ggLog(red(' - $repoName'));
       }

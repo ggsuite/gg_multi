@@ -135,7 +135,7 @@ void main() {
       expect(
         messages,
         contains(
-          '✅ Ensured .gitattributes for all repositories in ticket TICKG.',
+          '✓ Ensured .gitattributes for all repositories in ticket TICKG.',
         ),
       );
     });

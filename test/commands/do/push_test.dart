@@ -143,7 +143,7 @@ Pushing the following repos:
 A:
 
 B:
-✅ All repos pushed''',
+✓ All repos pushed''',
       );
     });
 
@@ -190,9 +190,9 @@ B:
       );
       expect(
         messages,
-        contains('❌ Failed to push B: Exception: Failed to push B'),
+        contains('✗ Failed to push B: Exception: Failed to push B'),
       );
-      expect(messages, contains('❌ Push failed in:'));
+      expect(messages, contains('✗ Push failed in:'));
       expect(messages.any((m) => m.contains(' - B')), isTrue);
     });
 
@@ -234,7 +234,7 @@ B:
       expect(
         localMessages.last,
         contains(
-          '✅ Pushing repos',
+          '✓ Pushing repos',
         ),
       );
     });

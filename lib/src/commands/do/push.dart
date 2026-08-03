@@ -132,16 +132,16 @@ class DoPushCommand extends DirCommand<void> {
           force: force,
         );
       } catch (e) {
-        ggLog(red('❌ Failed to push $repoName: $e'));
+        ggLog(red('✗ Failed to push $repoName: $e'));
         failedRepos.add(repoName);
       }
     }
 
     // Summarize the results ----------------------------------------------
     if (failedRepos.isEmpty) {
-      ggLog('✅ All repos pushed');
+      ggLog('✓ All repos pushed');
     } else {
-      ggLog(red('❌ Push failed in:'));
+      ggLog(red('✗ Push failed in:'));
       for (final repoName in failedRepos) {
         ggLog(red(' - $repoName'));
       }

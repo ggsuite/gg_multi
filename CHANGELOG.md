@@ -5,6 +5,8 @@
 ### Changed
 
 - dart pub upgrade --major-versions --tighten
+- replace the ✅/❌ emoji by the plain marks ✓/✗ — gg_status_printer 1.2.0
+  colors them via cSuccess/cError
 - use rmC from gg_console_colors in the tests instead of a local copy of
   the color stripper
 - print a blank line before each cyan repo name so the per-repo blocks

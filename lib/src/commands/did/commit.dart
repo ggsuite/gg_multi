@@ -75,12 +75,12 @@ class DidCommitCommand extends DirCommand<void> {
       try {
         await _ggDidCommit.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
-        ggLog(red('❌ $repoName was not committed: $e'));
+        ggLog(red('✗ $repoName was not committed: $e'));
         rethrow;
       }
     }
 
-    ggLog('✅ All repos committed');
+    ggLog('✓ All repos committed');
   }
 }
 

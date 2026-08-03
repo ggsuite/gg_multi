@@ -143,7 +143,7 @@ void main() {
 A:
 
 B:
-✅ Command executed successfully in all repositories in ticket TICKX.''');
+✓ Command executed successfully in all repositories in ticket TICKX.''');
     });
 
     test('collects failures and throws with summary', () async {
@@ -178,12 +178,12 @@ B:
 
       expect(
         messages,
-        contains('❌ Failed to execute in B: error on B'),
+        contains('✗ Failed to execute in B: error on B'),
       );
       expect(
         messages.any(
           (m) => m.contains(
-            '❌ Command failed in:',
+            '✗ Command failed in:',
           ),
         ),
         isTrue,

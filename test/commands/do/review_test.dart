@@ -914,7 +914,7 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            '❌ Failed to review the following repositories in ticket',
+            '✗ Failed to review the following repositories in ticket',
           ),
         ),
         isFalse,
@@ -1027,7 +1027,7 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            '❌ Failed to review the following repositories in ticket',
+            '✗ Failed to review the following repositories in ticket',
           ),
         ),
         isFalse,
@@ -1136,7 +1136,7 @@ void main() {
         expect(
           messages.any(
             (m) => m.contains(
-              '❌ Failed to review the following repositories in ticket',
+              '✗ Failed to review the following repositories in ticket',
             ),
           ),
           isFalse,
@@ -1380,7 +1380,7 @@ void main() {
         expect(
           messages.any(
             (m) => m.contains(
-              '❌ Failed to review the following repositories in ticket',
+              '✗ Failed to review the following repositories in ticket',
             ),
           ),
           isFalse,
@@ -2857,7 +2857,7 @@ void main() {
       );
       // The review itself succeeded — the branch is on the remote.
       expect(
-        messages.any((m) => m.contains('✅ Creating pull requests')),
+        messages.any((m) => m.contains('✓ Creating pull requests')),
         isTrue,
       );
     });
@@ -3693,7 +3693,7 @@ void main() {
 
       expect(
         messages,
-        contains('✅ All repos re-localized and committed'),
+        contains('✓ All repos re-localized and committed'),
       );
     });
 
@@ -4187,7 +4187,7 @@ void main() {
       expect(
         localMessages.any(
           (m) => m.contains(
-            '✅ Setting dependencies back to local paths and committing',
+            '✓ Setting dependencies back to local paths and committing',
           ),
         ),
         isTrue,

@@ -75,12 +75,12 @@ class DidPushCommand extends DirCommand<void> {
       try {
         await _ggDidPush.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
-        ggLog(red('❌ $repoName was not pushed: $e'));
+        ggLog(red('✗ $repoName was not pushed: $e'));
         rethrow;
       }
     }
 
-    ggLog('✅ All repos pushed');
+    ggLog('✓ All repos pushed');
   }
 }
 

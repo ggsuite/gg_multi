@@ -110,7 +110,7 @@ void main() {
 A:
 
 B:
-✅ All repos pushed''');
+✓ All repos pushed''');
     });
 
     test('aborts on first repo that fails', () async {
@@ -142,7 +142,7 @@ B:
       );
       expect(
         messages,
-        contains('❌ B was not pushed: Exception: Failed did push for B'),
+        contains('✗ B was not pushed: Exception: Failed did push for B'),
       );
     });
   });

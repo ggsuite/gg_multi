@@ -117,7 +117,7 @@ class TicketCommand extends DirCommand<void> {
     // before anything was removed.
     Trash.createDirForTicket(Directory(ticketsPath));
 
-    ggLog('✅ Created ticket $issueId');
+    ggLog('✓ Created ticket $issueId');
     ggLog(
       yellow('Execute the following command to enter the ticket workspace:'),
     );

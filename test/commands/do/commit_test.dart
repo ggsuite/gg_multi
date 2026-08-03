@@ -157,7 +157,7 @@ void main() {
 A:
 
 B:
-✅ All repos committed''');
+✓ All repos committed''');
     });
 
     test('aborts on first repo that fails', () async {
@@ -203,9 +203,9 @@ B:
       );
       expect(
         messages,
-        contains('❌ Failed to commit B: Exception: Failed to commit B'),
+        contains('✗ Failed to commit B: Exception: Failed to commit B'),
       );
-      expect(messages, contains('❌ Commit failed in:'));
+      expect(messages, contains('✗ Commit failed in:'));
       expect(messages.any((m) => m.contains(' - B')), isTrue);
     });
   });

@@ -186,7 +186,7 @@ void main() {
       await runner.run(['review', '--input', ticketDir.path]);
       expect(
         messages,
-        contains('✅ All repos can be reviewed'),
+        contains('✓ All repos can be reviewed'),
       );
       verify(
         () => mockIsFeatureBranch.get(
@@ -260,7 +260,7 @@ void main() {
       ).called(2);
       expect(
         messages,
-        contains('✅ All repos can be reviewed'),
+        contains('✓ All repos can be reviewed'),
       );
     });
 
@@ -343,7 +343,7 @@ void main() {
       ).called(2);
       expect(
         messages,
-        contains('✅ All repos can be reviewed'),
+        contains('✓ All repos can be reviewed'),
       );
     });
 
@@ -724,7 +724,7 @@ void main() {
 
       expect(
         messages,
-        contains('✅ All repos can be reviewed'),
+        contains('✓ All repos can be reviewed'),
       );
       verifyNever(
         () => mockIsFeatureBranch.get(
@@ -937,7 +937,7 @@ void main() {
 
       expect(
         localMessages.last,
-        contains('✅ All repos can be reviewed'),
+        contains('✓ All repos can be reviewed'),
       );
     });
   });
