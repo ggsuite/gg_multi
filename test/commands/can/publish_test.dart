@@ -284,7 +284,7 @@ void main() {
       ]);
       expect(
         messages,
-        contains('✓ All repos can be published'),
+        contains('\nAll repos can be published\n'),
       );
       verify(
         () => mockGgCanPublish.exec(
@@ -1110,7 +1110,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
         ),
       ).called(2);
-      expect(messages, contains('✓ All repos can be published'));
+      expect(messages, contains('\nAll repos can be published\n'));
     });
 
     test('throws when a repo is not logged in to npm', () async {

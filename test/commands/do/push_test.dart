@@ -127,23 +127,17 @@ void main() {
         '--verbose',
       ]);
 
-      // The status printer line is written before the list below.
-      expect(
-        messages.any((m) => m.contains('Pushing repos')),
-        isTrue,
-      );
+      expect(messages.join('\n'), '''
+Pushing the following repos:
+ - A
+ - B
 
-      expect(
-        messages.where((m) => !m.contains('Pushing repos')).join('\n'),
-        'Pushing the following repos:\n'
-        ' - A\n'
-        ' - B\n'
-        '\n'
-        'A\n'
-        '\n'
-        'B\n'
-        '✓ All repos pushed',
-      );
+A
+
+B
+
+All repos pushed
+''');
     });
 
     test('aborts on first repo that fails', () async {
@@ -189,7 +183,16 @@ void main() {
       );
       expect(
         messages,
-        contains('✗ Failed to push B: Exception: Failed to push B'),
+        [
+          'Pushing the following repos:',
+          ' - A',
+          ' - B',
+          '\nA',
+          '\nB',
+          '✗ Failed to push B: Exception: Failed to push B',
+          '✗ Push failed in:',
+          ' - B: Exception: Failed to push B',
+        ],
       );
       expect(messages, contains('✗ Push failed in:'));
       expect(messages.any((m) => m.contains(' - B')), isTrue);
@@ -230,12 +233,19 @@ void main() {
         verbose: false,
       );
 
-      expect(
-        localMessages.last,
-        contains(
-          '✓ Pushing repos',
-        ),
-      );
+      // Without --verbose the per-repo output of `gg do push` is dropped,
+      // but the headers and the summary stay.
+      expect(localMessages.join('\n'), '''
+Pushing the following repos:
+ - A
+ - B
+
+A
+
+B
+
+All repos pushed
+''');
     });
   });
 }

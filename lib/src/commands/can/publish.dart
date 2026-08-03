@@ -251,7 +251,7 @@ class CanPublishCommand extends DirCommand<void> {
     }
 
     // All successful --------------------------------------------------------
-    taskLog('✓ All repos can be published');
+    ggLog('\nAll repos can be published\n');
   }
 
   /// Checks whether the single repository [directory] can be published.

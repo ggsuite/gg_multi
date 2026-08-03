@@ -6809,7 +6809,7 @@ void main() {
         ),
       ).called(2);
 
-      expect(messages, contains('✓ All repos merged'));
+      expect(messages, contains('\nAll repos merged\n'));
     });
 
     test('merges every repo without publishing or tagging', () async {

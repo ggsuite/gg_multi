@@ -591,7 +591,7 @@ class DoPublishCommand extends DirCommand<void> {
       taskLog: taskLog,
     );
 
-    taskLog('✓ All repos $_done');
+    ggLog('\nAll repos $_done\n');
   }
 
   /// Moves everything the published ticket leaves behind into
