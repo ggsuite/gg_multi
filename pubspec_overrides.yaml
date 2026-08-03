@@ -5,12 +5,22 @@
 # remove it again.
 dependency_overrides:
   gg_changelog:
-    path: ../gg_changelog
+    git:
+      url: git@github.com:ggsuite/gg_changelog.git
+      ref: CDM-1668-C
   gg_localize_refs:
-    path: ../gg_localize_refs
+    git:
+      url: git@github.com:ggsuite/gg_localize_refs.git
+      ref: CDM-1668-C
   gg_one:
-    path: ../gg_one
+    git:
+      url: git@github.com:ggsuite/gg_one.git
+      ref: CDM-1668-C
   gg_publish:
-    path: ../gg_publish
+    git:
+      url: git@github.com:ggsuite/gg_publish.git
+      ref: CDM-1668-C
   gg_test:
-    path: ../gg_test
+    git:
+      url: git@github.com:ggsuite/gg_test.git
+      ref: CDM-1668-C
