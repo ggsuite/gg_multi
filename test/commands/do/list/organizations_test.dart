@@ -71,7 +71,7 @@ void main() {
           workspacePath: masterPath,
         ),
       );
-      await runner.run(['organizations']);
+      await runner.run(['orgs']);
 
       expect(
         messages,
@@ -103,7 +103,7 @@ void main() {
           workspacePath: masterPath,
         ),
       );
-      await runner.run(['organizations']);
+      await runner.run(['orgs']);
 
       // The repository organization should be 'unknown'
       expect(messages, contains('unknown'));
@@ -122,7 +122,7 @@ void main() {
           workspacePath: masterDir.path,
         ),
       );
-      await runner.run(['organizations']);
+      await runner.run(['orgs']);
       expect(messages, contains('No organizations found.'));
     });
 
@@ -139,7 +139,7 @@ void main() {
       );
       final output = await capturePrint(
         code: () async {
-          await runner.run(['organizations', '--help']);
+          await runner.run(['orgs', '--help']);
         },
       );
       expect(

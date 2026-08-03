@@ -28,7 +28,7 @@ class ListOrganizationsCommand extends Command<dynamic> {
   final String workspacePath;
 
   @override
-  String get name => 'organizations';
+  String get name => 'orgs';
 
   @override
   String get description => 'List all organizations of the master workspace';
