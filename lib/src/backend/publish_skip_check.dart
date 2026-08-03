@@ -9,6 +9,7 @@ import 'dart:io';
 
 // ignore: lines_longer_than_80_chars
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:pub_semver/pub_semver.dart';
@@ -381,7 +382,11 @@ class PublishSkipCheck {
         <String>['status', '--porcelain'],
         repoDir: repoDir,
       );
-      if (status.isNotEmpty) {
+      // A tree dirty in nothing but lock files carries no manual work: a
+      // `pub get` — the Dart VS Code extension fires one whenever a manifest
+      // is written — rewrites them behind everybody's back. Treating that as
+      // a manual change would publish a repo nobody touched.
+      if (status.isNotEmpty && !gg.isLockFileOnlyDrift(status)) {
         return 'the working tree has uncommitted changes';
       }
 

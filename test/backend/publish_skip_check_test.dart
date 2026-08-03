@@ -458,6 +458,36 @@ void main() {
         expect(decision.skip, isFalse);
         expect(decision.reason, contains('uncommitted changes'));
       });
+
+      test('does not treat lock file drift as an uncommitted change', () async {
+        // A `pub get` running in the background rewrites the lock file; that
+        // is not work anybody did, so it must not force a release.
+        final runner = MockProcessRunner();
+        when(
+          () => runner(
+            'git',
+            ['status', '--porcelain'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer(
+          (_) async => ProcessResult(0, 0, ' M pubspec.lock', ''),
+        );
+        when(
+          () => runner(
+            'git',
+            any(that: isNot(contains('status'))),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+        final injected = PublishSkipCheck(processRunner: runner.call);
+        final dir = createPlainRepo('a', pubspecContent: 'name: a\n');
+        final decision = await injected.get(
+          repo: node('a', dir),
+          refVersions: {},
+        );
+        expect(decision.reason, isNot(contains('uncommitted changes')));
+      });
     });
 
     group('get() — dependency constraint detection', () {

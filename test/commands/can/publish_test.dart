@@ -179,6 +179,245 @@ void main() {
       expect(messages.any((m) => m.contains(' - A')), isTrue);
     });
 
+    group('lock file drift', () {
+      /// Wires a ticket of two repos whose `git status --porcelain` returns
+      /// [statusOfA] / [statusOfB], and returns the runner plus the mocks the
+      /// tests assert on.
+      ({
+        CommandRunner<void> runner,
+        MockProcessRunner processRunner,
+        gg.MockPubGetOffline pubGetOffline,
+      }) setUpTicket({
+        required String statusOfA,
+        required String statusOfB,
+        int commitExitCode = 0,
+      }) {
+        final mockSortedProcessingList = MockSortedProcessingList();
+        final mockProcessRunner = MockProcessRunner();
+        final mockPubGetOffline = gg.MockPubGetOffline();
+        final mockGgCanMerge = MockGgCanMerge();
+        final mockGgCanPublish = MockGgCanPublish();
+        final mockDidCommitCommand = MockDidCommitCommand();
+        final mockDoPushCommand = MockDoPushCommand();
+
+        // Everything downstream of the two steps under test just succeeds.
+        when(
+          () => mockGgCanMerge.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => mockGgCanPublish.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => mockDidCommitCommand.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => mockDoPushCommand.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(
+          () => mockSortedProcessingList.get(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            Node(
+              name: 'A',
+              directory: Directory(path.join(ticketDir.path, 'A')),
+              manifest: DartPackageManifest(pubspec: Pubspec('A')),
+            ),
+            Node(
+              name: 'B',
+              directory: Directory(path.join(ticketDir.path, 'B')),
+              manifest: DartPackageManifest(pubspec: Pubspec('B')),
+            ),
+          ],
+        );
+
+        when(
+          () => mockPubGetOffline.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).thenAnswer((_) async {
+          messages.add('pubGetOffline');
+        });
+
+        for (final entry
+            in <String, String>{'A': statusOfA, 'B': statusOfB}.entries) {
+          when(
+            () => mockProcessRunner(
+              'git',
+              ['status', '--porcelain'],
+              workingDirectory: path.join(ticketDir.path, entry.key),
+            ),
+          ).thenAnswer((_) async => ProcessResult(1, 0, entry.value, ''));
+        }
+
+        when(
+          () => mockProcessRunner(
+            'git',
+            any(that: contains('add')),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(2, 0, '', ''));
+
+        when(
+          () => mockProcessRunner(
+            'git',
+            any(that: contains('commit')),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer(
+          (_) async => ProcessResult(
+            3,
+            commitExitCode,
+            '',
+            commitExitCode == 0 ? '' : 'nothing to commit',
+          ),
+        );
+
+        final runner = CommandRunner<void>('test', 'can publish ticket')
+          ..addCommand(
+            CanPublishCommand(
+              ggLog: ggLog,
+              ggCanCommit: MockGgCanCommit(),
+              ggCanMerge: mockGgCanMerge,
+              ggCanPublish: mockGgCanPublish,
+              ggPubGetOffline: mockPubGetOffline,
+              sortedProcessingList: mockSortedProcessingList,
+              processRunner: mockProcessRunner.call,
+              didCommitCommand: mockDidCommitCommand,
+              doPushCommand: mockDoPushCommand,
+            ),
+          );
+
+        return (
+          runner: runner,
+          processRunner: mockProcessRunner,
+          pubGetOffline: mockPubGetOffline,
+        );
+      }
+
+      test('syncs the lock files before looking at the working tree', () async {
+        final t = setUpTicket(statusOfA: '', statusOfB: '');
+
+        await t.runner.run(['publish', '--verbose', '--input', ticketDir.path]);
+
+        verify(
+          () => t.pubGetOffline.exec(
+            directory: any(named: 'directory'),
+            ggLog: any(named: 'ggLog'),
+          ),
+        ).called(2);
+        // Ran before the status was read — otherwise a lock file merely out of
+        // date would surface as an uncommitted change.
+        expect(
+          messages.indexOf('pubGetOffline'),
+          lessThan(messages.indexWhere((m) => m.contains('Uncommitted'))),
+        );
+      });
+
+      test('commits drift that is nothing but lock files', () async {
+        final t = setUpTicket(
+          statusOfA: ' M pubspec.lock\n?? packages/x/pubspec.lock',
+          statusOfB: '',
+        );
+
+        await t.runner.run(['publish', '--verbose', '--input', ticketDir.path]);
+
+        verify(
+          () => t.processRunner(
+            'git',
+            ['add', '--', 'pubspec.lock', 'packages/x/pubspec.lock'],
+            workingDirectory: path.join(ticketDir.path, 'A'),
+          ),
+        ).called(1);
+        verify(
+          () => t.processRunner(
+            'git',
+            [
+              'commit',
+              '-m',
+              '#gg: Update pubspec.lock, packages/x/pubspec.lock',
+            ],
+            workingDirectory: path.join(ticketDir.path, 'A'),
+          ),
+        ).called(1);
+        expect(
+          messages.any(
+            (m) => m.contains(
+              'Committed lock file drift in A: pubspec.lock, '
+              'packages/x/pubspec.lock',
+            ),
+          ),
+          isTrue,
+        );
+      });
+
+      test('still reports drift that touches another file as well', () async {
+        final t = setUpTicket(
+          statusOfA: ' M pubspec.lock\n M lib/src/main.dart',
+          statusOfB: '',
+        );
+
+        await expectLater(
+          () async => await t.runner.run([
+            'publish',
+            '--verbose',
+            '--input',
+            ticketDir.path,
+          ]),
+          throwsA(isA<Exception>()),
+        );
+        expect(messages.any((m) => m.contains('Uncommitted changes in')), true);
+        expect(messages.any((m) => m.contains(' - A')), isTrue);
+        verifyNever(
+          () => t.processRunner(
+            'git',
+            any(that: contains('commit')),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        );
+      });
+
+      test('fails loudly when the lock file commit does not work', () async {
+        final t = setUpTicket(
+          statusOfA: ' M pubspec.lock',
+          statusOfB: '',
+          commitExitCode: 1,
+        );
+
+        await expectLater(
+          () async => await t.runner.run([
+            'publish',
+            '--verbose',
+            '--input',
+            ticketDir.path,
+          ]),
+          throwsA(
+            isA<Exception>().having(
+              (e) => rmControls(e.toString()),
+              'message',
+              contains('Could not commit pubspec.lock in A'),
+            ),
+          ),
+        );
+      });
+    });
+
     test('executes did commit, do push, and can merge successfully', () async {
       final mockGgCanCommit = MockGgCanCommit();
       final mockGgCanMerge = MockGgCanMerge();
