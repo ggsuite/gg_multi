@@ -11,6 +11,7 @@
 - Rework CLI texts
 - refactor(gg_multi): move do maintain exec to do exec
 - rename do update to do upgrade — do upgrade master instead of do update master
+- move do exec to do exec cmd
 
 ### Removed
 

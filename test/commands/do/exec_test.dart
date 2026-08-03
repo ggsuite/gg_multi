@@ -1,5 +1,5 @@
 // @license
-// Copyright (c) 2019 - 2025 Dr. Gabriel Gatzsche. All Rights Reserved.
+// Copyright (c) 2025 Göran Hegenberg. All Rights Reserved.
 //
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
@@ -7,192 +7,50 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:gg_args/gg_args.dart';
+import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:gg_multi/src/commands/do/exec.dart';
-import 'package:mocktail/mocktail.dart';
-import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 
-import '../../rm_console_colors_helper.dart';
-
-class MockProcessRunner extends Mock {
-  Future<ProcessResult> call(
-    String executable,
-    List<String> arguments, {
-    String? workingDirectory,
-  });
-}
-
-class FakeDirectory extends Fake implements Directory {}
-
 void main() {
-  late Directory tempDir;
-  late Directory ticketsDir;
-  late Directory ticketDir;
-  final messages = <String>[];
+  group('ExecCommand', () {
+    final messages = <String>[];
 
-  setUpAll(() {
-    registerFallbackValue(FakeDirectory());
-  });
-
-  void ggLog(String msg) => messages.add(rmConsoleColors(msg));
-
-  setUp(() {
-    messages.clear();
-    tempDir = Directory.systemTemp.createTempSync('do_maintain_exec_test_');
-    ticketsDir = Directory(path.join(tempDir.path, 'tickets'))..createSync();
-    ticketDir = Directory(path.join(ticketsDir.path, 'TICKX'))..createSync();
-    // Create repositories with pubspec.yaml so SortedProcessingList finds them
-    final aDir = Directory(path.join(ticketDir.path, 'A'))..createSync();
-    File(path.join(aDir.path, 'pubspec.yaml')).writeAsStringSync('name: A');
-    final bDir = Directory(path.join(ticketDir.path, 'B'))..createSync();
-    File(path.join(bDir.path, 'pubspec.yaml')).writeAsStringSync('name: B');
-  });
-
-  tearDown(() {
-    if (tempDir.existsSync()) {
-      tempDir.deleteSync(recursive: true);
-    }
-  });
-
-  group('DoExecuteCommand (ticket-wide)', () {
-    test('fails outside any ticket folder', () async {
-      final runner = CommandRunner<void>('test', 'do maintain exec ticket')
-        ..addCommand(
-          DoExecuteCommand(
-            ggLog: ggLog,
-          ),
-        );
-      await expectLater(
-        () async => await runner.run(['exec', '--input', tempDir.path, 'echo']),
-        throwsA(
-          isA<Exception>().having(
-            (e) => e.toString(),
-            'message',
-            'Exception: Not inside a ticket folder',
-          ),
-        ),
+    test('should register all subcommands', () async {
+      final execCommand = ExecCommand(ggLog: messages.add);
+      final commandsDir = Directory(
+        'lib${Platform.pathSeparator}src${Platform.pathSeparator}'
+        'commands${Platform.pathSeparator}do${Platform.pathSeparator}exec',
       );
+      final (subCommands, errorMessage) = await missingSubCommands(
+        directory: commandsDir,
+        command: execCommand,
+      );
+      expect(subCommands, isEmpty, reason: errorMessage);
+    });
+
+    test('has the name and description of the group', () {
+      final execCommand = ExecCommand(ggLog: messages.add);
+      expect(execCommand.name, 'exec');
       expect(
-        messages,
-        contains('This command must be executed inside a ticket folder.'),
+        execCommand.description,
+        'Execute something in all ticket repos',
       );
     });
 
-    test('throws UsageException when missing command parameter', () async {
-      final runner = CommandRunner<void>('test', 'do maintain exec usage')
-        ..addCommand(DoExecuteCommand(ggLog: ggLog));
+    test('prints help message including cmd', () async {
+      final runner = CommandRunner<void>(
+        'test',
+        'ExecCommand Help',
+      )..addCommand(ExecCommand(ggLog: (_) {}));
 
-      await expectLater(
-        () async => await runner.run(['exec', '--input', ticketDir.path]),
-        throwsA(isA<UsageException>()),
-      );
-    });
-
-    test('logs when there are no repositories', () async {
-      final emptyTicket = Directory(path.join(ticketsDir.path, 'EMPTY'))
-        ..createSync();
-      final runner = CommandRunner<void>('test', 'do maintain exec ticket')
-        ..addCommand(
-          DoExecuteCommand(
-            ggLog: ggLog,
-          ),
-        );
-      await runner.run(['exec', '--input', emptyTicket.path, 'echo', 'x']);
-      expect(
-        messages,
-        contains('⚠️ No repos in this ticket'),
-      );
-    });
-
-    test('executes command successfully in all repos', () async {
-      final mockRunner = MockProcessRunner();
-      when(
-        () => mockRunner(
-          any(),
-          any(),
-          workingDirectory: any(named: 'workingDirectory'),
-        ),
-      ).thenAnswer((_) async => ProcessResult(1, 0, 'ok', ''));
-
-      final runner = CommandRunner<void>('test', 'do maintain exec ticket')
-        ..addCommand(
-          DoExecuteCommand(
-            ggLog: ggLog,
-            processRunner: mockRunner.call,
-          ),
-        );
-      await runner.run(['exec', '--input', ticketDir.path, 'echo', 'hi']);
-
-      // Verify calls for both repos with correct working directories
-      verify(
-        () => mockRunner(
-          'echo',
-          ['hi'],
-          workingDirectory: path.join(ticketDir.path, 'A'),
-        ),
-      ).called(1);
-      verify(
-        () => mockRunner(
-          'echo',
-          ['hi'],
-          workingDirectory: path.join(ticketDir.path, 'B'),
-        ),
-      ).called(1);
-
-      expect(
-        messages,
-        contains('✅ Command executed successfully '
-            'in all repositories in ticket TICKX.'),
-      );
-      expect(
-        messages,
-        contains('A:'),
-      );
-    });
-
-    test('collects failures and throws with summary', () async {
-      final mockRunner = MockProcessRunner();
-      when(
-        () => mockRunner(
-          any(),
-          any(),
-          workingDirectory: any(named: 'workingDirectory'),
-        ),
-      ).thenAnswer((invocation) async {
-        final wd = invocation.namedArguments[#workingDirectory] as String;
-        if (path.basename(wd) == 'B') {
-          return ProcessResult(1, 1, '', 'error on B');
-        }
-        return ProcessResult(2, 0, 'ok', '');
-      });
-
-      final runner = CommandRunner<void>('test', 'do maintain exec ticket')
-        ..addCommand(
-          DoExecuteCommand(
-            ggLog: ggLog,
-            processRunner: mockRunner.call,
-          ),
-        );
-
-      await expectLater(
-        () async =>
-            await runner.run(['exec', '--input', ticketDir.path, 'echo']),
-        throwsA(isA<Exception>()),
+      final output = await capturePrint(
+        code: () async {
+          await runner.run(['exec', '--help']);
+        },
       );
 
-      expect(
-        messages,
-        contains('❌ Failed to execute in B: error on B'),
-      );
-      expect(
-        messages.any(
-          (m) => m.contains(
-            '❌ Command failed in:',
-          ),
-        ),
-        isTrue,
-      );
-      expect(messages.any((m) => m.contains(' - B')), isTrue);
+      expect(output.join('\n'), contains('cmd'));
     });
   });
 }

@@ -186,9 +186,9 @@ Once the `ticket.json` is in hand, it recreates the ticket folder + root `.ticke
 
 `--dry-run`/`-n` reports the same `Would add …`/`Would move … to the trash` lines and changes nothing at all — the flat-workspace migration (`migrateToOrgFolders`, which `do add` also runs first) is skipped on a dry run for exactly that reason.
 
-### `do exec` Command
+### `do exec cmd` Command
 
-`DoExecuteCommand` (in `lib/src/commands/do/exec.dart`) runs one shell command in every ticket repo in dependency order (`SortedProcessingList`), logging each repo name before its output. It collects the repos whose command exited non-zero instead of stopping at the first one, then lists them and throws — so a `gg do exec dart pub get` reports _every_ broken repo in one pass. The injectable `ProcessRunner` runs with `runInShell: true`; the `-l`/`--line-length` option exists only so an argument like `dart fmt -l 120` does not fail arg parsing before it reaches the tool.
+`DoExecuteCommand` (in `lib/src/commands/do/exec/cmd.dart`, grouped under `ExecCommand` in `lib/src/commands/do/exec.dart`) runs one shell command in every ticket repo in dependency order (`SortedProcessingList`), logging each repo name before its output. It collects the repos whose command exited non-zero instead of stopping at the first one, then lists them and throws — so a `gg do exec cmd dart pub get` reports _every_ broken repo in one pass. The injectable `ProcessRunner` runs with `runInShell: true`; the `-l`/`--line-length` option exists only so an argument like `dart fmt -l 120` does not fail arg parsing before it reaches the tool.
 
 It used to sit under a `do maintain` group that held nothing else. A group for a single command is one level of nesting the user pays for and gets nothing back, so `MaintainCommand` is gone and `exec` is a direct subcommand of `do`.
 

@@ -47,7 +47,7 @@ class Do extends Command<void> {
     addSubcommand(DoPushCommand(ggLog: ggLog));
     addSubcommand(DoPublishCommand(ggLog: ggLog));
     addSubcommand(DoReviewCommand(ggLog: ggLog));
-    addSubcommand(DoExecuteCommand(ggLog: ggLog));
+    addSubcommand(ExecCommand(ggLog: ggLog));
     addSubcommand(DoClaudeCommand(ggLog: ggLog));
     addSubcommand(AddCommand(ggLog: ggLog));
     addSubcommand(DoCheckoutCommand(ggLog: ggLog));

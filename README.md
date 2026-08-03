@@ -56,7 +56,7 @@ gg_multi
 └── do    commit | push | publish | review [--abort]
           add | rm | create ticket
           init | code | claude
-          exec
+          exec cmd
           ls repos | organizations | deps <target> | tickets
 ```
 
@@ -85,7 +85,7 @@ order.
 | `gg_multi do create graph [--format=…] [-o <file>]`    | write the dependency graph of the workspace to stdout or a file                      |
 | `gg_multi do code`                                     | open the current ticket in VS Code                                                   |
 | `gg_multi do claude`                                   | aggregate each repo's `CLAUDE.md` into one ticket-level `CLAUDE.md`                  |
-| `gg_multi do exec <cmd>`                               | run a shell command in every ticket repo                                             |
+| `gg_multi do exec cmd <cmd>`                               | run a shell command in every ticket repo                                             |
 
 `gg_multi do add` is context-aware:
 
