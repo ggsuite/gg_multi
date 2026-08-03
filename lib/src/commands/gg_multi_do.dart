@@ -10,7 +10,6 @@ import 'package:gg_multi/src/commands/do/add.dart';
 import 'package:gg_multi/src/commands/do/checkout.dart';
 import 'package:gg_multi/src/commands/do/claude.dart';
 import 'package:gg_multi/src/commands/do/code.dart';
-import 'package:gg_multi/src/commands/do/configure_publish.dart';
 import 'package:gg_multi/src/commands/do/create.dart';
 import 'package:gg_multi/src/commands/do/init.dart';
 import 'package:gg_multi/src/commands/do/rm.dart';
@@ -47,7 +46,6 @@ class Do extends Command<void> {
     addSubcommand(DoCommitCommand(ggLog: ggLog));
     addSubcommand(DoPushCommand(ggLog: ggLog));
     addSubcommand(DoPublishCommand(ggLog: ggLog));
-    addSubcommand(DoConfigurePublishCommand(ggLog: ggLog));
     addSubcommand(DoReviewCommand(ggLog: ggLog));
     addSubcommand(DoExecuteCommand(ggLog: ggLog));
     addSubcommand(DoClaudeCommand(ggLog: ggLog));

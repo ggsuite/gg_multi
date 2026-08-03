@@ -222,7 +222,9 @@ Before touching anything it snapshots every repo (branch — the commit hash whe
 
 **Merge conflicts are not a rollback case.** When merging `origin/main` leaves conflicts (`git diff --name-only --diff-filter=U` is non-empty), the review logs `Please resolve merge conflicts:`, the conflicting files, and `After merging execute: gg do commit -m"Merge main" --no-log`, then throws `MergeConflictException`. That exception bypasses the rollback (and is rethrown unwrapped by `do publish`), so the half-merged working tree survives for the user to resolve. Every other merge failure keeps the old behaviour: wrapped error + full rollback.
 
-### `do configure-publish` Command
+### `do configure-publish` — no CLI command any more
+
+`DoConfigurePublishCommand` is **not registered as a subcommand**. `do publish` calls it automatically whenever no configuration exists, which is the only moment the questions make sense; running it by hand only risked writing a config nobody asked for. The class stays exactly as described below.
 
 `DoConfigurePublishCommand` (in `lib/src/commands/do/configure_publish.dart`) interactively builds the publish configuration for the current ticket and writes it to `<ticket>/.gg/.gg-publish.json`. It walks the repos in dependency order and asks, per repo, for the version increment (via gg*one's `VersionSelector`, with an injectable `InteractAdapter` for tests) and the merge message. With `--merge-only` (or `mergeOnly: true` from `do publish`) the increment question is **skipped entirely** — a merge releases nothing, so an increment would preview a version that is never created — and no `version_increment` is written. There is no `delete_ticket` question — the ticket cleanup is not optional any more (see \_Trashing the ticket* below), so nothing about it is asked or written.
 

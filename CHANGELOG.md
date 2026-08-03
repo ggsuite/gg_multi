@@ -15,6 +15,7 @@
 
 - remove do install-git-attributes command
 - remove do add-deps command
+- remove do configure-publish from the CLI — do publish calls it itself
 
 ## 7.9.0 - 2026-08-02
 
