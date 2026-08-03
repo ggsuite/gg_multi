@@ -5,10 +5,18 @@
 # remove it again.
 dependency_overrides:
   gg_one:
-    path: ../gg_one
+    git:
+      url: git@github.com:ggsuite/gg_one.git
+      ref: CDM-1668-B
   gg_publish:
-    path: ../gg_publish
+    git:
+      url: git@github.com:ggsuite/gg_publish.git
+      ref: CDM-1668-B
   gg_localize_refs:
-    path: ../gg_localize_refs
+    git:
+      url: git@github.com:ggsuite/gg_localize_refs.git
+      ref: CDM-1668-B
   gg_merge:
-    path: ../gg_merge
+    git:
+      url: git@github.com:ggsuite/gg_merge.git
+      ref: CDM-1668-B
