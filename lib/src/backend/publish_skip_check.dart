@@ -128,8 +128,7 @@ class PublishSkipCheck {
 
     return const PublishSkipDecision(
       skip: true,
-      reason: 'no dependency needs a constraint update '
-          'and there are no manual changes',
+      reason: 'Nothing changed. Skip publishing.',
     );
   }
 

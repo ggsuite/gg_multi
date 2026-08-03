@@ -7,10 +7,9 @@
 import 'dart:io';
 
 import 'package:gg_multi/src/backend/git_attributes.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-
-import '../rm_console_colors_helper.dart';
 
 void main() {
   group('installGitattributes (ticket-wide)', () {
@@ -22,7 +21,7 @@ void main() {
     late List<String?> processWorkingDirs;
     late ProcessResult processResult;
 
-    void ggLog(String msg) => messages.add(rmConsoleColors(msg));
+    void ggLog(String msg) => messages.add(rmControls(msg));
 
     Future<ProcessResult> fakeRunner(
       String executable,
@@ -72,7 +71,7 @@ void main() {
         () async => callInstall(tempDir),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -136,7 +135,7 @@ void main() {
       expect(
         messages,
         contains(
-          '✅ Ensured .gitattributes for all repositories in ticket TICKG.',
+          '✓ Ensured .gitattributes for all repositories in ticket TICKG.',
         ),
       );
     });
@@ -263,7 +262,7 @@ void main() {
         () async => callInstall(ticketDir),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             contains('git config merge.ours.driver true failed in A'),
           ),

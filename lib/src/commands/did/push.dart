@@ -6,12 +6,13 @@
 
 import 'dart:io';
 
-import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:path/path.dart' as path;
+import 'package:gg_status_printer/gg_status_printer.dart';
 
 import '../../backend/workspace_utils.dart';
 
@@ -53,8 +54,8 @@ class DidPushCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      ggLog(red('This command must be executed inside a ticket folder.'));
-      throw Exception('Not inside a ticket folder');
+      ggLog(cError('This command must be executed inside a ticket folder.'));
+      throw Exception(cError('Not inside a ticket folder'));
     }
 
     final ticketDir = Directory(ticketPath);
@@ -64,23 +65,28 @@ class DidPushCommand extends DirCommand<void> {
     );
 
     if (nodes.isEmpty) {
-      ggLog(yellow('⚠️ No repos in this ticket'));
+      ggLog(cWarn('⚠️ No repos in this ticket'));
       return;
     }
 
     for (final node in nodes) {
       final repoDir = node.directory;
       final repoName = path.basename(repoDir.path);
-      ggLog('${cyan(repoName)}:');
+      ggLog('\n${cH1(repoName)}');
       try {
         await _ggDidPush.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
-        ggLog(red('❌ $repoName was not pushed: $e'));
+        ggLog(
+          [
+            cDetail('✗ $repoName was not pushed'),
+            cError(rmControls('$e')),
+          ].join('\n'),
+        );
         rethrow;
       }
     }
 
-    ggLog('✅ All repos pushed');
+    ggLog('✓ All repos pushed');
   }
 }
 

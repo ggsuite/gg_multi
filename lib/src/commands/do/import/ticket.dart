@@ -132,8 +132,10 @@ class DoCheckoutCommand extends Command<dynamic> {
     final response = await http.get(url);
     if (response.statusCode != 200) {
       throw Exception(
-        'Could not download ticket.json from "$url": '
-        'HTTP ${response.statusCode}.',
+        cError(
+          'Could not download ticket.json from "$url": '
+          'HTTP ${response.statusCode}.',
+        ),
       );
     }
     return response.body;
@@ -157,7 +159,7 @@ class DoCheckoutCommand extends Command<dynamic> {
     // Mode URL: arg points to a downloadable ticket.json.
     final url = _ticketJsonUrl(arg);
     if (url != null) {
-      ggLog(blue('Downloading ticket.json from $url'));
+      ggLog(cDetail('Downloading ticket.json from $url'));
       final content = await _fetchTicketJson(url);
       await _reproduce(_parseTicket(content, url.toString()));
       return;
@@ -198,7 +200,7 @@ class DoCheckoutCommand extends Command<dynamic> {
       try {
         await _fetch.get(directory: repo, ggLog: ggLog);
       } catch (e) {
-        ggLog(red('Failed to fetch ${path.basename(repo.path)}: $e'));
+        ggLog(cError('Failed to fetch ${path.basename(repo.path)}: $e'));
         continue;
       }
       final exists = await _remoteBranchExists.get(
@@ -217,8 +219,10 @@ class DoCheckoutCommand extends Command<dynamic> {
     }
 
     throw Exception(
-      '"$arg" is neither a ticket.json path, an http(s) URL, a repository of '
-      'the master workspace, nor a branch of one of its repositories.',
+      cError(
+        '"$arg" is neither a ticket.json path, an http(s) URL, a repository of '
+        'the master workspace, nor a branch of one of its repositories.',
+      ),
     );
   }
 
@@ -250,7 +254,7 @@ class DoCheckoutCommand extends Command<dynamic> {
     }
     final inDir = File(path.join(arg, ticketJsonFileName));
     if (!inDir.existsSync()) {
-      throw Exception('"$arg" contains no $ticketJsonFileName.');
+      throw Exception(cError('"$arg" contains no $ticketJsonFileName.'));
     }
     return inDir;
   }
@@ -266,7 +270,7 @@ class DoCheckoutCommand extends Command<dynamic> {
     try {
       return TicketJson.fromJsonString(content);
     } on FormatException catch (e) {
-      throw Exception('Invalid ticket.json at "$source": $e');
+      throw Exception(cError('Invalid ticket.json at "$source": $e'));
     }
   }
 
@@ -279,7 +283,7 @@ class DoCheckoutCommand extends Command<dynamic> {
     final branches = all.where((b) => b != 'main' && b != 'master').toList();
     if (branches.isEmpty) {
       ggLog(
-        yellow('No ticket branches found in ${path.basename(repoDir.path)}.'),
+        cWarn('No ticket branches found in ${path.basename(repoDir.path)}.'),
       );
       return;
     }
@@ -324,15 +328,17 @@ class DoCheckoutCommand extends Command<dynamic> {
     }
     if (content == null) {
       throw Exception(
-        'Could not read a ticket marker from "origin/$branch" — the branch may '
-        'not be pushed/fetched, or was pushed by a gg that no longer uploads '
-        'one.\nCheck the ticket out from its ticket.json instead:\n'
-        '  gg multi do checkout <path-or-url-of-ticket.json>',
+        cError(
+          'Could not read a ticket marker from "origin/$branch" — the branch may '
+          'not be pushed/fetched, or was pushed by a gg that no longer uploads '
+          'one.\nCheck the ticket out from its ticket.json instead:\n'
+          '  gg multi do checkout <path-or-url-of-ticket.json>',
+        ),
       );
     }
 
     ggLog(
-      yellow(
+      cWarn(
         'Using the legacy ticket marker committed to "origin/$branch". '
         'gg does not upload it anymore — pass the path or URL of a '
         'ticket.json instead.',
@@ -347,7 +353,7 @@ class DoCheckoutCommand extends Command<dynamic> {
   Future<void> _reproduce(TicketJson ticket) async {
     final ticketName = ticket.issueId;
     if (ticketName.isEmpty) {
-      throw Exception('The ticket marker has no issue_id.');
+      throw Exception(cError('The ticket marker has no issue_id.'));
     }
 
     final root = path.dirname(masterWorkspacePath);
@@ -371,7 +377,7 @@ class DoCheckoutCommand extends Command<dynamic> {
     for (final repo in ticket.repositories) {
       final masterRepoDir = await _ensureMasterRepo(repo);
       if (masterRepoDir == null) {
-        ggLog(red('Could not obtain repository ${repo.name}; skipping.'));
+        ggLog(cError('Could not obtain repository ${repo.name}; skipping.'));
         failed.add(repo.name);
         continue;
       }
@@ -393,17 +399,17 @@ class DoCheckoutCommand extends Command<dynamic> {
 
     final relPath = path.relative(ticketDir.path, from: executionPath);
     if (failed.isEmpty) {
-      ggLog(green('✅ Checked out ticket $ticketName'));
+      ggLog(cDetail('✓ Checked out ticket $ticketName'));
     } else {
       ggLog(
-        red(
+        cError(
           '⚠️ Checked out ticket $ticketName, but ${failed.length} repo(s) '
           'failed: ${failed.join(', ')}',
         ),
       );
     }
-    ggLog(yellow('Enter the ticket workspace with:'));
-    ggLog(blue('cd $relPath'));
+    ggLog(cAction('Enter the ticket workspace with:'));
+    ggLog(cCmd('cd $relPath'));
   }
 
   // ...........................................................................
@@ -428,7 +434,7 @@ class DoCheckoutCommand extends Command<dynamic> {
     try {
       await gitHandler.cloneRepo(repo.url, target);
     } catch (e) {
-      ggLog(red('Failed to clone ${repo.name} from ${repo.url}: $e'));
+      ggLog(cError('Failed to clone ${repo.name} from ${repo.url}: $e'));
       return null;
     }
     return Directory(target);
@@ -463,7 +469,7 @@ class DoCheckoutCommand extends Command<dynamic> {
     try {
       await _checkout.get(directory: destDir, ggLog: ggLog, branch: branch);
     } catch (e) {
-      ggLog(red('Failed to checkout $branch in $repoName: $e'));
+      ggLog(cError('Failed to checkout $branch in $repoName: $e'));
       return null;
     }
 
@@ -473,7 +479,7 @@ class DoCheckoutCommand extends Command<dynamic> {
       ggLog: ggLog,
       processRunner: processRunner,
     );
-    ggLog(blue('Added $repoName on branch $branch.'));
+    ggLog(cDetail('Added $repoName on branch $branch.'));
     return relativePath;
   }
 

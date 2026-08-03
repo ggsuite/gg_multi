@@ -7,18 +7,17 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg_one/gg_one.dart' as gg;
 // ignore: lines_longer_than_80_chars
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_multi/src/commands/do/configure_publish.dart';
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_publish/gg_publish.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:test/test.dart';
-
-import '../../rm_console_colors_helper.dart';
 
 class MockSortedProcessingList extends Mock implements SortedProcessingList {}
 
@@ -59,7 +58,7 @@ void main() {
     registerFallbackValue(_fallbackGgLog);
   });
 
-  void ggLog(String msg) => messages.add(rmConsoleColors(msg));
+  void ggLog(String msg) => messages.add(rmControls(msg));
 
   setUp(() {
     messages.clear();
@@ -140,7 +139,7 @@ void main() {
         () => command.configure(directory: tempDir, ggLog: ggLog),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Not inside a ticket folder'),
           ),
@@ -407,9 +406,9 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
-            contains('unfinished publish left progress'),
+            contains('Unfinished publish in'),
           ),
         ),
       );

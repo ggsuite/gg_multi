@@ -42,7 +42,7 @@ class ListOrganizationsCommand extends Command<dynamic> {
     }
     final orgs = orgSet.toList()..sort();
     if (orgs.isEmpty) {
-      ggLog(yellow('No organizations found.'));
+      ggLog(cDetail('No organizations found.'));
     } else {
       for (final org in orgs) {
         if (org != 'unknown') {

@@ -40,20 +40,20 @@ class ListTicketsCommand extends Command<void> {
   Future<void> run() async {
     final ticketsDir = Directory(path.join(workspacePath, ggMultiTicketFolder));
     if (!ticketsDir.existsSync()) {
-      ggLog(yellow('No tickets found.'));
+      ggLog(cDetail('No tickets found.'));
       return;
     }
     final subs = ticketsDir.listSync().whereType<Directory>().toList()
       ..sort((a, b) => path.basename(a.path).compareTo(path.basename(b.path)));
     if (subs.isEmpty) {
-      ggLog(yellow('No tickets found.'));
+      ggLog(cDetail('No tickets found.'));
       return;
     }
     for (final d in subs) {
       final ticketName = path.basename(d.path);
       final ticketFile = File(path.join(d.path, '.ticket'));
       if (!ticketFile.existsSync()) {
-        ggLog(red('Missing .ticket file for ticket $ticketName'));
+        ggLog(cError('Missing .ticket file for ticket $ticketName'));
         continue;
       }
       try {
@@ -62,7 +62,7 @@ class ListTicketsCommand extends Command<void> {
         final desc = data['description'] as String? ?? '';
         ggLog('$ticketName    $desc'); // four spaces between name and desc
       } catch (e) {
-        ggLog(red('Error parsing .ticket for ticket $ticketName: $e'));
+        ggLog(cError('Error parsing .ticket for ticket $ticketName: $e'));
       }
     }
   }

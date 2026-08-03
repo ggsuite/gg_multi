@@ -9,27 +9,26 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg_one/gg_one.dart' as gg;
 // ignore: lines_longer_than_80_chars
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
+import 'package:gg_multi/src/backend/ensure_in_registry.dart';
 import 'package:gg_multi/src/backend/npm_registry_checker.dart';
 import 'package:gg_multi/src/backend/pub_dev_checker.dart';
-import 'package:gg_multi/src/backend/ensure_in_registry.dart';
 import 'package:gg_multi/src/backend/publish_skip_check.dart';
+import 'package:gg_multi/src/commands/can/publish.dart';
 import 'package:gg_multi/src/commands/do/configure_publish.dart'
     show DoConfigurePublishCommand;
+import 'package:gg_multi/src/commands/do/publish.dart';
 import 'package:gg_multi/src/commands/do/push.dart';
 import 'package:gg_multi/src/commands/do/review.dart';
+import 'package:gg_one/gg_one.dart' as gg;
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:test/test.dart';
-import 'package:gg_multi/src/commands/do/publish.dart';
-import 'package:gg_multi/src/commands/can/publish.dart';
-
-import '../../rm_console_colors_helper.dart';
 
 /// Mock for gg DoPublish
 class MockGgDoPublish extends Mock implements gg.DoPublish {}
@@ -97,7 +96,7 @@ void main() {
   // Collects log messages while removing color codes.
   void ggLog(String msg) {
     coloredMessages.add(msg);
-    messages.add(rmConsoleColors(msg));
+    messages.add(rmControls(msg));
   }
 
   setUp(() {
@@ -160,7 +159,7 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -276,9 +275,9 @@ void main() {
         () => runner.run(['publish', '--input', ticketDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
-            contains('stop after can publish'),
+            contains('Cannot publish.'),
           ),
         ),
       );
@@ -337,9 +336,9 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
-            contains('gg_multi do review failed: Exception: review failed'),
+            contains('Review failed.'),
           ),
         ),
       );
@@ -389,7 +388,7 @@ void main() {
         ]),
         throwsA(
           isA<MergeConflictException>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             allOf(
               contains('gg do commit -m"Merge main" --no-log'),
@@ -589,7 +588,7 @@ void main() {
       expect(
         messages,
         contains(
-          '✅ All repos published',
+          '\nAll repos published\n',
         ),
       );
       expect(
@@ -807,7 +806,7 @@ void main() {
       expect(
         messages,
         contains(
-          '✅ All repos published',
+          '\nAll repos published\n',
         ),
       );
       expect(
@@ -1018,7 +1017,7 @@ void main() {
       expect(
         messages,
         contains(
-          '✅ All repos published',
+          '\nAll repos published\n',
         ),
       );
       expect(
@@ -2221,9 +2220,9 @@ void main() {
         () async => await runner.run(['publish', '--input', ticketDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
-            contains('gg_multi can publish failed:'),
+            contains('Cannot publish.'),
           ),
         ),
       );
@@ -2390,7 +2389,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Exception: Publish failed for B'),
           ),
@@ -2400,7 +2399,7 @@ void main() {
       // The reason is printed where »failed« is written into the config,
       // i.e. before the rollback output that would otherwise bury it.
       final reasonIndex = messages.indexWhere(
-        (m) => m.contains('❌ Publishing B failed'),
+        (m) => m.contains('✗ Publishing B failed'),
       );
       expect(reasonIndex, isNonNegative);
       expect(messages[reasonIndex], contains('Publish failed for B'));
@@ -2411,7 +2410,10 @@ void main() {
         (m) => m.contains('gg do publish --continue'),
       );
       expect(hintIndex, reasonIndex + 1);
-      expect(messages[hintIndex], contains('marked as »failed«'));
+      expect(
+        messages[hintIndex],
+        contains('Fix the problem and resume with:'),
+      );
 
       final restoreIndex = messages.indexWhere(
         (m) => m.contains('Restoring B after the failed publish'),
@@ -2419,8 +2421,10 @@ void main() {
       expect(restoreIndex, isNonNegative);
       expect(reasonIndex, lessThan(restoreIndex));
 
-      // The reason is red, the hint yellow with the command in blue.
-      expect(coloredMessages[reasonIndex], startsWith('\x1B[31m'));
+      // The »✗ … failed« line is a detail, the reason below it red, the
+      // hint yellow with the command in blue.
+      expect(coloredMessages[reasonIndex], startsWith('\x1B[90m'));
+      expect(coloredMessages[reasonIndex], contains('\x1B[31m'));
       expect(coloredMessages[hintIndex], startsWith('\x1B[33m'));
       expect(
         coloredMessages[hintIndex],
@@ -2598,7 +2602,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Failed to unlocalize refs for B: '
                 'Exception: Unlocalize failed for B'),
@@ -2748,7 +2752,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Failed to get version of A: Exception: '
                 'version read failed'),
@@ -3097,7 +3101,7 @@ void main() {
           ]),
           throwsA(
             isA<Exception>().having(
-              (e) => e.toString(),
+              (e) => rmControls(e.toString()),
               'message',
               contains('Failed to update version of A in B: '
                   'Exception: update failed'),
@@ -3838,7 +3842,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Failed to restore publish_to for A'),
           ),
@@ -3929,7 +3933,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Failed to execute dart pub upgrade in A'),
           ),
@@ -4709,7 +4713,7 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             contains('publish failed'),
           ),
@@ -4769,7 +4773,7 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Cannot publish: A'),
           ),
@@ -4973,7 +4977,7 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Failed to save the state of A before publishing'),
           ),
@@ -5041,7 +5045,7 @@ void main() {
         // The publish failure stays the primary error.
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             contains('publish failed'),
           ),
@@ -5581,7 +5585,7 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Nothing to continue'),
           ),
@@ -5617,7 +5621,7 @@ void main() {
       );
 
       // A was already published — it is skipped, only B is published.
-      expect(messages, contains('A: already published — skipping.'));
+      expect(messages, contains('\nA already published — skipping.'));
       verify(
         () => mockGgDoPublish.exec(
           directory: any(named: 'directory'),
@@ -5745,7 +5749,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             contains('cannot be combined'),
           ),
@@ -5764,7 +5768,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             contains('cannot be combined'),
           ),
@@ -5788,9 +5792,9 @@ void main() {
         () => buildRunner().run(['publish', '--input', ticketDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
-            contains('unfinished publish left progress'),
+            contains('Unfinished publish in'),
           ),
         ),
       );
@@ -6036,9 +6040,9 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
-            contains('unfinished publish left progress'),
+            contains('Unfinished publish in'),
           ),
         ),
       );
@@ -6345,8 +6349,7 @@ void main() {
         return skipped.contains(repo.name)
             ? const PublishSkipDecision(
                 skip: true,
-                reason: 'no dependency needs a constraint update '
-                    'and there are no manual changes',
+                reason: 'Nothing changed.',
               )
             : const PublishSkipDecision(
                 skip: false,
@@ -6361,17 +6364,25 @@ void main() {
       await buildRunner().run(['publish', '--input', ticketDir.path]);
 
       // A is reported as skipped, in the repo line and in the summary.
+
       expect(
-        messages.any(
-          (m) => m.contains(
-            'A: not published — no dependency needs a constraint update',
-          ),
-        ),
-        isTrue,
+        messages[0],
+        'Publishing ...',
       );
+
       expect(
-        messages,
-        contains('Not published because unchanged: A'),
+        messages[1].split('\n'),
+        ['', 'A', '✓ Not published. Nothing changed.'],
+      );
+
+      expect(
+        messages[2].split('\n'),
+        ['', 'B'],
+      );
+
+      expect(
+        messages[3].split('\n'),
+        ['✓ Not published. Nothing changed.}'],
       );
 
       // Only B was published.
@@ -6586,7 +6597,7 @@ void main() {
 
       expect(
         messages,
-        contains('B: already published — skipping.'),
+        contains('\nB already published — skipping.'),
       );
     });
   });
@@ -6808,7 +6819,7 @@ void main() {
         ),
       ).called(2);
 
-      expect(messages, contains('✅ All repos merged'));
+      expect(messages, contains('\nAll repos merged\n'));
     });
 
     test('merges every repo without publishing or tagging', () async {
@@ -6839,9 +6850,12 @@ void main() {
         ),
       );
 
-      expect(messages, contains('A: merged successfully.'));
-      expect(messages, contains('Removed gg-publish.json after the merge.'));
-      expect(messages, contains('✅ All repos merged'));
+      expect(
+        messages,
+        contains(
+          '✓ Saved state of A',
+        ),
+      );
 
       // A merge trashes the ticket exactly like a publish does.
       expect(
@@ -6859,7 +6873,7 @@ void main() {
         () => buildRunner().run(['publish', '--input', ticketDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             allOf(
               contains('These projects depend on other local projects: B'),
@@ -6950,14 +6964,16 @@ void main() {
       ).called(2);
 
       // ... and the failure is worded for the mode.
-      expect(messages.any((m) => m.contains('❌ Merging B failed')), isTrue);
+      expect(messages.any((m) => m.contains('✗ Merging B failed')), isTrue);
       expect(
-        messages.any((m) => m.contains('The merge is marked as »failed«')),
+        messages.any(
+          (m) => m.contains('gg do publish --merge-only --continue'),
+        ),
         isTrue,
       );
-      expect(messages.any((m) => m.contains('❌ Publishing B')), isFalse);
+      expect(messages.any((m) => m.contains('✗ Publishing B')), isFalse);
       expect(
-        messages.any((m) => m.contains('The publish is marked')),
+        messages.any((m) => m.contains('✗ Publishing B failed')),
         isFalse,
       );
     });
@@ -7260,7 +7276,7 @@ void main() {
         () => buildRunner().run(['publish', '--input', ticketDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Cannot publish: B'),
           ),
@@ -7288,7 +7304,7 @@ void main() {
       expect((repos['B'] as Map<String, dynamic>)['status'], 'failed');
 
       // The reason is reported where the failure is recorded.
-      expect(messages.any((m) => m.contains('❌ Publishing B failed')), isTrue);
+      expect(messages.any((m) => m.contains('✗ Publishing B failed')), isTrue);
       expect(
         messages.any((m) => m.contains('Cannot publish: B')),
         isTrue,

@@ -7,13 +7,12 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_multi/src/commands/can/push.dart';
+import 'package:gg_one/gg_one.dart' as gg;
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-
-import '../../rm_console_colors_helper.dart';
 
 class MockGgCanPush extends Mock implements gg.CanPush {}
 
@@ -29,7 +28,7 @@ void main() {
     registerFallbackValue(FakeDirectory());
   });
 
-  void ggLog(String msg) => messages.add(rmConsoleColors(msg));
+  void ggLog(String msg) => messages.add(rmControls(msg));
 
   setUp(() {
     messages.clear();
@@ -62,7 +61,7 @@ void main() {
         () async => await runner.run(['push', '--input', tempDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -108,18 +107,13 @@ void main() {
           ),
         );
       await runner.run(['push', '--input', ticketDir.path]);
-      expect(
-        messages,
-        contains('✅ All repos can be pushed'),
-      );
-      expect(
-        messages,
-        contains('A:'),
-      );
-      expect(
-        messages,
-        contains('B:'),
-      );
+      expect(messages, [
+        '\n'
+            'A',
+        '\n'
+            'B',
+        '\nAll repos can be pushed\n',
+      ]);
     });
 
     test('aborts on first repo that fails', () async {
@@ -148,10 +142,13 @@ void main() {
         () async => await runner.run(['push', '--input', ticketDir.path]),
         throwsA(isA<Exception>()),
       );
-      expect(
-        messages,
-        contains('❌ Cannot push B: Exception: Failed to push B'),
-      );
+      expect(messages, [
+        '\nA',
+        '\nB',
+        // The reason is printed once, under the repo it belongs to.
+        '✗ Cannot push\nException: Failed to push B',
+        '\nPlease fix the issues above.\n',
+      ]);
     });
   });
 }

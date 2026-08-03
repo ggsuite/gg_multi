@@ -6,12 +6,12 @@
 
 import 'dart:io';
 
-import 'package:gg_one/gg_one.dart' as gg;
-import 'package:gg_publish/gg_publish.dart' as gg_publish;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:gg_one/gg_one.dart' as gg;
+import 'package:gg_publish/gg_publish.dart' as gg_publish;
 import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
@@ -134,8 +134,8 @@ class CanPublishCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      ggLog(red('This command must be executed inside a ticket folder.'));
-      throw Exception('Not inside a ticket folder');
+      ggLog(cError('This command must be executed inside a ticket folder.'));
+      throw Exception(cError('Not inside a ticket folder'));
     }
 
     final ticketDir = Directory(ticketPath);
@@ -148,7 +148,7 @@ class CanPublishCommand extends DirCommand<void> {
     );
 
     if (subs.isEmpty) {
-      ggLog(yellow('⚠️ No repos in this ticket'));
+      ggLog(cWarn('⚠️ No repos in this ticket'));
       return;
     }
 
@@ -159,6 +159,7 @@ class CanPublishCommand extends DirCommand<void> {
     await GgStatusPrinter<void>(
       message: 'Uncommitted changes?',
       ggLog: ggLog,
+      dark: true,
     ).run(
       () async => _checkUncommittedChanges(
         subs: subs,
@@ -170,6 +171,7 @@ class CanPublishCommand extends DirCommand<void> {
     await GgStatusPrinter<void>(
       message: 'Did commit?',
       ggLog: ggLog,
+      dark: true,
     ).run(
       () async => _runDidCommit(
         ticketDir: ticketDir,
@@ -181,6 +183,7 @@ class CanPublishCommand extends DirCommand<void> {
     await GgStatusPrinter<void>(
       message: 'Merge main into feat?',
       ggLog: ggLog,
+      dark: true,
     ).run(
       () async => _runMergeMainIntoFeat(
         ticketName: ticketName,
@@ -193,6 +196,7 @@ class CanPublishCommand extends DirCommand<void> {
     await GgStatusPrinter<void>(
       message: 'Can merge?',
       ggLog: ggLog,
+      dark: true,
     ).run(
       () async => _checkCanMerge(
         ticketName: ticketName,
@@ -205,6 +209,7 @@ class CanPublishCommand extends DirCommand<void> {
     await GgStatusPrinter<void>(
       message: 'Running do push',
       ggLog: ggLog,
+      dark: true,
     ).run(
       () async => _runDoPush(
         ticketDir: ticketDir,
@@ -221,6 +226,7 @@ class CanPublishCommand extends DirCommand<void> {
     await GgStatusPrinter<void>(
       message: 'Logged in to npm?',
       ggLog: ggLog,
+      dark: true,
     ).run(
       () async => _checkNpmLoggedIn(
         subs: subs,
@@ -235,6 +241,7 @@ class CanPublishCommand extends DirCommand<void> {
       await GgStatusPrinter<void>(
         message: 'Can publish?',
         ggLog: ggLog,
+        dark: true,
       ).run(
         () async => _checkCanPublish(
           subs: subs,
@@ -244,7 +251,7 @@ class CanPublishCommand extends DirCommand<void> {
     }
 
     // All successful --------------------------------------------------------
-    taskLog('✅ All repos can be published');
+    ggLog('\nAll repos can be published\n');
   }
 
   /// Checks whether the single repository [directory] can be published.
@@ -263,7 +270,7 @@ class CanPublishCommand extends DirCommand<void> {
   }) async {
     final failure = await _canPublishFailure(repoDir: directory, ggLog: ggLog);
     if (failure != null) {
-      throw Exception('Cannot publish: $failure');
+      throw Exception(cDetail('Cannot publish.'));
     }
   }
 
@@ -285,11 +292,11 @@ class CanPublishCommand extends DirCommand<void> {
       }
     }
     if (uncommitted.isNotEmpty) {
-      ggLog(yellow('Uncommitted changes in:'));
+      ggLog(cWarn('Uncommitted changes in'));
       for (final name in uncommitted) {
-        ggLog(yellow(' - $name'));
+        ggLog(cDetail(' - $name'));
       }
-      throw Exception('Uncommitted changes found');
+      throw Exception(cDetail('Uncommitted changes found.'));
     }
   }
 
@@ -301,8 +308,8 @@ class CanPublishCommand extends DirCommand<void> {
     try {
       await _didCommitCommand.exec(directory: ticketDir, ggLog: ggLog);
     } catch (e) {
-      ggLog(red('gg_multi did commit failed: $e'));
-      throw Exception('gg_multi did commit failed');
+      ggLog([cDetail('✗ Not committed'), cError(rmControls('$e'))].join('\n'));
+      throw Exception(cDetail('Not committed.'));
     }
   }
 
@@ -320,12 +327,12 @@ class CanPublishCommand extends DirCommand<void> {
         await _ggMergeMainIntoFeat.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
         ggLog(
-          red(
-            'gg merge main into feat failed for $repoName in ticket '
-            '$ticketName: $e',
-          ),
+          [
+            cDetail('✗ Cannot merge main into $repoName'),
+            cError(rmControls('$e')),
+          ].join('\n'),
         );
-        throw Exception('gg merge main into feat failed: $e');
+        throw Exception(cDetail('Cannot merge main into feature branch.'));
       }
     }
   }
@@ -338,8 +345,8 @@ class CanPublishCommand extends DirCommand<void> {
     try {
       await _doPushCommand.exec(directory: ticketDir, ggLog: ggLog);
     } catch (e) {
-      ggLog(red('gg_multi do push failed: $e'));
-      throw Exception('gg_multi do push failed');
+      ggLog([cDetail('✗ Failed to push'), cError(rmControls('$e'))].join('\n'));
+      throw Exception(cDetail('Failed to push.'));
     }
   }
 
@@ -354,13 +361,15 @@ class CanPublishCommand extends DirCommand<void> {
     required GgLog ggLog,
   }) async {
     final repoName = path.basename(repoDir.path);
-    ggLog('${cyan(repoName)}:');
+    ggLog('\n${cH1(repoName)}');
     try {
       await _ggCanPublish.exec(directory: repoDir, ggLog: ggLog);
       return null;
     } catch (e) {
-      ggLog(red('❌ Cannot publish $repoName: $e'));
-      return '$repoName ($e)';
+      // The reason is printed once, right under the repo it belongs to.
+      // What travels on is only the name.
+      ggLog([cDetail('✗ Cannot publish'), cError(rmControls('$e'))].join('\n'));
+      return repoName;
     }
   }
 
@@ -381,7 +390,8 @@ class CanPublishCommand extends DirCommand<void> {
       }
     }
     if (failedRepos.isNotEmpty) {
-      throw Exception('Cannot publish: ${failedRepos.join('; ')}');
+      ggLog(cAction('\nPlease fix the issues above.\n'));
+      throw Exception(cDetail('Cannot publish.'));
     }
   }
 
@@ -394,16 +404,22 @@ class CanPublishCommand extends DirCommand<void> {
     for (final repo in subs) {
       final repoDir = repo.directory;
       final repoName = path.basename(repoDir.path);
-      ggLog('${cyan(repoName)}:');
+      ggLog('\n${cH1(repoName)}');
       try {
         await _ggNpmLoggedIn.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
-        ggLog(red('❌ Not logged in to npm for $repoName: $e'));
-        failedRepos.add('$repoName ($e)');
+        ggLog(
+          [
+            cDetail('✗ Not logged in to npm'),
+            cError(rmControls('$e')),
+          ].join('\n'),
+        );
+        failedRepos.add(repoName);
       }
     }
     if (failedRepos.isNotEmpty) {
-      throw Exception('Not logged in to npm: ${failedRepos.join('; ')}');
+      ggLog(cAction('\nPlease fix the issues above.\n'));
+      throw Exception(cDetail('Not logged in to npm.'));
     }
   }
 
@@ -417,22 +433,17 @@ class CanPublishCommand extends DirCommand<void> {
     for (final repo in subs) {
       final repoDir = repo.directory;
       final repoName = path.basename(repoDir.path);
-      ggLog('${cyan(repoName)}:');
+      ggLog('\n${cH1(repoName)}');
       try {
         await _ggCanMerge.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {
-        ggLog(red('❌ Cannot merge $repoName: $e'));
+        ggLog([cDetail('✗ Cannot merge'), cError(rmControls('$e'))].join('\n'));
         failedMergeRepos.add(repoName);
       }
     }
     if (failedMergeRepos.isNotEmpty) {
-      ggLog(red('❌ Merge check failed in:'));
-      for (final repoName in failedMergeRepos) {
-        ggLog(red(' - $repoName'));
-      }
-      throw Exception(
-        'Failed to check merge in: ${failedMergeRepos.join(', ')}',
-      );
+      ggLog(cAction('\nPlease fix the issues above.\n'));
+      throw Exception(cDetail('Cannot merge.'));
     }
   }
 

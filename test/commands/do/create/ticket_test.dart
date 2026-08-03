@@ -9,11 +9,10 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
-import 'package:test/test.dart';
 import 'package:gg_multi/src/commands/do/create/ticket.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
-
-import '../../../rm_console_colors_helper.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('TicketCommand', () {
@@ -22,7 +21,7 @@ void main() {
     final messages = <String>[];
 
     void ggLog(String msg) {
-      messages.add(rmConsoleColors(msg));
+      messages.add(rmControls(msg));
     }
 
     setUp(() {
@@ -94,14 +93,18 @@ void main() {
       );
       expect(
         messages,
-        contains(
-          'Execute the following command to enter the ticket workspace:',
-        ),
+        [
+          '✓ Created ticket CDM-128',
+          '  Please run:',
+          '    cd tickets/CDM-128',
+          '    gg do add <repo1> <repo2> ...',
+          '    code CDM-128.code-workspace',
+        ],
       );
       expect(
         messages,
         contains(
-          'cd $ticketRelPath',
+          '    cd $ticketRelPath',
         ),
       );
     });
@@ -157,24 +160,13 @@ void main() {
       );
       expect(ticketDir.existsSync(), isTrue);
 
-      expect(
-        messages.any(
-          (m) => m.contains('Created ticket $issueId'),
-        ),
-        isTrue,
-      );
-      expect(
-        messages,
-        contains(
-          'Execute the following command to enter the ticket workspace:',
-        ),
-      );
-      expect(
-        messages,
-        contains(
-          'cd $issueId',
-        ),
-      );
+      expect(messages, [
+        '✓ Created ticket INSIDE-1',
+        '  Please run:',
+        '    cd INSIDE-1',
+        '    gg do add <repo1> <repo2> ...',
+        '    code INSIDE-1.code-workspace',
+      ]);
     });
 
     test('does not create ticket if it already exists', () async {

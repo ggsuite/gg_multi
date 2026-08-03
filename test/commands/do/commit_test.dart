@@ -7,13 +7,12 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_multi/src/commands/do/commit.dart';
+import 'package:gg_one/gg_one.dart' as gg;
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-
-import '../../rm_console_colors_helper.dart';
 
 class MockGgCanCommit extends Mock implements gg.CanCommit {}
 
@@ -33,7 +32,7 @@ void main() {
     registerFallbackValue(FakeDirectory());
   });
 
-  void ggLog(String msg) => messages.add(rmConsoleColors(msg));
+  void ggLog(String msg) => messages.add(rmControls(msg));
 
   /// A [gg.DoCommit] stub recording the message it was called with.
   MockGgDoCommit recordingDoCommit() {
@@ -92,7 +91,7 @@ void main() {
         () async => await runner.run(['commit', '--input', tempDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -153,18 +152,7 @@ void main() {
       await runner.run(
         ['commit', '--input', ticketDir.path, '--message', 'Test commit'],
       );
-      expect(
-        messages,
-        contains('✅ All repos committed'),
-      );
-      expect(
-        messages,
-        contains('A:'),
-      );
-      expect(
-        messages,
-        contains('B:'),
-      );
+      expect(messages[1].split('\n'), ['', 'A']);
     });
 
     test('aborts on first repo that fails', () async {
@@ -208,12 +196,14 @@ void main() {
         ),
         throwsA(isA<Exception>()),
       );
-      expect(
-        messages,
-        contains('❌ Failed to commit B: Exception: Failed to commit B'),
-      );
-      expect(messages, contains('❌ Commit failed in:'));
-      expect(messages.any((m) => m.contains(' - B')), isTrue);
+      expect(messages, [
+        '\nCommitting ...',
+        '\nA',
+        '\nB',
+        // The reason is printed once, under the repo it belongs to.
+        '✗ Failed to commit\nException: Failed to commit B',
+        '\nPlease fix the issues above.\n',
+      ]);
     });
   });
 

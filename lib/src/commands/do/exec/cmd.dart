@@ -12,6 +12,7 @@ import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
+import 'package:gg_status_printer/gg_status_printer.dart';
 
 import '../../../backend/workspace_utils.dart';
 
@@ -87,8 +88,8 @@ class DoExecuteCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      ggLog(red('This command must be executed inside a ticket folder.'));
-      throw Exception('Not inside a ticket folder');
+      ggLog(cError('This command must be executed inside a ticket folder.'));
+      throw Exception(cError('Not inside a ticket folder'));
     }
 
     final ticketDir = Directory(ticketPath);
@@ -101,7 +102,7 @@ class DoExecuteCommand extends DirCommand<void> {
     );
 
     if (nodes.isEmpty) {
-      ggLog(yellow('⚠️ No repos in this ticket'));
+      ggLog(cWarn('⚠️ No repos in this ticket'));
       return;
     }
 
@@ -111,7 +112,7 @@ class DoExecuteCommand extends DirCommand<void> {
       final repoDir = node.directory;
       final repoName = path.basename(repoDir.path);
 
-      ggLog('${cyan(repoName)}:');
+      ggLog('\n${cH1(repoName)}');
 
       final result = await _processRunner(
         cmd,
@@ -123,25 +124,21 @@ class DoExecuteCommand extends DirCommand<void> {
         final stderrStr = result.stderr?.toString() ?? '';
         final stdoutStr = result.stdout?.toString() ?? '';
         final errMsg = stderrStr.isNotEmpty ? stderrStr : stdoutStr;
-        ggLog(red('❌ Failed to execute in $repoName: $errMsg'));
+        ggLog(
+          [cDetail('✗ Failed to execute'), cError(rmControls(errMsg))]
+              .join('\n'),
+        );
         failed.add(repoName);
       }
     }
 
     if (failed.isEmpty) {
-      ggLog(
-        green(
-          '✅ Command executed successfully in all repositories in ticket '
-          '$ticketName.',
-        ),
-      );
-    } else {
-      ggLog(red('❌ Command failed in:'));
-      for (final name in failed) {
-        ggLog(red(' - $name'));
-      }
-      throw Exception('Failed to execute command in: ${failed.join(', ')}');
+      ggLog('\nCommand executed in all repos of $ticketName\n');
+      return;
     }
+
+    ggLog(cAction('\nPlease fix the issues above.\n'));
+    throw Exception(cDetail('Failed to execute the command.'));
   }
 
   /// Add passthrough flag so args like -l 120 don't break parsing.

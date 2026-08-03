@@ -7,17 +7,16 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:http/http.dart' as http;
+import 'package:gg_console_colors/gg_console_colors.dart';
+import 'package:gg_multi/src/backend/add_repository_helper.dart';
+import 'package:gg_multi/src/backend/git_handler.dart';
 import 'package:gg_multi/src/backend/git_platform.dart';
+import 'package:gg_multi/src/backend/repository.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
+import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-
-import 'package:gg_multi/src/backend/add_repository_helper.dart';
-import 'package:gg_multi/src/backend/git_handler.dart';
-import 'package:gg_multi/src/backend/repository.dart';
-
-import '../rm_console_colors_helper.dart';
 
 // Create a mock for GitCloner
 class MockGitCloner extends Mock implements GitHandler {}
@@ -37,7 +36,7 @@ void main() {
 
   // Setup a simple ggLog function that appends messages to logs list
   void ggLog(String message) {
-    logs.add(rmConsoleColors(message));
+    logs.add(rmControls(message));
   }
 
   setUp(() {
@@ -314,9 +313,9 @@ void main() {
           ),
           throwsA(
             predicate(
-              (e) => e.toString().contains(
-                    'Failed to fetch repositories for organization myorg',
-                  ),
+              (e) => rmC(e.toString()).contains(
+                'Failed to fetch repositories for organization myorg',
+              ),
             ),
           ),
         );
@@ -669,9 +668,9 @@ void main() {
           ),
           throwsA(
             predicate(
-              (e) => e.toString().contains(
-                    'Invalid organization URL provided: http://github.com',
-                  ),
+              (e) => rmC(e.toString()).contains(
+                'Invalid organization URL provided: http://github.com',
+              ),
             ),
           ),
         );
@@ -695,9 +694,9 @@ void main() {
           ),
           throwsA(
             predicate(
-              (e) => e.toString().contains(
-                    'Invalid organization URL provided: http://github.com/',
-                  ),
+              (e) => rmC(e.toString()).contains(
+                'Invalid organization URL provided: http://github.com/',
+              ),
             ),
           ),
         );

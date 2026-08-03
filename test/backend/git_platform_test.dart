@@ -7,9 +7,10 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:gg_multi/src/backend/git_platform.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
-import 'package:gg_multi/src/backend/git_platform.dart';
 
 class MockProcessRunner extends Mock {
   Future<ProcessResult> call(
@@ -117,7 +118,7 @@ void main() {
         platform.fetchOrgRepos('myorg'),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             'Exception: Failed to fetch repositories for organization myorg: '
                 'gh error message',
@@ -138,7 +139,7 @@ void main() {
         platform.fetchOrgRepos('myorg'),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Failed to parse GitHub CLI output'),
           ),
@@ -158,7 +159,7 @@ void main() {
         platform.fetchOrgRepos('myorg'),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Bitte installiere die GitHub CLI'),
           ),
@@ -328,7 +329,7 @@ void main() {
         platform.fetchOrgRepos('myorg', project: 'myproj'),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Bitte installiere die Azure CLI'),
           ),
@@ -387,7 +388,7 @@ void main() {
         platform.fetchOrgRepos('myorg', project: 'myproj'),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             'Exception: Failed to fetch repositories for organization myorg, '
                 'project myproj: CLI error message',

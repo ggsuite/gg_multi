@@ -7,18 +7,17 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
+import 'package:gg_multi/src/commands/can/publish.dart';
+import 'package:gg_multi/src/commands/did/commit.dart';
+import 'package:gg_multi/src/commands/do/push.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_publish/gg_publish.dart' as gg_publish;
-import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:test/test.dart';
-import 'package:gg_multi/src/commands/can/publish.dart';
-import 'package:gg_multi/src/commands/did/commit.dart';
-import 'package:gg_multi/src/commands/do/push.dart';
-
-import '../../rm_console_colors_helper.dart';
 
 class MockGgCanCommit extends Mock implements gg.CanCommit {}
 
@@ -49,7 +48,7 @@ void main() {
     registerFallbackValue(FakeDirectory());
   });
 
-  void ggLog(String msg) => messages.add(rmConsoleColors(msg));
+  void ggLog(String msg) => messages.add(rmControls(msg));
 
   setUp(() {
     messages.clear();
@@ -80,7 +79,7 @@ void main() {
         () async => await runner.run(['publish', '--input', tempDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -178,7 +177,7 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            'Uncommitted changes in:',
+            'Uncommitted changes in',
           ),
         ),
         isTrue,
@@ -285,7 +284,7 @@ void main() {
       ]);
       expect(
         messages,
-        contains('✅ All repos can be published'),
+        contains('\nAll repos can be published\n'),
       );
       verify(
         () => mockGgCanPublish.exec(
@@ -299,14 +298,8 @@ void main() {
           ggLog: any(named: 'ggLog'),
         ),
       ).called(2);
-      expect(
-        messages.any((m) => m.contains('A:')),
-        isTrue,
-      );
-      expect(
-        messages.any((m) => m.contains('B:')),
-        isTrue,
-      );
+      expect(messages.any((m) => m.contains('A')), isTrue);
+      expect(messages.any((m) => m.contains('B')), isTrue);
     });
 
     test('fails on can merge check for specific repos', () async {
@@ -407,20 +400,11 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            '❌ Cannot merge B: Exception: Merge check failed for B',
+            '✗ Cannot merge\nException: Merge check failed for B',
           ),
         ),
         isTrue,
       );
-      expect(
-        messages.any(
-          (m) => m.contains(
-            '❌ Merge check failed in:',
-          ),
-        ),
-        isTrue,
-      );
-      expect(messages.any((m) => m.contains(' - B')), isTrue);
     });
 
     test('fails when did commit throws exception', () async {
@@ -506,7 +490,7 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            'gg_multi did commit failed: Exception: Did commit failed',
+            '✗ Not committed\nException: Did commit failed',
           ),
         ),
         isTrue,
@@ -609,8 +593,8 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            'gg merge main into feat failed for B in ticket '
-            'TICKPB: Exception: Merge main into feat failed',
+            '✗ Cannot merge main into B\n'
+            'Exception: Merge main into feat failed',
           ),
         ),
         isTrue,
@@ -715,7 +699,7 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            'gg_multi do push failed: Exception: do push failed',
+            '✗ Failed to push\nException: do push failed',
           ),
         ),
         isTrue,
@@ -827,7 +811,7 @@ void main() {
         throwsA(isA<Exception>()),
       );
       expect(
-        messages.any((m) => m.contains('❌ Cannot publish B')),
+        messages.any((m) => m.contains('✗ Cannot publish')),
         isTrue,
       );
       expect(
@@ -922,7 +906,7 @@ void main() {
         ).thenAnswer((_) async {});
 
         final localMessages = <String>[];
-        void localLog(String msg) => localMessages.add(rmConsoleColors(msg));
+        void localLog(String msg) => localMessages.add(rmControls(msg));
 
         final command = CanPublishCommand(
           ggLog: localLog,
@@ -942,12 +926,12 @@ void main() {
           verbose: false,
         );
 
-        // The per-repo "Can publish?" check is now the final status line.
+        // The closing summary is visible without --verbose; the per-step
+        // status lines are the ones above it.
+        expect(localMessages.last, '\nAll repos can be published\n');
         expect(
-          localMessages.last,
-          contains(
-            '✅ Can publish?',
-          ),
+          localMessages.any((m) => m.contains('✓ Can publish?')),
+          isTrue,
         );
       },
     );
@@ -1117,7 +1101,7 @@ void main() {
           ggLog: any(named: 'ggLog'),
         ),
       ).called(2);
-      expect(messages, contains('✅ All repos can be published'));
+      expect(messages, contains('\nAll repos can be published\n'));
     });
 
     test('throws when a repo is not logged in to npm', () async {
@@ -1142,14 +1126,14 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
-            contains('Not logged in to npm: B ('),
+            contains('Not logged in to npm.'),
           ),
         ),
       );
       expect(
-        messages.any((m) => m.contains('❌ Not logged in to npm for B')),
+        messages.any((m) => m.contains('✗ Not logged in to npm')),
         isTrue,
       );
 
@@ -1173,7 +1157,10 @@ void main() {
             ggLog: any(named: 'ggLog'),
           ),
         ).called(1);
-        expect(messages, contains('A:'));
+        expect(
+          messages.first.split('\n'),
+          ['', 'A'],
+        );
       });
 
       test('throws the ticket wide message for one repo', () async {
@@ -1188,15 +1175,15 @@ void main() {
           () => command().checkRepo(directory: repoDir('B'), ggLog: ggLog),
           throwsA(
             isA<Exception>().having(
-              (e) => e.toString(),
+              (e) => rmControls(e.toString()),
               'message',
-              'Exception: Cannot publish: B (Exception: pana failed)',
+              'Exception: Cannot publish.',
             ),
           ),
         );
         expect(
           messages,
-          contains('❌ Cannot publish B: Exception: pana failed'),
+          contains('✗ Cannot publish\nException: pana failed'),
         );
       });
 

@@ -6,14 +6,13 @@
 
 import 'dart:io';
 
-import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 // ignore: lines_longer_than_80_chars
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_publish/gg_publish.dart';
-import 'package:interact/interact.dart';
 import 'package:path/path.dart' as path;
 import 'package:pub_semver/pub_semver.dart';
 
@@ -100,7 +99,7 @@ class DoConfigurePublishCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      throw Exception('Not inside a ticket folder');
+      throw Exception(cError('Not inside a ticket folder'));
     }
 
     final ticketDir = Directory(ticketPath);
@@ -116,9 +115,12 @@ class DoConfigurePublishCommand extends DirCommand<void> {
       );
       if (existing.repos.values.any((r) => r.status != null)) {
         throw Exception(
-          'An unfinished publish left progress in ${existingFile.path}. '
-          'Resume it with "gg do publish --continue", or discard it with '
-          '"gg do publish --restart".',
+          cError(
+            gg.unfinishedPublishMessage(
+              path: existingFile.path,
+              command: 'gg do publish',
+            ),
+          ),
         );
       }
     }
@@ -138,14 +140,14 @@ class DoConfigurePublishCommand extends DirCommand<void> {
       ggLog: ggLog,
     );
     if (subs.isEmpty) {
-      ggLog(yellow('⚠️ No repos in this ticket'));
+      ggLog(cWarn('⚠️ No repos in this ticket'));
     }
 
     final repos = <String, gg.RepoOverride>{};
     for (final repo in subs) {
       final repoDir = repo.directory;
       final repoName = path.basename(repoDir.path);
-      ggLog('${cyan(repoName)}:');
+      ggLog('\n${cH1(repoName)}');
 
       // A merge-only run releases nothing — no version bump, no changelog
       // heading, no tag. Asking for an increment would offer a version that
@@ -178,7 +180,7 @@ class DoConfigurePublishCommand extends DirCommand<void> {
     final config = gg.PublishConfig(repos: repos);
     final file = configFileFor(ticketDir);
     await config.save(file: file);
-    ggLog(green('Wrote publish configuration to ${file.path}'));
+    ggLog(cDetail('✓ Wrote publish configuration to ${file.path}'));
     return config;
   }
 
@@ -202,7 +204,7 @@ class DoConfigurePublishCommand extends DirCommand<void> {
       return await _publishedVersion.get(directory: repoDir, ggLog: ggLog);
     } on Exception catch (e) {
       ggLog(
-        yellow(
+        cWarn(
           '⚠️ Could not determine the published version, assuming 0.0.0: $e',
         ),
       );
@@ -210,26 +212,15 @@ class DoConfigurePublishCommand extends DirCommand<void> {
     }
   }
 
-  /// Opens the default editor with [initialMessage] and returns the result.
+  /// Opens the shared message editor for the merge message.
   // coverage:ignore-start
-  static Future<String?> _defaultEditMessage(String initialMessage) async {
-    gg.throwWhenNotATerminal(
-      'the merge message prompt',
-      'pass -m <message> or provide a config file via --config',
-    );
-    // Only initialText, no defaultValue: the message is already in the
-    // editable buffer, so the "(…)" hint would just repeat it.
-    try {
-      return Input.withTheme(
-        theme: messageEditorTheme,
-        prompt: 'Edit merge message',
-        initialText: initialMessage,
-      ).interact();
-    } finally {
-      stdout.write(colorOff);
-    }
-  }
-
+  static Future<String?> _defaultEditMessage(String initialMessage) =>
+      editMessage(
+        initialMessage,
+        prompt: 'Edit merge message:',
+        subject: 'the merge message prompt',
+        hint: 'pass -m <message> or provide a config file via --config',
+      );
   // coverage:ignore-end
 
   /// Adds command line arguments.

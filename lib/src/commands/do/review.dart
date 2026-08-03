@@ -6,12 +6,12 @@
 
 import 'dart:io';
 
-import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
@@ -173,6 +173,8 @@ class DoReviewCommand extends DirCommand<void> {
     bool? verbose,
     bool? abort,
   }) async {
+    ggLog(cH1('\nReviewing ...'));
+
     verbose ??= argResults?['verbose'] as bool? ?? false;
     abort ??= argResults?['abort'] as bool? ?? false;
 
@@ -191,8 +193,8 @@ class DoReviewCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      ggLog(red('This command must be executed inside a ticket folder.'));
-      throw Exception('Not inside a ticket folder');
+      ggLog(cError('This command must be executed inside a ticket folder.'));
+      throw Exception(cError('Not inside a ticket folder'));
     }
 
     final ticketDir = Directory(ticketPath);
@@ -205,7 +207,7 @@ class DoReviewCommand extends DirCommand<void> {
     );
 
     if (subs.isEmpty) {
-      ggLog(yellow('⚠️ No repos in this ticket'));
+      ggLog(cWarn('⚠️ No repos in this ticket'));
       return;
     }
 
@@ -223,6 +225,7 @@ class DoReviewCommand extends DirCommand<void> {
     await GgStatusPrinter<void>(
       message: 'Saving the state before the review',
       ggLog: ggLog,
+      dark: true,
     ).run(
       () async => snapshots = await _saveState(subs: subs, ggLog: taskLog),
     );
@@ -234,6 +237,7 @@ class DoReviewCommand extends DirCommand<void> {
       await GgStatusPrinter<void>(
         message: 'Merging origin/main into feature branches',
         ggLog: ggLog,
+        dark: true,
       ).run(
         () async => _mergeMainIntoRepos(
           ticketName: ticketName,
@@ -245,8 +249,9 @@ class DoReviewCommand extends DirCommand<void> {
 
       // Step 5: Run can review after merging ---------------------------------
       await GgStatusPrinter<void>(
-        message: 'Gg Multi can review?',
+        message: 'Can review?',
         ggLog: ggLog,
+        dark: true,
       ).run(
         () async => _runCanReview(
           ticketDir: ticketDir,
@@ -259,6 +264,7 @@ class DoReviewCommand extends DirCommand<void> {
       await GgStatusPrinter<void>(
         message: 'Setting dependencies to git, committing and pushing',
         ggLog: ggLog,
+        dark: true,
       ).run(
         () async => _localizeAndCommitAll(
           ticketName: ticketName,
@@ -330,6 +336,7 @@ class DoReviewCommand extends DirCommand<void> {
     await GgStatusPrinter<void>(
       message: 'Creating pull requests',
       ggLog: ggLog,
+      dark: true,
     ).run(() async {
       for (final repo in subs) {
         final repoDir = repo.directory;
@@ -350,15 +357,16 @@ class DoReviewCommand extends DirCommand<void> {
     });
 
     if (urls.isNotEmpty) {
-      ggLog(green('Pull requests:'));
+      ggLog(cAction('\n✓ Please open and review:'));
       for (final entry in urls.entries) {
-        ggLog(' - ${entry.key}: ${blue(entry.value)}');
+        ggLog('  ${cPath(entry.value)}');
       }
+      ggLog('\n');
     }
 
     for (final entry in failures.entries) {
       ggLog(
-        yellow(
+        cWarn(
           'No pull request for ${entry.key}: ${entry.value}. '
           'Create it manually, or run "gg do review" again.',
         ),
@@ -433,24 +441,21 @@ class DoReviewCommand extends DirCommand<void> {
             );
           }
 
-          throw Exception(errMsg);
+          throw Exception(cError(errMsg));
         }
 
-        ggLog(
-          green(
-            'Merged main into $repoName for ticket $ticketName.',
-          ),
-        );
+        ggLog(cDetail('✓ Merged main into $repoName'));
       } on MergeConflictException {
         rethrow;
       } catch (e) {
+        // The reason is printed once, right under the repo it belongs to.
         errorLog(
-          red(
-            'Failed to merge main into $repoName for ticket '
-            '$ticketName: $e',
-          ),
+          [
+            cDetail('✗ Failed to merge main into $repoName'),
+            cError(rmControls('$e')),
+          ].join('\n'),
         );
-        throw Exception('Failed to merge main in: $repoName: $e');
+        throw Exception(cDetail('Failed to merge main.'));
       }
 
       // If the merge actually moved HEAD (i.e. it was not a no-op), re-verify
@@ -465,23 +470,22 @@ class DoReviewCommand extends DirCommand<void> {
             ggLog: ggLog,
             saveState: false,
           );
-          ggLog(
-            green('Verified $repoName still passes "gg can commit" after '
-                'merging main.'),
-          );
+          ggLog(cDetail('✓ Verified $repoName after merging main'));
         } catch (e) {
           errorLog(
-            red(
-              'Merging main into $repoName broke "gg can commit": $e',
+            [
+              cDetail('✗ Merging main into $repoName broke "gg can commit"'),
+              cError(rmControls('$e')),
+            ].join('\n'),
+          );
+          errorLog(
+            cAction(
+              'The merge likely corrupted a file. The repo is rolled back to '
+              'before the review. Merge ${cCmd('git merge origin/main')} '
+              'manually, fix the problem, then re-run.',
             ),
           );
-          throw Exception(
-            'Failed to merge main in: $repoName (merged state no longer '
-            'passes "gg can commit" — the merge likely corrupted a file. '
-            'The repo is rolled back to before the review; to fix, merge '
-            'origin/main manually ("git merge origin/main"), resolve the '
-            'problem, then re-run): $e',
-          );
+          throw Exception(cDetail('Merged state does not pass can commit.'));
         }
       }
     }
@@ -507,13 +511,13 @@ class DoReviewCommand extends DirCommand<void> {
     required List<String> conflicts,
     required GgLog errorLog,
   }) {
-    errorLog(yellow('Please resolve merge conflicts:'));
+    errorLog(cAction('Please resolve merge conflicts:'));
     for (final file in conflicts) {
-      errorLog(' - ${blue('$repoName/$file')}');
+      errorLog(' - ${cPath('$repoName/$file')}');
     }
     errorLog(
-      yellow('After merging execute: ') +
-          blue('gg do commit -m"Merge main" --no-log'),
+      cAction('After merging execute: ') +
+          cCmd('gg do commit -m"Merge main" --no-log'),
     );
   }
 
@@ -573,12 +577,16 @@ class DoReviewCommand extends DirCommand<void> {
             stash: stash,
           ),
         );
-        ggLog(green('Saved state of $repoName'));
+        ggLog(cDetail('✓ Saved state of $repoName'));
       } catch (e) {
-        throw Exception(
-          'Failed to save the state of $repoName before the review — '
-          'nothing was changed: $e',
+        ggLog(
+          [
+            cDetail('✗ Failed to save the state of $repoName'),
+            cError(rmControls('$e')),
+          ].join('\n'),
         );
+        ggLog(cAction('Nothing was changed.'));
+        throw Exception(cDetail('Failed to save the state.'));
       }
     }
     return snapshots;
@@ -611,6 +619,7 @@ class DoReviewCommand extends DirCommand<void> {
       await GgStatusPrinter<void>(
         message: 'Restoring the state before the review',
         ggLog: ggLog,
+        dark: true,
       ).run(
         () async => _restoreState(
           snapshots: snapshots,
@@ -620,7 +629,7 @@ class DoReviewCommand extends DirCommand<void> {
       );
     } catch (e) {
       errorLog(
-        red(
+        cError(
           'Restoring the state before the review failed — '
           'restore it manually: $e',
         ),
@@ -628,7 +637,7 @@ class DoReviewCommand extends DirCommand<void> {
     }
     if (pushedRepos.isNotEmpty) {
       errorLog(
-        yellow(
+        cWarn(
           'Already pushed and not rolled back: ${pushedRepos.join(', ')}. '
           'The next "gg do review" integrates these pushes automatically.',
         ),
@@ -699,7 +708,7 @@ class DoReviewCommand extends DirCommand<void> {
             repoDir: s.directory,
           );
         }
-        ggLog(green('Restored the state before the review in $repoName'));
+        ggLog(cDetail('✓ Restored the state before the review in $repoName'));
       } catch (e) {
         final manual = StringBuffer(
           'git checkout ${s.branch} && git reset --hard ${s.head}',
@@ -712,8 +721,10 @@ class DoReviewCommand extends DirCommand<void> {
     }
     if (failures.isNotEmpty) {
       throw Exception(
-        'Could not restore the state before the review in:\n'
-        '${failures.map((f) => ' - $f').join('\n')}',
+        cError(
+          'Could not restore the state before the review in:\n'
+          '${failures.map((f) => ' - $f').join('\n')}',
+        ),
       );
     }
   }
@@ -727,8 +738,8 @@ class DoReviewCommand extends DirCommand<void> {
     try {
       await _canReviewCommand.exec(directory: ticketDir, ggLog: ggLog);
     } catch (e) {
-      errorLog(red('gg_multi can review failed: $e'));
-      throw Exception('gg_multi can review failed: $e');
+      errorLog(cError('${(e as dynamic).message}'));
+      rethrow;
     }
   }
 
@@ -755,18 +766,15 @@ class DoReviewCommand extends DirCommand<void> {
           ggLog: ggLog,
           gitRef: ticketName,
         );
-        ggLog(green('Localized refs for $repoName'));
+        ggLog(cDetail('✓ Localized refs for $repoName'));
       } catch (e) {
         errorLog(
-          red(
-            'Failed to localize refs to git feature branch for '
-            '$repoName: $e',
-          ),
+          [
+            cDetail('✗ Failed to localize refs to git in $repoName'),
+            cError(rmControls('${(e as dynamic).message}')),
+          ].join('\n'),
         );
-        throw Exception(
-          'Failed to review in: $repoName '
-          '(localize refs to git failed: $e)',
-        );
+        throw Exception(cDetail('Failed to localize refs to git.'));
       }
 
       // Refresh dependencies for the detected project type ----------------
@@ -789,10 +797,15 @@ class DoReviewCommand extends DirCommand<void> {
           // CHANGELOG.md (»gg do commit --no-log«).
           updateChangeLog: false,
         );
-        ggLog(green('Committed $repoName'));
+        ggLog(cDetail('✓ Committed $repoName'));
       } catch (e) {
-        errorLog(red('Failed to commit $repoName: $e'));
-        throw Exception('Failed to review in: $repoName (commit failed: $e)');
+        errorLog(
+          [
+            cDetail('✗ Failed to commit $repoName'),
+            cError(rmControls('$e')),
+          ].join('\n'),
+        );
+        throw Exception(cDetail('Failed to commit.'));
       }
 
       // Integrate remote feature-branch commits before pushing --------------
@@ -808,10 +821,15 @@ class DoReviewCommand extends DirCommand<void> {
       try {
         await _ggDoPush.exec(directory: repoDir, ggLog: ggLog);
         pushedRepos.add(repoName);
-        ggLog(green('Pushed $repoName'));
+        ggLog(cDetail('✓ Pushed $repoName'));
       } catch (e) {
-        errorLog(red('Failed to push $repoName: $e'));
-        throw Exception('Failed to review in: $repoName (push failed: $e)');
+        errorLog(
+          [
+            cDetail('✗ Failed to push $repoName'),
+            cError(rmControls('$e')),
+          ].join('\n'),
+        );
+        throw Exception(cDetail('Failed to push.'));
       }
     }
   }
@@ -899,18 +917,20 @@ class DoReviewCommand extends DirCommand<void> {
       );
       final stderrStr = pull.stderr?.toString() ?? '';
       errorLog(
-        red(
-          'Failed to integrate origin/$branch into $repoName before '
-          'push: $stderrStr',
+        [
+          cDetail('✗ Failed to integrate origin/$branch into $repoName'),
+          cError(rmControls(stderrStr)),
+        ].join('\n'),
+      );
+      errorLog(
+        cAction(
+          'Resolve the divergence manually, e.g. '
+          '${cCmd('git pull --rebase origin $branch')}, then re-run.',
         ),
       );
-      throw Exception(
-        'Failed to review in: $repoName (could not rebase onto '
-        'origin/$branch before pushing — resolve the divergence manually, '
-        'e.g. "git pull --rebase origin $branch", then re-run): $stderrStr',
-      );
+      throw Exception(cDetail('Failed to integrate the remote branch.'));
     }
-    ggLog(green('Integrated origin/$branch into $repoName before push'));
+    ggLog(cDetail('✓ Integrated origin/$branch into $repoName before push'));
   }
 
   /// Whether `origin/<branch>` is a leftover of a ticket that was **already
@@ -1020,20 +1040,24 @@ class DoReviewCommand extends DirCommand<void> {
     if (push.exitCode != 0) {
       final stderrStr = push.stderr?.toString() ?? '';
       errorLog(
-        red(
-          'Failed to replace the obsolete branch origin/$branch of '
-          '$repoName: $stderrStr',
+        [
+          cDetail('✗ Failed to replace the obsolete branch origin/$branch'),
+          cError(rmControls(stderrStr)),
+        ].join('\n'),
+      );
+      errorLog(
+        cAction(
+          'origin/$branch is a leftover of an already merged ticket. Delete '
+          'it with ${cCmd('git push origin --delete $branch')}, then re-run.',
         ),
       );
       throw Exception(
-        'Failed to review in: $repoName (origin/$branch is a leftover of an '
-        'already merged ticket, but replacing it failed — delete it manually '
-        'with "git push origin --delete $branch", then re-run): $stderrStr',
+        cDetail('Failed to replace the obsolete branch.'),
       );
     }
 
     ggLog(
-      yellow(
+      cWarn(
         'origin/$branch of $repoName was a leftover of an already merged '
         'ticket — replaced it with the current branch instead of rebasing '
         'onto it.',
@@ -1069,8 +1093,8 @@ class DoReviewCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      ggLog(red('This command must be executed inside a ticket folder.'));
-      throw Exception('Not inside a ticket folder');
+      ggLog(cError('This command must be executed inside a ticket folder.'));
+      throw Exception(cError('Not inside a ticket folder'));
     }
 
     final ticketDir = Directory(ticketPath);
@@ -1082,7 +1106,7 @@ class DoReviewCommand extends DirCommand<void> {
     );
 
     if (nodes.isEmpty) {
-      ggLog(yellow('⚠️ No repos in this ticket'));
+      ggLog(cWarn('⚠️ No repos in this ticket'));
       return;
     }
 
@@ -1091,6 +1115,7 @@ class DoReviewCommand extends DirCommand<void> {
     await GgStatusPrinter<void>(
       message: 'Setting dependencies back to local paths and committing',
       ggLog: ggLog,
+      dark: true,
     ).run(
       () async => _relocalizeAndCommitAll(
         ticketName: ticketName,
@@ -1112,14 +1137,15 @@ class DoReviewCommand extends DirCommand<void> {
 
       try {
         await _localizeRefsToLocal.get(directory: repoDir, ggLog: ggLog);
-        ggLog(green('Localized refs to local paths for $repoName'));
+        ggLog(cDetail('✓ Localized refs to local paths for $repoName'));
       } catch (e) {
         ggLog(
-          red(
-            'Failed to localize refs to local paths for $repoName: $e',
-          ),
+          [
+            cDetail('✗ Failed to localize refs to local in $repoName'),
+            cError(rmControls('$e')),
+          ].join('\n'),
         );
-        throw Exception('Failed to cancel review in: $repoName');
+        throw Exception(cDetail('Failed to localize refs to local.'));
       }
 
       // node_modules will be stale after rewriting package.json — refresh.
@@ -1140,14 +1166,19 @@ class DoReviewCommand extends DirCommand<void> {
           // CHANGELOG.md (»gg do commit --no-log«).
           updateChangeLog: false,
         );
-        ggLog(green('Committed $repoName'));
+        ggLog(cDetail('✓ Committed $repoName'));
       } catch (e) {
-        ggLog(red('Failed to commit $repoName: $e'));
-        throw Exception('Failed to cancel review in: $repoName');
+        ggLog(
+          [
+            cDetail('✗ Failed to commit $repoName'),
+            cError(rmControls('$e')),
+          ].join('\n'),
+        );
+        throw Exception(cDetail('Failed to commit.'));
       }
     }
 
-    ggLog('✅ All repos re-localized and committed');
+    ggLog('✓ All repos re-localized and committed');
   }
 
   /// Runs the package manager's install command for TypeScript projects so
@@ -1178,14 +1209,15 @@ class DoReviewCommand extends DirCommand<void> {
     );
     final cmd = '${pm.executable} install';
     if (result.exitCode == 0) {
-      ggLog(green('Executed $cmd in $repoName.'));
+      ggLog(cDetail('✓ Executed $cmd in $repoName.'));
     } else {
       ggLog(
-        red(
-          'Failed to execute $cmd in $repoName: ${result.stderr}',
-        ),
+        [
+          cDetail('✗ Failed to execute $cmd in $repoName'),
+          cError(rmControls('${result.stderr}')),
+        ].join('\n'),
       );
-      throw Exception('Failed to cancel review in: $repoName');
+      throw Exception(cDetail('Failed to install the dependencies.'));
     }
   }
 
@@ -1244,7 +1276,7 @@ class DoReviewCommand extends DirCommand<void> {
       );
       final cmd = '$exe ${stepArgs.join(' ')}';
       if (result.exitCode == 0) {
-        ggLog(green('Executed $cmd in $repoName.'));
+        ggLog(cDetail('✓ Executed $cmd in $repoName.'));
       } else {
         // pnpm prints its errors to stdout, so fall back to stdout when stderr
         // is empty — otherwise the real cause is swallowed ("... failed: ").
@@ -1252,14 +1284,12 @@ class DoReviewCommand extends DirCommand<void> {
         final out = result.stdout?.toString().trim() ?? '';
         final detail = err.isNotEmpty ? err : out;
         errorLog(
-          red(
-            'Failed to execute $cmd in '
-            '$repoName: $detail',
-          ),
+          [
+            cDetail('✗ Failed to execute $cmd in $repoName'),
+            cError(rmControls(detail)),
+          ].join('\n'),
         );
-        throw Exception(
-          'Failed to review in: $repoName ($cmd failed: $detail)',
-        );
+        throw Exception(cDetail('Failed to refresh the dependencies.'));
       }
     }
 

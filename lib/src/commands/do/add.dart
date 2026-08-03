@@ -6,22 +6,23 @@
 
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:args/command_runner.dart';
-import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_console_colors/gg_console_colors.dart';
 // ignore: lines_longer_than_80_chars
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 import 'package:pubspec_parse/pubspec_parse.dart';
 
+import '../../backend/add_repository_helper.dart';
 import '../../backend/dependency_repo_url.dart';
+import '../../backend/filesystem_utils.dart';
 import '../../backend/git_attributes.dart';
 import '../../backend/git_handler.dart' hide ProcessRunner;
-import '../../backend/add_repository_helper.dart';
-import '../../backend/filesystem_utils.dart';
 import '../../backend/git_platform.dart' hide ProcessRunner;
 import '../../backend/legacy_git_hooks.dart';
 import '../../backend/organization_utils.dart';
@@ -156,6 +157,8 @@ class AddCommand extends Command<dynamic> {
 
   @override
   Future<void> run() async {
+    ggLog(cDetail('\n✓ Copying repos'));
+
     final targets = argResults!.rest;
     final bool force = argResults!['force'] as bool;
     final String? ticketPath = WorkspaceUtils.detectTicketPath(executionPath);
@@ -225,7 +228,7 @@ class AddCommand extends Command<dynamic> {
     }
 
     if (requestedRepoNames.isEmpty) {
-      ggLog(yellow('No repositories to add.'));
+      ggLog(cWarn('No repositories to add.'));
       return;
     }
 
@@ -260,7 +263,7 @@ class AddCommand extends Command<dynamic> {
       );
     } catch (e) {
       ggLog(
-        red('Failed to build dependency graph: $e'),
+        cError('Failed to build dependency graph: $e'),
       );
       allNodes = const {};
     }
@@ -313,8 +316,6 @@ class AddCommand extends Command<dynamic> {
 
     final GgLog taskLog = verbose ? ggLog : <String>[].add;
 
-    ggLog(yellow('Copying the following repos:'));
-
     await _copyReposToTicket(
       ticketPath: ticketPath,
       repoNames: finalToCopy,
@@ -326,6 +327,7 @@ class AddCommand extends Command<dynamic> {
     await GgStatusPrinter<void>(
       message: 'Writing project config files',
       ggLog: ggLog,
+      dark: true,
     ).run(
       () => _writeProjectConfigFiles(
         ticketDir: ticketDir,
@@ -336,21 +338,23 @@ class AddCommand extends Command<dynamic> {
     // Finally perform a single re-localization pass for the whole ticket.
     if (localize) {
       await GgStatusPrinter<void>(
-        message: 'Set dependencies to path, committing',
+        message: 'Localize dependencies',
         ggLog: ggLog,
+        dark: true,
       ).run(
         () => _relocalizeAllReposInTicket(
           ticketDir: ticketDir,
           ggLog: taskLog,
         ),
       );
-      return;
+    } else {
+      // Without localization the ticket description is still kept current — it
+      // describes which repos the ticket holds, not how they reference another.
+      await _writeTicketJson(ticketDir: ticketDir, ggLog: taskLog);
+      ggLog(cDetail('Skip localizing references (--no-localize).'));
     }
 
-    // Without localization the ticket description is still kept current — it
-    // describes which repos the ticket holds, not how they reference another.
-    await _writeTicketJson(ticketDir: ticketDir, ggLog: taskLog);
-    ggLog(yellow('Skipped localizing references (--no-localize).'));
+    ggLog(cDetail('✔ Successfully added repos'));
   }
 
   /// Folder names of all repositories of the master workspace.
@@ -386,7 +390,7 @@ class AddCommand extends Command<dynamic> {
       // A typo in the organization name would otherwise silently add nothing.
       if (namesOfOrg.isEmpty) {
         ggLog(
-          yellow('No repositories found for organization $org '
+          cWarn('No repositories found for organization $org '
               'in the master workspace.'),
         );
       }
@@ -662,7 +666,7 @@ class AddCommand extends Command<dynamic> {
           ticketPath: ticketPath,
           ggLog: ggLog,
         );
-        reportLog(blue('✅ $repoName'));
+        reportLog(cDetail('  ✓ $repoName'));
       }
     }
 
@@ -685,7 +689,7 @@ class AddCommand extends Command<dynamic> {
       repoName: repoName,
     );
     if (srcDir == null) {
-      ggLog(red('Repository $repoName not found in master workspace.'));
+      ggLog(cError('Repository $repoName not found in master workspace.'));
       return;
     }
 
@@ -716,7 +720,7 @@ class AddCommand extends Command<dynamic> {
     try {
       await gitCloner.checkoutBranch(ticketName, destDir.path);
     } catch (e) {
-      ggLog(red('Failed to checkout branch $ticketName: $e'));
+      ggLog(cError('Failed to checkout branch $ticketName: $e'));
     }
 
     // Install deps for every package manager the repo uses (Dart and/or TS).
@@ -727,7 +731,7 @@ class AddCommand extends Command<dynamic> {
       processRunner: processRunner,
     );
 
-    ggLog(blue('Added repository $repoName to ticket workspace.'));
+    ggLog(cDetail('Added repository $repoName to ticket workspace.'));
   }
 
   /// Prepares the master repository state before copying it into a ticket.
@@ -769,7 +773,7 @@ class AddCommand extends Command<dynamic> {
     if (stalePublishProgress.existsSync()) {
       stalePublishProgress.deleteSync();
       ggLog(
-        yellow(
+        cWarn(
           'Removed stale publish progress '
           '(.gg/gg-publish.json) in $repoName.',
         ),
@@ -801,7 +805,7 @@ class AddCommand extends Command<dynamic> {
     // steps report it as well.
     if (result.exitCode != 0) {
       ggLog(
-        red(
+        cError(
           'Failed to execute git status in $repoName in master workspace: '
           '${result.stderr}',
         ),
@@ -819,23 +823,25 @@ class AddCommand extends Command<dynamic> {
     }
 
     ggLog(
-      red(
+      cError(
         'The repository $repoName in the master workspace has uncommitted '
         'changes:',
       ),
     );
     for (final change in changes) {
-      ggLog(red('  $change'));
+      ggLog(cError('  $change'));
     }
     ggLog(
-      yellow(
+      cAction(
         'Commit, stash or revert them before running "gg do add" — '
         'otherwise they would be lost.',
       ),
     );
 
     throw Exception(
-      'Repository $repoName in the master workspace is not clean',
+      cError(
+        'Repository $repoName in the master workspace is not clean',
+      ),
     );
   }
 
@@ -855,7 +861,7 @@ class AddCommand extends Command<dynamic> {
     );
 
     if (result.exitCode != 0) {
-      ggLog(red('Failed to execute $failureLabel: ${result.stderr}'));
+      ggLog(cError('Failed to execute $failureLabel: ${result.stderr}'));
     } else {
       ggLog(darkGray(successMessage));
     }
@@ -988,7 +994,7 @@ class AddCommand extends Command<dynamic> {
     );
 
     if (nodes.isEmpty) {
-      ggLog(yellow('⚠️ No repos in this ticket'));
+      ggLog(cWarn('⚠️ No repos in this ticket'));
       return nodes;
     }
 
@@ -1035,8 +1041,8 @@ class AddCommand extends Command<dynamic> {
           await _unlocalizeRefs.get(directory: repoDir, ggLog: ggLog);
         }
       } catch (e) {
-        ggLog(red('Failed to unlocalize refs for $repoName: $e'));
-        throw Exception('Failed to relocalize ticket');
+        ggLog(cError('Failed to unlocalize refs for $repoName: $e'));
+        throw Exception(cError('Failed to relocalize ticket'));
       }
     }
 
@@ -1048,8 +1054,8 @@ class AddCommand extends Command<dynamic> {
         await _backupPublishTo.exec(directory: repoDir, ggLog: ggLog);
         await _localizeRefs.get(directory: repoDir, ggLog: ggLog);
       } catch (e) {
-        ggLog(red('Failed to localize refs for $repoName: $e'));
-        throw Exception('Failed to relocalize ticket');
+        ggLog(cError('Failed to localize refs for $repoName: $e'));
+        throw Exception(cError('Failed to relocalize ticket'));
       }
 
       // Refresh deps after relocalize (dart pub upgrade and/or pm install).
@@ -1071,11 +1077,11 @@ class AddCommand extends Command<dynamic> {
           updateChangeLog: false,
         );
       } catch (e) {
-        ggLog(red('Failed to commit $repoName: $e'));
+        ggLog(cError('Failed to commit $repoName: $e'));
       }
     }
 
-    ggLog('✅ Re-localized all repositories in ticket $ticketName.');
+    ggLog('✓ Re-localized all repositories in ticket $ticketName.');
   }
 
   /// Rewrites the VS Code `.code-workspace` file for the given [ticketDir]

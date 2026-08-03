@@ -10,13 +10,14 @@ import 'package:args/command_runner.dart';
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:path/path.dart' as p;
 import 'package:path/path.dart' as path;
+
 import '../../../backend/constants.dart';
 import '../../../backend/repo_setup.dart';
 import '../../../backend/ticket_json.dart';
 import '../../../backend/trash.dart';
 import '../../../backend/workspace_utils.dart';
-import 'package:path/path.dart' as p;
 
 /// Typedef for creating Directory instances (for testing).
 typedef DirectoryFactory = Directory Function(String path);
@@ -88,7 +89,7 @@ class TicketCommand extends DirCommand<void> {
 
     if (dir.existsSync() && ticketFile.existsSync()) {
       ggLog(
-        red(
+        cError(
           'Error: Ticket $issueId already exists at '
           '$relPath',
         ),
@@ -117,10 +118,26 @@ class TicketCommand extends DirCommand<void> {
     // before anything was removed.
     Trash.createDirForTicket(Directory(ticketsPath));
 
-    ggLog('✅ Created ticket $issueId');
+    ggLog(cSuccess('✓ Created ticket $issueId'));
+
     ggLog(
-      yellow('Execute the following command to enter the ticket workspace:'),
+      cAction(
+        '  Please run:',
+      ),
     );
-    ggLog(blue('cd $relPath'));
+
+    ggLog(cCmd('    cd $relPath'));
+
+    ggLog(
+      cCmd(
+        '    gg do add <repo1> <repo2> ...',
+      ),
+    );
+
+    ggLog(
+      cCmd(
+        '    code $issueId.code-workspace',
+      ),
+    );
   }
 }

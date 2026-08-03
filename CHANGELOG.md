@@ -1,9 +1,22 @@
 # Changelog
 
-## Unreleased
+## 7.9.1 - 2026-08-03
 
 ### Changed
 
+- dart pub upgrade --major-versions --tighten
+- shorten the long CLI messages and share the duplicated ones: one
+unfinishedPublishMessage, one continueConflictMessage, one editMessage
+- use the semantic colors of gg_console_colors: cAction for instructions,
+cWarn for warnings, cDetail for progress, cCmd/cPath inside a message
+- wrap every exception text in cError
+- assert the plain text in the tests, not the escape codes (rmC)
+- replace the ✓/✗ emoji by the plain marks ✓/✗ — gg_status_printer 1.2.0
+colors them via cSuccess/cError
+- use rmC from gg_console_colors in the tests instead of a local copy of
+the color stripper
+- print a blank line before each cyan repo name so the per-repo blocks
+are visually separated
 - replace do cancel-review with do review --abort
 - move ls under do
 - refactor: rename publish --reconfigure to --restart
@@ -16,6 +29,12 @@
 - move do init to do init workspace and do claude to do init claude
 - reword the remaining command descriptions to the same terse imperative
 the rest of the CLI uses
+- Rework console colors
+- Improve cli log and colors
+
+### Fixed
+
+- Fix unit test errors
 
 ### Removed
 

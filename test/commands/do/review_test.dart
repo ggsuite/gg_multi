@@ -8,17 +8,16 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
+import 'package:gg_multi/src/commands/can/review.dart';
+import 'package:gg_multi/src/commands/do/review.dart';
+import 'package:gg_one/gg_one.dart' as gg;
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:test/test.dart';
-import 'package:gg_multi/src/commands/do/review.dart';
-import 'package:gg_multi/src/commands/can/review.dart';
-
-import '../../rm_console_colors_helper.dart';
 
 class MockSortedProcessingList extends Mock implements SortedProcessingList {}
 
@@ -296,7 +295,7 @@ void main() {
     registerFallbackValue(<String, String>{});
   });
 
-  void ggLog(String msg) => messages.add(rmConsoleColors(msg));
+  void ggLog(String msg) => messages.add(rmControls(msg));
 
   setUp(() {
     messages.clear();
@@ -327,7 +326,7 @@ void main() {
         runner.run(['review', '--input', tempDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -470,7 +469,7 @@ void main() {
         );
         expect(
           messages.any(
-            (m) => m.contains('Gg Multi can review?'),
+            (m) => m.contains('Can review?'),
           ),
           isTrue,
         );
@@ -596,11 +595,9 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
-            contains(
-              'Failed to merge main in: A',
-            ),
+            contains('Failed to merge main.'),
           ),
         ),
       );
@@ -608,7 +605,7 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            'Failed to merge main into A for ticket TICKDR: '
+            '✗ Failed to merge main into A\n'
             'Exception: merge failed',
           ),
         ),
@@ -699,7 +696,7 @@ void main() {
           ]),
           throwsA(
             isA<MergeConflictException>().having(
-              (e) => e.toString(),
+              (e) => rmControls(e.toString()),
               'message',
               contains('gg do commit -m"Merge main" --no-log'),
             ),
@@ -798,9 +795,9 @@ void main() {
           ]),
           throwsA(
             isA<Exception>().having(
-              (e) => e.toString(),
+              (e) => rmControls(e.toString()),
               'message',
-              contains('gg_multi can review failed'),
+              contains('can review failed'),
             ),
           ),
         );
@@ -808,8 +805,8 @@ void main() {
         expect(
           messages.any(
             (m) => m.contains(
-              'gg_multi can review failed: '
-              'Exception: can review failed',
+              // The cause is printed as it is — no nested prefix.
+              'can review failed',
             ),
           ),
           isTrue,
@@ -908,14 +905,14 @@ void main() {
 
       expect(
         messages.any(
-          (m) => m.contains('Failed to commit A: Exception: commit failed'),
+          (m) => m.contains('✗ Failed to commit A\nException: commit failed'),
         ),
         isTrue,
       );
       expect(
         messages.any(
           (m) => m.contains(
-            '❌ Failed to review the following repositories in ticket',
+            '✗ Failed to review the following repositories in ticket',
           ),
         ),
         isFalse,
@@ -1021,14 +1018,14 @@ void main() {
 
       expect(
         messages.any(
-          (m) => m.contains('Failed to push A: Exception: push failed'),
+          (m) => m.contains('✗ Failed to push A\nException: push failed'),
         ),
         isTrue,
       );
       expect(
         messages.any(
           (m) => m.contains(
-            '❌ Failed to review the following repositories in ticket',
+            '✗ Failed to review the following repositories in ticket',
           ),
         ),
         isFalse,
@@ -1128,8 +1125,8 @@ void main() {
         expect(
           messages.any(
             (m) => m.contains(
-              'Failed to localize refs to git feature branch for A: '
-              'Exception: localize git failed',
+              '✗ Failed to localize refs to git in A\n'
+              'localize git failed',
             ),
           ),
           isTrue,
@@ -1137,7 +1134,7 @@ void main() {
         expect(
           messages.any(
             (m) => m.contains(
-              '❌ Failed to review the following repositories in ticket',
+              '✗ Failed to review the following repositories in ticket',
             ),
           ),
           isFalse,
@@ -1373,7 +1370,7 @@ void main() {
         expect(
           messages.any(
             (m) => m.contains(
-              'Failed to execute dart pub upgrade in A: upgrade error',
+              '✗ Failed to execute dart pub upgrade in A\nupgrade error',
             ),
           ),
           isTrue,
@@ -1381,7 +1378,7 @@ void main() {
         expect(
           messages.any(
             (m) => m.contains(
-              '❌ Failed to review the following repositories in ticket',
+              '✗ Failed to review the following repositories in ticket',
             ),
           ),
           isFalse,
@@ -1627,9 +1624,9 @@ void main() {
           ]),
           throwsA(
             isA<Exception>().having(
-              (e) => e.toString(),
+              (e) => rmControls(e.toString()),
               'message',
-              contains('ERR_PNPM_EXOTIC_SUBDEP blocked'),
+              contains('Failed to refresh the dependencies.'),
             ),
           ),
         );
@@ -1638,7 +1635,7 @@ void main() {
         expect(
           messages.any(
             (m) => m.contains(
-              'Failed to execute npm install in A: '
+              '✗ Failed to execute npm install in A\n'
               'ERR_PNPM_EXOTIC_SUBDEP blocked',
             ),
           ),
@@ -1884,7 +1881,7 @@ void main() {
         ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
 
         final localMessages = <String>[];
-        void localLog(String msg) => localMessages.add(rmConsoleColors(msg));
+        void localLog(String msg) => localMessages.add(rmControls(msg));
 
         final command = DoReviewCommand(
           ggLog: localLog,
@@ -2243,9 +2240,9 @@ void main() {
           ).run(['review', '--verbose', '--input', ticketDir.path]),
           throwsA(
             isA<Exception>().having(
-              (e) => e.toString(),
+              (e) => rmControls(e.toString()),
               'message',
-              contains('git push origin --delete TICKDR'),
+              contains('Failed to replace the obsolete branch.'),
             ),
           ),
         );
@@ -2253,7 +2250,7 @@ void main() {
         expect(
           messages.any(
             (m) => m.contains(
-              'Failed to replace the obsolete branch origin/TICKDR of A',
+              '✗ Failed to replace the obsolete branch origin/TICKDR',
             ),
           ),
           isTrue,
@@ -2382,9 +2379,9 @@ void main() {
           ]),
           throwsA(
             isA<Exception>().having(
-              (e) => e.toString(),
+              (e) => rmControls(e.toString()),
               'message',
-              contains('could not rebase onto origin/TICKDR'),
+              contains('Failed to integrate the remote branch.'),
             ),
           ),
         );
@@ -2392,7 +2389,7 @@ void main() {
         expect(
           messages.any(
             (m) => m.contains(
-              'Failed to integrate origin/TICKDR into A before push',
+              '✗ Failed to integrate origin/TICKDR into A',
             ),
           ),
           isTrue,
@@ -2552,7 +2549,7 @@ void main() {
         expect(
           messages.any(
             (m) => m.contains(
-              'Verified A still passes "gg can commit" after merging main',
+              '✓ Verified A after merging main',
             ),
           ),
           isTrue,
@@ -2704,9 +2701,9 @@ void main() {
           ]),
           throwsA(
             isA<Exception>().having(
-              (e) => e.toString(),
+              (e) => rmControls(e.toString()),
               'message',
-              contains('merged state no longer passes "gg can commit"'),
+              contains('Merged state does not pass can commit.'),
             ),
           ),
         );
@@ -2789,11 +2786,25 @@ void main() {
         ),
       ).called(1);
 
-      expect(messages, contains('Pull requests:'));
-      expect(
-        messages,
-        contains(' - A: https://github.com/ggsuite/A/pull/7'),
-      );
+      expect(messages, [
+        '\n'
+            'Reviewing ...',
+        '⌛️ Saving the state before the review',
+        '✓ Saving the state before the review',
+        '⌛️ Merging origin/main into feature branches',
+        '✓ Merging origin/main into feature branches',
+        '⌛️ Can review?',
+        '✓ Can review?',
+        '⌛️ Setting dependencies to git, committing and pushing',
+        '✓ Setting dependencies to git, committing and pushing',
+        '⌛️ Creating pull requests',
+        '✓ Creating pull requests',
+        '\n'
+            '✓ Please open and review:',
+        '  https://github.com/ggsuite/A/pull/7',
+        '\n'
+            ''
+      ]);
     });
 
     test('use the ticket description as message', () async {
@@ -2858,7 +2869,7 @@ void main() {
       );
       // The review itself succeeded — the branch is on the remote.
       expect(
-        messages.any((m) => m.contains('✅ Creating pull requests')),
+        messages.any((m) => m.contains('✓ Creating pull requests')),
         isTrue,
       );
     });
@@ -3054,9 +3065,9 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
-            contains('Failed to merge main in: B'),
+            contains('Failed to merge main.'),
           ),
         ),
       );
@@ -3302,9 +3313,9 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
-            contains('Failed to review in: B'),
+            contains('Failed to commit.'),
           ),
         ),
       );
@@ -3387,9 +3398,9 @@ void main() {
         // The review failure stays the primary error.
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
-            contains('localize refs to git failed'),
+            contains('Failed to localize refs to git.'),
           ),
         ),
       );
@@ -3427,9 +3438,9 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
-            contains('Failed to save the state of A before the review'),
+            contains('Failed to save the state.'),
           ),
         ),
       );
@@ -3581,7 +3592,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -3694,7 +3705,7 @@ void main() {
 
       expect(
         messages,
-        contains('✅ All repos re-localized and committed'),
+        contains('✓ All repos re-localized and committed'),
       );
     });
 
@@ -3745,11 +3756,9 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
-            contains(
-              'Failed to cancel review in: A',
-            ),
+            contains('Failed to localize refs to local.'),
           ),
         ),
       );
@@ -3757,7 +3766,7 @@ void main() {
       expect(
         messages.any(
           (m) => m.contains(
-            'Failed to localize refs to local paths for A: '
+            '✗ Failed to localize refs to local in A\n'
             'Exception: localize failed',
           ),
         ),
@@ -3832,18 +3841,16 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
-            contains(
-              'Failed to cancel review in: A',
-            ),
+            contains('Failed to commit.'),
           ),
         ),
       );
 
       expect(
         messages.any(
-          (m) => m.contains('Failed to commit A: Exception: commit failed'),
+          (m) => m.contains('✗ Failed to commit A\nException: commit failed'),
         ),
         isTrue,
       );
@@ -4112,7 +4119,7 @@ void main() {
 
         expect(
           messages.any(
-            (m) => m.contains('Failed to execute npm install in A: '
+            (m) => m.contains('✗ Failed to execute npm install in A\n'
                 'install error'),
           ),
           isTrue,
@@ -4160,7 +4167,7 @@ void main() {
       final localMessages = <String>[];
 
       void localLog(String msg) {
-        localMessages.add(rmConsoleColors(msg));
+        localMessages.add(rmControls(msg));
       }
 
       final command = DoReviewCommand(
@@ -4188,7 +4195,7 @@ void main() {
       expect(
         localMessages.any(
           (m) => m.contains(
-            '✅ Setting dependencies back to local paths and committing',
+            '✓ Setting dependencies back to local paths and committing',
           ),
         ),
         isTrue,

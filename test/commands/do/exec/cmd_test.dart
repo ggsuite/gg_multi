@@ -8,11 +8,10 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:gg_multi/src/commands/do/exec/cmd.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-
-import '../../../rm_console_colors_helper.dart';
 
 class MockProcessRunner extends Mock {
   Future<ProcessResult> call(
@@ -34,7 +33,7 @@ void main() {
     registerFallbackValue(FakeDirectory());
   });
 
-  void ggLog(String msg) => messages.add(rmConsoleColors(msg));
+  void ggLog(String msg) => messages.add(rmControls(msg));
 
   setUp(() {
     messages.clear();
@@ -66,7 +65,7 @@ void main() {
         () async => await runner.run(['cmd', '--input', tempDir.path, 'echo']),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -139,15 +138,13 @@ void main() {
         ),
       ).called(1);
 
-      expect(
-        messages,
-        contains('✅ Command executed successfully '
-            'in all repositories in ticket TICKX.'),
-      );
-      expect(
-        messages,
-        contains('A:'),
-      );
+      expect(messages, [
+        '\n'
+            'A',
+        '\n'
+            'B',
+        '\nCommand executed in all repos of TICKX\n',
+      ]);
     });
 
     test('collects failures and throws with summary', () async {
@@ -180,19 +177,13 @@ void main() {
         throwsA(isA<Exception>()),
       );
 
-      expect(
-        messages,
-        contains('❌ Failed to execute in B: error on B'),
-      );
-      expect(
-        messages.any(
-          (m) => m.contains(
-            '❌ Command failed in:',
-          ),
-        ),
-        isTrue,
-      );
-      expect(messages.any((m) => m.contains(' - B')), isTrue);
+      expect(messages, [
+        '\nA',
+        '\nB',
+        // The reason is printed once, under the repo it belongs to.
+        '✗ Failed to execute\nerror on B',
+        '\nPlease fix the issues above.\n',
+      ]);
     });
   });
 }

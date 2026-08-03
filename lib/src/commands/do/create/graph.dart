@@ -240,7 +240,7 @@ class GraphCommand extends DirCommand<void> {
     final file = File(p.absolute(output));
     await file.parent.create(recursive: true);
     await file.writeAsString('$rendered\n');
-    ggLog('✅ Wrote graph to ${file.path}');
+    ggLog('✓ Wrote graph to ${file.path}');
   }
 
   // ######################

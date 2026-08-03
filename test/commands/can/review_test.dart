@@ -8,16 +8,15 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
+import 'package:gg_multi/src/backend/ticket_state.dart';
+import 'package:gg_multi/src/commands/can/review.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_publish/gg_publish.dart' as gg_publish;
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:test/test.dart';
-import 'package:gg_multi/src/backend/ticket_state.dart';
-import 'package:gg_multi/src/commands/can/review.dart';
-
-import '../../rm_console_colors_helper.dart';
 
 class MockSortedProcessingList extends Mock implements SortedProcessingList {}
 
@@ -76,7 +75,7 @@ void main() {
     registerFallbackValue(<Node>[]);
   });
 
-  void ggLog(String msg) => messages.add(rmConsoleColors(msg));
+  void ggLog(String msg) => messages.add(rmControls(msg));
 
   setUp(() {
     messages.clear();
@@ -105,7 +104,7 @@ void main() {
         () async => await runner.run(['review', '--input', tempDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -187,7 +186,7 @@ void main() {
       await runner.run(['review', '--input', ticketDir.path]);
       expect(
         messages,
-        contains('✅ All repos can be reviewed'),
+        contains('✓ All repos can be reviewed'),
       );
       verify(
         () => mockIsFeatureBranch.get(
@@ -261,7 +260,7 @@ void main() {
       ).called(2);
       expect(
         messages,
-        contains('✅ All repos can be reviewed'),
+        contains('✓ All repos can be reviewed'),
       );
     });
 
@@ -344,7 +343,7 @@ void main() {
       ).called(2);
       expect(
         messages,
-        contains('✅ All repos can be reviewed'),
+        contains('✓ All repos can be reviewed'),
       );
     });
 
@@ -671,7 +670,7 @@ void main() {
       );
       expect(
         messages.any(
-          (m) => m.contains('Uncommitted changes in:'),
+          (m) => m.contains('Uncommitted changes in'),
         ),
         isTrue,
       );
@@ -725,7 +724,7 @@ void main() {
 
       expect(
         messages,
-        contains('✅ All repos can be reviewed'),
+        contains('✓ All repos can be reviewed'),
       );
       verifyNever(
         () => mockIsFeatureBranch.get(
@@ -919,7 +918,7 @@ void main() {
       ).thenAnswer((_) async => true);
 
       final localMessages = <String>[];
-      void localLog(String msg) => localMessages.add(rmConsoleColors(msg));
+      void localLog(String msg) => localMessages.add(rmControls(msg));
 
       final command = CanReviewCommand(
         ggLog: localLog,
@@ -938,7 +937,7 @@ void main() {
 
       expect(
         localMessages.last,
-        contains('✅ All repos can be reviewed'),
+        contains('✓ All repos can be reviewed'),
       );
     });
   });

@@ -7,13 +7,12 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_multi/src/commands/do/push.dart';
+import 'package:gg_one/gg_one.dart' as gg;
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-
-import '../../rm_console_colors_helper.dart';
 
 class MockGgCanPush extends Mock implements gg.CanPush {}
 
@@ -31,7 +30,7 @@ void main() {
     registerFallbackValue(FakeDirectory());
   });
 
-  void ggLog(String msg) => messages.add(rmConsoleColors(msg));
+  void ggLog(String msg) => messages.add(rmControls(msg));
 
   setUp(() {
     messages.clear();
@@ -66,7 +65,7 @@ void main() {
         () async => await runner.run(['push', '--input', tempDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -128,35 +127,23 @@ void main() {
         '--verbose',
       ]);
 
-      // Status printer message
-      expect(
-        messages.any((m) => m.contains('Pushing repos')),
-        isTrue,
-      );
+      expect(messages.join('\n'), '''
 
-      // Pre-push list
-      expect(messages, contains('Pushing the following repos:'));
-      expect(messages, contains(' - A'));
-      expect(messages, contains(' - B'));
+Pushing ...
+ - A
+ - B
 
-      // Per-repo verbose logs
-      expect(
-        messages,
-        contains('A:'),
-      );
-      expect(
-        messages,
-        contains('B:'),
-      );
+A
+✓ Pushed
 
-      // Summary
-      expect(
-        messages,
-        contains('✅ All repos pushed'),
-      );
+B
+✓ Pushed
+
+All repos pushed
+''');
     });
 
-    test('aborts on first repo that fails', () async {
+    test('reports the repos that failed', () async {
       final mockGgCanPush = MockGgCanPush();
       final mockGgDoPush = MockGgDoPush();
 
@@ -195,14 +182,28 @@ void main() {
           ticketDir.path,
           '--verbose',
         ]),
-        throwsA(isA<Exception>()),
+        throwsA(
+          isA<Exception>().having(
+            (e) => rmControls(e.toString()),
+            'message',
+            'Exception: Failed to push.',
+          ),
+        ),
       );
       expect(
         messages,
-        contains('❌ Failed to push B: Exception: Failed to push B'),
+        [
+          '\nPushing ...',
+          ' - A',
+          ' - B',
+          '\nA',
+          '✓ Pushed',
+          '\nB',
+          // The reason belongs under the repo it happened in — once.
+          '✗ Failed to push\nFailed to push B',
+          '\nPlease fix the issues above.\n',
+        ],
       );
-      expect(messages, contains('❌ Push failed in:'));
-      expect(messages.any((m) => m.contains(' - B')), isTrue);
     });
 
     test('uses quiet taskLog when verbose is false', () async {
@@ -225,7 +226,7 @@ void main() {
       ).thenAnswer((_) async {});
 
       final localMessages = <String>[];
-      void localLog(String msg) => localMessages.add(rmConsoleColors(msg));
+      void localLog(String msg) => localMessages.add(rmControls(msg));
 
       final command = DoPushCommand(
         ggLog: localLog,
@@ -240,12 +241,22 @@ void main() {
         verbose: false,
       );
 
-      expect(
-        localMessages.last,
-        contains(
-          '✅ Pushing repos',
-        ),
-      );
+      // Without --verbose the per-repo output of `gg do push` is dropped,
+      // but the headers and the summary stay.
+      expect(localMessages.join('\n'), '''
+
+Pushing ...
+ - A
+ - B
+
+A
+✓ Pushed
+
+B
+✓ Pushed
+
+All repos pushed
+''');
     });
   });
 }

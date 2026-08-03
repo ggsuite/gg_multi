@@ -6,11 +6,11 @@
 
 import 'dart:io';
 
-import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
@@ -67,12 +67,11 @@ class DoPushCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      ggLog(red('This command must be executed inside a ticket folder.'));
-      throw Exception('Not inside a ticket folder');
+      ggLog(cError('This command must be executed inside a ticket folder.'));
+      throw Exception(cError('Not inside a ticket folder'));
     }
 
     final ticketDir = Directory(ticketPath);
-    final ticketName = path.basename(ticketDir.path);
 
     // Collect all repository directories
     // in the ticket using SortedProcessingList
@@ -82,7 +81,7 @@ class DoPushCommand extends DirCommand<void> {
     );
 
     if (nodes.isEmpty) {
-      ggLog(yellow('⚠️ No repos in this ticket'));
+      ggLog(cWarn('⚠️ No repos in this ticket'));
       return;
     }
 
@@ -90,63 +89,68 @@ class DoPushCommand extends DirCommand<void> {
     final repoNames =
         nodes.map((node) => path.basename(node.directory.path)).toList();
 
+    // Only the output of `gg do push` per repo is verbose. The repo headers
+    // and the summary are what the user needs either way, so they go to
+    // ggLog — a taskLog for all of it would swallow them without --verbose.
     final GgLog taskLog = verbose ? ggLog : <String>[].add;
 
-    ggLog(yellow('Pushing the following repos:'));
+    ggLog(cH1('\nPushing ...'));
     for (final name in repoNames) {
-      ggLog(yellow(' - $name'));
+      ggLog(cDetail(' - $name'));
     }
 
-    // Perform the push wrapped in a status printer --------------------------
-    await GgStatusPrinter<void>(
-      message: 'Pushing repos',
+    await _pushingRepos(
+      nodes: nodes,
       ggLog: ggLog,
-    ).run(() async {
-      await _pushingRepos(
-        nodes: nodes,
-        ggLog: taskLog,
-        ticketName: ticketName,
-        force: force ?? false,
-      );
-    });
+      taskLog: taskLog,
+      force: force ?? false,
+    );
   }
 
   Future<void> _pushingRepos({
     required List<Node> nodes,
     required GgLog ggLog,
-    required String ticketName,
+    required GgLog taskLog,
     required bool force,
   }) async {
+    // The reason is printed once, right under the repo it belongs to. The
+    // summary and the exception only name the repos — repeating a multi-line
+    // git error three times buries it.
     final failedRepos = <String>[];
 
     for (final node in nodes) {
       final repoDir = node.directory;
       final repoName = path.basename(repoDir.path);
 
-      ggLog('${cyan(repoName)}:');
+      ggLog('\n${cH1(repoName)}');
 
       try {
         await _ggDoPush.exec(
           directory: repoDir,
-          ggLog: ggLog,
+          ggLog: taskLog,
           force: force,
         );
+        ggLog(cDetail('✓ Pushed'));
       } catch (e) {
-        ggLog(red('❌ Failed to push $repoName: $e'));
+        ggLog(
+          [
+            cDetail('✗ Failed to push'),
+            cError(rmControls('${(e as dynamic).message}')),
+          ].join('\n'),
+        );
         failedRepos.add(repoName);
       }
     }
 
     // Summarize the results ----------------------------------------------
     if (failedRepos.isEmpty) {
-      ggLog('✅ All repos pushed');
+      ggLog('\nAll repos pushed\n');
+      return;
     } else {
-      ggLog(red('❌ Push failed in:'));
-      for (final repoName in failedRepos) {
-        ggLog(red(' - $repoName'));
-      }
-      throw Exception('Failed to push in: ${failedRepos.join(', ')}');
+      ggLog(cAction('\nPlease fix the issues above.\n'));
     }
+
+    throw Exception(cDetail('Failed to push.'));
   }
 
   // Adds command line arguments

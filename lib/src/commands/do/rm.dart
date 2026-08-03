@@ -5,11 +5,13 @@
 // found in the LICENSE file in the root of this package.
 
 import 'dart:io';
+
 import 'package:args/command_runner.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
+
 import '../../backend/add_repository_helper.dart';
 import '../../backend/constants.dart';
 import '../../backend/dependency_overrides.dart';
@@ -101,7 +103,7 @@ class RemoveCommand extends Command<void> {
         resolved ?? directoryFactory(path.join(_root, repoName));
     if (!ticketRepoDir.existsSync()) {
       ggLog(
-        red(
+        cError(
           'Repository $repoName is not part of ticket '
           '${path.basename(_root)}.',
         ),
@@ -126,10 +128,10 @@ class RemoveCommand extends Command<void> {
       repoDir: ticketRepoDir,
     );
     ggLog(
-      darkGray('Deleted repository ') +
-          green(repoName) +
+      darkGray('✓ Deleted repository ') +
+          cCmd(repoName) +
           darkGray(' from ticket ') +
-          green(path.basename(_root)) +
+          cCmd(path.basename(_root)) +
           darkGray('.'),
     );
 
@@ -183,8 +185,8 @@ class RemoveCommand extends Command<void> {
     }
 
     ggLog(
-      green(
-        'Removed ${path.basename(removedRepoDir.path)} from '
+      cDetail(
+        '✓ Removed ${path.basename(removedRepoDir.path)} from '
         '$pubspecOverridesFileName of ${changed.length} repo(s).',
       ),
     );
@@ -216,7 +218,7 @@ class RemoveCommand extends Command<void> {
     }
 
     ggLog(
-      red(
+      cError(
         'Repository $repoName connects other repos of ticket '
         '${path.basename(_root)}:',
       ),
@@ -228,14 +230,16 @@ class RemoveCommand extends Command<void> {
       ggLog(' - $repoName depends on $dependency');
     }
     ggLog(
-      red(
+      cError(
         'Please remove ${dependents.join(', ')} first.',
       ),
     );
 
     throw Exception(
-      'Cannot remove $repoName: it sits between '
-      '${dependents.join(', ')} and ${dependencies.join(', ')}.',
+      cError(
+        'Cannot remove $repoName: it sits between '
+        '${dependents.join(', ')} and ${dependencies.join(', ')}.',
+      ),
     );
   }
 
@@ -262,8 +266,8 @@ class RemoveCommand extends Command<void> {
       buildTicketJson(ticketDir: ticketDir, repoDirs: remaining),
     );
     ggLog(
-      green(
-        'Removed ${path.basename(removedRepoDir.path)} from '
+      cDetail(
+        '✓ Removed ${path.basename(removedRepoDir.path)} from '
         '$ticketJsonFileName.',
       ),
     );
@@ -284,7 +288,7 @@ class RemoveCommand extends Command<void> {
     final existsInMaster = masterRepoDir.existsSync();
 
     if (ticketsContainingRepo.isEmpty && !existsInMaster) {
-      ggLog(red('Repository $repoName not found in any workspace.'));
+      ggLog(cError('Repository $repoName not found in any workspace.'));
       return;
     }
 
@@ -294,7 +298,7 @@ class RemoveCommand extends Command<void> {
         workspacePath: path.join(_root, ggMultiMasterFolder),
         repoDir: masterRepoDir,
       );
-      ggLog(green('Deleted repository $repoName from master workspace.'));
+      ggLog(cDetail('✓ Deleted repository $repoName from master workspace.'));
       return;
     }
 
@@ -303,7 +307,7 @@ class RemoveCommand extends Command<void> {
       ggLog(' - $ticket');
     }
     ggLog(
-      red(
+      cError(
         'Please remove it from those tickets first '
         '(or run `gg multi do rm $repoName` from inside the ticket).',
       ),

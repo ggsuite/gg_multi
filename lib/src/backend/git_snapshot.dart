@@ -6,6 +6,7 @@
 
 import 'dart:io';
 
+import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:path/path.dart' as path;
 
 /// Typedef for running processes (for injection & tests).
@@ -41,8 +42,10 @@ Future<String> runGit(
     final stdoutStr = result.stdout?.toString().trim() ?? '';
     final detail = stderrStr.isNotEmpty ? stderrStr : stdoutStr;
     throw Exception(
-      'git ${args.join(' ')} failed in '
-      '${path.basename(repoDir.path)}: $detail',
+      cError(
+        'git ${args.join(' ')} failed in '
+        '${path.basename(repoDir.path)}: $detail',
+      ),
     );
   }
   return (result.stdout?.toString() ?? '').trim();

@@ -5,14 +5,15 @@
 // found in the LICENSE file in the root of this package.
 
 import 'dart:io';
+
 import 'package:args/command_runner.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
-import 'package:path/path.dart' as path;
 import 'package:gg_log/gg_log.dart';
+import 'package:path/path.dart' as p;
+import 'package:path/path.dart' as path;
 
 import '../../../backend/constants.dart';
 import '../../../backend/workspace_utils.dart';
-import 'package:path/path.dart' as p;
 
 /// Command to initialize the master workspace
 class InitWorkspaceCommand extends Command<void> {
@@ -46,18 +47,18 @@ class InitWorkspaceCommand extends Command<void> {
     final wsDir = Directory(wsPath);
 
     if (wsDir.existsSync()) {
-      ggLog(yellow('Master workspace already exists at: ${_rel(wsPath)}'));
+      ggLog(cWarn('Master workspace already exists at: ${_rel(wsPath)}'));
       return;
     }
 
     if (rootDir.listSync().isNotEmpty) {
-      ggLog(red('The directory must be empty to initialize a workspace.'));
+      ggLog(cError('The directory must be empty to initialize a workspace.'));
       return;
     }
 
     if (WorkspaceUtils.isInsideExistingWorkspace(rootDir.path)) {
       ggLog(
-        red('Cannot initialize a new workspace inside an existing Gg Multi '
+        cError('Cannot initialize a new workspace inside an existing Gg Multi '
             'workspace.'),
       );
       return;
@@ -66,6 +67,6 @@ class InitWorkspaceCommand extends Command<void> {
     // -----------------------------------------------------------------------
     // Create the workspace ---------------------------------------------------
     wsDir.createSync(recursive: true);
-    ggLog(green('Master workspace initialized at: ${_rel(wsPath)}'));
+    ggLog(cDetail('✓ Master workspace initialized at: ${_rel(wsPath)}'));
   }
 }

@@ -138,9 +138,11 @@ class TicketJson {
     }
     if (own < req) {
       throw Exception(
-        'This ticket was written with gg $required, '
-        'but only gg $ggCliVersion is installed.\n'
-        'Please update gg: ${blue('dart pub global activate gg')}',
+        cError(
+          'This ticket was written with gg $required, '
+          'but only gg $ggCliVersion is installed.\n'
+          'Please update gg: ${cCmd('dart pub global activate gg')}',
+        ),
       );
     }
   }

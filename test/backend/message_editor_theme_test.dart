@@ -6,6 +6,7 @@
 
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_multi/src/backend/message_editor_theme.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:interact/interact.dart';
 import 'package:test/test.dart';
 
@@ -14,13 +15,13 @@ void main() {
     test('prints the prompt in yellow', () {
       final styled = messageEditorTheme.messageStyle('Edit commit message');
       expect(styled, yellow('Edit commit message'));
-      expect(rmConsoleColors(styled), 'Edit commit message');
+      expect(rmControls(styled), 'Edit commit message');
     });
 
     test('prints the entered message in blue', () {
       final styled = messageEditorTheme.valueStyle(' My message ');
       expect(styled, blue(' My message '));
-      expect(rmConsoleColors(styled), ' My message ');
+      expect(rmControls(styled), ' My message ');
     });
 
     test('switches to blue after the prompt so the edit buffer is blue', () {
@@ -36,7 +37,7 @@ void main() {
 
     test('colorOff resets the terminal', () {
       expect(colorOff, '\x1B[0m');
-      expect(rmConsoleColors(colorOff), isEmpty);
+      expect(rmControls(colorOff), isEmpty);
     });
   });
 }

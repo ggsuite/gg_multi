@@ -6,6 +6,7 @@
 
 import 'dart:convert';
 
+import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:http/http.dart' as http;
 import 'package:gg_multi/src/backend/organization.dart';
 import 'package:gg_multi/src/backend/url_parser.dart';
@@ -95,8 +96,10 @@ class GitHubPlatform implements GitPlatform {
     );
     if (result.exitCode != 0) {
       throw Exception(
-        'Failed to fetch repositories for organization $org: '
-        '${result.stderr}',
+        cError(
+          'Failed to fetch repositories for organization $org: '
+          '${result.stderr}',
+        ),
       );
     }
     final jsonOutput = result.stdout.toString();
@@ -117,7 +120,7 @@ class GitHubPlatform implements GitPlatform {
           .where((r) => r.name.isNotEmpty && r.cloneUrl.isNotEmpty)
           .toList();
     } catch (e) {
-      throw Exception('Failed to parse GitHub CLI output: $e');
+      throw Exception(cError('Failed to parse GitHub CLI output: $e'));
     }
   }
 
@@ -127,13 +130,15 @@ class GitHubPlatform implements GitPlatform {
     try {
       final result = await _processRunner('gh', ['--version']);
       if (result.exitCode != 0) {
-        throw Exception(result.stderr);
+        throw Exception(cError(result.stderr.toString()));
       }
     } catch (e) {
       throw Exception(
-        'Bitte installiere die GitHub CLI und melde dich an: \n'
-        '    winget install --exact --id GitHub.cli \n'
-        '    gh auth login',
+        cError(
+          'Bitte installiere die GitHub CLI und melde dich an: \n'
+          '    winget install --exact --id GitHub.cli \n'
+          '    gh auth login',
+        ),
       );
     }
   }
@@ -194,8 +199,10 @@ class AzureDevOpsPlatform implements GitPlatform {
     );
     if (result.exitCode != 0) {
       throw Exception(
-        'Failed to fetch repositories for organization $org, '
-        'project $project: ${result.stderr}',
+        cError(
+          'Failed to fetch repositories for organization $org, '
+          'project $project: ${result.stderr}',
+        ),
       );
     }
     final jsonOutput = result.stdout.toString();
@@ -213,7 +220,7 @@ class AzureDevOpsPlatform implements GitPlatform {
           .where((r) => r.name.isNotEmpty && r.cloneUrl.isNotEmpty)
           .toList();
     } catch (e) {
-      throw Exception('Failed to parse Azure CLI output: $e');
+      throw Exception(cError('Failed to parse Azure CLI output: $e'));
     }
   }
 
@@ -223,13 +230,15 @@ class AzureDevOpsPlatform implements GitPlatform {
     try {
       final result = await _processRunner('az', ['--version']);
       if (result.exitCode != 0) {
-        throw Exception(result.stderr);
+        throw Exception(cError(result.stderr.toString()));
       }
     } catch (e) {
       throw Exception(
-        'Bitte installiere die Azure CLI mit folgenden Befehlen: \n'
-        '    winget install --exact --id Microsoft.AzureCLI \n'
-        '    az extension add --name azure-devops',
+        cError(
+          'Bitte installiere die Azure CLI mit folgenden Befehlen: \n'
+          '    winget install --exact --id Microsoft.AzureCLI \n'
+          '    az extension add --name azure-devops',
+        ),
       );
     }
   }

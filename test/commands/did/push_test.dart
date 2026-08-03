@@ -7,13 +7,12 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_multi/src/commands/did/push.dart';
+import 'package:gg_one/gg_one.dart' as gg;
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-
-import '../../rm_console_colors_helper.dart';
 
 class MockGgDidPush extends Mock implements gg.DidPush {}
 
@@ -29,7 +28,7 @@ void main() {
     registerFallbackValue(FakeDirectory());
   });
 
-  void ggLog(String msg) => messages.add(rmConsoleColors(msg));
+  void ggLog(String msg) => messages.add(rmControls(msg));
 
   setUp(() {
     messages.clear();
@@ -60,7 +59,7 @@ void main() {
         () async => await runner.run(['push', '--input', tempDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => e.toString(),
+            (e) => rmControls(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -106,18 +105,13 @@ void main() {
           ),
         );
       await runner.run(['push', '--input', ticketDir.path]);
-      expect(
-        messages,
-        contains('✅ All repos pushed'),
-      );
-      expect(
-        messages,
-        contains('A:'),
-      );
-      expect(
-        messages,
-        contains('B:'),
-      );
+      expect(messages, [
+        '\n'
+            'A',
+        '\n'
+            'B',
+        '✓ All repos pushed',
+      ]);
     });
 
     test('aborts on first repo that fails', () async {
@@ -149,7 +143,7 @@ void main() {
       );
       expect(
         messages,
-        contains('❌ B was not pushed: Exception: Failed did push for B'),
+        contains('✗ B was not pushed\nException: Failed did push for B'),
       );
     });
   });

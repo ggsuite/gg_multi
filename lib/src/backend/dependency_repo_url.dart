@@ -6,6 +6,7 @@
 
 import 'dart:convert';
 
+import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 import 'package:http/http.dart' as http;
 
@@ -27,7 +28,9 @@ Future<String?> fetchDependencyRepoUrl(
   final response = await fetcher(url);
   if (response.statusCode != 200) {
     throw Exception(
-      'Failed to fetch package info from pub.dev for $packageName',
+      cError(
+        'Failed to fetch package info from pub.dev for $packageName',
+      ),
     );
   }
   final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -53,7 +56,9 @@ Future<String?> _fetchNpmRepoUrl(
   final response = await fetcher(url);
   if (response.statusCode != 200) {
     throw Exception(
-      'Failed to fetch package info from npm for $packageName',
+      cError(
+        'Failed to fetch package info from npm for $packageName',
+      ),
     );
   }
   final data = jsonDecode(response.body) as Map<String, dynamic>;

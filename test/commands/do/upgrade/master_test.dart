@@ -16,11 +16,10 @@ import 'package:gg_multi/src/backend/git_platform.dart';
 import 'package:gg_multi/src/backend/organization_utils.dart';
 import 'package:gg_multi/src/backend/repository.dart';
 import 'package:gg_multi/src/commands/do/upgrade/master.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-
-import '../../../rm_console_colors_helper.dart';
 
 class MockGitCloner extends Mock implements GitHandler {}
 
@@ -37,7 +36,7 @@ void main() {
     late MockAzureDevOpsPlatform azure;
     final messages = <String>[];
 
-    void ggLog(String message) => messages.add(rmConsoleColors(message));
+    void ggLog(String message) => messages.add(rmControls(message));
 
     // .........................................................................
     /// Creates `<master>/<org>/<repo>` with a git remote pointing at [url].
@@ -128,7 +127,7 @@ void main() {
             path.join(masterPath, 'ggsuite', 'gg'),
           ),
         ).called(1);
-        expect(messages, contains('Adding ggsuite/gg'));
+        expect(messages, contains('✓ Adding ggsuite/gg'));
         expect(
           messages.last,
           contains('1 added, 0 moved to the trash, 1 organization(s)'),
@@ -295,8 +294,8 @@ void main() {
 
         expect(gone.existsSync(), isTrue);
         verifyNever(() => gitCloner.cloneRepo(any(), any()));
-        expect(messages, contains('Would add ggsuite/gg_new'));
-        expect(messages, contains('Would move ggsuite/gg_gone to the trash'));
+        expect(messages, contains('✓ Would add ggsuite/gg_new'));
+        expect(messages, contains('✓ Would move ggsuite/gg_gone to the trash'));
         expect(
           messages.last,
           contains('Would update the master workspace: 1 added, '

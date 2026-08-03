@@ -48,8 +48,8 @@ class DoClaudeCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      ggLog(red('This command must be executed inside a ticket folder.'));
-      throw Exception('Not inside a ticket folder');
+      ggLog(cError('This command must be executed inside a ticket folder.'));
+      throw Exception(cError('Not inside a ticket folder'));
     }
 
     final ticketDir = Directory(ticketPath);
@@ -62,6 +62,7 @@ class DoClaudeCommand extends DirCommand<void> {
     await GgStatusPrinter<void>(
       message: 'Creating CLAUDE.md',
       ggLog: ggLog,
+      dark: true,
     ).run(
       () async => _writeClaudeFile(
         ticketDir: ticketDir,
@@ -69,7 +70,7 @@ class DoClaudeCommand extends DirCommand<void> {
       ),
     );
 
-    ggLog(yellow('Execute claude code with:\n') + blue('claude'));
+    ggLog(cAction('Execute claude code with:\n') + cCmd('claude'));
   }
 
   /// Writes the aggregated CLAUDE.md file into [ticketDir].
@@ -120,8 +121,10 @@ class DoClaudeCommand extends DirCommand<void> {
   }) async {
     if (!claudeFile.existsSync()) {
       throw Exception(
-        'Please start claude and run /init in the repo $repoName. '
-        'Then execute this command again.',
+        cError(
+          'Please start claude and run /init in the repo $repoName. '
+          'Then execute this command again.',
+        ),
       );
     }
 
