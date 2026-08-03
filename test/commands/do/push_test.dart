@@ -128,19 +128,22 @@ void main() {
       ]);
 
       expect(messages.join('\n'), '''
-Pushing the following repos:
+
+Pushing ...
  - A
  - B
 
 A
+✓ Pushed
 
 B
+✓ Pushed
 
-All repos pushed
+✓ All repos pushed
 ''');
     });
 
-    test('aborts on first repo that fails', () async {
+    test('reports the repos that failed', () async {
       final mockGgCanPush = MockGgCanPush();
       final mockGgDoPush = MockGgDoPush();
 
@@ -179,23 +182,28 @@ All repos pushed
           ticketDir.path,
           '--verbose',
         ]),
-        throwsA(isA<Exception>()),
+        throwsA(
+          isA<Exception>().having(
+            (e) => rmControls(e.toString()),
+            'message',
+            'Exception: Failed to push.',
+          ),
+        ),
       );
       expect(
         messages,
         [
-          'Pushing the following repos:',
+          '\nPushing ...',
           ' - A',
           ' - B',
           '\nA',
+          '✓ Pushed',
           '\nB',
-          '✗ Failed to push B: Exception: Failed to push B',
-          '✗ Push failed in:',
-          ' - B: Exception: Failed to push B',
+          // The reason belongs under the repo it happened in — once.
+          '✗ Failed to push\nFailed to push B',
+          '\nPlease fix the issues above.\n',
         ],
       );
-      expect(messages, contains('✗ Push failed in:'));
-      expect(messages.any((m) => m.contains(' - B')), isTrue);
     });
 
     test('uses quiet taskLog when verbose is false', () async {
@@ -236,15 +244,18 @@ All repos pushed
       // Without --verbose the per-repo output of `gg do push` is dropped,
       // but the headers and the summary stay.
       expect(localMessages.join('\n'), '''
-Pushing the following repos:
+
+Pushing ...
  - A
  - B
 
 A
+✓ Pushed
 
 B
+✓ Pushed
 
-All repos pushed
+✓ All repos pushed
 ''');
     });
   });

@@ -588,7 +588,7 @@ void main() {
       expect(
         messages,
         contains(
-          '✓ All repos published',
+          '\nAll repos published\n',
         ),
       );
       expect(
@@ -806,7 +806,7 @@ void main() {
       expect(
         messages,
         contains(
-          '✓ All repos published',
+          '\nAll repos published\n',
         ),
       );
       expect(
@@ -1017,7 +1017,7 @@ void main() {
       expect(
         messages,
         contains(
-          '✓ All repos published',
+          '\nAll repos published\n',
         ),
       );
       expect(

@@ -11,6 +11,7 @@ import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:gg_one/gg_one.dart' as gg;
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
 import '../../backend/workspace_utils.dart';
@@ -93,7 +94,7 @@ class DoPushCommand extends DirCommand<void> {
     // ggLog — a taskLog for all of it would swallow them without --verbose.
     final GgLog taskLog = verbose ? ggLog : <String>[].add;
 
-    ggLog(cDetail('Pushing the following repos:'));
+    ggLog(cH1('\nPushing ...'));
     for (final name in repoNames) {
       ggLog(cDetail(' - $name'));
     }
@@ -112,9 +113,10 @@ class DoPushCommand extends DirCommand<void> {
     required GgLog taskLog,
     required bool force,
   }) async {
-    // The reason a repo failed is kept, not just its name: it is the only
-    // thing that tells the user what to do next.
-    final failures = <String, Object>{};
+    // The reason is printed once, right under the repo it belongs to. The
+    // summary and the exception only name the repos — repeating a multi-line
+    // git error three times buries it.
+    final failedRepos = <String>[];
 
     for (final node in nodes) {
       final repoDir = node.directory;
@@ -128,28 +130,27 @@ class DoPushCommand extends DirCommand<void> {
           ggLog: taskLog,
           force: force,
         );
+        ggLog(cDetail('✓ Pushed'));
       } catch (e) {
-        ggLog(cError('✗ Failed to push $repoName: $e'));
-        failures[repoName] = e;
+        ggLog(
+          [
+            cDetail('✗ Failed to push'),
+            cError(rmControls('${(e as dynamic).message}')),
+          ].join('\n'),
+        );
+        failedRepos.add(repoName);
       }
     }
 
     // Summarize the results ----------------------------------------------
-    if (failures.isEmpty) {
-      ggLog('\nAll repos pushed\n');
+    if (failedRepos.isEmpty) {
+      ggLog('\n✓ All repos pushed\n');
       return;
+    } else {
+      ggLog(cAction('\nPlease fix the issues above.\n'));
     }
 
-    ggLog(cError('✗ Push failed in:'));
-    for (final entry in failures.entries) {
-      ggLog(cDetail(' - ${cCmd(entry.key)}: ${entry.value}'));
-    }
-    throw Exception(
-      cError(
-        'Failed to push in:\n'
-        '${failures.entries.map((e) => ' - ${e.key}: ${e.value}').join('\n')}',
-      ),
-    );
+    throw Exception(cDetail('Failed to push.'));
   }
 
   // Adds command line arguments

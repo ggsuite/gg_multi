@@ -935,12 +935,12 @@ void main() {
           verbose: false,
         );
 
-        // The per-repo "Can publish?" check is now the final status line.
+        // The closing summary is visible without --verbose; the per-step
+        // status lines are the ones above it.
+        expect(localMessages.last, '\nAll repos can be published\n');
         expect(
-          localMessages.last,
-          contains(
-            '✓ Can publish?',
-          ),
+          localMessages.any((m) => m.contains('✓ Can publish?')),
+          isTrue,
         );
       },
     );
