@@ -7,7 +7,7 @@
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:gg_multi/src/commands/do/add.dart';
-import 'package:gg_multi/src/commands/do/checkout.dart';
+import 'package:gg_multi/src/commands/do/import.dart';
 import 'package:gg_multi/src/commands/do/claude.dart';
 import 'package:gg_multi/src/commands/do/code.dart';
 import 'package:gg_multi/src/commands/do/create.dart';
@@ -50,7 +50,7 @@ class Do extends Command<void> {
     addSubcommand(ExecCommand(ggLog: ggLog));
     addSubcommand(DoClaudeCommand(ggLog: ggLog));
     addSubcommand(AddCommand(ggLog: ggLog));
-    addSubcommand(DoCheckoutCommand(ggLog: ggLog));
+    addSubcommand(ImportCommand(ggLog: ggLog));
     addSubcommand(CodeCommand(ggLog: ggLog));
     addSubcommand(CreateCommand(ggLog: ggLog));
     addSubcommand(InitCommand(ggLog: ggLog));
