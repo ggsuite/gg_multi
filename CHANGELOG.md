@@ -10,6 +10,7 @@
 - refactor: shorten all CLI help texts to 60 chars
 - Rework CLI texts
 - refactor(gg_multi): move do maintain exec to do exec
+- rename do update to do upgrade — do upgrade master instead of do update master
 
 ### Removed
 

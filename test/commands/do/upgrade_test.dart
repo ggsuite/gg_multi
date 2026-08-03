@@ -10,21 +10,21 @@ import 'package:args/command_runner.dart';
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:test/test.dart';
-import 'package:gg_multi/src/commands/do/update.dart';
+import 'package:gg_multi/src/commands/do/upgrade.dart';
 
 void main() {
-  group('UpdateCommand', () {
+  group('UpgradeCommand', () {
     final messages = <String>[];
 
     test('should register all subcommands', () async {
-      final updateCommand = UpdateCommand(ggLog: messages.add);
+      final upgradeCommand = UpgradeCommand(ggLog: messages.add);
       final commandsDir = Directory(
         'lib${Platform.pathSeparator}src${Platform.pathSeparator}'
-        'commands${Platform.pathSeparator}do${Platform.pathSeparator}update',
+        'commands${Platform.pathSeparator}do${Platform.pathSeparator}upgrade',
       );
       final (subCommands, errorMessage) = await missingSubCommands(
         directory: commandsDir,
-        command: updateCommand,
+        command: upgradeCommand,
       );
       expect(subCommands, isEmpty, reason: errorMessage);
     });
@@ -32,12 +32,12 @@ void main() {
     test('prints help message including master', () async {
       final runner = CommandRunner<void>(
         'test',
-        'UpdateCommand Help',
-      )..addCommand(UpdateCommand(ggLog: (_) {}));
+        'UpgradeCommand Help',
+      )..addCommand(UpgradeCommand(ggLog: (_) {}));
 
       final output = await capturePrint(
         code: () async {
-          await runner.run(['update', '--help']);
+          await runner.run(['upgrade', '--help']);
         },
       );
 

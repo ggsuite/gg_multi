@@ -7,12 +7,12 @@
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
 
-import 'update/master.dart';
+import 'upgrade/master.dart';
 
 /// Command to bring parts of the workspace in sync with their remotes.
-class UpdateCommand extends Command<void> {
+class UpgradeCommand extends Command<void> {
   /// Constructor accepting a log function.
-  UpdateCommand({required this.ggLog}) {
+  UpgradeCommand({required this.ggLog}) {
     addSubcommand(
       UpdateMasterCommand(ggLog: ggLog),
     );
@@ -22,8 +22,8 @@ class UpdateCommand extends Command<void> {
   final GgLog ggLog;
 
   @override
-  String get name => 'update';
+  String get name => 'upgrade';
 
   @override
-  String get description => 'Update the workspace from its git platforms.';
+  String get description => 'Upgrade parts of the workspace';
 }
