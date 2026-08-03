@@ -274,7 +274,7 @@ class UpdateMasterCommand extends Command<void> {
       ggLog(
         dryRun
             ? cDetail('✓ Would move $label to the trash')
-            : cWarn('⚠️ Moving $label to the trash'),
+            : cDetail('🗑️ Moving $label to the trash'),
       );
       removed.add(label);
       if (dryRun) {
