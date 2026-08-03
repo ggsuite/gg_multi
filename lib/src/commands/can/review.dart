@@ -46,8 +46,7 @@ class CanReviewCommand extends DirCommand<void> {
   CanReviewCommand({
     required super.ggLog,
     super.name = 'review',
-    super.description =
-        'Checks if all repositories in the current ticket can be reviewed.',
+    super.description = 'Check if all ticket repos can be reviewed',
     SortedProcessingList? sortedProcessingList,
     ProcessRunner? processRunner,
     gg_publish.IsFeatureBranch? ggIsFeatureBranch,
@@ -309,8 +308,7 @@ class CanReviewCommand extends DirCommand<void> {
       'save-state',
       abbr: 's',
       negatable: true,
-      help: 'Persist the success hash in <ticketDir>/.gg.json '
-          'for later reuse.',
+      help: 'Persist the success hash for later reuse',
       defaultsTo: true,
     );
   }

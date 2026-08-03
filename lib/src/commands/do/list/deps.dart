@@ -37,8 +37,7 @@ class ListDepsCommand extends Command<dynamic> {
   String get name => 'deps';
 
   @override
-  String get description => 'Lists dependencies and dev_dependencies '
-      'of a project from the master workspace.';
+  String get description => 'List the dependencies of a master repo';
 
   void _addArgs() {
     argParser.addOption(

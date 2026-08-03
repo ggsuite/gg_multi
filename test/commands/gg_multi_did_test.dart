@@ -57,7 +57,7 @@ void main() {
       );
       expect(
         output.first,
-        contains('Checks if you already committed or pushed'),
+        contains('Check what you already did in the ticket'),
       );
     });
   });

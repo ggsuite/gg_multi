@@ -49,6 +49,9 @@ typedef TicketJsonFetcher = Future<String> Function(Uri url);
 /// repository (with its already path-localized deps), so a ticket created
 /// elsewhere is reproduced. Unlike a fresh `do add` it does not re-install git
 /// hooks or `.gitattributes`.
+/// The `ticket.json` is taken from a file path or an http(s) URL. The command
+/// recreates the ticket folder, clones the missing repos, checks out their
+/// feature branch and installs the dependencies.
 class DoCheckoutCommand extends Command<dynamic> {
   /// Constructor.
   DoCheckoutCommand({
@@ -111,10 +114,7 @@ class DoCheckoutCommand extends Command<dynamic> {
   String get name => 'checkout';
 
   @override
-  String get description =>
-      'Reproduces a ticket from a ticket.json — given as a file path or an '
-      'http(s) URL — by checking out the feature branch in every repository '
-      'of the ticket.';
+  String get description => 'Reproduce a ticket from a ticket.json path or URL';
 
   @override
   String get invocation => 'gg multi do checkout <path|url>';

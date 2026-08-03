@@ -73,6 +73,9 @@ class GraphNode {
 /// repositories they depend on in the master workspace. Outside a ticket it
 /// covers the whole master workspace. `--org` narrows it down to a single
 /// organization.
+/// `--no-group-by-orgs` turns the organization boxes off. They only appear
+/// when more than one organization is shown — one box around everything is
+/// noise — and the flag is mermaid-only.
 class GraphCommand extends DirCommand<void> {
   /// Constructor
   GraphCommand({
@@ -278,8 +281,7 @@ class GraphCommand extends DirCommand<void> {
       ..addFlag(
         'group-by-orgs',
         defaultsTo: true,
-        help: 'Box the repositories of each organization in the mermaid '
-            'graph. Only applies when more than one organization is shown.',
+        help: 'Box the repos of each organization (default)',
       )
       ..addOption(
         'org',

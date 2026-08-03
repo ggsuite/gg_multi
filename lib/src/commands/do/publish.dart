@@ -106,6 +106,24 @@ class _RepoPublishSnapshot {
 ///
 /// There is no `gg do merge` command anymore — it was folded into this one, so
 /// there is exactly one flow.
+/// Flags, in more detail than their one-line help texts carry:
+/// - `--message` is the default merge message and only takes effect when the
+///   configuration is written interactively (a fresh run or `--restart`); it
+///   takes precedence over the ticket description and is ignored once a
+///   configuration exists or was supplied via `--config`.
+/// - `--config` is resolved as given (relative to the CWD), then below the
+///   ticket folder. The file is only read — progress is written to the
+///   runtime `.gg/gg-publish.json`.
+/// - `--no-delete-remote-branch` keeps the remote feature branches; the local
+///   folders are moved to the trash either way, because the ticket folder is
+///   removed regardless.
+/// - `--no-pr` performs a local merge instead of waiting for the provider.
+/// - `--continue` reuses `.gg/gg-publish.json` and skips the repos already
+///   published.
+/// - `--publish-unchanged` releases every repo; by default a repo without
+///   manual changes and without an out-of-range dependency bump is skipped.
+/// - `--restart` discards the saved configuration *and* the recorded
+///   progress, so the publish starts from the beginning.
 class DoPublishCommand extends DirCommand<void> {
   /// Constructor
   DoPublishCommand({
@@ -1637,67 +1655,51 @@ class DoPublishCommand extends DirCommand<void> {
     argParser.addOption(
       'message',
       abbr: 'm',
-      help: 'Default merge message used only when the .gg/gg-publish.json is '
-          'written interactively (a fresh run or --restart). It seeds '
-          'every repo\'s merge-message prompt. Ignored when a config already '
-          'exists or is supplied via --config.',
+      help: 'Default merge message of an interactive config',
     );
     argParser.addOption(
       'config',
-      help: 'Path to a .gg-publish.json file with per-repo merge_message + '
-          'version_increment. Resolved as-given (CWD), then under the '
-          'ticket directory. Copied to .gg/gg-publish.json for the run.',
+      help: 'Path to a .gg-publish.json to publish with',
     );
     argParser.addFlag(
       'delete-remote-branch',
-      help: 'Delete the remote feature branch of every repo after the '
-          'publish (default). --no-delete-remote-branch keeps the branches '
-          'on the git remote; the local repo folders are moved to '
-          '<root>/.trash/<ticket> either way.',
+      help: 'Delete the remote feature branches (default)',
       defaultsTo: true,
       negatable: true,
     );
     argParser.addFlag(
       'pr',
-      help: 'Merge each repo through an auto-merge pull request and wait '
-          'until the provider merged it (default). --no-pr performs local '
-          'merges followed by direct pushes to main instead.',
+      help: 'Merge via auto-merge pull request (default)',
       defaultsTo: true,
       negatable: true,
     );
     argParser.addFlag(
       'continue',
-      help: 'Resume a previously failed publish from where it stopped, '
-          'reusing .gg/gg-publish.json and skipping already-published repos.',
+      help: 'Resume a failed publish where it stopped',
       defaultsTo: false,
       negatable: false,
     );
     argParser.addFlag(
       'publish-unchanged',
-      help: 'Publish every repo of the ticket even when it is unchanged. '
-          'By default a repo is skipped when it has no manual changes and '
-          'no dependency moved outside its published version constraint.',
+      help: 'Publish every repo, even an unchanged one',
       defaultsTo: false,
       negatable: false,
     );
     argParser.addFlag(
       'merge-only',
-      help: 'Merge the ticket into the main branches without releasing it: '
-          'no registry upload and no version tags. Refused while a repo '
-          'still redirects a dependency to a local working copy.',
+      help: 'Merge the ticket without releasing it',
       defaultsTo: false,
       negatable: false,
     );
     argParser.addFlag(
       'force',
-      help: 'With --merge-only: merge although local refs are still in place.',
+      help: 'With --merge-only: merge despite local refs',
       defaultsTo: false,
       negatable: false,
     );
     argParser.addFlag(
       'restart',
-      help: 'Ignore an existing .gg/gg-publish.json and configure the '
-          'publish again via do configure-publish.',
+      help: 'Discard the saved config and configure again',
       defaultsTo: false,
       negatable: true,
     );

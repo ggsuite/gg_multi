@@ -25,8 +25,7 @@ class Can extends Command<void> {
   String get name => 'can';
 
   @override
-  String get description => 'Checks if you can commit, '
-      'push or review for the current ticket.';
+  String get description => 'Check what you can do in the current ticket';
 
   // ...........................................................................
   void _initSubCommands() {

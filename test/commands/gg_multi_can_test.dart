@@ -59,8 +59,7 @@ void main() {
       );
       expect(
         output.first,
-        contains('Checks if you can commit, '
-            'push or review for the current ticket.'),
+        contains('Check what you can do in the current ticket'),
       );
     });
   });

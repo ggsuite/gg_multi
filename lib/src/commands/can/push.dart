@@ -21,8 +21,7 @@ class CanPushCommand extends DirCommand<void> {
   CanPushCommand({
     required super.ggLog,
     super.name = 'push',
-    super.description =
-        'Checks if all repositories in the current ticket can be pushed.',
+    super.description = 'Check if all ticket repos can be pushed',
     gg.CanPush? ggCanPush,
     SortedProcessingList? sortedProcessingList,
   })  : _ggCanPush = ggCanPush ?? gg.CanPush(ggLog: ggLog),

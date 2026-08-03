@@ -22,8 +22,7 @@ class DoPushCommand extends DirCommand<void> {
   DoPushCommand({
     required super.ggLog,
     super.name = 'push',
-    super.description =
-        'Pushes changes across all repositories in the current ticket.',
+    super.description = 'Push changes in all ticket repos',
     gg.CanPush? ggCanPush,
     gg.DoPush? ggDoPush,
     SortedProcessingList? sortedProcessingList,

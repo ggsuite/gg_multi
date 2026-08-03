@@ -29,8 +29,7 @@ class DoExecuteCommand extends DirCommand<void> {
   DoExecuteCommand({
     required super.ggLog,
     super.name = 'exec',
-    super.description =
-        'Executes a command in all repositories in the current ticket.',
+    super.description = 'Execute a command in all ticket repos',
     SortedProcessingList? sortedProcessingList,
     ProcessRunner? processRunner,
   })  : _sortedProcessingList =

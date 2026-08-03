@@ -31,8 +31,7 @@ class ListOrganizationsCommand extends Command<dynamic> {
   String get name => 'organizations';
 
   @override
-  String get description =>
-      'Lists all organizations from the repos in the master workspace.';
+  String get description => 'List all organizations of the master workspace';
 
   @override
   Future<void> run() async {

@@ -28,8 +28,7 @@ class DoCommitCommand extends DirCommand<void> {
   DoCommitCommand({
     required super.ggLog,
     super.name = 'commit',
-    super.description =
-        'Commits changes across all repositories in the current ticket.',
+    super.description = 'Commit changes in all ticket repos',
     gg.CanCommit? ggCanCommit,
     gg.DoCommit? ggDoCommit,
     SortedProcessingList? sortedProcessingList,
@@ -198,8 +197,7 @@ class DoCommitCommand extends DirCommand<void> {
     argParser.addOption(
       'message',
       abbr: 'm',
-      help: 'The commit message and log entry. Without it, the ticket '
-          'description is offered for editing and used instead.',
+      help: 'The commit message and log entry',
     );
   }
 }

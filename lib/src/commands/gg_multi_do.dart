@@ -40,8 +40,7 @@ class Do extends Command<void> {
 
   /// The description of the command
   @override
-  final description = 'Perform actions like committing, pushing or '
-      'reviewing across ticket repositories.';
+  final description = 'Act on all repos of the current ticket';
 
   // ...........................................................................
   void _initSubCommands() {

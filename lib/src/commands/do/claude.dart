@@ -21,8 +21,7 @@ class DoClaudeCommand extends DirCommand<void> {
   DoClaudeCommand({
     required super.ggLog,
     super.name = 'claude',
-    super.description =
-        'Creates a ticket-level CLAUDE.md file for the current ticket.',
+    super.description = 'Create a ticket-level CLAUDE.md',
     SortedProcessingList? sortedProcessingList,
   }) : _sortedProcessingList =
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog);

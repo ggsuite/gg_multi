@@ -142,7 +142,10 @@ void main() {
           await runner.run(['organizations', '--help']);
         },
       );
-      expect(output.first, contains('Lists all organizations'));
+      expect(
+        output.first,
+        contains('List all organizations of the master workspace'),
+      );
     });
   });
 }

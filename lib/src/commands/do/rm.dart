@@ -45,8 +45,7 @@ class RemoveCommand extends Command<void> {
 
   // ...........................................................................
   @override
-  String get description =>
-      'Delete a repo folder if only in master; otherwise list usage.';
+  String get description => 'Delete a repo folder from master or ticket';
 
   // ...........................................................................
   @override

@@ -131,7 +131,7 @@ dev_dependencies:
           await runner.run(['deps', '--help']);
         },
       );
-      expect(output.first, contains('Lists dependencies and dev_dependencies'));
+      expect(output.first, contains('List the dependencies of a master repo'));
     });
 
     test('throws UsageException when target repository parameter is missing',

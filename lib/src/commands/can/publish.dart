@@ -47,8 +47,7 @@ class CanPublishCommand extends DirCommand<void> {
   CanPublishCommand({
     required super.ggLog,
     super.name = 'publish',
-    super.description =
-        'Checks if all repositories in the current ticket can be published.',
+    super.description = 'Check if all ticket repos can be published',
     gg.CanCommit? ggCanCommit,
     gg.CanMerge? ggCanMerge,
     gg.CanPublish? ggCanPublish,

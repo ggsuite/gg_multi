@@ -64,8 +64,7 @@ void main() {
       );
       expect(
         output.first,
-        contains('Perform actions like committing, pushing or '
-            'reviewing across ticket repositories.'),
+        contains('Act on all repos of the current ticket'),
       );
     });
   });
