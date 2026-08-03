@@ -2787,7 +2787,7 @@ void main() {
       ).called(1);
 
       expect(messages, [
-        '\nPublishing ...',
+        'Reviewing ...',
         '⌛️ Saving the state before the review',
         '✓ Saving the state before the review',
         '⌛️ Merging origin/main into feature branches',

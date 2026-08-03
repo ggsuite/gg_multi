@@ -173,7 +173,7 @@ class DoReviewCommand extends DirCommand<void> {
     bool? verbose,
     bool? abort,
   }) async {
-    ggLog(cH1('\nPublishing ...'));
+    ggLog(cH1('\nReviewing ...'));
 
     verbose ??= argResults?['verbose'] as bool? ?? false;
     abort ??= argResults?['abort'] as bool? ?? false;

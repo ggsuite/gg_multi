@@ -272,6 +272,8 @@ class DoPublishCommand extends DirCommand<void> {
     bool? deleteRemoteBranch,
     bool? mergeOnly,
   }) async {
+    ggLog(cH1('Publishing ...'));
+
     // »--merge-only« replaces the former »gg do merge« command. The resolved
     // value drives every merge-only branch of the flow below, so it is
     // settled before anything else runs.
