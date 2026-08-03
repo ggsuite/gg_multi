@@ -6,12 +6,12 @@
 
 import 'dart:io';
 
-import 'package:gg_one/gg_one.dart' as gg;
-import 'package:gg_publish/gg_publish.dart' as gg_publish;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:gg_one/gg_one.dart' as gg;
+import 'package:gg_publish/gg_publish.dart' as gg_publish;
 import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
@@ -159,6 +159,7 @@ class CanPublishCommand extends DirCommand<void> {
     await GgStatusPrinter<void>(
       message: 'Uncommitted changes?',
       ggLog: ggLog,
+      dark: true,
     ).run(
       () async => _checkUncommittedChanges(
         subs: subs,
@@ -170,6 +171,7 @@ class CanPublishCommand extends DirCommand<void> {
     await GgStatusPrinter<void>(
       message: 'Did commit?',
       ggLog: ggLog,
+      dark: true,
     ).run(
       () async => _runDidCommit(
         ticketDir: ticketDir,
@@ -181,6 +183,7 @@ class CanPublishCommand extends DirCommand<void> {
     await GgStatusPrinter<void>(
       message: 'Merge main into feat?',
       ggLog: ggLog,
+      dark: true,
     ).run(
       () async => _runMergeMainIntoFeat(
         ticketName: ticketName,
@@ -193,6 +196,7 @@ class CanPublishCommand extends DirCommand<void> {
     await GgStatusPrinter<void>(
       message: 'Can merge?',
       ggLog: ggLog,
+      dark: true,
     ).run(
       () async => _checkCanMerge(
         ticketName: ticketName,
@@ -205,6 +209,7 @@ class CanPublishCommand extends DirCommand<void> {
     await GgStatusPrinter<void>(
       message: 'Running do push',
       ggLog: ggLog,
+      dark: true,
     ).run(
       () async => _runDoPush(
         ticketDir: ticketDir,
@@ -221,6 +226,7 @@ class CanPublishCommand extends DirCommand<void> {
     await GgStatusPrinter<void>(
       message: 'Logged in to npm?',
       ggLog: ggLog,
+      dark: true,
     ).run(
       () async => _checkNpmLoggedIn(
         subs: subs,
@@ -235,6 +241,7 @@ class CanPublishCommand extends DirCommand<void> {
       await GgStatusPrinter<void>(
         message: 'Can publish?',
         ggLog: ggLog,
+        dark: true,
       ).run(
         () async => _checkCanPublish(
           subs: subs,

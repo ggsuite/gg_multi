@@ -6,11 +6,11 @@
 
 import 'dart:io';
 
-import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:path/path.dart' as path;
 
 import '../../backend/workspace_utils.dart';
@@ -84,7 +84,7 @@ class CanCommitCommand extends DirCommand<void> {
     }
 
     // All successful
-    ggLog('✓ All repos can be committed');
+    ggLog('\nAll repos can be committed.\n');
   }
 }
 

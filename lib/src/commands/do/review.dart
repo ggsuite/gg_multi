@@ -6,12 +6,12 @@
 
 import 'dart:io';
 
-import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 
@@ -223,6 +223,7 @@ class DoReviewCommand extends DirCommand<void> {
     await GgStatusPrinter<void>(
       message: 'Saving the state before the review',
       ggLog: ggLog,
+      dark: true,
     ).run(
       () async => snapshots = await _saveState(subs: subs, ggLog: taskLog),
     );
@@ -330,6 +331,7 @@ class DoReviewCommand extends DirCommand<void> {
     await GgStatusPrinter<void>(
       message: 'Creating pull requests',
       ggLog: ggLog,
+      dark: true,
     ).run(() async {
       for (final repo in subs) {
         final repoDir = repo.directory;
@@ -1107,6 +1109,7 @@ class DoReviewCommand extends DirCommand<void> {
     await GgStatusPrinter<void>(
       message: 'Setting dependencies back to local paths and committing',
       ggLog: ggLog,
+      dark: true,
     ).run(
       () async => _relocalizeAndCommitAll(
         ticketName: ticketName,

@@ -28,6 +28,7 @@ are visually separated
 - reword the remaining command descriptions to the same terse imperative
 the rest of the CLI uses
 - Rework console colors
+- Improve cli log and colors
 
 ### Removed
 

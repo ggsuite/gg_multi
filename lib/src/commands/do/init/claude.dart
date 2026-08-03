@@ -62,6 +62,7 @@ class DoClaudeCommand extends DirCommand<void> {
     await GgStatusPrinter<void>(
       message: 'Creating CLAUDE.md',
       ggLog: ggLog,
+      dark: true,
     ).run(
       () async => _writeClaudeFile(
         ticketDir: ticketDir,

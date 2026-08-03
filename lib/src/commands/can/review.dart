@@ -6,11 +6,11 @@
 
 import 'dart:io';
 
-import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_publish/gg_publish.dart' as gg_publish;
 import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
@@ -149,6 +149,7 @@ class CanReviewCommand extends DirCommand<void> {
     await GgStatusPrinter<void>(
       message: 'On feature branch?',
       ggLog: ggLog,
+      dark: true,
     ).run(
       () async => _checkFeatureBranches(
         subs: subs,
@@ -161,6 +162,7 @@ class CanReviewCommand extends DirCommand<void> {
     await GgStatusPrinter<void>(
       message: 'dart pub get --offline',
       ggLog: ggLog,
+      dark: true,
     ).run(
       () async => _pubGetOffline(
         subs: subs,
@@ -172,6 +174,7 @@ class CanReviewCommand extends DirCommand<void> {
     await GgStatusPrinter<void>(
       message: 'Uncommitted changes?',
       ggLog: ggLog,
+      dark: true,
     ).run(
       () async => _checkUncommittedChanges(
         subs: subs,
