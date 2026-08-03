@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Fix test error paths
+
 ### Removed
 
 - Remove ./ from test error paths to allow directly opening it in vscode
