@@ -8,6 +8,7 @@
 - refactor(gg_multi): move ls under do
 - refactor: rename publish --reconfigure to --restart
 - refactor: shorten all CLI help texts to 60 chars
+- Rework CLI texts
 
 ### Removed
 
@@ -74,7 +75,7 @@ turns the boxes off.
 
 ### Added
 
-- `gg do create graph` writes the dependency graph of the workspace to stdout,
+- `gg do create graph` Writes the dependency graph to stdout or file,
 as `mermaid` (default) or `json`. Inside a ticket it graphs the ticket repos
 and what they reach, outside a ticket the whole master workspace, and
 `--org <name>` narrows it down to one organization. Redundant edges are
