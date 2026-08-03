@@ -153,18 +153,12 @@ void main() {
       await runner.run(
         ['commit', '--input', ticketDir.path, '--message', 'Test commit'],
       );
-      expect(
-        messages,
-        contains('✅ All repos committed'),
-      );
-      expect(
-        messages,
-        contains('A:'),
-      );
-      expect(
-        messages,
-        contains('B:'),
-      );
+      expect(messages.join('\n'), '''
+
+A:
+
+B:
+✅ All repos committed''');
     });
 
     test('aborts on first repo that fails', () async {

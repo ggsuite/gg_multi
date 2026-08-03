@@ -139,15 +139,12 @@ void main() {
         ),
       ).called(1);
 
-      expect(
-        messages,
-        contains('✅ Command executed successfully '
-            'in all repositories in ticket TICKX.'),
-      );
-      expect(
-        messages,
-        contains('A:'),
-      );
+      expect(messages.join('\n'), '''
+
+A:
+
+B:
+✅ Command executed successfully in all repositories in ticket TICKX.''');
     });
 
     test('collects failures and throws with summary', () async {

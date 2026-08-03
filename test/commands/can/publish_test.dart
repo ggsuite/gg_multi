@@ -1173,7 +1173,7 @@ void main() {
             ggLog: any(named: 'ggLog'),
           ),
         ).called(1);
-        expect(messages, contains('A:'));
+        expect(messages.join('\n'), '\nA:');
       });
 
       test('throws the ticket wide message for one repo', () async {

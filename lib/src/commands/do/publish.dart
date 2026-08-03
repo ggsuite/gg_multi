@@ -427,10 +427,10 @@ class DoPublishCommand extends DirCommand<void> {
           : null;
 
       if (alreadyPublished) {
-        ggLog('${cyan(repoName)}: already $_done — skipping.');
+        ggLog('\n${cyan(repoName)}: already $_done — skipping.');
       } else if (skipDecision?.skip ?? false) {
         ggLog(
-          '${cyan(repoName)}: ${yellow('not $_done')} — '
+          '\n${cyan(repoName)}: ${yellow('not $_done')} — '
           '${skipDecision!.reason}.',
         );
         publishConfig = publishConfig.withRepoStatus(repoName, 'skipped');
@@ -451,7 +451,7 @@ class DoPublishCommand extends DirCommand<void> {
           ggLog: ggLog,
         );
 
-        ggLog('${cyan(repoName)}:');
+        ggLog('\n${cyan(repoName)}:');
 
         // Save the repo state so a failed publish can restore it.
         final snapshot = await _saveRepoState(repoDir: repoDir, ggLog: taskLog);

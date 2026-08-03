@@ -5,6 +5,8 @@
 ### Changed
 
 - dart pub upgrade --major-versions --tighten
+- print a blank line before each cyan repo name so the per-repo blocks
+  are visually separated
 - replace do cancel-review with do review --abort
 - move ls under do
 - refactor: rename publish --reconfigure to --restart

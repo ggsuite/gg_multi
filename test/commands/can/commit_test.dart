@@ -107,18 +107,12 @@ void main() {
           ),
         );
       await runner.run(['commit', '--input', ticketDir.path]);
-      expect(
-        messages,
-        contains('✅ All repos can be committed'),
-      );
-      expect(
-        messages,
-        contains('A:'),
-      );
-      expect(
-        messages,
-        contains('B:'),
-      );
+      expect(messages.join('\n'), '''
+
+A:
+
+B:
+✅ All repos can be committed''');
     });
 
     test('aborts on first repo that fails', () async {

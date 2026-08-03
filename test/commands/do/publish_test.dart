@@ -5617,7 +5617,7 @@ void main() {
       );
 
       // A was already published — it is skipped, only B is published.
-      expect(messages, contains('A: already published — skipping.'));
+      expect(messages, contains('\nA: already published — skipping.'));
       verify(
         () => mockGgDoPublish.exec(
           directory: any(named: 'directory'),
@@ -6586,7 +6586,7 @@ void main() {
 
       expect(
         messages,
-        contains('B: already published — skipping.'),
+        contains('\nB: already published — skipping.'),
       );
     });
   });

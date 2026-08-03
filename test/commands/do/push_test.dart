@@ -128,31 +128,23 @@ void main() {
         '--verbose',
       ]);
 
-      // Status printer message
+      // The status printer line is written before the list below.
       expect(
         messages.any((m) => m.contains('Pushing repos')),
         isTrue,
       );
 
-      // Pre-push list
-      expect(messages, contains('Pushing the following repos:'));
-      expect(messages, contains(' - A'));
-      expect(messages, contains(' - B'));
+      expect(
+        messages.where((m) => !m.contains('Pushing repos')).join('\n'),
+        '''
+Pushing the following repos:
+ - A
+ - B
 
-      // Per-repo verbose logs
-      expect(
-        messages,
-        contains('A:'),
-      );
-      expect(
-        messages,
-        contains('B:'),
-      );
+A:
 
-      // Summary
-      expect(
-        messages,
-        contains('✅ All repos pushed'),
+B:
+✅ All repos pushed''',
       );
     });
 

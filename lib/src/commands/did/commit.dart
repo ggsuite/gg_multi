@@ -71,7 +71,7 @@ class DidCommitCommand extends DirCommand<void> {
     for (final node in nodes) {
       final repoDir = node.directory;
       final repoName = path.basename(repoDir.path);
-      ggLog('${cyan(repoName)}:');
+      ggLog('\n${cyan(repoName)}:');
       try {
         await _ggDidCommit.exec(directory: repoDir, ggLog: ggLog);
       } catch (e) {

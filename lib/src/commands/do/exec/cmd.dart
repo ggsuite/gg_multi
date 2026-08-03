@@ -111,7 +111,7 @@ class DoExecuteCommand extends DirCommand<void> {
       final repoDir = node.directory;
       final repoName = path.basename(repoDir.path);
 
-      ggLog('${cyan(repoName)}:');
+      ggLog('\n${cyan(repoName)}:');
 
       final result = await _processRunner(
         cmd,
