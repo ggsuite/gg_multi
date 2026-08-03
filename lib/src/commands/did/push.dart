@@ -93,8 +93,8 @@ class DidPushCommand extends DirCommand<void> {
       } catch (e) {
         ggLog(
           [
-            cDetail('✗ $repoName was not pushed'),
-            cError(rmControls('$e')),
+            cError('✗ $repoName was not pushed'),
+            cDetail(rmControls('$e')),
           ].join('\n'),
         );
         rethrow;

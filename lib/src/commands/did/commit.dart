@@ -78,8 +78,8 @@ class DidCommitCommand extends DirCommand<void> {
       } catch (e) {
         ggLog(
           [
-            cDetail('✗ $repoName was not committed'),
-            cError(rmControls('$e')),
+            cError('✗ $repoName was not committed'),
+            cDetail(rmControls('$e')),
           ].join('\n'),
         );
         rethrow;
