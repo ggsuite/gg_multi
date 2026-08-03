@@ -15,13 +15,14 @@
 - move do checkout to do import ticket
 - move do init to do init workspace and do claude to do init claude
 - reword the remaining command descriptions to the same terse imperative
-  the rest of the CLI uses
+the rest of the CLI uses
 
 ### Removed
 
 - remove do install-git-attributes command
 - remove do add-deps command
 - remove do configure-publish from the CLI — do publish calls it itself
+- Remove unused CLI commands
 
 ## 7.9.0 - 2026-08-02
 

@@ -59,7 +59,7 @@ void main() {
       );
       expect(
         output.first,
-        contains('Check what you can do in the current ticket'),
+        contains('Perform checks on the ticket'),
       );
     });
   });
