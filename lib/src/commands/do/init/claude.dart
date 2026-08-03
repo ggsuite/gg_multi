@@ -48,8 +48,8 @@ class DoClaudeCommand extends DirCommand<void> {
       path.absolute(directory.path),
     );
     if (ticketPath == null) {
-      ggLog(cError('This command must be executed inside a ticket folder.'));
-      throw Exception(cError('Not inside a ticket folder'));
+      ggLog(cAction('Please run this command inside a ticket folder.'));
+      throw Exception(cDetail('Not inside a ticket folder'));
     }
 
     final ticketDir = Directory(ticketPath);
@@ -160,9 +160,9 @@ gg do add <repo> [<repo2> ...] # add repos to the ticket workspace given by thei
 gg can commit # run all checks in all repos (analyze + format + tests)
 gg do commit -m <message> # commit in all repos after checks pass
 gg can push # check for all repos if they are ready to push (checks + commit)
-gg do push # push in all repos after checks pass
-gg do review # start code review in all repos
-gg do review --abort # cancel code review in all repos and return to work
+gg do push # merge main into the feature branches and push all repos
+gg do review # push all repos (incl. main merge) and open the pull requests
+gg did review # check whether the current ticket state was reviewed
 gg do publish # publish all repos after review is approved (should be executed manually by a human)
 ```
 
