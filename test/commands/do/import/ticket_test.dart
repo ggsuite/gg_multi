@@ -8,10 +8,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_git/gg_git.dart' as gg_git;
 import 'package:gg_multi/src/backend/git_handler.dart';
 import 'package:gg_multi/src/commands/do/import/ticket.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
@@ -251,7 +251,8 @@ void main() {
           runCmd(build(), [file.path]),
           throwsA(
             predicate(
-              (e) => rmC(e.toString()).contains('Invalid ticket.json at "'),
+              (e) =>
+                  rmControls(e.toString()).contains('Invalid ticket.json at "'),
             ),
           ),
         );
@@ -262,7 +263,8 @@ void main() {
           runCmd(build(), [sourceDir.path]),
           throwsA(
             predicate(
-              (e) => rmC(e.toString()).contains('contains no ticket.json'),
+              (e) =>
+                  rmControls(e.toString()).contains('contains no ticket.json'),
             ),
           ),
         );
@@ -300,7 +302,9 @@ void main() {
             ),
             ['https://example.com/ticket.json'],
           ),
-          throwsA(predicate((e) => rmC(e.toString()).contains('HTTP 404'))),
+          throwsA(
+            predicate((e) => rmControls(e.toString()).contains('HTTP 404')),
+          ),
         );
       });
 
@@ -312,7 +316,8 @@ void main() {
           ),
           throwsA(
             predicate(
-              (e) => rmC(e.toString()).contains('Invalid ticket.json at'),
+              (e) =>
+                  rmControls(e.toString()).contains('Invalid ticket.json at'),
             ),
           ),
         );
@@ -332,7 +337,7 @@ void main() {
             ['https://example.com/ticket.json'],
           ),
           throwsA(
-            predicate((e) => rmC(e.toString()).contains('9999.0.0')),
+            predicate((e) => rmControls(e.toString()).contains('9999.0.0')),
           ),
         );
       });
@@ -485,7 +490,7 @@ void main() {
           runCmd(build(), ['feat_x']),
           throwsA(
             predicate(
-              (e) => rmC(e.toString()).contains(
+              (e) => rmControls(e.toString()).contains(
                 'is neither a ticket.json path',
               ),
             ),
@@ -525,8 +530,8 @@ void main() {
           runCmd(build(executionPath: repoA.path), ['feat_x']),
           throwsA(
             predicate(
-              (e) =>
-                  rmC(e.toString()).contains('Could not read a ticket marker'),
+              (e) => rmControls(e.toString())
+                  .contains('Could not read a ticket marker'),
             ),
           ),
         );
@@ -564,7 +569,7 @@ void main() {
           runCmd(build(executionPath: repoA.path), ['feat_x']),
           throwsA(
             predicate(
-              (e) => rmC(e.toString()).contains('Invalid ticket.json'),
+              (e) => rmControls(e.toString()).contains('Invalid ticket.json'),
             ),
           ),
         );
@@ -575,7 +580,11 @@ void main() {
         stubShowFile(ticketJsonStr(issueId: ''));
         await expectLater(
           runCmd(build(executionPath: repoA.path), ['feat_x']),
-          throwsA(predicate((e) => rmC(e.toString()).contains('no issue_id'))),
+          throwsA(
+            predicate(
+              (e) => rmControls(e.toString()).contains('no issue_id'),
+            ),
+          ),
         );
       });
     });

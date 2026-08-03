@@ -5,13 +5,14 @@
 // found in the LICENSE file in the root of this package.
 
 import 'dart:io';
+
 import 'package:args/command_runner.dart';
-import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_multi/src/backend/constants.dart';
 import 'package:gg_multi/src/backend/ticket_json.dart';
+import 'package:gg_multi/src/commands/do/rm.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-import 'package:gg_multi/src/commands/do/rm.dart';
 
 void main() {
   group('RemoveCommand', () {
@@ -21,7 +22,7 @@ void main() {
     final messages = <String>[];
 
     void ggLog(String message) {
-      messages.add(rmC(message));
+      messages.add(rmControls(message));
     }
 
     CommandRunner<void> runnerAt(String rootPath) {
@@ -226,7 +227,7 @@ void main() {
           runnerAt(alphaDir.path).run(['rm', 'b']),
           throwsA(
             isA<Exception>().having(
-              (e) => rmC(e.toString()),
+              (e) => rmControls(e.toString()),
               'message',
               allOf(contains('Cannot remove b'), contains('sits between')),
             ),

@@ -6,9 +6,9 @@
 
 import 'dart:io';
 
-import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_multi/src/backend/ensure_in_registry.dart';
 import 'package:gg_publish/gg_publish.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
@@ -30,7 +30,7 @@ void main() {
   // Collects log messages while removing color codes.
   void ggLog(String msg) {
     coloredMessages.add(msg);
-    messages.add(rmC(msg));
+    messages.add(rmControls(msg));
   }
 
   // ...........................................................................
@@ -176,7 +176,9 @@ void main() {
           ensureInRegistry(answers: ['q']).ensure(directory: d, ggLog: ggLog),
           throwsA(
             isA<Exception>().having(
-              (e) => rmC(e.toString()),
+              (e) => rmControls(
+                e.toString(),
+              ),
               'message',
               contains(
                 'Publishing aborted: »test_pkg« has no version on pub.dev.',
@@ -196,7 +198,9 @@ void main() {
           ),
           throwsA(
             isA<Exception>().having(
-              (e) => rmC(e.toString()),
+              (e) => rmControls(
+                e.toString(),
+              ),
               'message',
               contains('Cannot show the first-publish prompt'),
             ),

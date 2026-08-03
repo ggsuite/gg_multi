@@ -6,15 +6,15 @@
 
 - dart pub upgrade --major-versions --tighten
 - use the semantic colors of gg_console_colors: cAction for instructions,
-  cWarn for warnings, cDetail for progress, cCmd/cPath inside a message
+cWarn for warnings, cDetail for progress, cCmd/cPath inside a message
 - wrap every exception text in cError
 - assert the plain text in the tests, not the escape codes (rmC)
 - replace the ✓/✗ emoji by the plain marks ✓/✗ — gg_status_printer 1.2.0
-  colors them via cSuccess/cError
+colors them via cSuccess/cError
 - use rmC from gg_console_colors in the tests instead of a local copy of
-  the color stripper
+the color stripper
 - print a blank line before each cyan repo name so the per-repo blocks
-  are visually separated
+are visually separated
 - replace do cancel-review with do review --abort
 - move ls under do
 - refactor: rename publish --reconfigure to --restart
@@ -26,7 +26,8 @@
 - move do checkout to do import ticket
 - move do init to do init workspace and do claude to do init claude
 - reword the remaining command descriptions to the same terse imperative
-  the rest of the CLI uses
+the rest of the CLI uses
+- Rework console colors
 
 ### Removed
 
@@ -80,8 +81,8 @@
 
 - Add »gg do create graph« to output mermaid graphs
 - `gg do create graph` boxes the repositories of each organization in a mermaid
-  `subgraph` when more than one organization is shown. `--no-group-by-orgs`
-  turns the boxes off.
+`subgraph` when more than one organization is shown. `--no-group-by-orgs`
+turns the boxes off.
 - Add »gg do add --no-localize«, »--org« and »--all«
 
 ### Changed
@@ -96,14 +97,14 @@
 ### Added
 
 - `gg do create graph` Writes the dependency graph to stdout or file,
-  as `mermaid` (default) or `json`. Inside a ticket it graphs the ticket repos
-  and what they reach, outside a ticket the whole master workspace, and
-  `--org <name>` narrows it down to one organization. Redundant edges are
-  hidden by default (`--no-transitive-reduction` keeps them); further options
-  are `--orientation`, `--(no-)dev-dependencies` and `--3rdparty-deps`.
-  `--output <file>` (`-o`) writes the graph into a file instead of stdout.
-  Arrows point from the dependency to the dependent, so a horizontal chart
-  lists the dependencies on the left and the dependents on the right.
+as `mermaid` (default) or `json`. Inside a ticket it graphs the ticket repos
+and what they reach, outside a ticket the whole master workspace, and
+`--org <name>` narrows it down to one organization. Redundant edges are
+hidden by default (`--no-transitive-reduction` keeps them); further options
+are `--orientation`, `--(no-)dev-dependencies` and `--3rdparty-deps`.
+`--output <file>` (`-o`) writes the graph into a file instead of stdout.
+Arrows point from the dependency to the dependent, so a horizontal chart
+lists the dependencies on the left and the dependents on the right.
 
 ## 7.4.1 - 2026-08-01
 
@@ -175,10 +176,10 @@
 ### Added
 
 - »do publish« makes sure every repo has at least one version on its
-  registry (pub.dev / npm) before it is published. A repo that was never
-  published is published manually by the user first — the shell commands to
-  execute are shown, the publish continues after the package became visible
-  on the registry
+registry (pub.dev / npm) before it is published. A repo that was never
+published is published manually by the user first — the shell commands to
+execute are shown, the publish continues after the package became visible
+on the registry
 
 ### Changed
 
@@ -291,10 +292,10 @@
 ### Fixed
 
 - Stale `.gg/.gg-publish.json` publish progress is no longer carried from the
-  master workspace into ticket copies: `copyDirectory` skips the file and
-  `do add` deletes a leftover from the master repo before copying. Such a
-  leftover made a fresh `gg do publish` in the new ticket abort with
-  »An unfinished publish left progress …«.
+master workspace into ticket copies: `copyDirectory` skips the file and
+`do add` deletes a leftover from the master repo before copying. Such a
+leftover made a fresh `gg do publish` in the new ticket abort with
+»An unfinished publish left progress …«.
 - Fix publishing error
 
 ## 5.12.5 - 2026-07-30
@@ -381,10 +382,10 @@
 ### Added
 
 - The delete-ticket and merge-message default prompts fail fast with an
-  actionable error when stdin is not a terminal (via gg_one's
-  throwWhenNotATerminal), instead of hanging forever in CI or piped
-  shells. Set delete_ticket in `.gg/.gg-publish.json` (or pass `-m` /
-  `--config`) for headless runs.
+actionable error when stdin is not a terminal (via gg_one's
+throwWhenNotATerminal), instead of hanging forever in CI or piped
+shells. Set delete_ticket in `.gg/.gg-publish.json` (or pass `-m` /
+`--config`) for headless runs.
 
 ### Changed
 
@@ -396,38 +397,38 @@
 ### Added
 
 - `do configure-publish`: new command that interactively writes
-  `<ticket>/.gg/.gg-publish.json` (per-repo version increment + merge
-  message, plus one `delete_ticket` choice). `do publish` runs it
-  automatically when started without a config, so every interactive
-  decision is made up front before the unattended publish.
+`<ticket>/.gg/.gg-publish.json` (per-repo version increment + merge
+message, plus one `delete_ticket` choice). `do publish` runs it
+automatically when started without a config, so every interactive
+decision is made up front before the unattended publish.
 - `do publish --continue`: records per-repo progress in
-  `.gg/.gg-publish.json`, skips already-published repos and resumes the
-  rest after a failure; the file is deleted on full success. Review /
-  `can publish` are re-run unless at least one repo already published.
-  Within a repo, resume: true is forwarded to gg_one's `do publish`,
-  which resumes at the first open step of its repo-level
-  `<repo>/.gg/.gg-publish.json` (done_steps) — including the version
-  tag. The full-restore rollback deletes that repo-level file (its
-  markers would be stale); the keep-commits rollback keeps it, and
-  `--reconfigure` discards ticket **and** repo-level files. Each repo's
-  `.gitignore` gets the `.gg/.gg-publish.json` entry automatically
-  before the pre-publish commit.
+`.gg/.gg-publish.json`, skips already-published repos and resumes the
+rest after a failure; the file is deleted on full success. Review /
+`can publish` are re-run unless at least one repo already published.
+Within a repo, resume: true is forwarded to gg_one's `do publish`,
+which resumes at the first open step of its repo-level
+`<repo>/.gg/.gg-publish.json` (done_steps) — including the version
+tag. The full-restore rollback deletes that repo-level file (its
+markers would be stale); the keep-commits rollback keeps it, and
+`--reconfigure` discards ticket **and** repo-level files. Each repo's
+`.gitignore` gets the `.gg/.gg-publish.json` entry automatically
+before the pre-publish commit.
 - `do publish --reconfigure`: discards an existing `.gg/.gg-publish.json`
-  and reconfigures interactively.
+and reconfigures interactively.
 - Code-review hardening: `--continue` also skips review/can-publish when
-  a failed repo's own step file proves irreversible progress (first-repo
-  failure after registry publish/merge no longer blocks the resume);
-  `--config` and `do configure-publish` refuse to clobber a runtime file
-  that still holds progress markers.
+a failed repo's own step file proves irreversible progress (first-repo
+failure after registry publish/merge no longer blocks the resume);
+`--config` and `do configure-publish` refuse to clobber a runtime file
+that still holds progress markers.
 
 ### Changed
 
 - `do publish --message` / `-m` is kept, with refined meaning: it is the
-  default merge message used only when the `.gg/.gg-publish.json` is
-  written interactively (a fresh run or `--reconfigure`). It seeds every
-  repo's merge-message prompt and takes precedence over the ticket
-  description. It is ignored once a config exists or is supplied via
-  `--config`. `do configure-publish` accepts the same `-m`.
+default merge message used only when the `.gg/.gg-publish.json` is
+written interactively (a fresh run or `--reconfigure`). It seeds every
+repo's merge-message prompt and takes precedence over the ticket
+description. It is ignored once a config exists or is supplied via
+`--config`. `do configure-publish` accepts the same `-m`.
 - Tidy CHANGELOGs: single Unreleased section and chronological order
 - gg_multi: changed references to git
 
@@ -440,11 +441,11 @@
 ### Changed
 
 - `do review` and `do publish` now roll back the repository state when
-  they fail, restoring the snapshot taken before the run. `do review`
-  restores every changed, not-yet-pushed repo; `do publish` restores only
-  the failed repo — fully when nothing irreversible happened, otherwise
-  keeping all commits so a re-run resumes. The shared git runner and
-  snapshot capture live in `backend/git_snapshot.dart`.
+they fail, restoring the snapshot taken before the run. `do review`
+restores every changed, not-yet-pushed repo; `do publish` restores only
+the failed repo — fully when nothing irreversible happened, otherwise
+keeping all commits so a re-run resumes. The shared git runner and
+snapshot capture live in `backend/git_snapshot.dart`.
 
 ## 5.5.1 - 2026-07-06
 
@@ -457,18 +458,18 @@
 ### Added
 
 - Org-prefixed repo folders: repos newly added to the master workspace
-  are cloned into `<org>_<repo>` (Dart) / `<org>-<repo>` (TypeScript)
-  folders, so same-named repos from different organizations can coexist.
-  Existing unprefixed folders keep working: `do add`, `do rm`, ticket
-  copies and transitive-dep cloning now resolve repos by folder name,
-  manifest package name or git remote URL (`RepoFolderResolver`).
+are cloned into `<org>_<repo>` (Dart) / `<org>-<repo>` (TypeScript)
+folders, so same-named repos from different organizations can coexist.
+Existing unprefixed folders keep working: `do add`, `do rm`, ticket
+copies and transitive-dep cloning now resolve repos by folder name,
+manifest package name or git remote URL (`RepoFolderResolver`).
 - `do add <name>` now tries the known organizations from `.organizations`
-  first and uses the bare `<name>/<name>` guess only as a last resort, so
-  a plain add clones straight from the right org without a failed attempt.
+first and uses the bare `<name>/<name>` guess only as a last resort, so
+a plain add clones straight from the right org without a failed attempt.
 - `can publish` now runs `gg can publish` for every repo in the ticket
-  (feature branch, CHANGELOG, pana, npm authentication), so publish
-  blockers — like a missing npm login for an npm-published package —
-  surface up front instead of as a cryptic 404 mid-publish.
+(feature branch, CHANGELOG, pana, npm authentication), so publish
+blockers — like a missing npm login for an npm-published package —
+surface up front instead of as a cryptic 404 mid-publish.
 
 ### Changed
 
@@ -478,18 +479,18 @@
 
 - fix(org-add): handle missing GitHub CLI gracefully and fall back to https clone url when sshUrl is empty (code-review)
 - `do review` (and therefore `do publish`) now disables pnpm 11's
-  `blockExoticSubdeps` while refreshing dependencies, so the transitive
-  git-referenced dependency chain that localizing to git feature branches
-  creates installs instead of failing with `ERR_PNPM_EXOTIC_SUBDEP`. This
-  matches the fix `do publish` already applied to its own refresh step.
+`blockExoticSubdeps` while refreshing dependencies, so the transitive
+git-referenced dependency chain that localizing to git feature branches
+creates installs instead of failing with `ERR_PNPM_EXOTIC_SUBDEP`. This
+matches the fix `do publish` already applied to its own refresh step.
 - `do review` now surfaces a failed install's output from stdout when
-  stderr is empty (pnpm writes its errors to stdout), instead of throwing
-  the cause-less `... (pnpm install failed: )`.
+stderr is empty (pnpm writes its errors to stdout), instead of throwing
+the cause-less `... (pnpm install failed: )`.
 
 ### Reverted
 
 - Revert parallelization of `gg can commit` and `gg do push` (commit
-  c97a31a). Restores the previous sequential implementation.
+c97a31a). Restores the previous sequential implementation.
 
 ## 5.3.2 - 2026-06-26
 
@@ -608,15 +609,15 @@
 - gg_multi: changed references to git
 - Gg Multi: changed references to pub.dev
 - **BREAKING**: Renamed package from `kidney_core` to `gg_multi`.
-  Repository moved to https://github.com/ggsuite/gg_multi. Update
-  `dependencies:` entries and `import 'package:kidney_core/...'`
-  statements to `import 'package:gg_multi/...'`. The executable is now
-  `gg_multi` (previously `kidney_core`).
+Repository moved to https://github.com/ggsuite/gg_multi. Update
+`dependencies:` entries and `import 'package:kidney_core/...'`
+statements to `import 'package:gg_multi/...'`. The executable is now
+`gg_multi` (previously `kidney_core`).
 - **BREAKING**: Replaced dependency `gg ^7.0.5` with `gg_one ^8.0.0`
-  (the `gg` package itself was renamed to `gg_one` upstream).
+(the `gg` package itself was renamed to `gg_one` upstream).
 - Renamed status marker file `.kidney_status` to `.gg_multi_status`.
-  Existing checked-out workspaces must rename the file or run the
-  localization commands again.
+Existing checked-out workspaces must rename the file or run the
+localization commands again.
 - Upgrade gg_localize_refs version
 
 ### Removed
@@ -635,7 +636,7 @@
 
 ### Fixed
 
-- Refactor \_prepareMasterRepositoryForCopy and fix git tag deletion on macOS
+- Refactor _prepareMasterRepositoryForCopy and fix git tag deletion on macOS
 
 ## 3.0.2 - 2026-04-28
 
@@ -824,7 +825,7 @@
 - Write kidney_status file
 - Abort directly if a command fails in do review
 - Execute gg do commit after localizing in kidney add
-- Pass gitRef param to \_localizeRefs.get in DoReviewCommand and tests
+- Pass gitRef param to _localizeRefs.get in DoReviewCommand and tests
 - open ticket as VSCode workspace file instead of individual repos
 - Switch gg_localize_refs dependency to use GitHub repo
 - Update integration test and add sample folder metadata files

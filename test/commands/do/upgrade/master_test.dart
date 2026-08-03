@@ -10,13 +10,13 @@ library;
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_multi/src/backend/constants.dart';
 import 'package:gg_multi/src/backend/git_handler.dart';
 import 'package:gg_multi/src/backend/git_platform.dart';
 import 'package:gg_multi/src/backend/organization_utils.dart';
 import 'package:gg_multi/src/backend/repository.dart';
 import 'package:gg_multi/src/commands/do/upgrade/master.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
@@ -36,7 +36,7 @@ void main() {
     late MockAzureDevOpsPlatform azure;
     final messages = <String>[];
 
-    void ggLog(String message) => messages.add(rmC(message));
+    void ggLog(String message) => messages.add(rmControls(message));
 
     // .........................................................................
     /// Creates `<master>/<org>/<repo>` with a git remote pointing at [url].

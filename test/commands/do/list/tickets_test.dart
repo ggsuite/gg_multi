@@ -6,13 +6,14 @@
 
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:args/command_runner.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
-import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_multi/src/backend/constants.dart';
-import 'package:test/test.dart';
 import 'package:gg_multi/src/commands/do/list/tickets.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
+import 'package:test/test.dart';
 
 void main() {
   group('ListTicketsCommand', () {
@@ -22,7 +23,7 @@ void main() {
     late CommandRunner<void> runner;
     final messages = <String>[];
 
-    void ggLog(String m) => messages.add(rmC(m));
+    void ggLog(String m) => messages.add(rmControls(m));
 
     setUp(() {
       messages.clear();

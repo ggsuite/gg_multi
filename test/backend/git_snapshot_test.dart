@@ -6,8 +6,8 @@
 
 import 'dart:io';
 
-import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_multi/src/backend/git_snapshot.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
@@ -68,7 +68,7 @@ void main() {
         () => runGit(m.call, ['boom'], repoDir: repoDir),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             allOf(contains('git boom failed in repo'), contains('the error')),
           ),
@@ -89,7 +89,7 @@ void main() {
         () => runGit(m.call, ['boom'], repoDir: repoDir),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains('stdout cause'),
           ),

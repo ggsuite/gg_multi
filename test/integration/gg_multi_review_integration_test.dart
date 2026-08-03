@@ -9,20 +9,20 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg_console_colors/gg_console_colors.dart';
-import 'package:gg_one/gg_one.dart' as gg;
-import 'package:gg_publish/gg_publish.dart';
 import 'package:gg_multi/src/backend/constants.dart';
 import 'package:gg_multi/src/backend/filesystem_utils.dart';
 import 'package:gg_multi/src/commands/can/commit.dart';
 import 'package:gg_multi/src/commands/can/review.dart';
-import 'package:gg_multi/src/commands/do/create/ticket.dart';
+import 'package:gg_multi/src/commands/do/add.dart';
 import 'package:gg_multi/src/commands/do/commit.dart';
+import 'package:gg_multi/src/commands/do/create/ticket.dart';
+import 'package:gg_multi/src/commands/do/init/workspace.dart';
 import 'package:gg_multi/src/commands/do/publish.dart';
 import 'package:gg_multi/src/commands/do/push.dart';
 import 'package:gg_multi/src/commands/do/review.dart';
-import 'package:gg_multi/src/commands/do/add.dart';
-import 'package:gg_multi/src/commands/do/init/workspace.dart';
+import 'package:gg_one/gg_one.dart' as gg;
+import 'package:gg_publish/gg_publish.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:pub_semver/pub_semver.dart';
@@ -50,7 +50,7 @@ void main() {
         final logs = <String>[];
 
         void ggLog(String message) {
-          logs.add(rmC(message));
+          logs.add(rmControls(message));
           print(message);
         }
 

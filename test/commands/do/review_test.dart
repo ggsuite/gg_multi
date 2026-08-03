@@ -8,16 +8,16 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg_console_colors/gg_console_colors.dart';
-import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
+import 'package:gg_multi/src/commands/can/review.dart';
+import 'package:gg_multi/src/commands/do/review.dart';
+import 'package:gg_one/gg_one.dart' as gg;
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:test/test.dart';
-import 'package:gg_multi/src/commands/do/review.dart';
-import 'package:gg_multi/src/commands/can/review.dart';
 
 class MockSortedProcessingList extends Mock implements SortedProcessingList {}
 
@@ -295,7 +295,7 @@ void main() {
     registerFallbackValue(<String, String>{});
   });
 
-  void ggLog(String msg) => messages.add(rmC(msg));
+  void ggLog(String msg) => messages.add(rmControls(msg));
 
   setUp(() {
     messages.clear();
@@ -326,7 +326,7 @@ void main() {
         runner.run(['review', '--input', tempDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -595,7 +595,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains(
               'Failed to merge main in: A',
@@ -698,7 +698,7 @@ void main() {
           ]),
           throwsA(
             isA<MergeConflictException>().having(
-              (e) => rmC(e.toString()),
+              (e) => rmControls(e.toString()),
               'message',
               contains('gg do commit -m"Merge main" --no-log'),
             ),
@@ -797,7 +797,7 @@ void main() {
           ]),
           throwsA(
             isA<Exception>().having(
-              (e) => rmC(e.toString()),
+              (e) => rmControls(e.toString()),
               'message',
               contains('gg_multi can review failed'),
             ),
@@ -1626,7 +1626,7 @@ void main() {
           ]),
           throwsA(
             isA<Exception>().having(
-              (e) => rmC(e.toString()),
+              (e) => rmControls(e.toString()),
               'message',
               contains('ERR_PNPM_EXOTIC_SUBDEP blocked'),
             ),
@@ -1883,7 +1883,7 @@ void main() {
         ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
 
         final localMessages = <String>[];
-        void localLog(String msg) => localMessages.add(rmC(msg));
+        void localLog(String msg) => localMessages.add(rmControls(msg));
 
         final command = DoReviewCommand(
           ggLog: localLog,
@@ -2242,7 +2242,7 @@ void main() {
           ).run(['review', '--verbose', '--input', ticketDir.path]),
           throwsA(
             isA<Exception>().having(
-              (e) => rmC(e.toString()),
+              (e) => rmControls(e.toString()),
               'message',
               contains('git push origin --delete TICKDR'),
             ),
@@ -2381,7 +2381,7 @@ void main() {
           ]),
           throwsA(
             isA<Exception>().having(
-              (e) => rmC(e.toString()),
+              (e) => rmControls(e.toString()),
               'message',
               contains('could not rebase onto origin/TICKDR'),
             ),
@@ -2703,7 +2703,7 @@ void main() {
           ]),
           throwsA(
             isA<Exception>().having(
-              (e) => rmC(e.toString()),
+              (e) => rmControls(e.toString()),
               'message',
               contains('merged state no longer passes "gg can commit"'),
             ),
@@ -3053,7 +3053,7 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Failed to merge main in: B'),
           ),
@@ -3301,7 +3301,7 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Failed to review in: B'),
           ),
@@ -3386,7 +3386,7 @@ void main() {
         // The review failure stays the primary error.
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains('localize refs to git failed'),
           ),
@@ -3426,7 +3426,7 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Failed to save the state of A before the review'),
           ),
@@ -3580,7 +3580,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -3744,7 +3744,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains(
               'Failed to cancel review in: A',
@@ -3831,7 +3831,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains(
               'Failed to cancel review in: A',
@@ -4159,7 +4159,7 @@ void main() {
       final localMessages = <String>[];
 
       void localLog(String msg) {
-        localMessages.add(rmC(msg));
+        localMessages.add(rmControls(msg));
       }
 
       final command = DoReviewCommand(

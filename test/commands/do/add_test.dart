@@ -12,22 +12,22 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg_console_colors/gg_console_colors.dart';
-import 'package:gg_one/gg_one.dart' as gg;
-import 'package:gg_multi/src/backend/constants.dart';
-import 'package:gg_multi/src/backend/git_platform.dart' hide ProcessRunner;
-import 'package:gg_multi/src/backend/organization.dart';
-import 'package:mocktail/mocktail.dart';
-import 'package:path/path.dart' as path;
-import 'package:test/test.dart';
-import 'package:gg_multi/src/commands/do/add.dart';
-import 'package:gg_multi/src/backend/repo_setup.dart';
-import 'package:gg_multi/src/backend/git_handler.dart' hide ProcessRunner;
-import 'package:gg_localize_refs/gg_localize_refs.dart';
 // ignore: lines_longer_than_80_chars
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
-import 'package:pubspec_parse/pubspec_parse.dart';
+import 'package:gg_localize_refs/gg_localize_refs.dart';
+import 'package:gg_multi/src/backend/constants.dart';
+import 'package:gg_multi/src/backend/git_handler.dart' hide ProcessRunner;
+import 'package:gg_multi/src/backend/git_platform.dart' hide ProcessRunner;
+import 'package:gg_multi/src/backend/organization.dart';
+import 'package:gg_multi/src/backend/repo_setup.dart';
 import 'package:gg_multi/src/backend/repository.dart';
+import 'package:gg_multi/src/commands/do/add.dart';
+import 'package:gg_one/gg_one.dart' as gg;
+import 'package:gg_status_printer/gg_status_printer.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as path;
+import 'package:pubspec_parse/pubspec_parse.dart';
+import 'package:test/test.dart';
 
 class MockGitCloner extends Mock implements GitHandler {}
 
@@ -63,7 +63,7 @@ void main() {
     late String masterWorkspacePath;
 
     void ggLog(String message) {
-      logMessages.add(rmC(message));
+      logMessages.add(rmControls(message));
     }
 
     void createRunner({
@@ -1151,7 +1151,7 @@ version: 1.0.0
         () async => runner.run(['add', '--verbose', repoName]),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains(
               'Repository $repoName in the master workspace is not clean',

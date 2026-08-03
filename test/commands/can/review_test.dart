@@ -7,16 +7,16 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
+import 'package:gg_multi/src/backend/ticket_state.dart';
+import 'package:gg_multi/src/commands/can/review.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_publish/gg_publish.dart' as gg_publish;
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:test/test.dart';
-import 'package:gg_multi/src/backend/ticket_state.dart';
-import 'package:gg_multi/src/commands/can/review.dart';
 
 class MockSortedProcessingList extends Mock implements SortedProcessingList {}
 
@@ -75,7 +75,7 @@ void main() {
     registerFallbackValue(<Node>[]);
   });
 
-  void ggLog(String msg) => messages.add(rmC(msg));
+  void ggLog(String msg) => messages.add(rmControls(msg));
 
   setUp(() {
     messages.clear();
@@ -104,7 +104,7 @@ void main() {
         () async => await runner.run(['review', '--input', tempDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -918,7 +918,7 @@ void main() {
       ).thenAnswer((_) async => true);
 
       final localMessages = <String>[];
-      void localLog(String msg) => localMessages.add(rmC(msg));
+      void localLog(String msg) => localMessages.add(rmControls(msg));
 
       final command = CanReviewCommand(
         ggLog: localLog,

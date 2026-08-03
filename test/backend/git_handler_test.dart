@@ -6,11 +6,11 @@
 
 import 'dart:io';
 
-import 'package:gg_console_colors/gg_console_colors.dart';
-import 'package:mocktail/mocktail.dart';
-import 'package:test/test.dart';
 import 'package:gg_multi/src/backend/git_handler.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
+import 'package:test/test.dart';
 
 // A mock class for the ProcessRunner function.
 class MockProcessRunner extends Mock {
@@ -104,7 +104,7 @@ void main() {
             predicate(
               (e) =>
                   e is Exception &&
-                  rmC(e.toString()) ==
+                  rmControls(e.toString()) ==
                       'Exception: Failed to clone repo from $repoUrl: '
                           'Error cloning repository',
             ),
@@ -247,7 +247,7 @@ void main() {
           predicate(
             (e) =>
                 e is Exception &&
-                rmC(e.toString()) ==
+                rmControls(e.toString()) ==
                     'Exception: Failed to checkout branch bug in repoDir: '
                         'err message',
           ),

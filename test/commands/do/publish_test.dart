@@ -9,26 +9,26 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg_console_colors/gg_console_colors.dart';
-import 'package:gg_one/gg_one.dart' as gg;
 // ignore: lines_longer_than_80_chars
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
+import 'package:gg_multi/src/backend/ensure_in_registry.dart';
 import 'package:gg_multi/src/backend/npm_registry_checker.dart';
 import 'package:gg_multi/src/backend/pub_dev_checker.dart';
-import 'package:gg_multi/src/backend/ensure_in_registry.dart';
 import 'package:gg_multi/src/backend/publish_skip_check.dart';
+import 'package:gg_multi/src/commands/can/publish.dart';
 import 'package:gg_multi/src/commands/do/configure_publish.dart'
     show DoConfigurePublishCommand;
+import 'package:gg_multi/src/commands/do/publish.dart';
 import 'package:gg_multi/src/commands/do/push.dart';
 import 'package:gg_multi/src/commands/do/review.dart';
+import 'package:gg_one/gg_one.dart' as gg;
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:test/test.dart';
-import 'package:gg_multi/src/commands/do/publish.dart';
-import 'package:gg_multi/src/commands/can/publish.dart';
 
 /// Mock for gg DoPublish
 class MockGgDoPublish extends Mock implements gg.DoPublish {}
@@ -96,7 +96,7 @@ void main() {
   // Collects log messages while removing color codes.
   void ggLog(String msg) {
     coloredMessages.add(msg);
-    messages.add(rmC(msg));
+    messages.add(rmControls(msg));
   }
 
   setUp(() {
@@ -159,7 +159,7 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -275,7 +275,7 @@ void main() {
         () => runner.run(['publish', '--input', ticketDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains('stop after can publish'),
           ),
@@ -336,7 +336,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains('gg_multi do review failed: Exception: review failed'),
           ),
@@ -388,7 +388,7 @@ void main() {
         ]),
         throwsA(
           isA<MergeConflictException>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             allOf(
               contains('gg do commit -m"Merge main" --no-log'),
@@ -2220,7 +2220,7 @@ void main() {
         () async => await runner.run(['publish', '--input', ticketDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains('gg_multi can publish failed:'),
           ),
@@ -2389,7 +2389,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Exception: Publish failed for B'),
           ),
@@ -2597,7 +2597,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Failed to unlocalize refs for B: '
                 'Exception: Unlocalize failed for B'),
@@ -2747,7 +2747,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Failed to get version of A: Exception: '
                 'version read failed'),
@@ -3096,7 +3096,7 @@ void main() {
           ]),
           throwsA(
             isA<Exception>().having(
-              (e) => rmC(e.toString()),
+              (e) => rmControls(e.toString()),
               'message',
               contains('Failed to update version of A in B: '
                   'Exception: update failed'),
@@ -3837,7 +3837,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Failed to restore publish_to for A'),
           ),
@@ -3928,7 +3928,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Failed to execute dart pub upgrade in A'),
           ),
@@ -4708,7 +4708,7 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains('publish failed'),
           ),
@@ -4768,7 +4768,7 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Cannot publish: A'),
           ),
@@ -4972,7 +4972,7 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Failed to save the state of A before publishing'),
           ),
@@ -5040,7 +5040,7 @@ void main() {
         // The publish failure stays the primary error.
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains('publish failed'),
           ),
@@ -5580,7 +5580,7 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Nothing to continue'),
           ),
@@ -5744,7 +5744,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains('cannot be combined'),
           ),
@@ -5763,7 +5763,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains('cannot be combined'),
           ),
@@ -5787,7 +5787,7 @@ void main() {
         () => buildRunner().run(['publish', '--input', ticketDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains('unfinished publish left progress'),
           ),
@@ -6035,7 +6035,7 @@ void main() {
         ]),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains('unfinished publish left progress'),
           ),
@@ -6858,7 +6858,7 @@ void main() {
         () => buildRunner().run(['publish', '--input', ticketDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             allOf(
               contains('These projects depend on other local projects: B'),
@@ -7259,7 +7259,7 @@ void main() {
         () => buildRunner().run(['publish', '--input', ticketDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Cannot publish: B'),
           ),

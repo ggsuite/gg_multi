@@ -6,8 +6,8 @@
 
 import 'dart:io';
 
-import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_multi/src/backend/workspace_migration.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 
@@ -16,7 +16,7 @@ void main() {
   late List<String> logs;
 
   void ggLog(String message) {
-    logs.add(rmC(message));
+    logs.add(rmControls(message));
   }
 
   setUp(() {

@@ -7,17 +7,17 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg_console_colors/gg_console_colors.dart';
+import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
+import 'package:gg_multi/src/commands/can/publish.dart';
+import 'package:gg_multi/src/commands/did/commit.dart';
+import 'package:gg_multi/src/commands/do/push.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_publish/gg_publish.dart' as gg_publish;
-import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
+import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:test/test.dart';
-import 'package:gg_multi/src/commands/can/publish.dart';
-import 'package:gg_multi/src/commands/did/commit.dart';
-import 'package:gg_multi/src/commands/do/push.dart';
 
 class MockGgCanCommit extends Mock implements gg.CanCommit {}
 
@@ -48,7 +48,7 @@ void main() {
     registerFallbackValue(FakeDirectory());
   });
 
-  void ggLog(String msg) => messages.add(rmC(msg));
+  void ggLog(String msg) => messages.add(rmControls(msg));
 
   setUp(() {
     messages.clear();
@@ -79,7 +79,7 @@ void main() {
         () async => await runner.run(['publish', '--input', tempDir.path]),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             'Exception: Not inside a ticket folder',
           ),
@@ -915,7 +915,7 @@ void main() {
         ).thenAnswer((_) async {});
 
         final localMessages = <String>[];
-        void localLog(String msg) => localMessages.add(rmC(msg));
+        void localLog(String msg) => localMessages.add(rmControls(msg));
 
         final command = CanPublishCommand(
           ggLog: localLog,
@@ -1135,7 +1135,7 @@ void main() {
         ),
         throwsA(
           isA<Exception>().having(
-            (e) => rmC(e.toString()),
+            (e) => rmControls(e.toString()),
             'message',
             contains('Not logged in to npm: B ('),
           ),
@@ -1181,7 +1181,7 @@ void main() {
           () => command().checkRepo(directory: repoDir('B'), ggLog: ggLog),
           throwsA(
             isA<Exception>().having(
-              (e) => rmC(e.toString()),
+              (e) => rmControls(e.toString()),
               'message',
               'Exception: Cannot publish: B (Exception: pana failed)',
             ),
