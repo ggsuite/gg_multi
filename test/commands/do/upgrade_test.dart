@@ -46,6 +46,12 @@ void main() {
         contains('ocean'),
         reason: 'Help should mention the ocean subcommand.',
       );
+
+      expect(
+        output.last,
+        contains('deps'),
+        reason: 'Help should mention the deps subcommand.',
+      );
     });
   });
 }

@@ -7,8 +7,12 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:gg_git/gg_git.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
+import 'package:gg_log/gg_log.dart';
+import 'package:gg_multi/src/commands/can/commit.dart';
 import 'package:gg_multi/src/commands/do/push.dart';
+import 'package:gg_multi/src/commands/do/upgrade/deps.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_publish/gg_publish.dart' as gg_publish;
 import 'package:gg_status_printer/gg_status_printer.dart';
@@ -19,7 +23,7 @@ import 'package:test/test.dart';
 
 class MockGgDoPush extends Mock implements gg.DoPush {}
 
-class MockGgCanCommit extends Mock implements gg.CanCommit {}
+class MockGgDoCommit extends Mock implements gg.DoCommit {}
 
 class MockMainBranch extends Mock implements gg_publish.MainBranch {}
 
@@ -42,7 +46,10 @@ typedef PushTestBed = ({
   DoPushCommand command,
   MockProcessRunner git,
   MockGgDoPush ggDoPush,
-  MockGgCanCommit ggCanCommit,
+  MockGgDoCommit ggDoCommit,
+  MockIsCommitted isCommitted,
+  MockUpgradeDepsCommand upgradeDeps,
+  MockCanCommitCommand canCommitCmd,
   MockMainBranch mainBranch,
 });
 
@@ -83,20 +90,6 @@ void main() {
   /// nothing uncommitted, merging main is a no-op and the feature branch does
   /// not exist on the remote yet.
   void stubBaseGit(MockProcessRunner m, {String branch = 'TICKP'}) {
-    when(
-      () => m(
-        'git',
-        ['status', '--porcelain'],
-        workingDirectory: any(named: 'workingDirectory'),
-      ),
-    ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
-    when(
-      () => m(
-        'git',
-        ['rev-parse', 'HEAD'],
-        workingDirectory: any(named: 'workingDirectory'),
-      ),
-    ).thenAnswer((_) async => ProcessResult(0, 0, 'samehead', ''));
     when(
       () => m(
         'git',
@@ -232,12 +225,39 @@ void main() {
       ),
     ).thenAnswer((_) async {});
 
-    final ggCanCommit = MockGgCanCommit();
+    final ggDoCommit = MockGgDoCommit();
     when(
-      () => ggCanCommit.exec(
+      () => ggDoCommit.exec(
         directory: any(named: 'directory'),
         ggLog: any(named: 'ggLog'),
-        saveState: any(named: 'saveState'),
+        message: any(named: 'message'),
+        updateChangeLog: any(named: 'updateChangeLog'),
+        force: any(named: 'force'),
+      ),
+    ).thenAnswer((_) async {});
+
+    final isCommitted = MockIsCommitted();
+    when(
+      () => isCommitted.get(
+        directory: any(named: 'directory'),
+        ggLog: any(named: 'ggLog'),
+      ),
+    ).thenAnswer((_) async => true);
+
+    final upgradeDeps = MockUpgradeDepsCommand();
+    when(
+      () => upgradeDeps.exec(
+        directory: any(named: 'directory'),
+        ggLog: any(named: 'ggLog'),
+        majorVersions: any(named: 'majorVersions'),
+      ),
+    ).thenAnswer((_) async {});
+
+    final canCommitCmd = MockCanCommitCommand();
+    when(
+      () => canCommitCmd.exec(
+        directory: any(named: 'directory'),
+        ggLog: any(named: 'ggLog'),
       ),
     ).thenAnswer((_) async {});
 
@@ -269,7 +289,10 @@ void main() {
     final command = DoPushCommand(
       ggLog: ggLog,
       ggDoPush: ggDoPush,
-      ggCanCommit: ggCanCommit,
+      ggDoCommit: ggDoCommit,
+      isCommitted: isCommitted,
+      upgradeDependencies: upgradeDeps,
+      canCommit: canCommitCmd,
       sortedProcessingList: sortedProcessingList,
       processRunner: git.call,
       mainBranch: mainBranch,
@@ -279,7 +302,10 @@ void main() {
       command: command,
       git: git,
       ggDoPush: ggDoPush,
-      ggCanCommit: ggCanCommit,
+      ggDoCommit: ggDoCommit,
+      isCommitted: isCommitted,
+      upgradeDeps: upgradeDeps,
+      canCommitCmd: canCommitCmd,
       mainBranch: mainBranch,
     );
   }
@@ -396,17 +422,42 @@ void main() {
       );
     });
 
-    test('uses quiet taskLog when verbose is false', () async {
+    test(
+        'uses quiet taskLog when verbose is false — but keeps the upgrade '
+        'and can-commit output visible', () async {
       final localMessages = <String>[];
       void localLog(String msg) => localMessages.add(rmControls(msg));
 
       final bed = makeCommand();
 
+      // The upgrade and can-commit phases log through the ggLog they
+      // receive — what they say must reach the user without --verbose.
+      when(
+        () => bed.upgradeDeps.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          majorVersions: any(named: 'majorVersions'),
+        ),
+      ).thenAnswer((invocation) async {
+        (invocation.namedArguments[#ggLog] as GgLog)('upgrade-visible');
+      });
+      when(
+        () => bed.canCommitCmd.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((invocation) async {
+        (invocation.namedArguments[#ggLog] as GgLog)('cancommit-visible');
+      });
+
       // Rebuild with the local log so the assertion sees every message.
       final command = DoPushCommand(
         ggLog: localLog,
         ggDoPush: bed.ggDoPush,
-        ggCanCommit: bed.ggCanCommit,
+        ggDoCommit: bed.ggDoCommit,
+        isCommitted: bed.isCommitted,
+        upgradeDependencies: bed.upgradeDeps,
+        canCommit: bed.canCommitCmd,
         sortedProcessingList: _sortedList(ticketDir, const ['A', 'B']),
         processRunner: bed.git.call,
         mainBranch: bed.mainBranch,
@@ -427,6 +478,8 @@ void main() {
           equals('\nPushing ...'),
           equals(' - A'),
           equals(' - B'),
+          equals('upgrade-visible'),
+          equals('cancommit-visible'),
           equals('\nA'),
           equals('✓ Pushed'),
           equals('\nB'),
@@ -464,12 +517,14 @@ void main() {
       final bed = makeCommand();
 
       when(
-        () => bed.git(
-          'git',
-          ['status', '--porcelain'],
-          workingDirectory: path.join(ticketDir.path, 'A'),
+        () => bed.isCommitted.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => ProcessResult(0, 0, ' M lib/a.dart', ''));
+      ).thenAnswer((invocation) async {
+        final directory = invocation.namedArguments[#directory] as Directory;
+        return path.basename(directory.path) != 'A';
+      });
 
       await expectLater(
         () async => await runner(bed.command).run([
@@ -497,6 +552,13 @@ void main() {
           'git',
           ['merge', 'origin/main'],
           workingDirectory: any(named: 'workingDirectory'),
+        ),
+      );
+      verifyNever(
+        () => bed.upgradeDeps.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          majorVersions: any(named: 'majorVersions'),
         ),
       );
       verifyNever(
@@ -799,7 +861,7 @@ void main() {
               contains(' - A/pubspec.yaml'),
               contains(
                 'Please resolve the conflicts. Then execute: '
-                'gg do commit -m"Merge main" --no-log',
+                "gg do commit -m 'Merge main' --no-log",
               ),
             ),
           ),
@@ -887,68 +949,188 @@ void main() {
         ),
       );
     });
+  });
 
-    test('verifies the repo with can commit when the merge moved HEAD',
-        () async {
+  group('DoPushCommand upgrade, can-commit and commit phases', () {
+    test(
+        'runs the phases in order: committed-check, merge, upgrade, '
+        'can commit, push', () async {
       final bed = makeCommand(repos: ['A']);
-
-      var headCalls = 0;
-      when(
-        () => bed.git(
-          'git',
-          ['rev-parse', 'HEAD'],
-          workingDirectory: any(named: 'workingDirectory'),
-        ),
-      ).thenAnswer(
-        (_) async => ProcessResult(0, 0, headCalls++ == 0 ? 'h1' : 'h2', ''),
-      );
 
       await runner(bed.command).run([
         'push',
         '--input',
         ticketDir.path,
-        '--verbose',
+      ]);
+
+      verifyInOrder([
+        () => bed.isCommitted.get(
+              directory: any(named: 'directory'),
+              ggLog: any(named: 'ggLog'),
+            ),
+        () => bed.git(
+              'git',
+              ['merge', 'origin/main'],
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+        () => bed.upgradeDeps.exec(
+              directory: any(named: 'directory'),
+              ggLog: any(named: 'ggLog'),
+              majorVersions: any(named: 'majorVersions'),
+            ),
+        () => bed.canCommitCmd.exec(
+              directory: any(named: 'directory'),
+              ggLog: any(named: 'ggLog'),
+            ),
+        () => bed.ggDoPush.exec(
+              directory: any(named: 'directory'),
+              ggLog: any(named: 'ggLog'),
+              force: any(named: 'force'),
+            ),
+      ]);
+
+      expect(
+        messages.where((m) => m.contains('Committing upgrade changes')),
+        isNotEmpty,
+      );
+    });
+
+    test('forwards majorVersions: true to the upgrade by default', () async {
+      final bed = makeCommand(repos: ['A']);
+
+      await runner(bed.command).run([
+        'push',
+        '--input',
+        ticketDir.path,
       ]);
 
       verify(
-        () => bed.ggCanCommit.exec(
+        () => bed.upgradeDeps.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          saveState: false,
+          majorVersions: true,
         ),
       ).called(1);
-      expect(messages, contains('✓ Verified A after merging main'));
+    });
+
+    test('forwards --no-major-versions to the upgrade', () async {
+      final bed = makeCommand(repos: ['A']);
+
+      await runner(bed.command).run([
+        'push',
+        '--input',
+        ticketDir.path,
+        '--no-major-versions',
+      ]);
+
+      verify(
+        () => bed.upgradeDeps.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          majorVersions: false,
+        ),
+      ).called(1);
+    });
+
+    test('forwards majorVersions passed programmatically', () async {
+      final bed = makeCommand(repos: ['A']);
+
+      await bed.command.get(
+        directory: ticketDir,
+        ggLog: ggLog,
+        force: false,
+        verbose: false,
+        majorVersions: false,
+      );
+
+      verify(
+        () => bed.upgradeDeps.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          majorVersions: false,
+        ),
+      ).called(1);
     });
 
     test(
-        'resets to the pre-merge commit when the merged state does not pass '
-        'can commit', () async {
-      final bed = makeCommand(repos: ['A']);
+        'commits upgrade changes as a »#gg:« system commit — only in repos '
+        'the upgrade left dirty', () async {
+      final bed = makeCommand();
 
-      var headCalls = 0;
+      // Phase 1 sees clean repos; in the commit phase (second call per
+      // repo) B reports uncommitted upgrade changes.
+      final calls = <String, int>{};
       when(
-        () => bed.git(
-          'git',
-          ['rev-parse', 'HEAD'],
-          workingDirectory: any(named: 'workingDirectory'),
-        ),
-      ).thenAnswer(
-        (_) async => ProcessResult(0, 0, headCalls++ == 0 ? 'h1' : 'h2', ''),
-      );
-      when(
-        () => bed.ggCanCommit.exec(
+        () => bed.isCommitted.get(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
-          saveState: any(named: 'saveState'),
         ),
-      ).thenThrow(Exception('Duplicate mapping key'));
+      ).thenAnswer((invocation) async {
+        final directory = invocation.namedArguments[#directory] as Directory;
+        final name = path.basename(directory.path);
+        final n = calls[name] = (calls[name] ?? 0) + 1;
+        return !(name == 'B' && n > 1);
+      });
+
+      await runner(bed.command).run([
+        'push',
+        '--input',
+        ticketDir.path,
+      ]);
+
+      final captured = verify(
+        () => bed.ggDoCommit.exec(
+          directory: captureAny(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: '#gg: dart pub upgrade --major-versions --tighten',
+          updateChangeLog: false,
+          force: false,
+        ),
+      ).captured;
+
+      expect(captured, hasLength(1));
+      expect(path.basename((captured.single as Directory).path), 'B');
+    });
+
+    test('the system commit message reflects --no-major-versions', () async {
+      final bed = makeCommand(repos: ['A']);
+
+      var callCount = 0;
       when(
-        () => bed.git(
-          'git',
-          ['reset', '--hard', 'h1'],
-          workingDirectory: any(named: 'workingDirectory'),
+        () => bed.isCommitted.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      ).thenAnswer((_) async => callCount++ == 0);
+
+      await runner(bed.command).run([
+        'push',
+        '--input',
+        ticketDir.path,
+        '--no-major-versions',
+      ]);
+
+      verify(
+        () => bed.ggDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: '#gg: dart pub upgrade --tighten',
+          updateChangeLog: false,
+          force: false,
+        ),
+      ).called(1);
+    });
+
+    test('aborts before pushing when the upgrade fails', () async {
+      final bed = makeCommand(repos: ['A']);
+
+      when(
+        () => bed.upgradeDeps.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          majorVersions: any(named: 'majorVersions'),
+        ),
+      ).thenThrow(Exception('Failed to upgrade.'));
 
       await expectLater(
         () async => await runner(bed.command).run([
@@ -960,29 +1142,96 @@ void main() {
           isA<Exception>().having(
             (e) => rmControls(e.toString()),
             'message',
-            contains('Merged state does not pass can commit.'),
+            contains('Failed to upgrade.'),
           ),
         ),
       );
 
-      // The repo was reset to before the merge.
-      verify(
-        () => bed.git(
-          'git',
-          ['reset', '--hard', 'h1'],
-          workingDirectory: path.join(ticketDir.path, 'A'),
+      verifyNever(
+        () => bed.canCommitCmd.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
         ),
-      ).called(1);
-      expect(
-        messages.any(
-          (m) => m.contains('✗ Merging main into A broke "gg can commit"'),
+      );
+      verifyNever(
+        () => bed.ggDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
         ),
-        isTrue,
       );
-      expect(
-        messages.any((m) => m.contains('The repo was reset to')),
-        isTrue,
+    });
+
+    test('aborts before pushing when can commit fails', () async {
+      final bed = makeCommand(repos: ['A']);
+
+      when(
+        () => bed.canCommitCmd.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenThrow(Exception('Cannot commit.'));
+
+      await expectLater(
+        () async => await runner(bed.command).run([
+          'push',
+          '--input',
+          ticketDir.path,
+        ]),
+        throwsA(
+          isA<Exception>().having(
+            (e) => rmControls(e.toString()),
+            'message',
+            contains('Cannot commit.'),
+          ),
+        ),
       );
+
+      verifyNever(
+        () => bed.ggDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      );
+    });
+
+    test('aborts before pushing when the system commit fails', () async {
+      final bed = makeCommand(repos: ['A']);
+
+      var callCount = 0;
+      when(
+        () => bed.isCommitted.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async => callCount++ == 0);
+
+      when(
+        () => bed.ggDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          updateChangeLog: any(named: 'updateChangeLog'),
+          force: any(named: 'force'),
+        ),
+      ).thenThrow(Exception('Cannot commit on branch »main«.'));
+
+      await expectLater(
+        () async => await runner(bed.command).run([
+          'push',
+          '--input',
+          ticketDir.path,
+        ]),
+        throwsA(
+          isA<Exception>().having(
+            (e) => rmControls(e.toString()),
+            'message',
+            contains('Cannot commit on branch »main«.'),
+          ),
+        ),
+      );
+
       verifyNever(
         () => bed.ggDoPush.exec(
           directory: any(named: 'directory'),
