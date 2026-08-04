@@ -59,6 +59,30 @@ class Trash {
     return _moveInto(source, path.join(trashDir.path, relative));
   }
 
+  /// Moves the **whole** ticket folder [ticketDir] into the trash as one
+  /// unit — repositories, `ticket.json`, `.ticket`, `.gg/`, the
+  /// `.code-workspace` file, everything — and returns the directory it was
+  /// moved to (normally `<root>/.trash/<ticket>`).
+  ///
+  /// `do create ticket` pre-creates an **empty** `<root>/.trash/<ticket>`;
+  /// that placeholder is deleted so the ticket folder can take its place. A
+  /// **non-empty** target — a previously closed ticket of the same name —
+  /// is never overwritten: the folder moves to the first free ` (2)`,
+  /// ` (3)`, … variant instead, exactly like [moveFromTicket] does per
+  /// entry. When trash and ticket live on different volumes the rename
+  /// falls back to copy + delete.
+  static Future<Directory> moveTicketToTrash({
+    required Directory ticketDir,
+  }) async {
+    final target = dirForTicket(ticketDir);
+    if (target.existsSync() && target.listSync().isEmpty) {
+      target.deleteSync();
+    }
+
+    final movedTo = await _moveInto(ticketDir, target.path);
+    return Directory(movedTo);
+  }
+
   /// Moves [source] — a repository of the ocean — into
   /// `<root>/.trash/.ocean/<org>/<repo>`, keeping the path it had relative to
   /// `<root>/.ocean`. Returns the path it was moved to.

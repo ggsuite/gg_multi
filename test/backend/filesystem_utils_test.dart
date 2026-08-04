@@ -6,10 +6,9 @@
 
 import 'dart:io';
 
+import 'package:gg_multi/src/backend/filesystem_utils.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-
-import 'package:gg_multi/src/backend/filesystem_utils.dart';
 
 void main() {
   group(

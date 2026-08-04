@@ -100,6 +100,9 @@ class PublishSkipCheck {
     'package.json',
     'package-lock.json',
     'pnpm-lock.yaml',
+    // gg_localize_refs redirects pnpm-managed TypeScript deps through the
+    // `overrides` of pnpm-workspace.yaml, so gg's ref commits touch it.
+    'pnpm-workspace.yaml',
     'yarn.lock',
     'CHANGELOG.md',
     '.gitignore',

@@ -224,8 +224,9 @@ class DoPublishCommand extends DirCommand<void> {
   final ChangeRefsToPubDev _unlocalizeRefs;
 
   /// Re-localizes a repo after its publish: `pubspec_overrides.yaml` path
-  /// overrides for Dart, `link:` references inside `package.json` for
-  /// TypeScript — so the repo keeps resolving against the sibling checkouts.
+  /// overrides for Dart, `link:` overrides in `pnpm-workspace.yaml` for
+  /// pnpm-managed TypeScript — so the repo keeps resolving against the
+  /// sibling checkouts.
   final ChangeRefsToLocal _localizeRefs;
 
   /// Restores the original `publish_to` value captured by `do add`.
@@ -424,6 +425,15 @@ class DoPublishCommand extends DirCommand<void> {
       }
     }
 
+    // Step 4b: The last interactive question of the run — what happens to
+    // the ticket once everything is published. It is asked here, together
+    // with the version increments, so no prompt sits between the
+    // irreversible publish steps or at the very end of a long unattended
+    // run. The answer is applied after the last repo is through.
+    final closeTicketWhenDone = await _offerTicketCleanup(
+      ticketName: path.basename(ticketDir.path),
+    );
+
     // Step 5: The review gate for resumes + the ticket wide validation. The
     // per-repo `gg can publish` gate is NOT part of this — it runs inside
     // _publishRepo, right before the repo is published (see there).
@@ -472,9 +482,6 @@ class DoPublishCommand extends DirCommand<void> {
 
     final publishedPackages = <String, _PublishedPackageState>{};
     final confirmedPubDevVersions = <String>{};
-    // The repos that went through _publishRepo in this run — the only ones
-    // whose references were already pointed back at the registry.
-    final refsChangedRepos = <String>{};
 
     // Map of reference name to version captured from repos processed so far.
     final refVersions = <String, String>{};
@@ -570,8 +577,6 @@ class DoPublishCommand extends DirCommand<void> {
           );
           rethrow;
         }
-
-        refsChangedRepos.add(repoName);
 
         // Record success *now*, before the network-dependent version capture
         // below — so a transient failure there cannot lose the marker and
@@ -672,56 +677,52 @@ class DoPublishCommand extends DirCommand<void> {
 
     ggLog('\nAll repos $_done\n');
 
-    // Step 9: Decide what happens to the ticket.
-    //
-    // A run that actually published something keeps the ticket: every repo
-    // is back on its feature branch with restored references, so work — and
-    // another publish from the same branch — can simply continue.
-    //
-    // Only a run that found nothing left to do (every repo already
-    // published/merged and unchanged) offers to close the ticket: move it
-    // to the trash as it is and delete the remote branches. Headless runs
-    // never destroy anything — they keep the ticket and print the way out.
-    if (refsChangedRepos.isEmpty) {
-      final closeNow = await _offerTicketCleanup(ggLog: ggLog);
-      if (closeNow) {
-        await cleanUpTicket(
-          ticketDir: ticketDir,
-          repoDirs: [for (final repo in subs) repo.directory],
-          deleteRemoteBranch: deleteRemoteBranch,
-          ggLog: ggLog,
-          taskLog: taskLog,
-          processRunner: _processRunner,
-        );
-        return;
-      }
+    // Step 9: Carry out what the user decided up front (Step 4b). Every
+    // repo is $_done at this point — the ones released just now are back on
+    // their feature branches with restored references, the skipped ones
+    // never left that state — so the ticket can either be closed (whole
+    // folder to the trash, remote branches deleted) or kept for further
+    // work and another publish from the same branch.
+    if (closeTicketWhenDone) {
+      await cleanUpTicket(
+        ticketDir: ticketDir,
+        repoDirs: [for (final repo in subs) repo.directory],
+        deleteRemoteBranch: deleteRemoteBranch,
+        ggLog: ggLog,
+        taskLog: taskLog,
+        processRunner: _processRunner,
+      );
+      return;
     }
 
-    _logTicketKeptHint(ggLog);
+    _logTicketKeptHint(ggLog, path.basename(ticketDir.path));
   }
 
-  /// Asks whether the fully released ticket should be closed now.
+  /// Asks up front what should happen to the ticket once the publish is
+  /// through, and returns whether it should be closed then.
   ///
-  /// Uses the same cursor-key prompt as the version-increment selection.
-  /// Returns false without asking when stdin is no terminal — a headless
-  /// run must never trash a ticket on its own.
-  Future<bool> _offerTicketCleanup({required GgLog ggLog}) async {
+  /// Uses the same cursor-key prompt as the version-increment selection, and
+  /// is asked in the same phase: every interactive decision of a run is made
+  /// before the first irreversible step. Returns false without asking when
+  /// stdin is no terminal — a headless run must never trash a ticket on its
+  /// own.
+  Future<bool> _offerTicketCleanup({required String ticketName}) async {
     if (!_hasTerminal()) {
       return false;
     }
 
     final index = await _interactAdapter.choose(
-      message: cAction('Every repo of this ticket is $_done. What now?'),
+      message: cAction('What should happen to the ticket when ready?'),
       options: <String>[
-        'Move the ticket to .trash and delete the remote branches',
-        'Keep the ticket — close it later with »gg do rm ticket«',
+        'Move to .trash and delete the remote branches',
+        'Remove it manually with »gg do rm ticket $ticketName«',
       ],
     );
     return index == 0;
   }
 
   /// Tells the user that the ticket stays workable and how to close it.
-  void _logTicketKeptHint(GgLog ggLog) {
+  void _logTicketKeptHint(GgLog ggLog, String ticketName) {
     ggLog(
       cAction(
         'The ticket stays in place — every repo is back on its feature '
@@ -729,7 +730,7 @@ class DoPublishCommand extends DirCommand<void> {
         'Continue working and publish again, or close the ticket with:',
       ),
     );
-    ggLog(cCmd('  gg do rm ticket'));
+    ggLog(cCmd('  gg do rm ticket $ticketName'));
   }
 
   /// Resolves the publish configuration for the ticket in [ticketDir] and
@@ -1067,12 +1068,13 @@ class DoPublishCommand extends DirCommand<void> {
   ///      into the feature branch) would see the squash commit and the
   ///      feature branch as two competing edits of the same lines and
   ///      conflict — for TypeScript repos on every single publish.
-  ///   3. Restore `pubspec_overrides.yaml` from the backup taken in
-  ///      [_publishRepo], then re-localize (`ChangeRefsToLocal`): Dart repos
-  ///      get their path overrides back, TypeScript repos their `link:`
-  ///      references inside `package.json` — the piece a file restore alone
-  ///      cannot cover, because the TypeScript localization lives in the
-  ///      manifest itself.
+  ///   3. Restore the workspace wiring files (`pubspec_overrides.yaml`,
+  ///      `pnpm-workspace.yaml`) from the backups taken in [_publishRepo],
+  ///      then re-localize (`ChangeRefsToLocal`): Dart repos get their path
+  ///      overrides back, pnpm-managed TypeScript repos their `link:`
+  ///      overrides in `pnpm-workspace.yaml` — recomputed on top of the
+  ///      restored files, so the freshly published versions also land in
+  ///      the `gg_localize_refs` backups.
   ///   4. Refresh the dependencies so lock files and `node_modules` follow
   ///      the restored references.
   ///   5. Commit everything as one gg bookkeeping commit and — for a real
@@ -1237,7 +1239,8 @@ class DoPublishCommand extends DirCommand<void> {
   }
 
   /// Throws when one of [repos] still redirects a dependency to a local
-  /// working copy (`pubspec_overrides.yaml`).
+  /// working copy — a `pubspec_overrides.yaml` with a `path:` override
+  /// (Dart) or a `pnpm-workspace.yaml` with a `link:` override (TypeScript).
   ///
   /// Only a `--merge-only` run calls this: it brings the ticket onto the main
   /// branches *without* releasing anything, so a reference that exists only as
@@ -1245,7 +1248,11 @@ class DoPublishCommand extends DirCommand<void> {
   /// else. Such a ticket has to be published. `--force` skips the check.
   void _throwOnLocalizedRefs(List<Node> repos) {
     final localized = repos
-        .where((repo) => gg.NoPubspecOverrides.hasLocalizedRefs(repo.directory))
+        .where(
+          (repo) =>
+              gg.NoPubspecOverrides.hasLocalizedRefs(repo.directory) ||
+              PnpmWorkspaceIo.hasLocalizedRefs(repo.directory),
+        )
         .map((repo) => path.basename(repo.directory.path))
         .toList();
 

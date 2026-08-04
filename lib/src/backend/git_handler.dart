@@ -1,4 +1,3 @@
-import 'package:gg_console_colors/gg_console_colors.dart';
 // @license
 // Copyright (c) 2019 - 2025 Dr. Gabriel Gatzsche. All Rights Reserved.
 //
@@ -6,6 +5,8 @@ import 'package:gg_console_colors/gg_console_colors.dart';
 // found in the LICENSE file in the root of this package.
 
 import 'dart:io';
+
+import 'package:gg_console_colors/gg_console_colors.dart';
 
 /// Typedef for a process runner function.
 typedef ProcessRunner = Future<ProcessResult> Function(String, List<String>);

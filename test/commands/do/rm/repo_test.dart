@@ -461,7 +461,7 @@ void main() {
         );
         expect(
           messages,
-          contains('✓ Removed a from pubspec_overrides.yaml of 2 repo(s).'),
+          contains('✓ Removed a from the localized overrides of 2 repo(s).'),
         );
       });
 
@@ -469,7 +469,7 @@ void main() {
         await runnerAt(alphaDir.path).run(['repo', 'a']);
 
         expect(
-          messages.any((m) => m.contains('pubspec_overrides.yaml of')),
+          messages.any((m) => m.contains('the localized overrides of')),
           isFalse,
         );
       });

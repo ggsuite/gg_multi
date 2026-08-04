@@ -13,23 +13,24 @@ import 'package:path/path.dart' as path;
 import 'git_snapshot.dart';
 import 'trash.dart';
 
-/// Moves everything a finished ticket leaves behind into
-/// `<root>/.trash/<ticket>` and removes the ticket folder afterwards.
+/// Closes a finished ticket: deletes the remote feature branches, then
+/// moves the **whole** ticket folder into `<root>/.trash/<ticket>`.
 ///
 /// Shared by `do publish` (when the user accepts the cleanup offer after
 /// every repo is published) and `do rm ticket` (the explicit way to close a
-/// ticket later). The repositories are never deleted outright — they move to
-/// the trash **as they are**, feature branches, restored overrides and
-/// uncommitted leftovers included, so nothing is lost. The
-/// `<ticket>.code-workspace` file travels along, so reopening the closed
-/// ticket in VS Code is still possible from the trash.
+/// ticket later). Nothing is deleted outright — the ticket moves to the
+/// trash **as it is**, in one piece: repositories on their feature branches
+/// with restored overrides and uncommitted leftovers, `ticket.json`,
+/// `.ticket`, `.gg/`, the `<ticket>.code-workspace` file. Reopening — or
+/// even re-importing (`gg do import ticket <path>`) — the closed ticket
+/// from the trash therefore stays possible.
 ///
-/// Every repository in [repoDirs] is moved — also when its remote feature
-/// branch is kept ([deleteRemoteBranch] is false), because the ticket folder
-/// goes away either way and a repo left inside it would be lost. A failure
-/// while trashing a single repo is reported and the remaining ones are still
-/// processed; the ticket folder is only removed when nothing was left
-/// behind.
+/// Only the remote branches need per-repo handling: each repository in
+/// [repoDirs] gets its remote feature branch (named after the ticket)
+/// deleted — unless [deleteRemoteBranch] is false. The deletions run
+/// *before* the move, while the repos' git folders are still at their
+/// original paths; when one fails, the ticket is kept in place so the
+/// command can simply be retried.
 ///
 /// After the ticket folder is gone the caller's shell sits in a deleted
 /// directory, so the command to change to the workspace root is printed in
@@ -44,87 +45,82 @@ Future<void> cleanUpTicket({
 }) async {
   final runner = processRunner ?? _defaultProcessRunner;
   final ticketName = path.basename(ticketDir.path);
-  var allMoved = true;
 
+  // Step 1: Delete the remote branches — per repo, from the repos'
+  // original locations. A failed deletion keeps the ticket where it is:
+  // moving it anyway would strand the remaining branches, because the git
+  // folders they are deleted from would be gone.
+  var allBranchesHandled = true;
   for (final repoDir in repoDirs) {
     final repoName = path.basename(repoDir.path);
 
-    try {
-      if (deleteRemoteBranch) {
-        await _deleteRemoteBranch(
-          repoDir: repoDir,
-          branchName: ticketName,
-          ggLog: taskLog,
-          processRunner: runner,
-        );
-      } else {
-        taskLog(cDetail('✓ Kept remote branch $ticketName for $repoName.'));
-      }
+    if (!deleteRemoteBranch) {
+      taskLog(cDetail('✓ Kept remote branch $ticketName for $repoName.'));
+      continue;
+    }
 
-      if (repoDir.existsSync()) {
-        final target = await Trash.moveFromTicket(
-          source: repoDir,
-          ticketDir: ticketDir,
-        );
-        // Moving a repo out of the ticket is destructive from the
-        // user's point of view — it disappears from where they worked.
-        // So it is a warning, not a detail, and it goes to ggLog: a
-        // non-verbose run must not swallow it.
-        ggLog(
-          cWarn(
-            '⚠️ Moved repository $repoName of ticket $ticketName '
-            'to $target.',
-          ),
-        );
-      }
+    if (!repoDir.existsSync()) {
+      // Without the repo folder there is no git context to delete from —
+      // e.g. the repo was removed by hand. Nothing to do here.
+      taskLog(
+        cDetail(
+          '✓ Repository $repoName is gone — no remote branch to delete.',
+        ),
+      );
+      continue;
+    }
+
+    try {
+      await _deleteRemoteBranch(
+        repoDir: repoDir,
+        branchName: ticketName,
+        ggLog: taskLog,
+        processRunner: runner,
+      );
     } catch (e) {
-      allMoved = false;
+      allBranchesHandled = false;
       ggLog(
         cError(
-          'Failed to move repository $repoName of ticket $ticketName to '
-          'the trash: $e',
+          'Failed to delete remote branch $ticketName for $repoName: $e',
         ),
       );
     }
   }
 
-  // The VS Code workspace describes a ticket that no longer exists — it
-  // belongs to the trashed repos, so it follows them.
-  final workspaceFile = File(
-    path.join(ticketDir.path, '$ticketName.code-workspace'),
-  );
-  if (workspaceFile.existsSync()) {
-    try {
-      final target = await Trash.moveFromTicket(
-        source: workspaceFile,
-        ticketDir: ticketDir,
-      );
-      ggLog(cWarn('⚠️ Moved ${path.basename(target)} to $target.'));
-    } catch (e) {
-      allMoved = false;
-      ggLog(
-        cError('Failed to move the VS Code workspace of $ticketName: $e'),
-      );
-    }
-  }
-
-  if (!allMoved) {
+  if (!allBranchesHandled) {
     ggLog(
       cWarn(
-        'Ticket $ticketName was not deleted because not everything could '
-        'be moved to the trash.',
+        'Ticket $ticketName was not moved to the trash because not every '
+        'remote branch could be deleted. Fix the problem and retry, or '
+        'use --no-delete-remote-branch.',
       ),
     );
     return;
   }
 
   // The workspace root is the grandparent of `<root>/tickets/<ticket>` —
-  // resolved before the deletion, while the path still exists.
+  // resolved before the move, while the path still exists.
   final workspaceRoot = ticketDir.absolute.parent.parent.path;
 
-  if (ticketDir.existsSync()) {
-    ticketDir.deleteSync(recursive: true);
-    ggLog(cWarn('⚠️ Deleted ticket folder ${ticketDir.path}.'));
+  // Step 2: Move the whole folder in one go — everything the ticket holds
+  // travels with it.
+  try {
+    final target = await Trash.moveTicketToTrash(ticketDir: ticketDir);
+    // Where the ticket went — the user asked for the move, so this is a
+    // detail, not a warning. It still goes to ggLog: a non-verbose run must
+    // not swallow the one line that says where the work now lives. Normally
+    // the ticket keeps its name inside the trash, so naming the trash folder
+    // is enough; only a collision (an earlier ticket of the same name) makes
+    // the full path worth printing.
+    final movedTo = path.basename(target.path) == ticketName
+        ? target.parent.path
+        : target.path;
+    ggLog(cDetail('Moved ticket $ticketName to $movedTo'));
+  } catch (e) {
+    ggLog(
+      cError('Failed to move ticket $ticketName to the trash: $e'),
+    );
+    return;
   }
 
   // The shell of the caller now sits inside a deleted folder — hand them

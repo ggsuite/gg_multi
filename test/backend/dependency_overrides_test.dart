@@ -6,6 +6,7 @@
 
 import 'dart:io';
 
+import 'package:gg_localize_refs/gg_localize_refs.dart';
 import 'package:gg_multi/src/backend/dependency_overrides.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
@@ -135,6 +136,81 @@ dependency_overrides:
         isEmpty,
       );
       expect(overridesOf(a), broken);
+    });
+  });
+
+  group('removeDependencyOverrides — pnpm-workspace.yaml', () {
+    File pnpmFileOf(Directory dir) =>
+        File(path.join(dir.path, 'pnpm-workspace.yaml'));
+
+    Directory tsRepo(String name, String pnpmWorkspace) {
+      final dir = Directory(path.join(tempDir.path, name))..createSync();
+      pnpmFileOf(dir).writeAsStringSync(pnpmWorkspace);
+      return dir;
+    }
+
+    test('removes the link override of the deleted repo', () {
+      final a = tsRepo(
+        'a',
+        'allowBuilds:\n  esbuild: true\n'
+            'overrides:\n  b: link:../b\n  c: link:../c\n',
+      );
+
+      final changed = removeDependencyOverrides(
+        repoDirs: [a],
+        packageNames: {'b'},
+      );
+
+      expect(changed, [a]);
+      final content = pnpmFileOf(a).readAsStringSync();
+      expect(content, isNot(contains('link:../b')));
+      // The other override is a dead link now that its target never existed
+      // in this fixture — but it is not named, so only the named entry and
+      // provably dead siblings go. Here `c` is a dead sibling and goes too.
+      expect(content, contains('allowBuilds'));
+    });
+
+    test('deletes a file gg created once nothing is left', () {
+      final a = tsRepo(
+        'a',
+        '${PnpmWorkspaceIo.headerComment}overrides:\n  b: link:../b\n',
+      );
+
+      final changed = removeDependencyOverrides(
+        repoDirs: [a],
+        packageNames: {'b'},
+      );
+
+      expect(changed, [a]);
+      expect(pnpmFileOf(a).existsSync(), isFalse);
+    });
+
+    test('leaves an unparsable pnpm-workspace.yaml alone', () {
+      const broken = 'overrides: [pnpm\n';
+      final a = tsRepo('a', broken);
+
+      expect(
+        removeDependencyOverrides(repoDirs: [a], packageNames: {'b'}),
+        isEmpty,
+      );
+      expect(pnpmFileOf(a).readAsStringSync(), broken);
+    });
+
+    test('changes both files of a bridge repo in one pass', () {
+      final a = repo('a', 'dependency_overrides:\n  b:\n    path: ../b\n');
+      pnpmFileOf(a).writeAsStringSync('overrides:\n  b: link:../b\n');
+
+      final changed = removeDependencyOverrides(
+        repoDirs: [a],
+        packageNames: {'b'},
+      );
+
+      expect(changed, [a]);
+      expect(hasOverrides(a), isFalse);
+      // The pnpm file carries no gg header, so ownership of the file itself
+      // cannot be proven — it stays, with the overrides section removed.
+      final pnpmContent = pnpmFileOf(a).readAsStringSync();
+      expect(pnpmContent, isNot(contains('link:')));
     });
   });
 }

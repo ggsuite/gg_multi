@@ -248,6 +248,26 @@ void main() {
         expect(decision.skip, isTrue);
       });
 
+      test('skips when a gg commit touches pnpm-workspace.yaml', () async {
+        // The pnpm TypeScript localization redirects refs through the
+        // overrides of pnpm-workspace.yaml, so gg's ref commits touch it —
+        // it is a gg-owned file and must not count as swallowed user work.
+        final dir = await createRepo('a');
+        await git(dir, ['checkout', '-b', 'feat']);
+        await commitFile(
+          dir,
+          'pnpm-workspace.yaml',
+          'overrides:\n  b: link:../b\n',
+          '#gg: changed references to path',
+        );
+
+        final decision = await check.get(
+          repo: node('a', dir),
+          refVersions: {},
+        );
+        expect(decision.skip, isTrue);
+      });
+
       test('publishes when a gg commit swallowed user files', () async {
         // gg's ref commits are force commits: pending user edits end up in
         // the bookkeeping commit. Such a commit must block the skip so the

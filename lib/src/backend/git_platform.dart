@@ -5,13 +5,12 @@
 // found in the LICENSE file in the root of this package.
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:gg_console_colors/gg_console_colors.dart';
-import 'package:http/http.dart' as http;
 import 'package:gg_multi/src/backend/organization.dart';
 import 'package:gg_multi/src/backend/url_parser.dart';
-
-import 'dart:io';
+import 'package:http/http.dart' as http;
 
 import 'repository.dart';
 

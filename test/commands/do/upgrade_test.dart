@@ -9,8 +9,8 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
-import 'package:test/test.dart';
 import 'package:gg_multi/src/commands/do/upgrade.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('UpgradeCommand', () {

@@ -79,21 +79,28 @@ void main() {
       expect(command.name, 'ticket');
       expect(
         command.description,
-        'Move the current ticket to the trash and delete its remote branches',
+        'Move tickets to the trash and delete their remote branches',
       );
+      expect(command.invocation, 'gg do rm ticket [<ticket-id>...]');
     });
 
-    test('refuses outside a ticket folder', () async {
+    test('refuses without a ticket name outside a ticket folder', () async {
       await expectLater(
         runnerAt(tempDir.path).run(['ticket']),
         throwsA(
           isA<Exception>().having(
             (e) => rmControls(e.toString()),
             'message',
-            contains('must be called inside a ticket folder'),
+            allOf(
+              contains('needs a ticket'),
+              contains('call it inside a ticket folder'),
+              contains('gg do rm ticket <ticket-id>...'),
+            ),
           ),
         ),
       );
+      // Nothing was touched.
+      expect(ticketDir.existsSync(), isTrue);
     });
 
     test(
@@ -158,6 +165,112 @@ void main() {
         ).existsSync(),
         isTrue,
       );
+    });
+
+    group('named tickets', () {
+      /// Creates `<root>/tickets/<name>` holding one repo.
+      Directory makeTicket(String name) {
+        final dir = Directory(
+          path.join(tempDir.path, ggMultiTicketFolder, name),
+        )..createSync(recursive: true);
+        final repoDir = Directory(path.join(dir.path, 'ggsuite', 'a'))
+          ..createSync(recursive: true);
+        File(path.join(repoDir.path, 'pubspec.yaml'))
+            .writeAsStringSync('name: a\nversion: 1.0.0\n');
+        return dir;
+      }
+
+      test('closes a ticket named on the command line', () async {
+        final other = makeTicket('T99');
+
+        // Invoked from the workspace root — no ticket in the cwd.
+        await runnerAt(tempDir.path).run(['ticket', 'T99']);
+
+        expect(other.existsSync(), isFalse);
+        expect(
+          Directory(
+            path.join(tempDir.path, ggMultiTrashFolder, 'T99', 'ggsuite', 'a'),
+          ).existsSync(),
+          isTrue,
+        );
+        expect(gitCalls, ['a: push origin --delete T99']);
+        // The ticket of the cwd is untouched — the name wins.
+        expect(ticketDir.existsSync(), isTrue);
+      });
+
+      test('closes several tickets in one call, each with its own heading',
+          () async {
+        final first = makeTicket('T90');
+        final second = makeTicket('T91');
+
+        await runnerAt(tempDir.path).run(['ticket', 'T90', 'T91']);
+
+        expect(first.existsSync(), isFalse);
+        expect(second.existsSync(), isFalse);
+        // The branches are named after their own ticket.
+        expect(gitCalls, [
+          'a: push origin --delete T90',
+          'a: push origin --delete T91',
+        ]);
+        // With more than one ticket each gets a heading.
+        expect(messages.join('\n'), contains('T90'));
+        expect(messages.join('\n'), contains('T91'));
+      });
+
+      test('a name wins over the ticket the command runs in', () async {
+        final other = makeTicket('T99');
+        repo('ggsuite', 'a');
+
+        await runnerAt(ticketDir.path).run(['ticket', 'T99']);
+
+        expect(other.existsSync(), isFalse);
+        expect(ticketDir.existsSync(), isTrue);
+      });
+
+      test('reports names that are no tickets and changes nothing', () async {
+        final existing = makeTicket('T90');
+
+        await expectLater(
+          runnerAt(tempDir.path).run(['ticket', 'T90', 'ghost', 'phantom']),
+          throwsA(
+            isA<Exception>().having(
+              (e) => rmControls(e.toString()),
+              'message',
+              allOf(
+                contains('These tickets do not exist'),
+                contains('ghost, phantom'),
+              ),
+            ),
+          ),
+        );
+
+        // The check runs before the first removal — nothing was closed.
+        expect(existing.existsSync(), isTrue);
+        expect(gitCalls, isEmpty);
+      });
+
+      test('forwards --no-delete-remote-branch to every named ticket',
+          () async {
+        makeTicket('T90');
+        makeTicket('T91');
+
+        await runnerAt(tempDir.path)
+            .run(['ticket', 'T90', 'T91', '--no-delete-remote-branch']);
+
+        expect(gitCalls, isEmpty);
+        expect(
+          Directory(
+            path.join(tempDir.path, ggMultiTrashFolder, 'T90'),
+          ).existsSync(),
+          isTrue,
+        );
+        expect(
+          Directory(
+            path.join(tempDir.path, ggMultiTrashFolder, 'T91'),
+          ).existsSync(),
+          isTrue,
+        );
+      });
     });
   });
 }
