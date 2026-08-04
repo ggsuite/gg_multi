@@ -18,7 +18,7 @@ import '../../../backend/workspace_utils.dart';
 
 /// Command to upgrade the dependencies of all repos in the current ticket.
 ///
-/// Runs gg_one's `gg do upgrade dependencies` — i.e.
+/// Runs gg_one’s `gg do upgrade deps` — i.e.
 /// »dart pub upgrade [--major-versions] --tighten« — in every ticket repo in
 /// dependency order. Validation happens afterwards, in the `gg can commit`
 /// step of the calling flow.
@@ -28,17 +28,16 @@ class UpgradeDepsCommand extends DirCommand<void> {
     required super.ggLog,
     super.name = 'deps',
     super.description = 'Upgrade the dependencies of all ticket repos',
-    gg.DoUpgradeDependencies? ggDoUpgradeDependencies,
+    gg.DoUpgradeDeps? ggDoUpgradeDeps,
     SortedProcessingList? sortedProcessingList,
-  })  : _ggDoUpgradeDependencies =
-            ggDoUpgradeDependencies ?? gg.DoUpgradeDependencies(ggLog: ggLog),
+  })  : _ggDoUpgradeDeps = ggDoUpgradeDeps ?? gg.DoUpgradeDeps(ggLog: ggLog),
         _sortedProcessingList =
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog) {
     _addArgs();
   }
 
-  /// Instance of gg DoUpgradeDependencies to perform the upgrade action
-  final gg.DoUpgradeDependencies _ggDoUpgradeDependencies;
+  /// Instance of gg DoUpgradeDeps to perform the upgrade action
+  final gg.DoUpgradeDeps _ggDoUpgradeDeps;
 
   /// Sorted processing of repositories within a ticket
   final SortedProcessingList _sortedProcessingList;
@@ -94,7 +93,7 @@ class UpgradeDepsCommand extends DirCommand<void> {
       final repoName = path.basename(repoDir.path);
       ggLog('\n${cH1(repoName)}');
       try {
-        await _ggDoUpgradeDependencies.exec(
+        await _ggDoUpgradeDeps.exec(
           directory: repoDir,
           ggLog: ggLog,
           majorVersions: majorVersions,

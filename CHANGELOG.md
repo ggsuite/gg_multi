@@ -5,6 +5,8 @@
 ### Changed
 
 - Improve push and publish workflow
+- Rename »gg do upgrade dependencies« into »gg do upgrade deps«
+
 ## 7.10.0 - 2026-08-04
 
 ### Changed

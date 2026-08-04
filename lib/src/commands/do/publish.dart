@@ -133,7 +133,7 @@ class DoPublishCommand extends DirCommand<void> {
     super.description = 'Publish all repos of the current ticket',
     this.mergeOnly = false,
     gg.DoCommit? ggDoCommit,
-    gg.DoUpgradeDependencies? ggDoUpgradeDependencies,
+    gg.DoUpgradeDeps? ggDoUpgradeDeps,
     gg.CanCommit? ggCanCommit,
     ChangeRefsToPubDev? unlocalizeRefs,
     RestorePublishTo? restorePublishTo,
@@ -153,8 +153,7 @@ class DoPublishCommand extends DirCommand<void> {
     gg.EnsurePublishConfigIgnored? ensureIgnored,
     EnsureInRegistry? ensureInRegistry,
   })  : _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
-        _ggDoUpgradeDependencies =
-            ggDoUpgradeDependencies ?? gg.DoUpgradeDependencies(ggLog: ggLog),
+        _ggDoUpgradeDeps = ggDoUpgradeDeps ?? gg.DoUpgradeDeps(ggLog: ggLog),
         _ggCanCommit = ggCanCommit ?? gg.CanCommit(ggLog: ggLog),
         _unlocalizeRefs = unlocalizeRefs ?? ChangeRefsToPubDev(ggLog: ggLog),
         _restorePublishTo = restorePublishTo ?? RestorePublishTo(ggLog: ggLog),
@@ -201,7 +200,7 @@ class DoPublishCommand extends DirCommand<void> {
   final gg.DoCommit _ggDoCommit;
 
   /// Upgrades the dependencies of a repo right before it is published.
-  final gg.DoUpgradeDependencies _ggDoUpgradeDependencies;
+  final gg.DoUpgradeDeps _ggDoUpgradeDeps;
 
   /// Re-verifies a repo after references were unlocalized and its
   /// dependencies were upgraded — gg_one's `can publish` runs no
@@ -943,7 +942,7 @@ class DoPublishCommand extends DirCommand<void> {
     // analyze/format/tests — without this step the post-upgrade state
     // would never be validated. Output stays visible.
     if (!skipValidation) {
-      await _ggDoUpgradeDependencies.exec(directory: repoDir, ggLog: ggLog);
+      await _ggDoUpgradeDeps.exec(directory: repoDir, ggLog: ggLog);
       await _ggCanCommit.exec(directory: repoDir, ggLog: ggLog);
     }
 

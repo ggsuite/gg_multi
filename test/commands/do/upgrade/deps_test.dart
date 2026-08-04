@@ -14,8 +14,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 
-class MockGgDoUpgradeDependencies extends Mock
-    implements gg.DoUpgradeDependencies {}
+class MockGgDoUpgradeDeps extends Mock implements gg.DoUpgradeDeps {}
 
 class FakeDirectory extends Fake implements Directory {}
 
@@ -31,12 +30,12 @@ void main() {
 
   void ggLog(String msg) => messages.add(rmControls(msg));
 
-  /// A [gg.DoUpgradeDependencies] stub that succeeds — or throws for the
+  /// A [gg.DoUpgradeDeps] stub that succeeds — or throws for the
   /// repos named in [failingRepos].
-  MockGgDoUpgradeDependencies upgradeStub({
+  MockGgDoUpgradeDeps upgradeStub({
     List<String> failingRepos = const [],
   }) {
-    final mock = MockGgDoUpgradeDependencies();
+    final mock = MockGgDoUpgradeDeps();
     when(
       () => mock.exec(
         directory: any(named: 'directory'),
@@ -119,7 +118,7 @@ void main() {
         ..addCommand(
           UpgradeDepsCommand(
             ggLog: ggLog,
-            ggDoUpgradeDependencies: mock,
+            ggDoUpgradeDeps: mock,
           ),
         );
       await runner.run(['deps', '--input', ticketDir.path]);
@@ -149,7 +148,7 @@ void main() {
         ..addCommand(
           UpgradeDepsCommand(
             ggLog: ggLog,
-            ggDoUpgradeDependencies: mock,
+            ggDoUpgradeDeps: mock,
           ),
         );
       await runner.run([
@@ -172,7 +171,7 @@ void main() {
       final mock = upgradeStub();
       final command = UpgradeDepsCommand(
         ggLog: ggLog,
-        ggDoUpgradeDependencies: mock,
+        ggDoUpgradeDeps: mock,
       );
       await command.exec(
         directory: ticketDir,
@@ -193,7 +192,7 @@ void main() {
       final mock = upgradeStub(failingRepos: ['A']);
       final command = UpgradeDepsCommand(
         ggLog: ggLog,
-        ggDoUpgradeDependencies: mock,
+        ggDoUpgradeDeps: mock,
       );
 
       await expectLater(

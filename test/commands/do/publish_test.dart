@@ -37,9 +37,8 @@ class MockGgDoPublish extends Mock implements gg.DoPublish {}
 /// Mock for gg DoCommit
 class MockGgDoCommit extends Mock implements gg.DoCommit {}
 
-/// Mock for gg DoUpgradeDependencies
-class MockGgDoUpgradeDependencies extends Mock
-    implements gg.DoUpgradeDependencies {}
+/// Mock for gg DoUpgradeDeps
+class MockGgDoUpgradeDeps extends Mock implements gg.DoUpgradeDeps {}
 
 /// Mock for gg CanCommit
 class MockGgCanCommit extends Mock implements gg.CanCommit {}
@@ -7011,7 +7010,7 @@ void main() {
     late MockSetRefVersion mockSetRefVersion;
     late MockGetRefVersion mockGetRefVersion;
     late MockPubDevChecker mockPubDevChecker;
-    late MockGgDoUpgradeDependencies mockUpgradeDeps;
+    late MockGgDoUpgradeDeps mockUpgradeDeps;
     late MockGgCanCommit mockGgCanCommit;
 
     /// Every call the ordering assertions care about, in the order it
@@ -7088,7 +7087,7 @@ void main() {
         ),
       ).thenAnswer((i) async => calls.add('unlocalize:${repoOf(i)}'));
 
-      mockUpgradeDeps = MockGgDoUpgradeDependencies();
+      mockUpgradeDeps = MockGgDoUpgradeDeps();
       when(
         () => mockUpgradeDeps.exec(
           directory: any(named: 'directory'),
@@ -7196,7 +7195,7 @@ void main() {
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
               pubDevChecker: mockPubDevChecker,
-              ggDoUpgradeDependencies: mockUpgradeDeps,
+              ggDoUpgradeDeps: mockUpgradeDeps,
               ggCanCommit: mockGgCanCommit,
             ),
           );
@@ -7577,7 +7576,7 @@ DoPublishCommand makePublishCommand({
   required GgLog ggLog,
   bool mergeOnly = false,
   gg.DoCommit? ggDoCommit,
-  gg.DoUpgradeDependencies? ggDoUpgradeDependencies,
+  gg.DoUpgradeDeps? ggDoUpgradeDeps,
   gg.CanCommit? ggCanCommit,
   ChangeRefsToPubDev? unlocalizeRefs,
   RestorePublishTo? restorePublishTo,
@@ -7602,15 +7601,15 @@ DoPublishCommand makePublishCommand({
   gg.EnsurePublishConfigIgnored? ensureIgnored,
   EnsureInRegistry? ensureInRegistry,
 }) {
-  if (ggDoUpgradeDependencies == null) {
-    final mock = MockGgDoUpgradeDependencies();
+  if (ggDoUpgradeDeps == null) {
+    final mock = MockGgDoUpgradeDeps();
     when(
       () => mock.exec(
         directory: any(named: 'directory'),
         ggLog: any(named: 'ggLog'),
       ),
     ).thenAnswer((_) async {});
-    ggDoUpgradeDependencies = mock;
+    ggDoUpgradeDeps = mock;
   }
   if (ggCanCommit == null) {
     final mock = MockGgCanCommit();
@@ -7626,7 +7625,7 @@ DoPublishCommand makePublishCommand({
     ggLog: ggLog,
     mergeOnly: mergeOnly,
     ggDoCommit: ggDoCommit,
-    ggDoUpgradeDependencies: ggDoUpgradeDependencies,
+    ggDoUpgradeDeps: ggDoUpgradeDeps,
     ggCanCommit: ggCanCommit,
     unlocalizeRefs: unlocalizeRefs,
     restorePublishTo: restorePublishTo,
