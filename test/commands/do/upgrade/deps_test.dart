@@ -7,7 +7,7 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg_multi/src/commands/do/upgrade/dependencies.dart';
+import 'package:gg_multi/src/commands/do/upgrade/deps.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
@@ -71,16 +71,16 @@ void main() {
     }
   });
 
-  group('UpgradeDependenciesCommand (ticket-wide)', () {
+  group('UpgradeDepsCommand (ticket-wide)', () {
     test('fails outside any ticket folder', () async {
       final runner = CommandRunner<void>('test', 'do upgrade dependencies')
         ..addCommand(
-          UpgradeDependenciesCommand(
+          UpgradeDepsCommand(
             ggLog: ggLog,
           ),
         );
       await expectLater(
-        () async => await runner.run(['dependencies', '--input', tempDir.path]),
+        () async => await runner.run(['deps', '--input', tempDir.path]),
         throwsA(
           isA<Exception>().having(
             (e) => rmControls(e.toString()),
@@ -100,11 +100,11 @@ void main() {
         ..createSync();
       final runner = CommandRunner<void>('test', 'do upgrade dependencies')
         ..addCommand(
-          UpgradeDependenciesCommand(
+          UpgradeDepsCommand(
             ggLog: ggLog,
           ),
         );
-      await runner.run(['dependencies', '--input', emptyTicket.path]);
+      await runner.run(['deps', '--input', emptyTicket.path]);
       expect(
         messages,
         contains('⚠️ No repos in this ticket'),
@@ -117,12 +117,12 @@ void main() {
       final mock = upgradeStub();
       final runner = CommandRunner<void>('test', 'do upgrade dependencies')
         ..addCommand(
-          UpgradeDependenciesCommand(
+          UpgradeDepsCommand(
             ggLog: ggLog,
             ggDoUpgradeDependencies: mock,
           ),
         );
-      await runner.run(['dependencies', '--input', ticketDir.path]);
+      await runner.run(['deps', '--input', ticketDir.path]);
 
       expect(
         messages,
@@ -147,13 +147,13 @@ void main() {
       final mock = upgradeStub();
       final runner = CommandRunner<void>('test', 'do upgrade dependencies')
         ..addCommand(
-          UpgradeDependenciesCommand(
+          UpgradeDepsCommand(
             ggLog: ggLog,
             ggDoUpgradeDependencies: mock,
           ),
         );
       await runner.run([
-        'dependencies',
+        'deps',
         '--input',
         ticketDir.path,
         '--no-major-versions',
@@ -170,7 +170,7 @@ void main() {
 
     test('forwards majorVersions passed programmatically', () async {
       final mock = upgradeStub();
-      final command = UpgradeDependenciesCommand(
+      final command = UpgradeDepsCommand(
         ggLog: ggLog,
         ggDoUpgradeDependencies: mock,
       );
@@ -191,7 +191,7 @@ void main() {
 
     test('reports the repos that failed and still tries the others', () async {
       final mock = upgradeStub(failingRepos: ['A']);
-      final command = UpgradeDependenciesCommand(
+      final command = UpgradeDepsCommand(
         ggLog: ggLog,
         ggDoUpgradeDependencies: mock,
       );
@@ -229,10 +229,10 @@ void main() {
 
     test('should have a code coverage of 100%', () {
       expect(
-        () => UpgradeDependenciesCommand(ggLog: ggLog),
+        () => UpgradeDepsCommand(ggLog: ggLog),
         returnsNormally,
       );
-      expect(MockUpgradeDependenciesCommand(), isNotNull);
+      expect(MockUpgradeDepsCommand(), isNotNull);
     });
   });
 }

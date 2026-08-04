@@ -49,8 +49,8 @@ void main() {
 
       expect(
         output.last,
-        contains('dependencies'),
-        reason: 'Help should mention the dependencies subcommand.',
+        contains('deps'),
+        reason: 'Help should mention the deps subcommand.',
       );
     });
   });

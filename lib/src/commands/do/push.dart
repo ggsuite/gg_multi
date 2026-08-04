@@ -21,7 +21,7 @@ import '../../backend/git_snapshot.dart' as git_snapshot;
 import '../../backend/publish_skip_check.dart';
 import '../../backend/workspace_utils.dart';
 import '../can/commit.dart';
-import 'upgrade/dependencies.dart';
+import 'upgrade/deps.dart';
 
 /// Typedef for running processes (for injection & tests).
 typedef ProcessRunner = Future<ProcessResult> Function(
@@ -96,7 +96,7 @@ class DoPushCommand extends DirCommand<void> {
     gg.DoPush? ggDoPush,
     gg.DoCommit? ggDoCommit,
     IsCommitted? isCommitted,
-    UpgradeDependenciesCommand? upgradeDependencies,
+    UpgradeDepsCommand? upgradeDependencies,
     CanCommitCommand? canCommit,
     SortedProcessingList? sortedProcessingList,
     ProcessRunner? processRunner,
@@ -105,7 +105,7 @@ class DoPushCommand extends DirCommand<void> {
         _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
         _isCommitted = isCommitted ?? IsCommitted(ggLog: ggLog),
         _upgradeDependencies =
-            upgradeDependencies ?? UpgradeDependenciesCommand(ggLog: ggLog),
+            upgradeDependencies ?? UpgradeDepsCommand(ggLog: ggLog),
         _canCommit = canCommit ?? CanCommitCommand(ggLog: ggLog),
         _sortedProcessingList =
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
@@ -124,7 +124,7 @@ class DoPushCommand extends DirCommand<void> {
   final IsCommitted _isCommitted;
 
   /// Upgrades the dependencies of every ticket repo.
-  final UpgradeDependenciesCommand _upgradeDependencies;
+  final UpgradeDepsCommand _upgradeDependencies;
 
   /// Re-verifies every repo after the merge and upgrade phases.
   final CanCommitCommand _canCommit;

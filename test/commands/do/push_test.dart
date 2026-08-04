@@ -12,7 +12,7 @@ import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart
 import 'package:gg_log/gg_log.dart';
 import 'package:gg_multi/src/commands/can/commit.dart';
 import 'package:gg_multi/src/commands/do/push.dart';
-import 'package:gg_multi/src/commands/do/upgrade/dependencies.dart';
+import 'package:gg_multi/src/commands/do/upgrade/deps.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_publish/gg_publish.dart' as gg_publish;
 import 'package:gg_status_printer/gg_status_printer.dart';
@@ -48,7 +48,7 @@ typedef PushTestBed = ({
   MockGgDoPush ggDoPush,
   MockGgDoCommit ggDoCommit,
   MockIsCommitted isCommitted,
-  MockUpgradeDependenciesCommand upgradeDeps,
+  MockUpgradeDepsCommand upgradeDeps,
   MockCanCommitCommand canCommitCmd,
   MockMainBranch mainBranch,
 });
@@ -244,7 +244,7 @@ void main() {
       ),
     ).thenAnswer((_) async => true);
 
-    final upgradeDeps = MockUpgradeDependenciesCommand();
+    final upgradeDeps = MockUpgradeDepsCommand();
     when(
       () => upgradeDeps.exec(
         directory: any(named: 'directory'),

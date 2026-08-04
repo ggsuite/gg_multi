@@ -19,13 +19,14 @@ import '../../../backend/workspace_utils.dart';
 /// Command to upgrade the dependencies of all repos in the current ticket.
 ///
 /// Runs gg_one's `gg do upgrade dependencies` — i.e.
-/// »dart pub upgrade [--major-versions] --tighten« plus the re-validation via
-/// `gg can commit` — in every ticket repo in dependency order.
-class UpgradeDependenciesCommand extends DirCommand<void> {
+/// »dart pub upgrade [--major-versions] --tighten« — in every ticket repo in
+/// dependency order. Validation happens afterwards, in the `gg can commit`
+/// step of the calling flow.
+class UpgradeDepsCommand extends DirCommand<void> {
   /// Constructor
-  UpgradeDependenciesCommand({
+  UpgradeDepsCommand({
     required super.ggLog,
-    super.name = 'dependencies',
+    super.name = 'deps',
     super.description = 'Upgrade the dependencies of all ticket repos',
     gg.DoUpgradeDependencies? ggDoUpgradeDependencies,
     SortedProcessingList? sortedProcessingList,
@@ -128,6 +129,6 @@ class UpgradeDependenciesCommand extends DirCommand<void> {
   }
 }
 
-/// Mock for [UpgradeDependenciesCommand]
-class MockUpgradeDependenciesCommand extends MockDirCommand<void>
-    implements UpgradeDependenciesCommand {}
+/// Mock for [UpgradeDepsCommand]
+class MockUpgradeDepsCommand extends MockDirCommand<void>
+    implements UpgradeDepsCommand {}
