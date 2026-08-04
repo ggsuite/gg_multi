@@ -861,7 +861,7 @@ void main() {
               contains(' - A/pubspec.yaml'),
               contains(
                 'Please resolve the conflicts. Then execute: '
-                'gg do commit -m"Merge main" --no-log',
+                "gg do commit -m 'Merge main' --no-log",
               ),
             ),
           ),

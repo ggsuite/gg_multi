@@ -488,7 +488,7 @@ class DoPushCommand extends DirCommand<void> {
         ),
         for (final file in conflicts) cPath(' - $repoName/$file'),
         cAction('Please resolve the conflicts. Then execute: ') +
-            cCmd('gg do commit -m"Merge main" --no-log'),
+            cCmd("gg do commit -m 'Merge main' --no-log"),
       ].join('\n');
 
   // ...........................................................................

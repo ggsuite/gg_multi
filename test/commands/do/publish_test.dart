@@ -399,7 +399,7 @@ void main() {
           'Merging origin/main into A produced conflicts:\n'
           ' - A/pubspec.yaml\n'
           'Please resolve the conflicts. Then execute: '
-          'gg do commit -m"Merge main" --no-log',
+          "gg do commit -m 'Merge main' --no-log",
         ),
       );
 
@@ -424,7 +424,7 @@ void main() {
             (e) => rmControls(e.toString()),
             'message',
             allOf(
-              contains('gg do commit -m"Merge main" --no-log'),
+              contains("gg do commit -m 'Merge main' --no-log"),
               isNot(contains('Cannot publish.')),
             ),
           ),
