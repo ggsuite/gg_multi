@@ -5,6 +5,11 @@
 ### Changed
 
 - Fix issues with CHANGELOG.md
+## 7.11.1 - 2026-08-04
+
+### Removed
+
+- Remove duplicate upgrade calls from publish workflow
 
 ## 7.11.0 - 2026-08-04
 

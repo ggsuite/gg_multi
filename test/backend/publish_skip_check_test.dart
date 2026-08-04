@@ -161,6 +161,39 @@ void main() {
         );
       });
 
+      test(
+          'still skips a repo whose only change is the upgrade commit of '
+          '»gg do push«', () async {
+        // The push flow upgrades the dependencies of every repo and records
+        // the result as a »#gg:« system commit touching nothing but
+        // manifests and lock files. That must not defeat the skip: an
+        // otherwise unchanged repo is still not published.
+        final dir = await createRepo('a');
+        await git(dir, ['checkout', '-b', 'feat']);
+        await commitFile(
+          dir,
+          'pubspec.yaml',
+          'name: a\nversion: 1.0.0\ndependencies:\n  x: ^2.0.0\n',
+          '#gg: dart pub upgrade --major-versions --tighten',
+        );
+        await commitFile(
+          dir,
+          'pubspec.lock',
+          'packages: {}\n',
+          '#gg: dart pub upgrade --major-versions --tighten',
+        );
+
+        final decision = await check.get(
+          repo: node('a', dir),
+          refVersions: {},
+        );
+        expect(decision.skip, isTrue);
+        expect(
+          decision.reason,
+          contains('Nothing changed. Skip publishing.'),
+        );
+      });
+
       test('treats any »#gg: «-prefixed commit as generated', () async {
         final dir = await createRepo('a');
         await git(dir, ['checkout', '-b', 'feat']);
