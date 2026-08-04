@@ -9,12 +9,12 @@ environment:
 dependencies:
   path: ^1.9.1
   args: ^2.7.0
-  gg_one: ^12.8.0
+  gg_one: ^12.9.0
   gg_lang: ^0.4.0
   gg_console_colors: ^2.3.0
   gg_args: ^2.2.0
   gg_git: ^3.2.2
-  gg_localize_refs: ^3.4.0
+  gg_localize_refs: ^3.5.0
   gg_local_package_dependencies: ^2.1.0
   gg_log: ^1.0.6
   gg_publish: ^3.10.2
