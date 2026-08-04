@@ -8,6 +8,7 @@ import 'dart:io';
 
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
+import 'package:gg_git/gg_git.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:gg_one/gg_one.dart' as gg;
@@ -18,6 +19,8 @@ import 'package:path/path.dart' as path;
 import '../../backend/git_snapshot.dart' as git_snapshot;
 import '../../backend/publish_skip_check.dart';
 import '../../backend/workspace_utils.dart';
+import '../can/commit.dart';
+import 'upgrade/dependencies.dart';
 
 /// Typedef for running processes (for injection & tests).
 typedef ProcessRunner = Future<ProcessResult> Function(
@@ -67,12 +70,20 @@ class MergeConflictException implements Exception {
 /// Pushing is what brings the ticket onto the remote, so everything that has
 /// to happen before the remote sees the branches lives here:
 ///
-/// 1. The remote main branch is merged into every feature branch, so the
+/// 1. All repos must be committed (checked via gg_git's `IsCommitted`).
+/// 2. The remote main branch is merged into every feature branch, so the
 ///    pushed state always contains the current main.
-/// 2. Commits that already exist on the remote feature branch are integrated
+/// 3. The dependencies of every repo are upgraded
+///    (»dart pub upgrade [--major-versions] --tighten«).
+/// 4. `gg can commit` re-verifies every repo — merge and upgrade bring in
+///    changes, so the checks only make sense after them. Their output stays
+///    visible on the command line.
+/// 5. What the upgrade changed is recorded as a `#gg:` system commit
+///    (no CHANGELOG entry).
+/// 6. Commits that already exist on the remote feature branch are integrated
 ///    (`git pull --rebase`; an obsolete leftover branch of an already merged
-///    ticket is replaced instead — see [_remoteBranchIsObsolete]).
-/// 3. Every repo is pushed via gg_one's `gg do push`.
+///    ticket is replaced instead — see [_remoteBranchIsObsolete]), and every
+///    repo is pushed via gg_one's `gg do push`.
 ///
 /// `gg do review` runs this automatically before it opens the pull requests.
 class DoPushCommand extends DirCommand<void> {
@@ -82,12 +93,19 @@ class DoPushCommand extends DirCommand<void> {
     super.name = 'push',
     super.description = 'Merge main into the ticket repos and push them',
     gg.DoPush? ggDoPush,
-    gg.CanCommit? ggCanCommit,
+    gg.DoCommit? ggDoCommit,
+    IsCommitted? isCommitted,
+    UpgradeDependenciesCommand? upgradeDependencies,
+    CanCommitCommand? canCommit,
     SortedProcessingList? sortedProcessingList,
     ProcessRunner? processRunner,
     gg_publish.MainBranch? mainBranch,
   })  : _ggDoPush = ggDoPush ?? gg.DoPush(ggLog: ggLog),
-        _ggCanCommit = ggCanCommit ?? gg.CanCommit(ggLog: ggLog),
+        _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
+        _isCommitted = isCommitted ?? IsCommitted(ggLog: ggLog),
+        _upgradeDependencies =
+            upgradeDependencies ?? UpgradeDependenciesCommand(ggLog: ggLog),
+        _canCommit = canCommit ?? CanCommitCommand(ggLog: ggLog),
         _sortedProcessingList =
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
         _processRunner = processRunner ?? _defaultProcessRunner,
@@ -98,9 +116,17 @@ class DoPushCommand extends DirCommand<void> {
   /// Instance of gg DoPush to perform the push action
   final gg.DoPush _ggDoPush;
 
-  /// Verifies a repository still passes the commit checks after the main
-  /// branch was merged into it.
-  final gg.CanCommit _ggCanCommit;
+  /// Records the changes of the upgrade phase as a `#gg:` system commit.
+  final gg.DoCommit _ggDoCommit;
+
+  /// Checks whether everything in a repository is committed.
+  final IsCommitted _isCommitted;
+
+  /// Upgrades the dependencies of every ticket repo.
+  final UpgradeDependenciesCommand _upgradeDependencies;
+
+  /// Re-verifies every repo after the merge and upgrade phases.
+  final CanCommitCommand _canCommit;
 
   /// Sorted processing of repositories within a ticket
   final SortedProcessingList _sortedProcessingList;
@@ -117,12 +143,14 @@ class DoPushCommand extends DirCommand<void> {
     required GgLog ggLog,
     bool? force,
     bool? verbose,
+    bool? majorVersions,
   }) =>
       get(
         directory: directory,
         ggLog: ggLog,
         force: force,
         verbose: verbose,
+        majorVersions: majorVersions,
       );
 
   @override
@@ -131,10 +159,12 @@ class DoPushCommand extends DirCommand<void> {
     required GgLog ggLog,
     bool? force,
     bool? verbose,
+    bool? majorVersions,
   }) async {
     // Read verbose/force flags from CLI if not provided programmatically.
     verbose ??= argResults?['verbose'] as bool? ?? false;
     force ??= argResults?['force'] as bool? ?? false;
+    majorVersions ??= argResults?['major-versions'] as bool? ?? true;
 
     // Detect if we are inside a ticket folder
     final String? ticketPath = WorkspaceUtils.detectTicketPath(
@@ -199,12 +229,69 @@ class DoPushCommand extends DirCommand<void> {
       ),
     );
 
+    // Upgrade the dependencies of every repo. The output stays visible —
+    // the user must see what the upgrade changed.
+    await _upgradeDependencies.exec(
+      directory: ticketDir,
+      ggLog: ggLog,
+      majorVersions: majorVersions,
+    );
+
+    // Re-verify every repo after merge + upgrade — the checks only make
+    // sense after those changes came in. The output stays visible.
+    await _canCommit.exec(directory: ticketDir, ggLog: ggLog);
+
+    // Record what the upgrade changed as a »#gg:« system commit.
+    await GgStatusPrinter<void>(
+      message: 'Committing upgrade changes',
+      ggLog: ggLog,
+      dark: true,
+    ).run(
+      () async => _commitUpgradeChanges(
+        nodes: nodes,
+        ggLog: taskLog,
+        majorVersions: majorVersions!,
+      ),
+    );
+
     await _pushingRepos(
       nodes: nodes,
       ggLog: ggLog,
       taskLog: taskLog,
       force: force,
     );
+  }
+
+  // ...........................................................................
+  /// Commits the changes the upgrade phase left behind as a gg system
+  /// commit — »#gg: dart pub upgrade …« with no CHANGELOG entry.
+  Future<void> _commitUpgradeChanges({
+    required List<Node> nodes,
+    required GgLog ggLog,
+    required bool majorVersions,
+  }) async {
+    final message = '${PublishSkipCheck.ggCommitPrefix}dart pub upgrade '
+        '${majorVersions ? '--major-versions ' : ''}--tighten';
+
+    for (final node in nodes) {
+      final repoDir = node.directory;
+      final isCommitted = await _isCommitted.get(
+        directory: repoDir,
+        ggLog: ggLog,
+      );
+      if (isCommitted) {
+        continue;
+      }
+      await _ggDoCommit.exec(
+        directory: repoDir,
+        ggLog: ggLog,
+        message: message,
+        // Bookkeeping, not a change of the package — keep it out of
+        // CHANGELOG.md (»gg do commit --no-log«).
+        updateChangeLog: false,
+        force: false,
+      );
+    }
   }
 
   // ...........................................................................
@@ -215,11 +302,11 @@ class DoPushCommand extends DirCommand<void> {
   }) async {
     final uncommitted = <String>[];
     for (final repo in nodes) {
-      final status = await _runGit(
-        <String>['status', '--porcelain'],
-        repoDir: repo.directory,
+      final isCommitted = await _isCommitted.get(
+        directory: repo.directory,
+        ggLog: ggLog,
       );
-      if (status.isNotEmpty) {
+      if (!isCommitted) {
         uncommitted.add(path.basename(repo.directory.path));
       }
     }
@@ -257,10 +344,7 @@ class DoPushCommand extends DirCommand<void> {
         continue;
       }
 
-      final String headBeforeMerge;
       try {
-        headBeforeMerge = await _gitHead(repoDir);
-
         // Make sure `origin/<main>` points to the remote's current main.
         // Without this the merge below would silently merge a stale main.
         await _runGit(
@@ -318,46 +402,6 @@ class DoPushCommand extends DirCommand<void> {
         );
         throw Exception(cDetail('Failed to merge main.'));
       }
-
-      // If the merge actually moved HEAD (i.e. it was not a no-op), re-verify
-      // the merged state with `gg can commit`. A merge can silently corrupt a
-      // manifest (e.g. a duplicated `version:` key) without a conflict, and
-      // we must not push such a broken state.
-      final headAfterMerge = await _gitHead(repoDir);
-      if (headAfterMerge != headBeforeMerge) {
-        try {
-          await _ggCanCommit.exec(
-            directory: repoDir,
-            ggLog: ggLog,
-            saveState: false,
-          );
-          ggLog(cDetail('✓ Verified $repoName after merging $mainBranch'));
-        } catch (e) {
-          // The tree was clean before the merge (checked above), so resetting
-          // to the pre-merge commit loses nothing.
-          await _runGit(
-            <String>['reset', '--hard', headBeforeMerge],
-            repoDir: repoDir,
-          );
-          errorLog(
-            [
-              cDetail(
-                '✗ Merging $mainBranch into $repoName '
-                'broke "gg can commit"',
-              ),
-              cError(rmControls('$e')),
-            ].join('\n'),
-          );
-          errorLog(
-            cAction(
-              'The merge likely corrupted a file. The repo was reset to '
-              'before the merge. Merge ${cCmd('git merge origin/$mainBranch')} '
-              'manually, fix the problem, then re-run.',
-            ),
-          );
-          throw Exception(cDetail('Merged state does not pass can commit.'));
-        }
-      }
     }
   }
 
@@ -406,11 +450,6 @@ class DoPushCommand extends DirCommand<void> {
         .where((l) => l.isNotEmpty)
         .toList();
   }
-
-  // ...........................................................................
-  /// Returns the current `HEAD` commit hash of [repoDir].
-  Future<String> _gitHead(Directory repoDir) =>
-      _runGit(<String>['rev-parse', 'HEAD'], repoDir: repoDir);
 
   // ...........................................................................
   /// Returns the current branch of [repoDir] — the literal `HEAD` when the
@@ -761,6 +800,13 @@ class DoPushCommand extends DirCommand<void> {
       abbr: 'v',
       help: 'Show detailed log output.',
       defaultsTo: false,
+      negatable: true,
+    );
+    argParser.addFlag(
+      'major-versions',
+      abbr: 'm',
+      help: 'Upgrade dependencies to their latest major versions.',
+      defaultsTo: true,
       negatable: true,
     );
   }

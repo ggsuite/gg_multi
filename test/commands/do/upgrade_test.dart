@@ -46,6 +46,12 @@ void main() {
         contains('master'),
         reason: 'Help should mention the master subcommand.',
       );
+
+      expect(
+        output.last,
+        contains('dependencies'),
+        reason: 'Help should mention the dependencies subcommand.',
+      );
     });
   });
 }

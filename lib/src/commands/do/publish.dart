@@ -133,6 +133,8 @@ class DoPublishCommand extends DirCommand<void> {
     super.description = 'Publish all repos of the current ticket',
     this.mergeOnly = false,
     gg.DoCommit? ggDoCommit,
+    gg.DoUpgradeDependencies? ggDoUpgradeDependencies,
+    gg.CanCommit? ggCanCommit,
     ChangeRefsToPubDev? unlocalizeRefs,
     RestorePublishTo? restorePublishTo,
     gg.DoPush? ggDoPush,
@@ -151,6 +153,9 @@ class DoPublishCommand extends DirCommand<void> {
     gg.EnsurePublishConfigIgnored? ensureIgnored,
     EnsureInRegistry? ensureInRegistry,
   })  : _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
+        _ggDoUpgradeDependencies =
+            ggDoUpgradeDependencies ?? gg.DoUpgradeDependencies(ggLog: ggLog),
+        _ggCanCommit = ggCanCommit ?? gg.CanCommit(ggLog: ggLog),
         _unlocalizeRefs = unlocalizeRefs ?? ChangeRefsToPubDev(ggLog: ggLog),
         _restorePublishTo = restorePublishTo ?? RestorePublishTo(ggLog: ggLog),
         _ggDoPush = ggDoPush ?? gg.DoPush(ggLog: ggLog),
@@ -194,6 +199,14 @@ class DoPublishCommand extends DirCommand<void> {
 
   /// Instance of gg DoCommit
   final gg.DoCommit _ggDoCommit;
+
+  /// Upgrades the dependencies of a repo right before it is published.
+  final gg.DoUpgradeDependencies _ggDoUpgradeDependencies;
+
+  /// Re-verifies a repo after references were unlocalized and its
+  /// dependencies were upgraded — gg_one's `can publish` runs no
+  /// analyze/format/tests, so this closes that gap.
+  final gg.CanCommit _ggCanCommit;
 
   /// Instance of UnlocalizeRefs
   final ChangeRefsToPubDev _unlocalizeRefs;
@@ -921,7 +934,25 @@ class DoPublishCommand extends DirCommand<void> {
       taskLog: taskLog,
     );
 
-    // Commit
+    // A repo that already carries gg_one step progress is past the point
+    // where validation is meaningful — its version is bumped and possibly
+    // uploaded, so upgrading or re-checking it would touch a mid-publish
+    // state. The gate below skips for the same reason.
+    final skipValidation = resume && _repoHasStepProgress(repoDir);
+
+    // Upgrade the dependencies and re-verify with `gg can commit` before
+    // anything is published. The refs point at the registry again, so
+    // »dart pub upgrade --tighten« resolves against the sibling versions
+    // published earlier in this run. gg_one's `can publish` runs no
+    // analyze/format/tests — without this step the post-upgrade state
+    // would never be validated. Output stays visible.
+    if (!skipValidation) {
+      await _ggDoUpgradeDependencies.exec(directory: repoDir, ggLog: ggLog);
+      await _ggCanCommit.exec(directory: repoDir, ggLog: ggLog);
+    }
+
+    // Commit — sweeps the reference changes and the upgrade changes into
+    // one bookkeeping commit.
     await _ggDoCommit.exec(
       directory: repoDir,
       ggLog: taskLog,
@@ -952,7 +983,7 @@ class DoPublishCommand extends DirCommand<void> {
     // uploaded, which is precisely what pana and `is feature branch` would
     // now trip over — so a resume skips it and gg_one continues at its own
     // first open step.
-    if (!(resume && _repoHasStepProgress(repoDir))) {
+    if (!skipValidation) {
       await _canPublishCommand.checkRepo(directory: repoDir, ggLog: ggLog);
     }
 
