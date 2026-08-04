@@ -72,7 +72,7 @@ void main() {
       runner = CommandRunner<void>('test', 'GraphCommand Test')
         ..addCommand(GraphCommand(ggLog: ggLog));
 
-      // The ocean workspace: `a` depends on `b` and - redundantly - on `c`,
+      // The ocean: `a` depends on `b` and - redundantly - on `c`,
       // `b` depends on `c`. `a` also has a dev dependency on `d` and a third
       // party dependency that is no local repository.
       writePackage(
@@ -131,7 +131,7 @@ void main() {
     String ticketDir() => p.join(tempDir.path, 'tickets', '1');
 
     group('outside a ticket', () {
-      test('graphs the whole ocean workspace', () async {
+      test('graphs the whole ocean', () async {
         await run(oceanDir(), <String>['--no-transitive-reduction']);
 
         expect(output(), startsWith('flowchart LR'));

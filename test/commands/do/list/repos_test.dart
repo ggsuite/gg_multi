@@ -66,7 +66,7 @@ void main() {
       expect(messages, contains('project123 v.1.0.0 (dart) from microsoft'));
     });
 
-    test('handles empty ocean workspace directory', () async {
+    test('handles empty ocean directory', () async {
       final workspacePath = path.join(tempDir.path, 'workspace_empty');
       final oceanPath = Directory(path.join(workspacePath, ggMultiOceanFolder))
         ..createSync(
@@ -82,7 +82,7 @@ void main() {
       await runner.run(['repos']);
       expect(
         messages,
-        contains('No repositories found in the ocean workspace.'),
+        contains('No repositories found in the ocean.'),
       );
     });
 

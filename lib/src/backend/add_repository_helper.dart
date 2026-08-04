@@ -420,7 +420,7 @@ String? extractRepoName(String repoUrl) {
   return urlParser.parse(repoUrl).repo;
 }
 
-/// Retrieves the Pubspec for a repository in the ocean workspace.
+/// Retrieves the Pubspec for a repository in the ocean.
 /// Returns null if pubspec.yaml is not found or parsing fails.
 Pubspec? getPubspecFromWorkspace({
   required String targetArg,

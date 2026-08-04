@@ -6,9 +6,9 @@
 
 import 'dart:io';
 
+import 'package:gg_multi/src/backend/list_backend.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
-import 'package:gg_multi/src/backend/list_backend.dart';
 
 void main() {
   group('list_backend', () {
@@ -172,7 +172,7 @@ void main() {
       });
 
       test('should return list of repo infos for each subdirectory', () async {
-        // Create an ocean workspace directory inside the temporary directory
+        // Create an ocean directory inside the temporary directory
         var oceanWorkspace = Directory(p.join(tempDir.path, 'master'));
         oceanWorkspace.createSync();
 

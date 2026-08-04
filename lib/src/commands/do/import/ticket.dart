@@ -88,7 +88,7 @@ class DoCheckoutCommand extends Command<dynamic> {
   /// The log function.
   final GgLog ggLog;
 
-  /// Clones repositories that are missing from the ocean workspace.
+  /// Clones repositories that are missing from the ocean.
   final GitHandler gitHandler;
 
   final gg_git.Fetch _fetch;
@@ -97,7 +97,7 @@ class DoCheckoutCommand extends Command<dynamic> {
   final gg_git.RemoteBranches _remoteBranches;
   final gg_git.RemoteBranchExists _remoteBranchExists;
 
-  /// Resolved ocean workspace path.
+  /// Resolved ocean path.
   final String oceanWorkspacePath;
 
   /// The path from which the command was executed.
@@ -152,7 +152,7 @@ class DoCheckoutCommand extends Command<dynamic> {
     }
     final arg = argResults!.rest.first;
 
-    // Maintenance: move the repositories of an old ocean workspace into
+    // Maintenance: move the repositories of an old ocean into
     // their organization folders before resolving anything.
     migrateToOrgFolders(workspacePath: oceanWorkspacePath, ggLog: ggLog);
 
@@ -221,7 +221,7 @@ class DoCheckoutCommand extends Command<dynamic> {
     throw Exception(
       cError(
         '"$arg" is neither a ticket.json path, an http(s) URL, a repository of '
-        'the ocean workspace, nor a branch of one of its repositories.',
+        'the ocean, nor a branch of one of its repositories.',
       ),
     );
   }
@@ -451,7 +451,7 @@ class DoCheckoutCommand extends Command<dynamic> {
     required String branch,
     required String repoName,
   }) async {
-    // The ticket mirrors the layout of the ocean workspace, so the repo ends
+    // The ticket mirrors the layout of the ocean, so the repo ends
     // up in the organization folder it has there.
     final relativePath = RepoFolderResolver.relativePath(
       workspacePath: oceanWorkspacePath,
@@ -487,7 +487,7 @@ class DoCheckoutCommand extends Command<dynamic> {
   /// Returns the path of the `.ocean` repository that contains
   /// [executionPath], or null when the command is not run inside one.
   ///
-  /// The repository is either a direct child of the ocean workspace or sits
+  /// The repository is either a direct child of the ocean or sits
   /// one level deeper inside its organization folder, so the first two
   /// segments below the workspace are checked.
   String? _currentOceanRepoPath() {
@@ -514,7 +514,7 @@ class DoCheckoutCommand extends Command<dynamic> {
   }
 
   // ...........................................................................
-  /// Lists the git repositories of the ocean workspace.
+  /// Lists the git repositories of the ocean.
   List<Directory> _listOceanRepos() {
     return RepoFolderResolver.repoDirs(oceanWorkspacePath)
         .where((d) => Directory(path.join(d.path, '.git')).existsSync())

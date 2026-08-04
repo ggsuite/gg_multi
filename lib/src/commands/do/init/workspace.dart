@@ -15,7 +15,7 @@ import 'package:path/path.dart' as path;
 import '../../../backend/constants.dart';
 import '../../../backend/workspace_utils.dart';
 
-/// Command to initialize the ocean workspace
+/// Command to initialize the ocean
 class InitWorkspaceCommand extends Command<void> {
   /// Constructor
   InitWorkspaceCommand({
@@ -28,7 +28,7 @@ class InitWorkspaceCommand extends Command<void> {
   /// The log function
   final GgLog ggLog;
 
-  /// Optional root path for where to create the ocean workspace
+  /// Optional root path for where to create the ocean
   final String rootPath;
 
   String _rel(String absPath) => p.relative(absPath, from: rootPath);
@@ -37,7 +37,7 @@ class InitWorkspaceCommand extends Command<void> {
   String get name => 'workspace';
 
   @override
-  String get description => 'Initialize the ocean workspace';
+  String get description => 'Initialize the ocean';
 
   @override
   Future<void> run() async {
@@ -47,7 +47,7 @@ class InitWorkspaceCommand extends Command<void> {
     final wsDir = Directory(wsPath);
 
     if (wsDir.existsSync()) {
-      ggLog(cWarn('Ocean workspace already exists at: ${_rel(wsPath)}'));
+      ggLog(cWarn('ocean already exists at: ${_rel(wsPath)}'));
       return;
     }
 
@@ -67,6 +67,6 @@ class InitWorkspaceCommand extends Command<void> {
     // -----------------------------------------------------------------------
     // Create the workspace ---------------------------------------------------
     wsDir.createSync(recursive: true);
-    ggLog(cDetail('✓ Ocean workspace initialized at: ${_rel(wsPath)}'));
+    ggLog(cDetail('✓ ocean initialized at: ${_rel(wsPath)}'));
   }
 }

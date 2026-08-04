@@ -10,11 +10,12 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
+
 import '../../../backend/add_repository_helper.dart';
 import '../../../backend/repo_folder_resolver.dart';
 import '../../../backend/workspace_utils.dart';
 
-/// Command to list dependencies of a project from the ocean workspace.
+/// Command to list dependencies of a project from the ocean.
 class ListDepsCommand extends Command<dynamic> {
   /// Constructor
   ListDepsCommand({

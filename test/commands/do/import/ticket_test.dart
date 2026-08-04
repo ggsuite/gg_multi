@@ -513,7 +513,7 @@ void main() {
         expect(logged('Failed to fetch repo_a'), isTrue);
       });
 
-      test('throws cleanly when the ocean workspace is missing', () async {
+      test('throws cleanly when the ocean is missing', () async {
         Directory(oceanPath).deleteSync(recursive: true);
         await expectLater(
           runCmd(build(), ['nope']),

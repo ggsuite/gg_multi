@@ -9,9 +9,9 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:gg_multi/src/backend/constants.dart';
-import 'package:test/test.dart';
-import 'package:path/path.dart' as path;
 import 'package:gg_multi/src/commands/do/list/deps.dart';
+import 'package:path/path.dart' as path;
+import 'package:test/test.dart';
 
 void main() {
   group('ListDepsCommand', () {
@@ -24,7 +24,7 @@ void main() {
       tempDir = Directory.systemTemp.createTempSync('list_deps_test');
       oceanWorkspace = Directory(path.join(tempDir.path, ggMultiOceanFolder))
         ..createSync(recursive: true);
-      // Create a project folder 'project123' inside ocean workspace
+      // Create a project folder 'project123' inside ocean
       final projectDir = Directory(path.join(oceanWorkspace.path, 'project123'))
         ..createSync(recursive: true);
       const pubspecContent = '''

@@ -8,9 +8,9 @@ import 'dart:io';
 
 import 'package:gg_multi/src/backend/constants.dart';
 import 'package:gg_multi/src/backend/ocean_migration.dart';
+import 'package:gg_multi/src/backend/workspace_utils.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-import 'package:gg_multi/src/backend/workspace_utils.dart';
 
 void main() {
   group('WorkspaceUtils.defaultOceanWorkspacePath', () {
@@ -28,7 +28,7 @@ void main() {
       await tempRoot.delete(recursive: true);
     });
 
-    test('returns existing ocean workspace in current folder', () async {
+    test('returns existing ocean in current folder', () async {
       // Arrange ---------------------------------------------------------------
       final oceanDir = Directory(path.join(tempRoot.path, ggMultiOceanFolder));
       await oceanDir.create();
@@ -42,7 +42,7 @@ void main() {
       expect(result, oceanDir.path);
     });
 
-    test('resolves ocean workspace from a ticket workspace', () async {
+    test('resolves ocean from a ticket workspace', () async {
       // Arrange ---------------------------------------------------------------
       final ticketsDir = Directory(
         path.join(tempRoot.path, ggMultiTicketFolder),
@@ -149,7 +149,7 @@ void main() {
       await tempRoot.delete(recursive: true);
     });
 
-    test('returns parent of ocean workspace if existing', () async {
+    test('returns parent of ocean if existing', () async {
       final wsParent = Directory(path.join(tempRoot.path, 'the_workspace'));
       final oceanDir = Directory(path.join(wsParent.path, ggMultiOceanFolder));
       await oceanDir.create(recursive: true);
@@ -160,7 +160,7 @@ void main() {
       expect(result, equals(wsParent.path));
     });
 
-    test('returns parent of resolved ocean workspace path', () async {
+    test('returns parent of resolved ocean path', () async {
       final ticketDir = Directory(
         path.join(tempRoot.path, 'parent', ggMultiTicketFolder, 'TICKET-42'),
       )..createSync(recursive: true);
@@ -197,8 +197,7 @@ void main() {
       }
     });
 
-    test('returns false for directory not in or under any ocean workspace',
-        () async {
+    test('returns false for directory not in or under any ocean', () async {
       // Arrange -----------------------------------------------------------
       final randomDir = Directory(path.join(tempRoot.path, 'random', 'sub'));
       await randomDir.create(recursive: true);
@@ -210,8 +209,7 @@ void main() {
       expect(isInside, isFalse);
     });
 
-    test('returns true for direct child of a folder with ocean workspace',
-        () async {
+    test('returns true for direct child of a folder with ocean', () async {
       final root = Directory(path.join(tempRoot.path, 'myroot'));
       final ws = Directory(path.join(root.path, ggMultiOceanFolder));
       await ws.create(recursive: true);
@@ -254,15 +252,14 @@ void main() {
       expect(isInside, isTrue);
     });
 
-    test('returns true when rootPath is the actual ocean workspace folder',
-        () async {
+    test('returns true when rootPath is the actual ocean folder', () async {
       // Arrange ------------------------------------------------------------
       final root = Directory(path.join(tempRoot.path, 'top'));
       final ws = Directory(path.join(root.path, ggMultiOceanFolder));
       await ws.create(recursive: true);
 
       // Act ---------------------------------------------------------------
-      // Call on the ocean workspace folder directly
+      // Call on the ocean folder directly
       final isInside = WorkspaceUtils.isInsideExistingWorkspace(ws.path);
 
       // Assert ------------------------------------------------------------

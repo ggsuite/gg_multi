@@ -110,7 +110,7 @@ void main() {
 
     test(
         'should print "No organizations found." '
-        'if ocean workspace is empty', () async {
+        'if ocean is empty', () async {
       final runner = CommandRunner<void>(
         'test',
         'Test ListOrganizationsCommand',
@@ -143,7 +143,7 @@ void main() {
       );
       expect(
         output.first,
-        contains('List all organizations of the ocean workspace'),
+        contains('List all organizations of the ocean'),
       );
     });
   });

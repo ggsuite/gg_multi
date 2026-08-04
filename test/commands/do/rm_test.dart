@@ -55,7 +55,7 @@ void main() {
         expect(repoDir.existsSync(), isFalse);
         expect(
           messages,
-          ['✓ Deleted repository project from ocean workspace.'],
+          ['✓ Deleted repository project from ocean.'],
         );
       });
 
@@ -181,7 +181,7 @@ void main() {
         expect(repoDir.existsSync(), isFalse);
         expect(
           messages,
-          contains('✓ Deleted repository project from ocean workspace.'),
+          contains('✓ Deleted repository project from ocean.'),
         );
       });
     });
@@ -441,7 +441,7 @@ void main() {
         expect(dir.existsSync(), isFalse);
         expect(
           messages,
-          contains('✓ Deleted repository foo from ocean workspace.'),
+          contains('✓ Deleted repository foo from ocean.'),
         );
       });
 

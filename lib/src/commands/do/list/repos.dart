@@ -7,10 +7,11 @@
 import 'package:args/command_runner.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
+
 import '../../../backend/list_backend.dart';
 import '../../../backend/workspace_utils.dart';
 
-/// Command to list all repositories in the ocean workspace.
+/// Command to list all repositories in the ocean.
 class ListReposCommand extends Command<dynamic> {
   /// Constructor with optional workspace path.
   ListReposCommand({
@@ -31,14 +32,14 @@ class ListReposCommand extends Command<dynamic> {
   String get name => 'repos';
 
   @override
-  String get description => 'List all repos of the ocean workspace';
+  String get description => 'List all repos of the ocean';
 
   @override
   Future<void> run() async {
     final repoInfos = await getAllRepoInfos(workspacePath);
     repoInfos.sort((a, b) => a.name.compareTo(b.name));
     if (repoInfos.isEmpty) {
-      ggLog(cDetail('No repositories found in the ocean workspace.'));
+      ggLog(cDetail('No repositories found in the ocean.'));
     } else {
       for (final repo in repoInfos) {
         ggLog('${repo.name} ${repo.version} '

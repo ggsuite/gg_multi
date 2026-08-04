@@ -1,7 +1,7 @@
 # gg_multi
 
 `gg_multi` is the multi-repository workspace engine of the Gg Multi
-Suite. It manages a **ocean workspace** of registered repositories
+Suite. It manages a **ocean** of registered repositories
 and organisations, lets you create **ticket workspaces** that scope a
 subset of those repos to a single feature or bugfix, and orchestrates
 cross-repo actions (commit, push, review, publish, …) in dependency
@@ -16,7 +16,7 @@ executable for direct use and in CI/CD pipelines.
 
 ## What gg_multi gives you
 
-- A persistent ocean workspace under `.ocean/` containing every
+- A persistent ocean under `.ocean/` containing every
   registered repo and organisation, grouped as `.ocean/<org>/<repo>`.
 - Per-ticket workspaces under `tickets/<id>/` that hold scoped clones
   of the repos you need for one feature, in the same `<org>/<repo>`
@@ -66,26 +66,26 @@ order.
 
 ### `gg_multi do ls`
 
-| Command                                | Purpose                                                            |
-| -------------------------------------- | ------------------------------------------------------------------ |
-| `gg_multi do ls repos`                    | list every repo in the ocean workspace, sorted by name            |
-| `gg_multi do ls organizations`            | list every GitHub organisation represented in the ocean workspace |
-| `gg_multi do ls deps <target>`            | list `dependencies` / `dev_dependencies` of `<target>`             |
-| `gg_multi do ls tickets`                  | list every ticket workspace under `tickets/`                       |
+| Command                        | Purpose                                                 |
+| ------------------------------ | ------------------------------------------------------- |
+| `gg_multi do ls repos`         | list every repo in the ocean, sorted by name            |
+| `gg_multi do ls organizations` | list every GitHub organisation represented in the ocean |
+| `gg_multi do ls deps <target>` | list `dependencies` / `dev_dependencies` of `<target>`  |
+| `gg_multi do ls tickets`       | list every ticket workspace under `tickets/`            |
 
 ### `gg_multi do` — workspace setup
 
-| Command                                                | Purpose                                                                              |
-| ------------------------------------------------------ | ------------------------------------------------------------------------------------ |
-| `gg_multi do init workspace`                                     | initialise the ocean workspace in the current directory                             |
-| `gg_multi do add <target> [-f|--force]`                | add a repo or all repos of an organisation to the workspace                          |
-| `gg_multi do rm <target>`                              | remove a repo from the ocean workspace or delete a ticket workspace                 |
-| `gg_multi do upgrade ocean [-n|--dry-run]`             | sync `.ocean` with every registered organisation: clone new repos, trash gone ones   |
-| `gg_multi do create ticket <id> [-m <description>]`    | create `tickets/<id>/` with a `.ticket` file                                         |
-| `gg_multi do create graph [--format=…] [-o <file>]`    | write the dependency graph of the workspace to stdout or a file                      |
-| `gg_multi do code`                                     | open the current ticket in VS Code                                                   |
-| `gg_multi do init claude`                                   | aggregate each repo's `CLAUDE.md` into one ticket-level `CLAUDE.md`                  |
-| `gg_multi do exec cmd <cmd>`                               | run a shell command in every ticket repo                                             |
+| Command                                             | Purpose                                                             |
+| --------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `gg_multi do init workspace`                        | initialise the ocean in the current directory                       |
+| `gg_multi do add <target> [-f                       | --force]`                                                           | add a repo or all repos of an organisation to the workspace                        |
+| `gg_multi do rm <target>`                           | remove a repo from the ocean or delete a ticket workspace           |
+| `gg_multi do upgrade ocean [-n                      | --dry-run]`                                                         | sync `.ocean` with every registered organisation: clone new repos, trash gone ones |
+| `gg_multi do create ticket <id> [-m <description>]` | create `tickets/<id>/` with a `.ticket` file                        |
+| `gg_multi do create graph [--format=…] [-o <file>]` | write the dependency graph of the workspace to stdout or a file     |
+| `gg_multi do code`                                  | open the current ticket in VS Code                                  |
+| `gg_multi do init claude`                           | aggregate each repo's `CLAUDE.md` into one ticket-level `CLAUDE.md` |
+| `gg_multi do exec cmd <cmd>`                        | run a shell command in every ticket repo                            |
 
 `gg_multi do add` is context-aware:
 
@@ -97,35 +97,35 @@ order.
 
 ### `gg_multi can` — preflight checks
 
-| Command                  | Purpose                                                                |
-| ------------------------ | ---------------------------------------------------------------------- |
-| `gg_multi can commit`    | run `gg can commit` in every ticket repo (analyze + format + tests)    |
-| `gg_multi can push`      | check that every ticket repo is push-ready                             |
-| `gg_multi can publish`   | check that every publishable repo is publish-ready                     |
-| `gg_multi can review`    | check that every repo is on a feature branch and committed             |
+| Command                | Purpose                                                             |
+| ---------------------- | ------------------------------------------------------------------- |
+| `gg_multi can commit`  | run `gg can commit` in every ticket repo (analyze + format + tests) |
+| `gg_multi can push`    | check that every ticket repo is push-ready                          |
+| `gg_multi can publish` | check that every publishable repo is publish-ready                  |
+| `gg_multi can review`  | check that every repo is on a feature branch and committed          |
 
 Each `can` command aborts on the first failure so you find out early
 when a repo is in a bad state.
 
 ### `gg_multi do` — execute across ticket repos
 
-| Command                              | Purpose                                                                              |
-| ------------------------------------ | ------------------------------------------------------------------------------------ |
-| `gg_multi do commit [-m <message>]`  | commit every ticket repo with the same message (defaults to the ticket description)  |
-| `gg_multi do push [--force]`         | merge the main branches into the feature branches and push every ticket repo         |
-| `gg_multi do review`                 | push (incl. main merge), open a pull request per repo and record the review          |
-| `gg_multi do publish`                | publish every publishable package of the ticket (requires `did review`)              |
+| Command                             | Purpose                                                                             |
+| ----------------------------------- | ----------------------------------------------------------------------------------- |
+| `gg_multi do commit [-m <message>]` | commit every ticket repo with the same message (defaults to the ticket description) |
+| `gg_multi do push [--force]`        | merge the main branches into the feature branches and push every ticket repo        |
+| `gg_multi do review`                | push (incl. main merge), open a pull request per repo and record the review         |
+| `gg_multi do publish`               | publish every publishable package of the ticket (requires `did review`)             |
 
 `do review` runs `do push` automatically before it opens the pull
 requests; a `do push` after the review updates them.
 
 ### `gg_multi did` — reporting
 
-| Command              | Purpose                                                          |
-| -------------------- | ---------------------------------------------------------------- |
-| `gg_multi did commit` | report which repos have new commits since the last reference    |
-| `gg_multi did push`   | report which repos have new pushed commits                      |
-| `gg_multi did review` | report whether the current ticket state was reviewed            |
+| Command               | Purpose                                                      |
+| --------------------- | ------------------------------------------------------------ |
+| `gg_multi did commit` | report which repos have new commits since the last reference |
+| `gg_multi did push`   | report which repos have new pushed commits                   |
+| `gg_multi did review` | report whether the current ticket state was reviewed         |
 
 ## Folder layout
 
@@ -189,14 +189,14 @@ checkout` move them into their organization folder as a first step,
 reading the organization from each repo's git remote; a repo whose
 organization cannot be determined stays where it is and keeps working.
 
-The ocean workspace folder used to be called `.master`. A workspace
+The ocean folder used to be called `.master`. A workspace
 still carrying that name is renamed to `.ocean` automatically the next
 time any gg_multi command resolves the workspace — no manual step
 needed. When both `.master` and `.ocean` exist, nothing is touched:
 `.ocean` wins and a warning asks you to merge or delete the leftover
 `.master` manually.
 
-Note that two packages with the same *manifest* name still collide in
+Note that two packages with the same _manifest_ name still collide in
 the dependency graph — the organization folder only solves the on-disk
 collision.
 
@@ -300,7 +300,7 @@ another review round first.
 
 #### Unchanged repos are not published
 
-Many repos are only part of a ticket because they sit *between* two
+Many repos are only part of a ticket because they sit _between_ two
 changed packages in the dependency chain. Before publishing a repo,
 `do publish` therefore checks:
 
@@ -351,7 +351,7 @@ gg_multi do publish --continue
 
 `--continue` reuses `.gg/.gg-publish.json`, skips the repos already marked
 `published`, skips the up-front review/validation, and picks up at the
-repo that failed — and *within* that repo, gg_one resumes at the first
+repo that failed — and _within_ that repo, gg_one resumes at the first
 open publish step (version bump, registry publish, merge, branch
 deletion, tag) recorded in the repo's own `.gg/.gg-publish.json`.
 Nothing already done is repeated. On a fully successful run the files
@@ -380,7 +380,7 @@ success, so your source file is left untouched.
 ```jsonc
 {
   // Top-level defaults applied to every repo of the ticket.
-  "version_increment": "patch",            // "patch" | "minor" | "major"
+  "version_increment": "patch", // "patch" | "minor" | "major"
   "merge_message": "Default merge message",
 
   // Optional: per-repo overrides. Keyed by the repo's directory name
@@ -389,12 +389,12 @@ success, so your source file is left untouched.
   "repos": {
     "<repoName>": {
       "version_increment": "minor",
-      "merge_message": "Custom message for this repo"
+      "merge_message": "Custom message for this repo",
     },
     "<otherRepo>": {
-      "merge_message": "Only override the message, keep the default increment"
-    }
-  }
+      "merge_message": "Only override the message, keep the default increment",
+    },
+  },
 }
 ```
 
@@ -416,9 +416,9 @@ the run aborts with an error naming the missing field.
   "repos": {
     "app_core": {
       "version_increment": "minor",
-      "merge_message": "PROJ-123: new public login API"
-    }
-  }
+      "merge_message": "PROJ-123: new public login API",
+    },
+  },
 }
 ```
 

@@ -74,7 +74,7 @@ void main() {
 
         try {
           // -------------------------------------------------------------------
-          // 1) Initialize ocean workspace via InitWorkspaceCommand
+          // 1) Initialize ocean via InitWorkspaceCommand
           //    (gg_multi do init workspace)
 
           print('------- Running gg_multi do init workspace -------');
@@ -121,7 +121,7 @@ void main() {
             );
           }
 
-          // 2.1 ) Expect both projects in .ocean Workspace
+          // 2.1 ) Expect both projects in .ocean
           for (final projectName in <String>['a', 'b']) {
             final pubspecFile = File(
               path.join(oceanDir.path, projectName, 'pubspec.yaml'),
@@ -130,7 +130,7 @@ void main() {
               pubspecFile.existsSync(),
               isTrue,
               reason: 'pubspec.yaml of package $projectName in '
-                  'ocean workspace does not exist',
+                  'ocean does not exist',
             );
           }
 

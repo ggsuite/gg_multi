@@ -1154,7 +1154,7 @@ version: 1.0.0
             (e) => rmControls(e.toString()),
             'message',
             contains(
-              'Repository $repoName in the ocean workspace is not clean',
+              'Repository $repoName in the ocean is not clean',
             ),
           ),
         ),
@@ -1163,7 +1163,7 @@ version: 1.0.0
       expect(
         logMessages.any(
           (m) => m.contains(
-            'The repository $repoName in the ocean workspace has '
+            'The repository $repoName in the ocean has '
             'uncommitted changes:',
           ),
         ),
@@ -1225,8 +1225,7 @@ version: 1.0.0
       expect(
         logMessages.any(
           (m) => m.contains(
-            'Failed to execute git status in $repoName in ocean '
-            'workspace: status error',
+            'Failed to execute git status in $repoName in ocean: status error',
           ),
         ),
         isTrue,
@@ -1368,7 +1367,7 @@ version: 1.0.0
         logMessages.any(
           (m) => m.contains(
             'Failed to execute git reset --hard origin/main in '
-            'pullFailRepo in ocean workspace: reset error',
+            'pullFailRepo in ocean: reset error',
           ),
         ),
         isTrue,
@@ -1415,7 +1414,7 @@ version: 1.0.0
       ).called(1);
     });
 
-    test('logs error when repo not found in ocean workspace', () async {
+    test('logs error when repo not found in ocean', () async {
       final ticketDir = Directory(
         path.join(tempDir.path, ggMultiTicketFolder, 'TICKET-MISSING'),
       )..createSync(recursive: true);
@@ -1423,7 +1422,7 @@ version: 1.0.0
       await runner.run(['add', '--verbose', 'nonexistent']);
       expect(
         logMessages,
-        contains('Repository nonexistent not found in ocean workspace.'),
+        contains('Repository nonexistent not found in ocean.'),
       );
     });
 
@@ -3632,14 +3631,14 @@ version: 1.0.0
           logMessages,
           contains(
             'No repositories found for organization orgX '
-            'in the ocean workspace.',
+            'in the ocean.',
           ),
         );
         expect(logMessages, contains('No repositories to add.'));
         expect(ticketRepoPaths(ticketDir), isEmpty);
       });
 
-      test('--all adds all repos of the ocean workspace', () async {
+      test('--all adds all repos of the ocean', () async {
         makeTwoOrgs();
         final ticketDir = makeTicketDir('TICKET_ALL');
         createTicketRunner(ticketDir);

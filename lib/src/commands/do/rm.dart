@@ -298,7 +298,7 @@ class RemoveCommand extends Command<void> {
         workspacePath: path.join(_root, ggMultiOceanFolder),
         repoDir: oceanRepoDir,
       );
-      ggLog(cDetail('✓ Deleted repository $repoName from ocean workspace.'));
+      ggLog(cDetail('✓ Deleted repository $repoName from ocean.'));
       return;
     }
 

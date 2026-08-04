@@ -33,7 +33,7 @@ void main() {
       }
     });
 
-    test('should create ocean workspace if not exists', () async {
+    test('should create ocean if not exists', () async {
       final runner = CommandRunner<void>('test', 'InitWorkspaceCommand Test')
         ..addCommand(
           InitWorkspaceCommand(
@@ -63,7 +63,7 @@ void main() {
 
       await runner.run(['workspace']);
 
-      expect(messages[0], contains('Ocean workspace already exists at:'));
+      expect(messages[0], contains('ocean already exists at:'));
       expect(messages[0], contains(ggMultiOceanFolder));
       expect(Directory(wsPath).existsSync(), isTrue);
     });

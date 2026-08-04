@@ -59,7 +59,7 @@ class Trash {
     return _moveInto(source, path.join(trashDir.path, relative));
   }
 
-  /// Moves [source] — a repository of the ocean workspace — into
+  /// Moves [source] — a repository of the ocean — into
   /// `<root>/.trash/.ocean/<org>/<repo>`, keeping the path it had relative to
   /// `<root>/.ocean`. Returns the path it was moved to.
   ///

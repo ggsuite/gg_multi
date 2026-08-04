@@ -23,11 +23,11 @@ import '../../../backend/url_parser.dart';
 import '../../../backend/workspace_migration.dart';
 import '../../../backend/workspace_utils.dart';
 
-/// Brings the ocean workspace in sync with the git platforms.
+/// Brings the ocean in sync with the git platforms.
 ///
 /// Every organization registered in `<root>/.organizations` is asked for its
 /// current repository list. A repository the organization has but the ocean
-/// workspace lacks is cloned; a repository the ocean workspace holds but the
+/// workspace lacks is cloned; a repository the ocean holds but the
 /// organization no longer offers is moved to `<root>/.trash/.ocean`, never
 /// deleted. Tickets are not consulted: a ticket owns its own clone, so
 /// removing the ocean copy does not break it.
@@ -65,8 +65,7 @@ class UpdateOceanCommand extends Command<void> {
 
   // ...........................................................................
   @override
-  String get description =>
-      'Sync the ocean workspace with the registered organizations';
+  String get description => 'Sync the ocean with the registered organizations';
 
   /// Log sink.
   final GgLog ggLog;
@@ -99,7 +98,7 @@ class UpdateOceanCommand extends Command<void> {
       migrateToOrgFolders(workspacePath: oceanPath, ggLog: ggLog);
     }
 
-    // `.organizations` lives inside the ocean workspace — that is the path
+    // `.organizations` lives inside the ocean — that is the path
     // `do add` hands to `addRepositoryHelper`, which maintains the file.
     final organizations = OrganizationUtils.readOrganizations(oceanPath);
     if (organizations.isEmpty) {
@@ -193,7 +192,7 @@ class UpdateOceanCommand extends Command<void> {
 
   // ...........................................................................
   /// Clones every repository that is offered by an organization but missing
-  /// in the ocean workspace. Returns the `<org>/<repo>` names it added.
+  /// in the ocean. Returns the `<org>/<repo>` names it added.
   ///
   /// A repository is looked up by the identity of its remote url, not by its
   /// folder name: the folder may carry the package name instead, and two
@@ -275,7 +274,7 @@ class UpdateOceanCommand extends Command<void> {
         repoDir: dir,
       ).replaceAll(r'\', '/');
 
-      // Moving a repo to the trash removes it from the ocean workspace —
+      // Moving a repo to the trash removes it from the ocean —
       // worth a warning, not a dimmed detail.
       ggLog(
         dryRun
@@ -333,14 +332,14 @@ class UpdateOceanCommand extends Command<void> {
   }) {
     if (added.isEmpty && removed.isEmpty) {
       ggLog(
-        darkGray('The ocean workspace is up to date '
+        darkGray('The ocean is up to date '
             '($organizations organization(s)).'),
       );
       return;
     }
     ggLog(
       darkGray(
-        '${dryRun ? 'Would update' : 'Updated'} the ocean workspace: '
+        '${dryRun ? 'Would update' : 'Updated'} the ocean: '
         '${added.length} added, ${removed.length} moved to the trash, '
         '$organizations organization(s).',
       ),

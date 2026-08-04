@@ -70,8 +70,8 @@ class GraphNode {
 /// Writes the dependency graph of the current workspace to stdout.
 ///
 /// Inside a ticket the graph covers the repositories of that ticket plus the
-/// repositories they depend on in the ocean workspace. Outside a ticket it
-/// covers the whole ocean workspace. `--org` narrows it down to a single
+/// repositories they depend on in the ocean. Outside a ticket it
+/// covers the whole ocean. `--org` narrows it down to a single
 /// organization.
 /// `--no-group-by-orgs` turns the organization boxes off. They only appear
 /// when more than one organization is shown — one box around everything is
@@ -181,7 +181,7 @@ class GraphCommand extends DirCommand<void> {
     var visibleEdges = edges.values.toList();
 
     // In a ticket only the part of the graph the ticket repos actually reach
-    // is interesting - the rest of the ocean workspace is not involved.
+    // is interesting - the rest of the ocean is not involved.
     if (ticketPath != null) {
       final ticketPackages = packages.values
           .where((n) => ticketNames.contains(p.basename(n.directory.path)))

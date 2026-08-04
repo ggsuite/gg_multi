@@ -5,13 +5,14 @@
 // found in the LICENSE file in the root of this package.
 
 import 'package:args/command_runner.dart';
-import 'list/repos.dart';
-import 'list/organizations.dart';
-import 'list/deps.dart';
-import 'list/tickets.dart';
 import 'package:gg_log/gg_log.dart';
 
-/// Command to list items from the ocean workspace.
+import 'list/deps.dart';
+import 'list/organizations.dart';
+import 'list/repos.dart';
+import 'list/tickets.dart';
+
+/// Command to list items from the ocean.
 /// If no subcommand is provided, it asks the user to choose.
 class ListCommand extends Command<dynamic> {
   /// Constructor accepting a log function

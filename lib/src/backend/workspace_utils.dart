@@ -38,10 +38,10 @@ class WorkspaceUtils {
   ///    separators (e.g. forward slashes on Windows) still pass.
   ///
   /// This logic makes it possible to execute the binary from
-  /// * inside the ocean workspace,
+  /// * inside the ocean,
   /// * inside a ticket workspace, or
   /// * from any random sub-folder in the project tree,
-  /// while still resolving the correct location for the ocean workspace.
+  /// while still resolving the correct location for the ocean.
   static String defaultOceanWorkspacePath({
     String? workingDir,
   }) {
@@ -55,7 +55,7 @@ class WorkspaceUtils {
       final ocean = path.join(dir.path, ggMultiOceanFolder);
       final legacy = path.join(dir.path, ggMultiLegacyMasterFolder);
 
-      // 1. Is there an existing ocean workspace in the current folder? --------
+      // 1. Is there an existing ocean in the current folder? --------
       if (Directory(legacy).existsSync()) {
         migrateMasterFolderToOcean(rootPath: dir.path);
       }
@@ -88,7 +88,7 @@ class WorkspaceUtils {
   }
 
   /// Returns the path of the Gg Multi workspace, which is the parent directory
-  /// of the ocean workspace.
+  /// of the ocean.
   static String defaultGgMultiWorkspacePath({String? workingDir}) {
     return path.dirname(defaultOceanWorkspacePath(workingDir: workingDir));
   }

@@ -112,7 +112,7 @@ void main() {
       );
       expect(
         command.description,
-        'Sync the ocean workspace with the registered organizations',
+        'Sync the ocean with the registered organizations',
       );
     });
 
@@ -127,7 +127,7 @@ void main() {
 
       expect(
         messages.join('\n'),
-        contains('The ocean workspace is up to date'),
+        contains('The ocean is up to date'),
       );
     });
 
@@ -162,7 +162,7 @@ void main() {
         await run([]);
 
         verifyNever(() => gitCloner.cloneRepo(any(), any()));
-        expect(messages.last, contains('ocean workspace is up to date'));
+        expect(messages.last, contains('ocean is up to date'));
       });
 
       test('matching by remote url, not by folder name', () async {
@@ -318,7 +318,7 @@ void main() {
         expect(messages, contains('✓ Would move ggsuite/gg_gone to the trash'));
         expect(
           messages.last,
-          contains('Would update the ocean workspace: 1 added, '
+          contains('Would update the ocean: 1 added, '
               '1 moved to the trash'),
         );
       });
@@ -379,7 +379,7 @@ void main() {
 
     // .........................................................................
     test('migrates a flat workspace before comparing', () async {
-      // A repo lying flat in the ocean workspace, as gg created it before
+      // A repo lying flat in the ocean, as gg created it before
       // the organization folders existed.
       final flat = Directory(path.join(oceanPath, 'gg_one'))
         ..createSync(recursive: true);
