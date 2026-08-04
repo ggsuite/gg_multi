@@ -1053,6 +1053,92 @@ void main() {
     });
 
     test(
+        '--no-upgrade skips the upgrade phase but keeps can commit and '
+        'the push', () async {
+      final bed = makeCommand(repos: ['A']);
+
+      await runner(bed.command).run([
+        'push',
+        '--input',
+        ticketDir.path,
+        '--no-upgrade',
+      ]);
+
+      verifyNever(
+        () => bed.upgradeDeps.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          majorVersions: any(named: 'majorVersions'),
+        ),
+      );
+      verify(
+        () => bed.canCommitCmd.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).called(1);
+      verify(
+        () => bed.ggDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      ).called(1);
+    });
+
+    test('skips the upgrade when upgrade: false is passed programmatically',
+        () async {
+      final bed = makeCommand(repos: ['A']);
+
+      await bed.command.get(
+        directory: ticketDir,
+        ggLog: ggLog,
+        force: false,
+        verbose: false,
+        upgrade: false,
+      );
+
+      verifyNever(
+        () => bed.upgradeDeps.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          majorVersions: any(named: 'majorVersions'),
+        ),
+      );
+    });
+
+    test(
+        'names the system commit after »dart pub get« when the upgrade '
+        'phase was skipped', () async {
+      final bed = makeCommand(repos: ['A']);
+
+      var callCount = 0;
+      when(
+        () => bed.isCommitted.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async => callCount++ == 0);
+
+      await runner(bed.command).run([
+        'push',
+        '--input',
+        ticketDir.path,
+        '--no-upgrade',
+      ]);
+
+      verify(
+        () => bed.ggDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: '#gg: dart pub get',
+          updateChangeLog: false,
+          force: false,
+        ),
+      ).called(1);
+    });
+
+    test(
         'commits upgrade changes as a »#gg:« system commit — only in repos '
         'the upgrade left dirty', () async {
       final bed = makeCommand();
