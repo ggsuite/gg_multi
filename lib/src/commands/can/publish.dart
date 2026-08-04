@@ -393,7 +393,14 @@ class CanPublishCommand extends DirCommand<void> {
     required GgLog ggLog,
   }) async {
     try {
-      await _doPushCommand.exec(directory: ticketDir, ggLog: ggLog);
+      // upgrade: false — `do publish` upgrades every repo again right before
+      // it is published, after its refs point at the registry. Upgrading
+      // here as well would only run »dart pub upgrade« twice per repo.
+      await _doPushCommand.exec(
+        directory: ticketDir,
+        ggLog: ggLog,
+        upgrade: false,
+      );
     } on MergeConflictException {
       // The exception carries the actionable conflict report and the
       // half-merged working tree must survive — pass it through unwrapped.

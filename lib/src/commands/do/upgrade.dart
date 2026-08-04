@@ -7,6 +7,7 @@
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
 
+import 'upgrade/deps.dart';
 import 'upgrade/ocean.dart';
 
 /// Command to bring parts of the workspace in sync with their remotes.
@@ -15,6 +16,9 @@ class UpgradeCommand extends Command<void> {
   UpgradeCommand({required this.ggLog}) {
     addSubcommand(
       UpdateOceanCommand(ggLog: ggLog),
+    );
+    addSubcommand(
+      UpgradeDepsCommand(ggLog: ggLog),
     );
   }
 

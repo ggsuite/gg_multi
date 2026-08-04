@@ -360,7 +360,7 @@ void main() {
           'Merging origin/main into A produced conflicts:\n'
           ' - A/CHANGELOG.md\n'
           'Please resolve the conflicts. Then execute: '
-          'gg do commit -m"Merge main" --no-log',
+          "gg do commit -m 'Merge main' --no-log",
         ),
       );
 
@@ -376,7 +376,7 @@ void main() {
             'message',
             allOf(
               contains(' - A/CHANGELOG.md'),
-              contains('gg do commit -m"Merge main" --no-log'),
+              contains("gg do commit -m 'Merge main' --no-log"),
             ),
           ),
         ),

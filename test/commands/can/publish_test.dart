@@ -223,6 +223,7 @@ void main() {
           () => mockDoPushCommand.exec(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
+            upgrade: any(named: 'upgrade'),
           ),
         ).thenAnswer((_) async {});
 
@@ -465,6 +466,7 @@ void main() {
         () => mockDoPushCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
+          upgrade: any(named: 'upgrade'),
         ),
       ).thenAnswer((_) async {});
 
@@ -563,6 +565,7 @@ void main() {
         () => mockDoPushCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
+          upgrade: any(named: 'upgrade'),
         ),
       ).thenAnswer((_) async {});
 
@@ -657,6 +660,7 @@ void main() {
         () => mockDoPushCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
+          upgrade: any(named: 'upgrade'),
         ),
       ).thenAnswer((_) async {});
 
@@ -744,13 +748,14 @@ void main() {
         () => mockDoPushCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
+          upgrade: any(named: 'upgrade'),
         ),
       ).thenThrow(
         MergeConflictException(
           'Merging origin/main into A produced conflicts:\n'
           ' - A/pubspec.yaml\n'
           'Please resolve the conflicts. Then execute: '
-          'gg do commit -m"Merge main" --no-log',
+          "gg do commit -m 'Merge main' --no-log",
         ),
       );
 
@@ -778,7 +783,7 @@ void main() {
             (e) => rmControls(e.toString()),
             'message',
             allOf(
-              contains('gg do commit -m"Merge main" --no-log'),
+              contains("gg do commit -m 'Merge main' --no-log"),
               isNot(contains('Failed to push.')),
             ),
           ),
@@ -840,6 +845,7 @@ void main() {
         () => mockDoPushCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
+          upgrade: any(named: 'upgrade'),
         ),
       ).thenThrow(Exception('do push failed'));
 
@@ -930,6 +936,7 @@ void main() {
         () => mockDoPushCommand.exec(
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
+          upgrade: any(named: 'upgrade'),
         ),
       ).thenAnswer((_) async {});
 
@@ -1043,6 +1050,7 @@ void main() {
           () => mockDoPushCommand.exec(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
+            upgrade: any(named: 'upgrade'),
           ),
         ).thenAnswer((_) async {});
 
@@ -1163,6 +1171,9 @@ void main() {
         () => mockDoPushCommand.exec(
               directory: any(named: 'directory'),
               ggLog: any(named: 'ggLog'),
+              // The publish upgrades every repo again right before it is
+              // published — the ticket-wide push must not upgrade as well.
+              upgrade: false,
             ),
         () => mockGgCanMerge.exec(
               directory: any(named: 'directory'),
@@ -1200,6 +1211,7 @@ void main() {
           () => mockDoPushCommand.exec(
             directory: any(named: 'directory'),
             ggLog: any(named: 'ggLog'),
+            upgrade: any(named: 'upgrade'),
           ),
         ).called(1);
 
