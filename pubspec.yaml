@@ -10,7 +10,7 @@ dependencies:
   path: ^1.9.1
   args: ^2.7.0
   gg_one: ^12.5.4
-  gg_lang: ^0.3.2
+  gg_lang: ^0.3.3
   gg_console_colors: ^2.3.0
   gg_args: ^2.2.0
   gg_git: ^3.2.1
