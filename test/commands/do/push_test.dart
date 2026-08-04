@@ -132,6 +132,15 @@ void main() {
         workingDirectory: any(named: 'workingDirectory'),
       ),
     ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+    // The merge is followed by a dependency resolution in every repo.
+    when(
+      () => m(
+        'dart',
+        ['pub', 'get'],
+        workingDirectory: any(named: 'workingDirectory'),
+      ),
+    ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
   }
 
   /// Stubs the probes `_integrateRemoteBranch` runs before it decides how to
@@ -338,7 +347,7 @@ void main() {
           equals('✓ Pushed'),
           equals('\nB'),
           equals('✓ Pushed'),
-          equals('\nAll repos pushed\n'),
+          equals('\n✓ All repos pushed\n'),
         ]),
       );
     });
@@ -422,7 +431,7 @@ void main() {
           equals('✓ Pushed'),
           equals('\nB'),
           equals('✓ Pushed'),
-          equals('\nAll repos pushed\n'),
+          equals('\n✓ All repos pushed\n'),
         ]),
       );
       // The merge details are verbose-only.
@@ -495,6 +504,133 @@ void main() {
           directory: any(named: 'directory'),
           ggLog: any(named: 'ggLog'),
           force: any(named: 'force'),
+        ),
+      );
+    });
+  });
+
+  group('DoPushCommand dependency resolution', () {
+    test('runs "dart pub get" in every repo after the merge', () async {
+      final bed = makeCommand();
+
+      await runner(bed.command).run([
+        'push',
+        '--input',
+        ticketDir.path,
+        '--verbose',
+      ]);
+
+      verifyInOrder([
+        () => bed.git(
+              'git',
+              ['merge', 'origin/main'],
+              workingDirectory: path.join(ticketDir.path, 'A'),
+            ),
+        () => bed.git(
+              'dart',
+              ['pub', 'get'],
+              workingDirectory: path.join(ticketDir.path, 'A'),
+            ),
+        () => bed.git(
+              'dart',
+              ['pub', 'get'],
+              workingDirectory: path.join(ticketDir.path, 'B'),
+            ),
+      ]);
+
+      expect(messages, contains('✓ Resolved dependencies of A'));
+    });
+
+    test('runs "flutter pub get" in a Flutter repo', () async {
+      File(path.join(ticketDir.path, 'A', 'pubspec.yaml'))
+          .writeAsStringSync('name: A\nflutter:\n  uses-material-design: true');
+      final bed = makeCommand(repos: ['A']);
+      when(
+        () => bed.git(
+          'flutter',
+          ['pub', 'get'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+      await runner(bed.command).run(['push', '--input', ticketDir.path]);
+
+      verify(
+        () => bed.git(
+          'flutter',
+          ['pub', 'get'],
+          workingDirectory: path.join(ticketDir.path, 'A'),
+        ),
+      ).called(1);
+    });
+
+    test('skips a repo without a pubspec.yaml', () async {
+      final bed = makeCommand(repos: ['A']);
+      File(path.join(ticketDir.path, 'A', 'pubspec.yaml')).deleteSync();
+
+      await runner(bed.command).run(['push', '--input', ticketDir.path]);
+
+      verifyNever(
+        () => bed.git(
+          'dart',
+          ['pub', 'get'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      );
+    });
+
+    test('fails the push when "dart pub get" fails', () async {
+      final bed = makeCommand(repos: ['A']);
+      when(
+        () => bed.git(
+          'dart',
+          ['pub', 'get'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer(
+        (_) async => ProcessResult(0, 1, '', 'version solving failed'),
+      );
+
+      await expectLater(
+        () async => await runner(bed.command).run([
+          'push',
+          '--input',
+          ticketDir.path,
+        ]),
+        throwsA(
+          isA<Exception>().having(
+            (e) => rmControls(e.toString()),
+            'message',
+            contains('"dart pub get" failed in A: version solving failed'),
+          ),
+        ),
+      );
+    });
+
+    test(
+        'reports stdout when the failing "dart pub get" stays silent on '
+        'stderr', () async {
+      final bed = makeCommand(repos: ['A']);
+      when(
+        () => bed.git(
+          'dart',
+          ['pub', 'get'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 1, 'no pubspec', ''));
+
+      await expectLater(
+        () async => await runner(bed.command).run([
+          'push',
+          '--input',
+          ticketDir.path,
+        ]),
+        throwsA(
+          isA<Exception>().having(
+            (e) => rmControls(e.toString()),
+            'message',
+            contains('"dart pub get" failed in A: no pubspec'),
+          ),
         ),
       );
     });
@@ -615,7 +751,7 @@ void main() {
         messages,
         contains('✓ A has no main branch — nothing to merge'),
       );
-      expect(messages, contains('\nAll repos pushed\n'));
+      expect(messages, contains('\n✓ All repos pushed\n'));
     });
 
     test('asks the user to resolve merge conflicts and keeps the merge',
@@ -915,7 +1051,7 @@ void main() {
           workingDirectory: any(named: 'workingDirectory'),
         ),
       );
-      expect(messages, contains('\nAll repos pushed\n'));
+      expect(messages, contains('\n✓ All repos pushed\n'));
     });
 
     test('skips the integration when the branch is not on the remote yet',
@@ -943,7 +1079,7 @@ void main() {
           workingDirectory: any(named: 'workingDirectory'),
         ),
       );
-      expect(messages, contains('\nAll repos pushed\n'));
+      expect(messages, contains('\n✓ All repos pushed\n'));
     });
 
     test('skips the integration in detached HEAD state', () async {
@@ -969,7 +1105,7 @@ void main() {
           workingDirectory: any(named: 'workingDirectory'),
         ),
       );
-      expect(messages, contains('\nAll repos pushed\n'));
+      expect(messages, contains('\n✓ All repos pushed\n'));
     });
 
     test(

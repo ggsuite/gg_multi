@@ -8,6 +8,7 @@ import 'dart:io';
 
 import 'package:gg_args/gg_args.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
+import 'package:gg_lang/gg_lang.dart';
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:gg_one/gg_one.dart' as gg;
@@ -199,12 +200,66 @@ class DoPushCommand extends DirCommand<void> {
       ),
     );
 
+    // The merge brings the manifests of main into the feature branches, so
+    // the resolved dependencies of every repo can be outdated now. Resolve
+    // them again before the repos are pushed — a stale `pubspec.lock` would
+    // otherwise show up as an uncommitted change in the next step.
+    await GgStatusPrinter<void>(
+      message: 'Running dart pub get',
+      ggLog: ggLog,
+      dark: true,
+    ).run(
+      () async => _pubGet(nodes: nodes, ggLog: taskLog),
+    );
+
     await _pushingRepos(
       nodes: nodes,
       ggLog: ggLog,
       taskLog: taskLog,
       force: force,
     );
+  }
+
+  // ...........................................................................
+  /// Runs `dart pub get` (`flutter pub get` in a Flutter repo) in all [nodes].
+  ///
+  /// A repo without a `pubspec.yaml` — a pure TypeScript package — has no Dart
+  /// dependencies to resolve and is skipped. A failure is reported and fails
+  /// the push: an unresolvable dependency after the merge is exactly what the
+  /// user has to fix before the branch reaches the remote.
+  Future<void> _pubGet({
+    required List<Node> nodes,
+    required GgLog ggLog,
+  }) async {
+    for (final repo in nodes) {
+      final repoDir = repo.directory;
+      final repoName = path.basename(repoDir.path);
+
+      final type = checkProjectType(repoDir);
+      if (!type.isDartFamily) {
+        continue;
+      }
+
+      final executable = type == ProjectType.flutter ? 'flutter' : 'dart';
+      final result = await _processRunner(
+        executable,
+        <String>['pub', 'get'],
+        workingDirectory: repoDir.path,
+      );
+
+      if (result.exitCode != 0) {
+        final stderrStr = result.stderr?.toString() ?? '';
+        final stdoutStr = result.stdout?.toString() ?? '';
+        throw Exception(
+          cError(
+            '"$executable pub get" failed in $repoName: '
+            '${stderrStr.isNotEmpty ? stderrStr : stdoutStr}',
+          ),
+        );
+      }
+
+      ggLog(cDetail('✓ Resolved dependencies of $repoName'));
+    }
   }
 
   // ...........................................................................
@@ -490,7 +545,7 @@ class DoPushCommand extends DirCommand<void> {
 
     // Summarize the results ----------------------------------------------
     if (failedRepos.isEmpty) {
-      ggLog('\nAll repos pushed\n');
+      ggLog(cDetail('\n✓ All repos pushed\n'));
       return;
     } else {
       ggLog(cAction('\nPlease fix the issues above.\n'));

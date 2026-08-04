@@ -425,8 +425,6 @@ class DoPublishCommand extends DirCommand<void> {
 
     final publishedPackages = <String, _PublishedPackageState>{};
     final confirmedPubDevVersions = <String>{};
-    final skippedRepos = <String>[];
-
     // The repos that went through _publishRepo in this run — the only ones
     // whose references were already pointed back at the registry.
     final refsChangedRepos = <String>{};
@@ -457,12 +455,11 @@ class DoPublishCommand extends DirCommand<void> {
         ggLog(
           [
             '\n${cH1(repoName)}',
-            '${cDetail('✓ Not $_done.')} ${skipDecision!.reason}',
+            cDetail('✓ Not $_done. ${skipDecision!.reason}'),
           ].join('\n'),
         );
         publishConfig = publishConfig.withRepoStatus(repoName, 'skipped');
         await publishConfig.save(file: runtimeFile);
-        skippedRepos.add(repoName);
       } else {
         if (skipDecision != null) {
           taskLog(
@@ -572,15 +569,9 @@ class DoPublishCommand extends DirCommand<void> {
       }
     }
 
-    // Report the repos the run left unpublished on purpose, so a shorter
-    // publish never looks like repos were forgotten.
-    if (skippedRepos.isNotEmpty) {
-      ggLog(
-        cWarn(
-          '✓ Not $_done. Nothing changed.}',
-        ),
-      );
-    }
+    // Repos the run left unpublished on purpose are reported per repo while
+    // they are skipped — a summary line adds nothing and reads like a
+    // failure.
 
     // Step 7: Every repo that was not published still redirects its
     // dependencies to the sibling checkouts. The cleanup below moves exactly
@@ -664,9 +655,14 @@ class DoPublishCommand extends DirCommand<void> {
             source: repoDir,
             ticketDir: ticketDir,
           );
-          taskLog(
-            cDetail(
-              'Moved repository $repoName of ticket $ticketName to $target.',
+          // Moving a repo out of the ticket is destructive from the
+          // user's point of view — it disappears from where they worked.
+          // So it is a warning, not a detail, and it goes to ggLog: a
+          // non-verbose run must not swallow it.
+          ggLog(
+            cWarn(
+              '⚠️ Moved repository $repoName of ticket $ticketName '
+              'to $target.',
             ),
           );
         }
@@ -692,7 +688,7 @@ class DoPublishCommand extends DirCommand<void> {
           source: workspaceFile,
           ticketDir: ticketDir,
         );
-        taskLog(cDetail('✓ Moved ${path.basename(target)} to $target.'));
+        ggLog(cWarn('⚠️ Moved ${path.basename(target)} to $target.'));
       } catch (e) {
         allMoved = false;
         ggLog(
@@ -713,7 +709,7 @@ class DoPublishCommand extends DirCommand<void> {
 
     if (ticketDir.existsSync()) {
       ticketDir.deleteSync(recursive: true);
-      taskLog(cDetail('✓ Deleted ticket folder ${ticketDir.path}.'));
+      ggLog(cWarn('⚠️ Deleted ticket folder ${ticketDir.path}.'));
     }
   }
 

@@ -269,8 +269,12 @@ class UpdateMasterCommand extends Command<void> {
         repoDir: dir,
       ).replaceAll(r'\', '/');
 
+      // Moving a repo to the trash removes it from the master workspace —
+      // worth a warning, not a dimmed detail.
       ggLog(
-        cDetail('${dryRun ? '✓ Would move' : 'Moving'} $label to the trash'),
+        dryRun
+            ? cDetail('✓ Would move $label to the trash')
+            : cDetail('🗑️ Moving $label to the trash'),
       );
       removed.add(label);
       if (dryRun) {

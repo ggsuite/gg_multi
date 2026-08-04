@@ -6366,11 +6366,6 @@ void main() {
         ['', 'B'],
       );
 
-      expect(
-        messages[3].split('\n'),
-        ['✓ Not published. Nothing changed.}'],
-      );
-
       // Only B was published.
       final publishedDirs = verify(
         () => mockGgDoPublish.exec(

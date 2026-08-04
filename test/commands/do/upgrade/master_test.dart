@@ -188,7 +188,7 @@ void main() {
           ).existsSync(),
           isTrue,
         );
-        expect(messages, contains('Moving ggsuite/gg_gone to the trash'));
+        expect(messages, contains('🗑️ Moving ggsuite/gg_gone to the trash'));
         expect(
           messages.last,
           contains('0 added, 1 moved to the trash'),
