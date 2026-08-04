@@ -52,7 +52,7 @@ class Do extends Command<void> {
     addSubcommand(CodeCommand(ggLog: ggLog));
     addSubcommand(CreateCommand(ggLog: ggLog));
     addSubcommand(InitCommand(ggLog: ggLog));
-    addSubcommand(RemoveCommand(ggLog: ggLog));
+    addSubcommand(RmCommand(ggLog: ggLog));
     addSubcommand(UpgradeCommand(ggLog: ggLog));
     addSubcommand(ListCommand(ggLog: ggLog));
   }

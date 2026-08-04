@@ -181,10 +181,10 @@ packages:
     dependency: "direct main"
     description:
       name: gg_changelog
-      sha256: "998fd7ccc003998451b2a7143539fbc4b319eb9f80ebfc5079a5f3a2bc6fa7a4"
+      sha256: "9b56fbb37beaf51386ff0b13dbae649e9d665b1f8a9e9440a26d14a7850d52b1"
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.4"
+    version: "1.1.5"
   gg_console_colors:
     dependency: "direct main"
     description:
@@ -279,7 +279,7 @@ packages:
       path: "../gg_one"
       relative: true
     source: path
-    version: "12.6.1"
+    version: "12.7.1"
   gg_process:
     dependency: transitive
     description:
@@ -300,10 +300,10 @@ packages:
     dependency: "direct main"
     description:
       name: gg_publish
-      sha256: "88df2d2f2b5450409b056bc09bbcbb176bb2875ee954926bb0731dbc2b12e2ba"
+      sha256: c918f7933340d910505ed75d2aac20d2f45c9494c76cfb1e7fe0805d7bf0d3cf
       url: "https://pub.dev"
     source: hosted
-    version: "3.10.1"
+    version: "3.10.2"
   gg_status_printer:
     dependency: "direct main"
     description:

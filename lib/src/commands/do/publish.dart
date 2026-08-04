@@ -22,7 +22,8 @@ import '../../backend/git_snapshot.dart' as git_snapshot;
 import '../../backend/npm_registry_checker.dart';
 import '../../backend/pub_dev_checker.dart';
 import '../../backend/publish_skip_check.dart';
-import '../../backend/trash.dart';
+import '../../backend/ticket_cleanup.dart';
+import '../../backend/ticket_state.dart';
 import '../../backend/workspace_utils.dart';
 import '../../commands/can/publish.dart';
 import '../did/review.dart';
@@ -136,9 +137,11 @@ class DoPublishCommand extends DirCommand<void> {
     gg.DoUpgradeDeps? ggDoUpgradeDeps,
     gg.CanCommit? ggCanCommit,
     ChangeRefsToPubDev? unlocalizeRefs,
+    ChangeRefsToLocal? localizeRefs,
     RestorePublishTo? restorePublishTo,
     gg.DoPush? ggDoPush,
     gg.DoPublish? ggDoPublish,
+    gg.DidPublish? ggDidPublish,
     SortedProcessingList? sortedProcessingList,
     ProcessRunner? processRunner,
     CanPublishCommand? canPublishCommand,
@@ -152,13 +155,18 @@ class DoPublishCommand extends DirCommand<void> {
     DoConfigurePublishCommand? doConfigurePublishCommand,
     gg.EnsurePublishConfigIgnored? ensureIgnored,
     EnsureInRegistry? ensureInRegistry,
+    TicketState? ticketState,
+    gg.InteractAdapter? interactAdapter,
+    gg.HasTerminal? hasTerminal,
   })  : _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
         _ggDoUpgradeDeps = ggDoUpgradeDeps ?? gg.DoUpgradeDeps(ggLog: ggLog),
         _ggCanCommit = ggCanCommit ?? gg.CanCommit(ggLog: ggLog),
         _unlocalizeRefs = unlocalizeRefs ?? ChangeRefsToPubDev(ggLog: ggLog),
+        _localizeRefs = localizeRefs ?? ChangeRefsToLocal(ggLog: ggLog),
         _restorePublishTo = restorePublishTo ?? RestorePublishTo(ggLog: ggLog),
         _ggDoPush = ggDoPush ?? gg.DoPush(ggLog: ggLog),
         _ggDoPublish = ggDoPublish ?? gg.DoPublish(ggLog: ggLog),
+        _ggDidPublish = ggDidPublish ?? gg.DidPublish(ggLog: ggLog),
         _sortedProcessingList =
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
         _canPublishCommand =
@@ -175,6 +183,11 @@ class DoPublishCommand extends DirCommand<void> {
         _ensureIgnored =
             ensureIgnored ?? gg.EnsurePublishConfigIgnored(ggLog: ggLog),
         _ensureInRegistry = ensureInRegistry ?? EnsureInRegistry(ggLog: ggLog),
+        _ticketState = ticketState ?? TicketState(ggLog: ggLog),
+        // coverage:ignore-start
+        _interactAdapter = interactAdapter ?? gg.DefaultInteractAdapter(),
+        // coverage:ignore-end
+        _hasTerminal = hasTerminal ?? gg.defaultHasTerminal,
         _processRunner = processRunner ?? _defaultProcessRunner {
     _addArgs();
   }
@@ -210,6 +223,11 @@ class DoPublishCommand extends DirCommand<void> {
   /// Instance of UnlocalizeRefs
   final ChangeRefsToPubDev _unlocalizeRefs;
 
+  /// Re-localizes a repo after its publish: `pubspec_overrides.yaml` path
+  /// overrides for Dart, `link:` references inside `package.json` for
+  /// TypeScript — so the repo keeps resolving against the sibling checkouts.
+  final ChangeRefsToLocal _localizeRefs;
+
   /// Restores the original `publish_to` value captured by `do add`.
   final RestorePublishTo _restorePublishTo;
 
@@ -218,6 +236,11 @@ class DoPublishCommand extends DirCommand<void> {
 
   /// Instance of gg DoPublish
   final gg.DoPublish _ggDoPublish;
+
+  /// Marks a repo's current state as published (`didPublish` in
+  /// `.gg/gg.json`) — written once the workspace wiring is restored, so the
+  /// recorded hash matches the state the user continues working on.
+  final gg.DidPublish _ggDidPublish;
 
   /// Instance of SortedProcessingList
   final SortedProcessingList _sortedProcessingList;
@@ -257,6 +280,18 @@ class DoPublishCommand extends DirCommand<void> {
   /// Makes sure a repo has at least one version on its registry before it
   /// is published — a first-time publish is done manually by the user.
   final EnsureInRegistry _ensureInRegistry;
+
+  /// Ticket-level state (`<ticket>/.gg.json`) — re-blesses `didReview`
+  /// after a successful run, whose commits are gg bookkeeping only.
+  final TicketState _ticketState;
+
+  /// Interactive selection for the cleanup offer at the end of a run in
+  /// which every repo was already published.
+  final gg.InteractAdapter _interactAdapter;
+
+  /// Whether stdin is a terminal — without one the cleanup offer is skipped
+  /// and the ticket is kept.
+  final gg.HasTerminal _hasTerminal;
 
   /// Runs shell commands such as branch deletion.
   final ProcessRunner _processRunner;
@@ -472,6 +507,21 @@ class DoPublishCommand extends DirCommand<void> {
         );
         publishConfig = publishConfig.withRepoStatus(repoName, 'skipped');
         await publishConfig.save(file: runtimeFile);
+
+        // A skip means: the current content is already released. Record
+        // that as didPublish, so »gg did publish« answers yes and the end
+        // of the run can tell a fully released ticket from one that still
+        // carries pending repos. A merge-only run releases nothing, so it
+        // records nothing.
+        if (!isMergeOnly) {
+          try {
+            await _ggDidPublish.set(directory: repoDir);
+          } catch (e) {
+            taskLog(
+              cWarn('Could not record didPublish for $repoName: $e'),
+            );
+          }
+        }
       } else {
         if (skipDecision != null) {
           taskLog(
@@ -529,6 +579,17 @@ class DoPublishCommand extends DirCommand<void> {
         publishConfig = publishConfig.withRepoStatus(repoName, 'published');
         await publishConfig.save(file: runtimeFile);
         taskLog(cDetail('✓ $repoName: $_done successfully.'));
+
+        // The release is irreversible and complete — bring the repo back
+        // into its workable workspace state: feature branch, restored
+        // references, didPublish marker.
+        await _restoreWorkspaceState(
+          repoDir: repoDir,
+          repoName: repoName,
+          snapshot: snapshot,
+          ggLog: ggLog,
+          taskLog: taskLog,
+        );
       }
 
       // Capture the published version + registry visibility so later repos
@@ -585,20 +646,7 @@ class DoPublishCommand extends DirCommand<void> {
     // they are skipped — a summary line adds nothing and reads like a
     // failure.
 
-    // Step 7: Every repo that was not published still redirects its
-    // dependencies to the sibling checkouts. The cleanup below moves exactly
-    // those checkouts to the trash, so the repos are pointed at the freshly
-    // published versions first — all versions of the ticket are known now
-    // that the loop is through.
-    await _changeRemainingRefsToPubDev(
-      subs: subs,
-      publishedRepos: refsChangedRepos,
-      refVersions: refVersions,
-      ggLog: ggLog,
-      taskLog: taskLog,
-    );
-
-    // Step 8: All repos published — the resume anchor is no longer needed.
+    // Step 7: All repos processed — the resume anchor is no longer needed.
     if (runtimeFile.existsSync()) {
       runtimeFile.deleteSync();
       taskLog(
@@ -608,121 +656,80 @@ class DoPublishCommand extends DirCommand<void> {
       );
     }
 
-    // Step 9: Clean the ticket up. The repos are never deleted outright —
-    // they move to <root>/.trash/<ticket>, so uncommitted leftovers stay
-    // recoverable. The remote feature branch is deleted unless
-    // --no-delete-remote-branch was passed.
-    await _cleanUpTicket(
-      ticketDir: ticketDir,
-      subs: subs,
-      deleteRemoteBranch: deleteRemoteBranch,
-      ggLog: ggLog,
-      taskLog: taskLog,
-    );
+    // Step 8: Re-bless the review state. Every commit this run added to the
+    // ticket is gg bookkeeping — version bumps, changelog releases, restored
+    // references, state markers. The content the reviewer approved is
+    // unchanged, so the next publish must not demand a new review for it.
+    try {
+      await _ticketState.writeSuccess(
+        ticketDir: ticketDir,
+        subs: subs,
+        key: DidReviewCommand.stateKey,
+      );
+    } catch (e) {
+      ggLog(cWarn('Could not refresh the didReview state: $e'));
+    }
 
     ggLog('\nAll repos $_done\n');
+
+    // Step 9: Decide what happens to the ticket.
+    //
+    // A run that actually published something keeps the ticket: every repo
+    // is back on its feature branch with restored references, so work — and
+    // another publish from the same branch — can simply continue.
+    //
+    // Only a run that found nothing left to do (every repo already
+    // published/merged and unchanged) offers to close the ticket: move it
+    // to the trash as it is and delete the remote branches. Headless runs
+    // never destroy anything — they keep the ticket and print the way out.
+    if (refsChangedRepos.isEmpty) {
+      final closeNow = await _offerTicketCleanup(ggLog: ggLog);
+      if (closeNow) {
+        await cleanUpTicket(
+          ticketDir: ticketDir,
+          repoDirs: [for (final repo in subs) repo.directory],
+          deleteRemoteBranch: deleteRemoteBranch,
+          ggLog: ggLog,
+          taskLog: taskLog,
+          processRunner: _processRunner,
+        );
+        return;
+      }
+    }
+
+    _logTicketKeptHint(ggLog);
   }
 
-  /// Moves everything the published ticket leaves behind into
-  /// `<root>/.trash/<ticket>` and removes the ticket folder afterwards.
+  /// Asks whether the fully released ticket should be closed now.
   ///
-  /// Every repository of the ticket is moved — also when its remote feature
-  /// branch is kept ([deleteRemoteBranch] is false), because the ticket
-  /// folder goes away either way and a repo left inside it would be lost.
-  /// The `<ticket>.code-workspace` file travels along, so reopening the
-  /// published ticket in VS Code is still possible from the trash.
-  ///
-  /// A failure while trashing a single repo is reported and the remaining
-  /// ones are still processed; the ticket folder is only removed when
-  /// nothing was left behind.
-  Future<void> _cleanUpTicket({
-    required Directory ticketDir,
-    required List<Node> subs,
-    required bool deleteRemoteBranch,
-    required GgLog ggLog,
-    required GgLog taskLog,
-  }) async {
-    final ticketName = path.basename(ticketDir.path);
-    var allMoved = true;
-
-    for (final repo in subs) {
-      final repoDir = repo.directory;
-      final repoName = path.basename(repoDir.path);
-
-      try {
-        if (deleteRemoteBranch) {
-          await _deleteRemoteBranch(
-            repoDir: repoDir,
-            branchName: ticketName,
-            ggLog: taskLog,
-          );
-        } else {
-          taskLog(
-            cDetail('✓ Kept remote branch $ticketName for $repoName.'),
-          );
-        }
-
-        if (repoDir.existsSync()) {
-          final target = await Trash.moveFromTicket(
-            source: repoDir,
-            ticketDir: ticketDir,
-          );
-          // Moving a repo out of the ticket is destructive from the
-          // user's point of view — it disappears from where they worked.
-          // So it is a warning, not a detail, and it goes to ggLog: a
-          // non-verbose run must not swallow it.
-          ggLog(
-            cWarn(
-              '⚠️ Moved repository $repoName of ticket $ticketName '
-              'to $target.',
-            ),
-          );
-        }
-      } catch (e) {
-        allMoved = false;
-        ggLog(
-          cError(
-            'Failed to move repository $repoName of ticket $ticketName to '
-            'the trash: $e',
-          ),
-        );
-      }
+  /// Uses the same cursor-key prompt as the version-increment selection.
+  /// Returns false without asking when stdin is no terminal — a headless
+  /// run must never trash a ticket on its own.
+  Future<bool> _offerTicketCleanup({required GgLog ggLog}) async {
+    if (!_hasTerminal()) {
+      return false;
     }
 
-    // The VS Code workspace describes a ticket that no longer exists — it
-    // belongs to the trashed repos, so it follows them.
-    final workspaceFile = File(
-      path.join(ticketDir.path, '$ticketName.code-workspace'),
+    final index = await _interactAdapter.choose(
+      message: cAction('Every repo of this ticket is $_done. What now?'),
+      options: <String>[
+        'Move the ticket to .trash and delete the remote branches',
+        'Keep the ticket — close it later with »gg do rm ticket«',
+      ],
     );
-    if (workspaceFile.existsSync()) {
-      try {
-        final target = await Trash.moveFromTicket(
-          source: workspaceFile,
-          ticketDir: ticketDir,
-        );
-        ggLog(cWarn('⚠️ Moved ${path.basename(target)} to $target.'));
-      } catch (e) {
-        allMoved = false;
-        ggLog(
-          cError('Failed to move the VS Code workspace of $ticketName: $e'),
-        );
-      }
-    }
+    return index == 0;
+  }
 
-    if (!allMoved) {
-      ggLog(
-        cWarn(
-          'Ticket $ticketName was not deleted because not everything could '
-          'be moved to the trash.',
-        ),
-      );
-      return;
-    }
-
-    if (ticketDir.existsSync()) {
-      ticketDir.deleteSync(recursive: true);
-      ggLog(cWarn('⚠️ Deleted ticket folder ${ticketDir.path}.'));
-    }
+  /// Tells the user that the ticket stays workable and how to close it.
+  void _logTicketKeptHint(GgLog ggLog) {
+    ggLog(
+      cAction(
+        'The ticket stays in place — every repo is back on its feature '
+        'branch with local references restored.\n'
+        'Continue working and publish again, or close the ticket with:',
+      ),
+    );
+    ggLog(cCmd('  gg do rm ticket'));
   }
 
   /// Resolves the publish configuration for the ticket in [ticketDir] and
@@ -922,6 +929,20 @@ class DoPublishCommand extends DirCommand<void> {
     // the entry rides along the force-commit below, no extra commit needed.
     await _ensureIgnored.ensure(directory: repoDir, commit: false);
 
+    // Save the pubspec_overrides.yaml before the unlocalization below
+    // deletes it — _restoreWorkspaceState puts it back once the repo is
+    // merged, so the workspace wiring survives the publish. On a resume the
+    // file is usually gone already; the backup of the first attempt is then
+    // left untouched.
+    if (gg.backupPubspecOverrides(repoDir)) {
+      taskLog(
+        cDetail(
+          '✓ $repoName: saved pubspec_overrides.yaml to '
+          '${gg.pubspecOverridesBackupPath}.',
+        ),
+      );
+    }
+
     // A repo that already carries gg_one step progress is past the point
     // where validation is meaningful — its version is bumped and possibly
     // uploaded, so upgrading or re-checking it would touch a mid-publish
@@ -1033,6 +1054,121 @@ class DoPublishCommand extends DirCommand<void> {
     );
   }
 
+  /// Brings a freshly published repo back into a workable workspace state:
+  /// gg_one's flow left it on the default branch with the localized
+  /// references gone.
+  ///
+  /// Steps, and why each one exists:
+  ///   1. Check the feature branch out again — work continues there.
+  ///   2. Merge the default branch back into it. Right after the publish
+  ///      both branches hold identical content, so the merge is trivially
+  ///      clean — but it makes the release the common ancestor of every
+  ///      future merge. Without it, the next `do push` (which merges main
+  ///      into the feature branch) would see the squash commit and the
+  ///      feature branch as two competing edits of the same lines and
+  ///      conflict — for TypeScript repos on every single publish.
+  ///   3. Restore `pubspec_overrides.yaml` from the backup taken in
+  ///      [_publishRepo], then re-localize (`ChangeRefsToLocal`): Dart repos
+  ///      get their path overrides back, TypeScript repos their `link:`
+  ///      references inside `package.json` — the piece a file restore alone
+  ///      cannot cover, because the TypeScript localization lives in the
+  ///      manifest itself.
+  ///   4. Refresh the dependencies so lock files and `node_modules` follow
+  ///      the restored references.
+  ///   5. Commit everything as one gg bookkeeping commit and — for a real
+  ///      publish, not a merge — record `didPublish` in `.gg/gg.json`. The
+  ///      marker is written only now, so its hash covers the state the user
+  ///      continues working on.
+  ///   6. Push, so the remote feature branch matches and shared workspaces
+  ///      stay in sync.
+  ///
+  /// Failures are reported as warnings and never fail the publish: the
+  /// release itself is irreversible and complete at this point.
+  Future<void> _restoreWorkspaceState({
+    required Directory repoDir,
+    required String repoName,
+    required _RepoPublishSnapshot snapshot,
+    required GgLog ggLog,
+    required GgLog taskLog,
+  }) async {
+    try {
+      final branch = snapshot.branch;
+      await _runGit(<String>['checkout', branch], repoDir: repoDir);
+
+      final mainBranch = snapshot.mainBranch;
+      if (mainBranch != null) {
+        try {
+          await _runGit(
+            <String>[
+              'merge',
+              '-m',
+              '#gg: merge the published $mainBranch back into $branch',
+              mainBranch,
+            ],
+            repoDir: repoDir,
+          );
+        } catch (e) {
+          await _runGit(
+            <String>['merge', '--abort'],
+            repoDir: repoDir,
+            allowFailure: true,
+          );
+          ggLog(
+            cWarn(
+              '⚠️ Could not merge $mainBranch back into $branch of '
+              '$repoName: $e\n'
+              'Merge it manually before the next publish.',
+            ),
+          );
+        }
+      }
+
+      if (gg.restorePubspecOverrides(repoDir)) {
+        taskLog(cDetail('✓ $repoName: restored pubspec_overrides.yaml.'));
+      }
+
+      await _localizeRefs.get(directory: repoDir, ggLog: taskLog);
+
+      await _refreshDependencies(
+        repoDir: repoDir,
+        repoName: repoName,
+        ggLog: taskLog,
+      );
+
+      await _ggDoCommit.exec(
+        directory: repoDir,
+        ggLog: taskLog,
+        message: '#gg: restored local workspace references',
+        force: true,
+        // Bookkeeping, not a change of the package — keep it out of
+        // CHANGELOG.md (»gg do commit --no-log«).
+        updateChangeLog: false,
+      );
+
+      if (!mergeOnly) {
+        await _ggDidPublish.set(directory: repoDir);
+      }
+
+      await _ggDoPush.exec(directory: repoDir, ggLog: taskLog);
+
+      ggLog(
+        cDetail(
+          '✓ $repoName: back on $branch — local references restored.',
+        ),
+      );
+    } catch (e) {
+      ggLog(
+        cWarn(
+          '⚠️ $repoName is $_done, but its workspace state could not be '
+          'restored: $e\n'
+          'Restore it manually: check the feature branch out and run '
+          '${cCmd('gg do add ${path.basename(repoDir.path)}')} in the '
+          'ticket to re-localize the references.',
+        ),
+      );
+    }
+  }
+
   /// Points every reference of [repoDir] at the registry again: the localized
   /// refs are unlocalized, the original `publish_to` is restored, every known
   /// [refVersions] entry is written as the dependency's version and the
@@ -1040,11 +1176,9 @@ class DoPublishCommand extends DirCommand<void> {
   ///
   /// While the ticket is worked on, `gg_localize_refs` redirects the
   /// workspace dependencies through `pubspec_overrides.yaml` to the sibling
-  /// checkouts. Those checkouts are gone after the publish: they move to the
-  /// trash (by `_cleanUpTicket`). A repo left pointing at them fails its next
-  /// `dart pub get` with an unresolvable reference, which is why this runs
-  /// for **every** repo of the ticket — see [_changeRemainingRefsToPubDev]
-  /// for the ones that are not published.
+  /// checkouts. A publish must resolve against the registry instead —
+  /// [_restoreWorkspaceState] brings the workspace wiring back once the
+  /// release is through.
   Future<void> _changeRefsToPubDev({
     required Directory repoDir,
     required String repoName,
@@ -1100,61 +1234,6 @@ class DoPublishCommand extends DirCommand<void> {
       ggLog: taskLog,
       includeDart: refreshDart,
     );
-  }
-
-  /// Runs [_changeRefsToPubDev] for the repos of [subs] that never went
-  /// through [_publishRepo] — the ones the unchanged-repo check skipped and,
-  /// on `--continue`, the ones an earlier run already published.
-  ///
-  /// Without it exactly those repos keep their localized refs: a
-  /// `pubspec_overrides.yaml` pointing at the sibling checkouts, which the
-  /// ticket cleanup moves to the trash right after. The repos are moved to
-  /// the trash rather than deleted, so they stay usable — but only when their
-  /// references point at the versions that were just published.
-  ///
-  /// [publishedRepos] are the repos that already did this inside their
-  /// publish. Failures are reported and the remaining repos are still
-  /// processed: everything irreversible has happened at this point, and
-  /// aborting here would leave the ticket half cleaned up.
-  Future<void> _changeRemainingRefsToPubDev({
-    required List<Node> subs,
-    required Set<String> publishedRepos,
-    required Map<String, String> refVersions,
-    required GgLog ggLog,
-    required GgLog taskLog,
-  }) async {
-    for (final repo in subs) {
-      final repoName = path.basename(repo.directory.path);
-      if (publishedRepos.contains(repoName)) {
-        continue;
-      }
-
-      try {
-        // Unlike inside the publish loop — where a repo's own version is only
-        // recorded after its turn — refVersions holds every repo of the ticket
-        // by now, this one included. A package never depends on itself, so its
-        // own entry is dropped instead of looked up.
-        final ownName = await _readManifestName(repo.directory, repoName);
-        await _changeRefsToPubDev(
-          repoDir: repo.directory,
-          repoName: repoName,
-          refVersions: <String, String>{
-            for (final entry in refVersions.entries)
-              if (entry.key != ownName && entry.key != repoName)
-                entry.key: entry.value,
-          },
-          taskLog: taskLog,
-        );
-      } catch (e) {
-        ggLog(
-          cWarn(
-            'Could not point the references of $repoName at the published '
-            'versions ($e). Its ${gg.NoPubspecOverrides.fileName} may still '
-            'refer to the deleted feature branch.',
-          ),
-        );
-      }
-    }
   }
 
   /// Throws when one of [repos] still redirects a dependency to a local
@@ -1702,47 +1781,6 @@ class DoPublishCommand extends DirCommand<void> {
     if (gg.isBridgeProject(repoDir) && includeDart) {
       await runStep('dart', <String>['pub', 'upgrade'], null);
     }
-  }
-
-  /// Deletes the remote feature branch [branchName] for [repoDir].
-  Future<void> _deleteRemoteBranch({
-    required Directory repoDir,
-    required String branchName,
-    required GgLog ggLog,
-  }) async {
-    final repoName = path.basename(repoDir.path);
-    final result = await _processRunner(
-      'git',
-      <String>['push', 'origin', '--delete', branchName],
-      workingDirectory: repoDir.path,
-    );
-
-    if (result.exitCode != 0) {
-      // The branch might have been deleted already, e.g. directly on GitHub.
-      // Then there is nothing left to do and nothing to complain about.
-      final stderr = '${result.stderr}';
-      if (stderr.contains('remote ref does not exist')) {
-        ggLog(
-          cWarn(
-            'Remote branch $branchName for $repoName is already deleted.',
-          ),
-        );
-        return;
-      }
-
-      throw Exception(
-        cError(
-          'Failed to delete remote branch $branchName for $repoName: '
-          '$stderr',
-        ),
-      );
-    }
-
-    ggLog(
-      cDetail(
-        'Deleted remote branch $branchName for $repoName.',
-      ),
-    );
   }
 
   /// Runs system processes with shell support.
