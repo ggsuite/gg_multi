@@ -253,5 +253,85 @@ void main() {
         );
       });
     });
+
+    group('moveTicketToTrash', () {
+      test('moves the whole ticket folder with everything in it', () async {
+        repo('ggsuite', 'gg_multi');
+        File(path.join(ticketDir.path, 'ticket.json'))
+            .writeAsStringSync('{"issue_id":"T1"}');
+        File(path.join(ticketDir.path, '.ticket'))
+            .writeAsStringSync('{"issue_id":"T1"}');
+        File(path.join(ticketDir.path, 'T1.code-workspace'))
+            .writeAsStringSync('{}');
+        Directory(path.join(ticketDir.path, '.gg')).createSync();
+        File(path.join(ticketDir.path, '.gg', '.gg.json'))
+            .writeAsStringSync('{}');
+
+        final target = await Trash.moveTicketToTrash(ticketDir: ticketDir);
+
+        expect(target.path, path.join(root.path, '.trash', 'T1'));
+        expect(ticketDir.existsSync(), isFalse);
+        // Everything travelled — repos and the ticket's own metadata.
+        expect(
+          Directory(
+            path.join(target.path, 'ggsuite', 'gg_multi'),
+          ).existsSync(),
+          isTrue,
+        );
+        expect(
+          File(path.join(target.path, 'ticket.json')).existsSync(),
+          isTrue,
+        );
+        expect(File(path.join(target.path, '.ticket')).existsSync(), isTrue);
+        expect(
+          File(path.join(target.path, 'T1.code-workspace')).existsSync(),
+          isTrue,
+        );
+        expect(
+          File(path.join(target.path, '.gg', '.gg.json')).existsSync(),
+          isTrue,
+        );
+      });
+
+      test('takes the place of the empty folder do create ticket made',
+          () async {
+        // `do create ticket` pre-creates .trash/<ticket> — the empty
+        // placeholder must not push the ticket into a » (2)« variant.
+        Trash.createDirForTicket(ticketDir);
+        repo('ggsuite', 'gg_multi');
+
+        final target = await Trash.moveTicketToTrash(ticketDir: ticketDir);
+
+        expect(target.path, path.join(root.path, '.trash', 'T1'));
+        expect(
+          Directory(
+            path.join(target.path, 'ggsuite', 'gg_multi'),
+          ).existsSync(),
+          isTrue,
+        );
+      });
+
+      test('never overwrites a ticket of the same name closed earlier',
+          () async {
+        final earlier = Directory(path.join(root.path, '.trash', 'T1'))
+          ..createSync(recursive: true);
+        File(path.join(earlier.path, 'keep.txt')).writeAsStringSync('keep');
+        File(path.join(ticketDir.path, 'ticket.json'))
+            .writeAsStringSync('{"issue_id":"second"}');
+
+        final target = await Trash.moveTicketToTrash(ticketDir: ticketDir);
+
+        expect(path.basename(target.path), 'T1 (2)');
+        expect(
+          File(path.join(target.path, 'ticket.json')).readAsStringSync(),
+          '{"issue_id":"second"}',
+        );
+        // The earlier trash content is untouched.
+        expect(
+          File(path.join(earlier.path, 'keep.txt')).readAsStringSync(),
+          'keep',
+        );
+      });
+    });
   });
 }

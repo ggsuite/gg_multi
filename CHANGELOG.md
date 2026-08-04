@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Show ticket deletion dialog at the beginning of publish. Recolorize.
+
 ## 7.12.0 - 2026-08-04
 
 ## 7.11.2 - 2026-08-04

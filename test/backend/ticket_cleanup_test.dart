@@ -46,15 +46,27 @@ void main() {
     return ProcessResult(0, 0, '', '');
   }
 
+  String trashPath([String ticket = 'T1']) =>
+      path.join(root.path, '.trash', ticket);
+
   group('cleanUpTicket', () {
     test(
-      'deletes remote branches, moves everything to the trash, '
-      'removes the ticket folder and prints the cd command in blue',
+      'deletes the remote branches, moves the whole ticket folder to the '
+      'trash and prints the cd command in blue',
       () async {
         final repoA = repo('ggsuite', 'a');
         final repoB = repo('ggsuite', 'b');
+        // The ticket's own files must travel with it, not be deleted.
         File(
           path.join(ticketDir.path, 'T1.code-workspace'),
+        ).writeAsStringSync('{}');
+        File(
+          path.join(ticketDir.path, 'ticket.json'),
+        ).writeAsStringSync('{"issue_id":"T1"}');
+        File(path.join(ticketDir.path, '.ticket')).writeAsStringSync('{}');
+        Directory(path.join(ticketDir.path, '.gg')).createSync();
+        File(
+          path.join(ticketDir.path, '.gg', '.gg.json'),
         ).writeAsStringSync('{}');
         final deletedBranches = <String>[];
 
@@ -78,14 +90,17 @@ void main() {
           },
         );
 
-        // Both remote branches were deleted, named after the ticket.
+        // Only the remote branches are handled per repo — named after the
+        // ticket, deleted from the repos' original locations.
         expect(deletedBranches, [
           'a: push origin --delete T1',
           'b: push origin --delete T1',
         ]);
 
-        // Everything moved to the trash, the ticket folder is gone.
-        final trash = path.join(root.path, '.trash', 'T1');
+        // The whole folder moved in one piece; nothing was left behind and
+        // nothing was deleted.
+        expect(ticketDir.existsSync(), isFalse);
+        final trash = trashPath();
         expect(
           Directory(path.join(trash, 'ggsuite', 'a')).existsSync(),
           isTrue,
@@ -98,11 +113,22 @@ void main() {
           File(path.join(trash, 'T1.code-workspace')).existsSync(),
           isTrue,
         );
-        expect(ticketDir.existsSync(), isFalse);
+        expect(File(path.join(trash, 'ticket.json')).existsSync(), isTrue);
+        expect(File(path.join(trash, '.ticket')).existsSync(), isTrue);
+        expect(
+          File(path.join(trash, '.gg', '.gg.json')).existsSync(),
+          isTrue,
+        );
 
+        // One quiet line says where the work now lives — the trash folder,
+        // because the ticket kept its name inside it.
         final log = messages.join('\n');
-        expect(log, contains('Moved repository a of ticket T1'));
-        expect(log, contains('Deleted ticket folder ${ticketDir.path}.'));
+        expect(
+          messages,
+          contains(
+            cDetail('Moved ticket T1 to ${path.dirname(trash)}'),
+          ),
+        );
 
         // The way out of the deleted folder is printed in blue.
         expect(log, contains('Change to the workspace root with:'));
@@ -137,8 +163,12 @@ void main() {
         taskMessages.join('\n'),
         contains('Kept remote branch T1 for a.'),
       );
-      // The local folder moves either way — the ticket folder goes away.
+      // The ticket moves either way.
       expect(ticketDir.existsSync(), isFalse);
+      expect(
+        Directory(path.join(trashPath(), 'ggsuite', 'a')).existsSync(),
+        isTrue,
+      );
     });
 
     test('tolerates a remote branch that is already deleted', () async {
@@ -168,14 +198,15 @@ void main() {
     });
 
     test(
-      'keeps the ticket folder when a repo could not be processed '
-      'and prints no cd command',
+      'keeps the ticket in place when a remote branch could not be deleted',
       () async {
         final repoA = repo('ggsuite', 'a');
+        final repoB = repo('ggsuite', 'b');
+        final attempted = <String>[];
 
         await cleanUpTicket(
           ticketDir: ticketDir,
-          repoDirs: [repoA],
+          repoDirs: [repoA, repoB],
           deleteRemoteBranch: true,
           ggLog: messages.add,
           taskLog: taskMessages.add,
@@ -185,31 +216,37 @@ void main() {
             String? workingDirectory,
             Map<String, String>? environment,
           }) async {
-            return ProcessResult(0, 1, '', 'network down');
+            final repoName = path.basename(workingDirectory!);
+            attempted.add(repoName);
+            return repoName == 'a'
+                ? ProcessResult(0, 1, '', 'network down')
+                : ProcessResult(0, 0, '', '');
           },
         );
+
+        // The failure of one repo does not stop the others …
+        expect(attempted, ['a', 'b']);
 
         final log = messages.join('\n');
         expect(
           log,
-          contains('Failed to move repository a of ticket T1'),
+          contains('Failed to delete remote branch T1 for a'),
         );
-        expect(
-          log,
-          contains('Ticket T1 was not deleted'),
-        );
-        // The repo is still where it was.
-        expect(repoA.existsSync(), isTrue);
+        expect(log, contains('Ticket T1 was not moved to the trash'));
+        expect(log, contains('--no-delete-remote-branch'));
+
+        // … but the ticket stays where it is, so the command can be retried.
         expect(ticketDir.existsSync(), isTrue);
+        expect(repoA.existsSync(), isTrue);
+        expect(Directory(trashPath()).existsSync(), isFalse);
         expect(log, isNot(contains('Change to the workspace root')));
       },
     );
 
-    test('moves a repo that lost its folder without complaining', () async {
-      // A repo dir that no longer exists (e.g. removed by hand) — the
-      // cleanup skips the move and still deletes the ticket.
+    test('skips the branch deletion for a repo folder that is gone', () async {
       final repoA = repo('ggsuite', 'a');
       repoA.deleteSync(recursive: true);
+      final gitCalls = <String>[];
 
       await cleanUpTicket(
         ticketDir: ticketDir,
@@ -217,21 +254,51 @@ void main() {
         deleteRemoteBranch: true,
         ggLog: messages.add,
         taskLog: taskMessages.add,
+        processRunner: (
+          String executable,
+          List<String> arguments, {
+          String? workingDirectory,
+          Map<String, String>? environment,
+        }) async {
+          gitCalls.add(arguments.join(' '));
+          return ProcessResult(0, 0, '', '');
+        },
+      );
+
+      expect(gitCalls, isEmpty);
+      expect(
+        taskMessages.join('\n'),
+        contains('Repository a is gone — no remote branch to delete.'),
+      );
+      expect(ticketDir.existsSync(), isFalse);
+    });
+
+    test('names the full path when the trash already holds that ticket',
+        () async {
+      // An earlier ticket of the same name makes the folder land in a
+      // » (2)« variant — then the plain trash path would be misleading.
+      final earlier = Directory(trashPath())..createSync(recursive: true);
+      File(path.join(earlier.path, 'keep.txt')).writeAsStringSync('keep');
+      repo('ggsuite', 'a');
+
+      await cleanUpTicket(
+        ticketDir: ticketDir,
+        repoDirs: [Directory(path.join(ticketDir.path, 'ggsuite', 'a'))],
+        deleteRemoteBranch: false,
+        ggLog: messages.add,
+        taskLog: taskMessages.add,
         processRunner: okRunner,
       );
 
-      expect(ticketDir.existsSync(), isFalse);
-      expect(messages.join('\n'), isNot(contains('Failed')));
+      expect(
+        messages,
+        contains(cDetail('Moved ticket T1 to ${trashPath('T1 (2)')}')),
+      );
     });
 
-    test('moves the code-workspace file when a failure keeps the ticket',
-        () async {
-      // The workspace file move failure path: make the trash target
-      // uncreatable by occupying `.trash` with a file.
+    test('reports a ticket that could not be moved', () async {
       repo('ggsuite', 'a');
-      File(
-        path.join(ticketDir.path, 'T1.code-workspace'),
-      ).writeAsStringSync('{}');
+      // A *file* where the trash folder belongs makes the move fail.
       File(path.join(root.path, '.trash')).writeAsStringSync('blocker');
 
       await cleanUpTicket(
@@ -244,10 +311,9 @@ void main() {
       );
 
       final log = messages.join('\n');
-      expect(log, contains('Failed to move repository a'));
-      expect(log, contains('Failed to move the VS Code workspace of T1'));
-      expect(log, contains('Ticket T1 was not deleted'));
+      expect(log, contains('Failed to move ticket T1 to the trash'));
       expect(ticketDir.existsSync(), isTrue);
+      expect(log, isNot(contains('Change to the workspace root')));
     });
   });
 }

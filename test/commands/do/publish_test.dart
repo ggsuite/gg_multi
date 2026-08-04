@@ -714,7 +714,7 @@ void main() {
         messages.join('\n'),
         contains('The ticket stays in place'),
       );
-      expect(coloredMessages, contains(cCmd('  gg do rm ticket')));
+      expect(coloredMessages, contains(cCmd('  gg do rm ticket TICKPB')));
     });
 
     test('waits on npm for a published TypeScript dependency', () async {
@@ -5795,7 +5795,7 @@ void main() {
       ).called(1);
     });
 
-    group('when nothing is left to publish', () {
+    group('the end-of-run cleanup offer', () {
       test('offers the cleanup and trashes the ticket on accept', () async {
         // Both repos skip — the run publishes nothing.
         stubSkipCheck({'A', 'B'});
@@ -5844,6 +5844,12 @@ void main() {
           File(path.join(trashDir.path, 'TICKPB.code-workspace')).existsSync(),
           isTrue,
         );
+        // The ticket's own files travelled along — the folder moved as one.
+        expect(
+          File(path.join(trashDir.path, '.gg', 'gg-publish.json')).existsSync(),
+          isFalse,
+          reason: 'the runtime file is deleted on success, before the move',
+        );
         expect(ticketDir.existsSync(), isFalse);
         verify(
           () => mockProcessRunner(
@@ -5857,6 +5863,93 @@ void main() {
           contains('Change to the workspace root with:'),
         );
         expect(coloredMessages, contains(cCmd('  cd ${tempDir.path}')));
+      });
+
+      test('also appears after a run that actually published', () async {
+        // Nothing skips — both repos go through the full publish.
+        stubSkipCheck(<String>{});
+        File(path.join(ticketDir.path, 'ticket.json'))
+            .writeAsStringSync('{"issue_id":"TICKPB"}');
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['push', 'origin', '--delete', 'TICKPB'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+        final adapter = MockInteractAdapter();
+        when(
+          () => adapter.choose(
+            message: any(named: 'message'),
+            options: any(named: 'options'),
+          ),
+        ).thenAnswer((_) async => 0);
+
+        await buildRunner(
+          interactAdapter: adapter,
+          hasTerminal: () => true,
+        ).run(['publish', '--input', ticketDir.path]);
+
+        // The question is asked up front, before the first repo is
+        // published — no prompt sits between the irreversible steps.
+        verifyInOrder([
+          () => adapter.choose(
+                message: any(named: 'message'),
+                options: any(named: 'options'),
+              ),
+          () => mockGgDoPublish.exec(
+                directory: any(named: 'directory'),
+                ggLog: any(named: 'ggLog'),
+                message: any(named: 'message'),
+                deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+                verbose: any(named: 'verbose'),
+                versionIncrement: any(named: 'versionIncrement'),
+                channel: any(named: 'channel'),
+                askBeforePublishing: any(named: 'askBeforePublishing'),
+                resume: any(named: 'resume'),
+                pr: any(named: 'pr'),
+                mergeOnly: any(named: 'mergeOnly'),
+                force: any(named: 'force'),
+              ),
+        ]);
+
+        // Accepting moves the whole ticket — repos and metadata alike.
+        final trashDir = Directory(
+          path.join(tempDir.path, '.trash', 'TICKPB'),
+        );
+
+        expect(Directory(path.join(trashDir.path, 'A')).existsSync(), isTrue);
+        expect(Directory(path.join(trashDir.path, 'B')).existsSync(), isTrue);
+        expect(
+          File(path.join(trashDir.path, 'ticket.json')).readAsStringSync(),
+          '{"issue_id":"TICKPB"}',
+        );
+        expect(ticketDir.existsSync(), isFalse);
+      });
+
+      test('keeps a productive run workable when the user declines', () async {
+        stubSkipCheck(<String>{});
+        final adapter = MockInteractAdapter();
+        when(
+          () => adapter.choose(
+            message: any(named: 'message'),
+            options: any(named: 'options'),
+          ),
+        ).thenAnswer((_) async => 1);
+
+        await buildRunner(
+          interactAdapter: adapter,
+          hasTerminal: () => true,
+        ).run(['publish', '--input', ticketDir.path]);
+
+        expect(ticketDir.existsSync(), isTrue);
+        expect(Directory(path.join(ticketDir.path, 'A')).existsSync(), isTrue);
+        expect(
+          messages.join('\n'),
+          contains('The ticket stays in place'),
+        );
+        expect(coloredMessages, contains(cCmd('  gg do rm ticket TICKPB')));
       });
 
       test('keeps the ticket when the user declines', () async {
@@ -5879,7 +5972,7 @@ void main() {
           Directory(path.join(tempDir.path, '.trash', 'TICKPB')).existsSync(),
           isFalse,
         );
-        expect(coloredMessages, contains(cCmd('  gg do rm ticket')));
+        expect(coloredMessages, contains(cCmd('  gg do rm ticket TICKPB')));
       });
 
       test('keeps the ticket without asking when stdin is no terminal',
