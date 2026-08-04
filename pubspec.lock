@@ -277,7 +277,7 @@ packages:
       path: "../gg_one"
       relative: true
     source: path
-    version: "12.6.1"
+    version: "12.7.0"
   gg_process:
     dependency: transitive
     description:
