@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.11.2 - 2026-08-04
+
+### Changed
+
+- Fix issues with CHANGELOG.md
+
 ## 7.11.1 - 2026-08-04
 
 ### Removed
