@@ -8,9 +8,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:gg_multi/src/backend/organization.dart';
-import 'package:test/test.dart';
-import 'package:path/path.dart' as path;
 import 'package:gg_multi/src/backend/organization_utils.dart';
+import 'package:path/path.dart' as path;
+import 'package:test/test.dart';
 
 void main() {
   group('OrganizationUtils', () {

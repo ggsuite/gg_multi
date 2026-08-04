@@ -224,8 +224,9 @@ class DoPublishCommand extends DirCommand<void> {
   final ChangeRefsToPubDev _unlocalizeRefs;
 
   /// Re-localizes a repo after its publish: `pubspec_overrides.yaml` path
-  /// overrides for Dart, `link:` references inside `package.json` for
-  /// TypeScript — so the repo keeps resolving against the sibling checkouts.
+  /// overrides for Dart, `link:` overrides in `pnpm-workspace.yaml` for
+  /// pnpm-managed TypeScript — so the repo keeps resolving against the
+  /// sibling checkouts.
   final ChangeRefsToLocal _localizeRefs;
 
   /// Restores the original `publish_to` value captured by `do add`.
@@ -1067,12 +1068,13 @@ class DoPublishCommand extends DirCommand<void> {
   ///      into the feature branch) would see the squash commit and the
   ///      feature branch as two competing edits of the same lines and
   ///      conflict — for TypeScript repos on every single publish.
-  ///   3. Restore `pubspec_overrides.yaml` from the backup taken in
-  ///      [_publishRepo], then re-localize (`ChangeRefsToLocal`): Dart repos
-  ///      get their path overrides back, TypeScript repos their `link:`
-  ///      references inside `package.json` — the piece a file restore alone
-  ///      cannot cover, because the TypeScript localization lives in the
-  ///      manifest itself.
+  ///   3. Restore the workspace wiring files (`pubspec_overrides.yaml`,
+  ///      `pnpm-workspace.yaml`) from the backups taken in [_publishRepo],
+  ///      then re-localize (`ChangeRefsToLocal`): Dart repos get their path
+  ///      overrides back, pnpm-managed TypeScript repos their `link:`
+  ///      overrides in `pnpm-workspace.yaml` — recomputed on top of the
+  ///      restored files, so the freshly published versions also land in
+  ///      the `gg_localize_refs` backups.
   ///   4. Refresh the dependencies so lock files and `node_modules` follow
   ///      the restored references.
   ///   5. Commit everything as one gg bookkeeping commit and — for a real
@@ -1237,7 +1239,8 @@ class DoPublishCommand extends DirCommand<void> {
   }
 
   /// Throws when one of [repos] still redirects a dependency to a local
-  /// working copy (`pubspec_overrides.yaml`).
+  /// working copy — a `pubspec_overrides.yaml` with a `path:` override
+  /// (Dart) or a `pnpm-workspace.yaml` with a `link:` override (TypeScript).
   ///
   /// Only a `--merge-only` run calls this: it brings the ticket onto the main
   /// branches *without* releasing anything, so a reference that exists only as
@@ -1245,7 +1248,11 @@ class DoPublishCommand extends DirCommand<void> {
   /// else. Such a ticket has to be published. `--force` skips the check.
   void _throwOnLocalizedRefs(List<Node> repos) {
     final localized = repos
-        .where((repo) => gg.NoPubspecOverrides.hasLocalizedRefs(repo.directory))
+        .where(
+          (repo) =>
+              gg.NoPubspecOverrides.hasLocalizedRefs(repo.directory) ||
+              PnpmWorkspaceIo.hasLocalizedRefs(repo.directory),
+        )
         .map((repo) => path.basename(repo.directory.path))
         .toList();
 

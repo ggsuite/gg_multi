@@ -243,12 +243,12 @@ class RemoveRepoCommand extends Command<void> {
   }
 
   // ...........................................................................
-  /// Drops the removed repo from the `pubspec_overrides.yaml` of the repos
-  /// that stay in the ticket.
+  /// Drops the removed repo from the `pubspec_overrides.yaml` and
+  /// `pnpm-workspace.yaml` of the repos that stay in the ticket.
   ///
-  /// Those overrides point at the sibling checkout (`path: ../<repo>`) that
-  /// just disappeared, so leaving them would break `dart pub get` in every
-  /// remaining repo.
+  /// Those overrides point at the sibling checkout (`path: ../<repo>` /
+  /// `link:../<repo>`) that just disappeared, so leaving them would break
+  /// `dart pub get` / `pnpm install` in every remaining repo.
   void _removeDependencyOverrides(
     Directory removedRepoDir,
     List<Node> nodes,
@@ -271,7 +271,7 @@ class RemoveRepoCommand extends Command<void> {
     ggLog(
       cDetail(
         '✓ Removed ${path.basename(removedRepoDir.path)} from '
-        '$pubspecOverridesFileName of ${changed.length} repo(s).',
+        'the localized overrides of ${changed.length} repo(s).',
       ),
     );
   }

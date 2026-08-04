@@ -20,9 +20,9 @@ import 'package:gg_multi/src/backend/pub_dev_checker.dart';
 import 'package:gg_multi/src/backend/publish_skip_check.dart';
 import 'package:gg_multi/src/backend/ticket_state.dart';
 import 'package:gg_multi/src/commands/can/publish.dart';
+import 'package:gg_multi/src/commands/did/review.dart';
 import 'package:gg_multi/src/commands/do/configure_publish.dart'
     show DoConfigurePublishCommand;
-import 'package:gg_multi/src/commands/did/review.dart';
 import 'package:gg_multi/src/commands/do/publish.dart';
 import 'package:gg_multi/src/commands/do/push.dart';
 import 'package:gg_one/gg_one.dart' as gg;
@@ -6479,6 +6479,46 @@ void main() {
 
     test('tolerates an overrides file without effective refs', () async {
       writeOverrides('B', 'dependency_overrides:\n');
+
+      await buildRunner().run(['publish', '--input', ticketDir.path]);
+
+      verify(
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).called(1);
+    });
+
+    test(
+        'refuses while a TypeScript repo redirects refs through '
+        'pnpm-workspace.yaml', () async {
+      // gg_localize_refs redirects pnpm-managed TypeScript deps through the
+      // overrides of pnpm-workspace.yaml — a link: entry is a working-copy
+      // redirection exactly like a Dart path: override.
+      File(
+        path.join(ticketDir.path, 'B', 'pnpm-workspace.yaml'),
+      ).writeAsStringSync('overrides:\n  A: link:../A\n');
+
+      await expectLater(
+        () => buildRunner().run(['publish', '--input', ticketDir.path]),
+        throwsA(
+          isA<Exception>().having(
+            (e) => rmControls(e.toString()),
+            'message',
+            contains('These projects depend on other local projects: B'),
+          ),
+        ),
+      );
+    });
+
+    test('tolerates a pnpm-workspace.yaml holding only git overrides',
+        () async {
+      File(
+        path.join(ticketDir.path, 'B', 'pnpm-workspace.yaml'),
+      ).writeAsStringSync(
+        'overrides:\n  A: git+ssh://git@github.com/u/a.git#feat\n',
+      );
 
       await buildRunner().run(['publish', '--input', ticketDir.path]);
 

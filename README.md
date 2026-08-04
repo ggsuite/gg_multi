@@ -309,9 +309,10 @@ another review round first.
 Publishing no longer dismantles the ticket. After each repo is
 released, `do publish` brings it back into its working state: the
 feature branch is checked out again, the released main state is merged
-back into it, the local references return (`pubspec_overrides.yaml` is
-restored from the backup taken before the release; TypeScript repos
-get their `link:` references re-localized into `package.json`) and the
+back into it, the local references return (`pubspec_overrides.yaml` and
+`pnpm-workspace.yaml` are restored from the backups taken before the
+release; the re-localization then puts the `path:`/`link:` overrides
+back on top) and the
 state is recorded as `didPublish` in the repo's `.gg/gg.json`. You can
 keep working — and publish again from the same branch; repos whose
 content is already released are skipped automatically.

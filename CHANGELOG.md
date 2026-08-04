@@ -5,6 +5,7 @@
 ### Changed
 
 - Show ticket deletion dialog at the beginning of publish. Recolorize.
+- Use overrides in package.json
 
 ## 7.12.0 - 2026-08-04
 

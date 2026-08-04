@@ -6,8 +6,8 @@
 
 import 'dart:io';
 
-import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:path/path.dart' as p;
+import 'package:pubspec_parse/pubspec_parse.dart';
 
 import 'repo_folder_resolver.dart';
 
