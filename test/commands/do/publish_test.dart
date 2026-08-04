@@ -12,6 +12,7 @@ import 'package:args/command_runner.dart';
 // ignore: lines_longer_than_80_chars
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
+import 'package:gg_log/gg_log.dart';
 import 'package:gg_multi/src/backend/ensure_in_registry.dart';
 import 'package:gg_multi/src/backend/npm_registry_checker.dart';
 import 'package:gg_multi/src/backend/pub_dev_checker.dart';
@@ -35,6 +36,12 @@ class MockGgDoPublish extends Mock implements gg.DoPublish {}
 
 /// Mock for gg DoCommit
 class MockGgDoCommit extends Mock implements gg.DoCommit {}
+
+/// Mock for gg DoUpgradeDeps
+class MockGgDoUpgradeDeps extends Mock implements gg.DoUpgradeDeps {}
+
+/// Mock for gg CanCommit
+class MockGgCanCommit extends Mock implements gg.CanCommit {}
 
 /// Mock for gg DoPush
 class MockGgDoPush extends Mock implements gg.DoPush {}
@@ -143,7 +150,7 @@ void main() {
           // No injected collaborators: this run fails before any repo work,
           // so the default-constructed ones (incl. EnsureInRegistry) stay
           // unused — and the default construction is covered.
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
           ),
         );
@@ -200,7 +207,7 @@ void main() {
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
             didReviewCommand: mockDidReviewCommand,
@@ -258,7 +265,7 @@ void main() {
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
             didReviewCommand: mockDidReviewCommand,
@@ -321,7 +328,7 @@ void main() {
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
             didReviewCommand: mockDidReviewCommand,
@@ -391,13 +398,13 @@ void main() {
           'Merging origin/main into A produced conflicts:\n'
           ' - A/pubspec.yaml\n'
           'Please resolve the conflicts. Then execute: '
-          'gg do commit -m"Merge main" --no-log',
+          "gg do commit -m 'Merge main' --no-log",
         ),
       );
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
             didReviewCommand: mockDidReviewCommand,
@@ -416,7 +423,7 @@ void main() {
             (e) => rmControls(e.toString()),
             'message',
             allOf(
-              contains('gg do commit -m"Merge main" --no-log'),
+              contains("gg do commit -m 'Merge main' --no-log"),
               isNot(contains('Cannot publish.')),
             ),
           ),
@@ -576,7 +583,7 @@ void main() {
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
@@ -793,7 +800,7 @@ void main() {
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
@@ -1002,7 +1009,7 @@ void main() {
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
@@ -1241,7 +1248,7 @@ void main() {
 
         final runner = CommandRunner<void>('test', 'do publish ticket')
           ..addCommand(
-            DoPublishCommand(
+            makePublishCommand(
               ggLog: ggLog,
               ensureInRegistry: mockEnsureInRegistry,
               ggDoPublish: mockGgDoPublish,
@@ -1431,7 +1438,7 @@ void main() {
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
@@ -1590,7 +1597,7 @@ void main() {
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
@@ -1754,7 +1761,7 @@ void main() {
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
@@ -1935,7 +1942,7 @@ void main() {
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
@@ -2109,7 +2116,7 @@ void main() {
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
@@ -2208,7 +2215,7 @@ void main() {
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
@@ -2369,7 +2376,7 @@ void main() {
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
@@ -2581,7 +2588,7 @@ void main() {
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
@@ -2729,7 +2736,7 @@ void main() {
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
@@ -2904,7 +2911,7 @@ void main() {
 
         final runner = CommandRunner<void>('test', 'do publish ticket')
           ..addCommand(
-            DoPublishCommand(
+            makePublishCommand(
               ggLog: ggLog,
               ensureInRegistry: mockEnsureInRegistry,
               ggDoPublish: mockGgDoPublish,
@@ -3076,7 +3083,7 @@ void main() {
 
         final runner = CommandRunner<void>('test', 'do publish ticket')
           ..addCommand(
-            DoPublishCommand(
+            makePublishCommand(
               ggLog: ggLog,
               ensureInRegistry: mockEnsureInRegistry,
               ggDoPublish: mockGgDoPublish,
@@ -3260,7 +3267,7 @@ void main() {
 
         final runner = CommandRunner<void>('test', 'do publish ticket')
           ..addCommand(
-            DoPublishCommand(
+            makePublishCommand(
               ggLog: ggLog,
               ensureInRegistry: mockEnsureInRegistry,
               ggDoPublish: mockGgDoPublish,
@@ -3421,7 +3428,7 @@ void main() {
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
@@ -3581,7 +3588,7 @@ void main() {
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
@@ -3738,7 +3745,7 @@ void main() {
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
@@ -3815,7 +3822,7 @@ void main() {
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
@@ -3905,7 +3912,7 @@ void main() {
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
@@ -4070,7 +4077,7 @@ void main() {
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
@@ -4218,7 +4225,7 @@ void main() {
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
@@ -4389,7 +4396,7 @@ void main() {
 
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
-          DoPublishCommand(
+          makePublishCommand(
             ggLog: ggLog,
             ensureInRegistry: mockEnsureInRegistry,
             ggDoPublish: mockGgDoPublish,
@@ -4455,7 +4462,7 @@ void main() {
           'test',
           'do publish ticket',
         )..addCommand(
-            DoPublishCommand(
+            makePublishCommand(
               ggLog: ggLog,
               ensureInRegistry: mockEnsureInRegistry,
               ggDoCommit: mockGgDoCommit,
@@ -5511,7 +5518,7 @@ void main() {
     CommandRunner<void> buildRunner() =>
         CommandRunner<void>('test', 'do publish ticket')
           ..addCommand(
-            DoPublishCommand(
+            makePublishCommand(
               ggLog: ggLog,
               ensureInRegistry: mockEnsureInRegistry,
               ggDoPublish: mockGgDoPublish,
@@ -6304,7 +6311,7 @@ void main() {
     CommandRunner<void> buildRunner() =>
         CommandRunner<void>('test', 'do publish ticket')
           ..addCommand(
-            DoPublishCommand(
+            makePublishCommand(
               ggLog: ggLog,
               ensureInRegistry: mockEnsureInRegistry,
               ggDoPublish: mockGgDoPublish,
@@ -6721,7 +6728,7 @@ void main() {
     CommandRunner<void> buildRunner() =>
         CommandRunner<void>('test', 'do merge ticket')
           ..addCommand(
-            DoPublishCommand(
+            makePublishCommand(
               ggLog: ggLog,
               ensureInRegistry: mockEnsureInRegistry,
               mergeOnly: true,
@@ -6752,7 +6759,7 @@ void main() {
     CommandRunner<void> buildFlagRunner() =>
         CommandRunner<void>('test', 'do publish ticket')
           ..addCommand(
-            DoPublishCommand(
+            makePublishCommand(
               ggLog: ggLog,
               ensureInRegistry: mockEnsureInRegistry,
               ggDoPublish: mockGgDoPublish,
@@ -7003,6 +7010,8 @@ void main() {
     late MockSetRefVersion mockSetRefVersion;
     late MockGetRefVersion mockGetRefVersion;
     late MockPubDevChecker mockPubDevChecker;
+    late MockGgDoUpgradeDeps mockUpgradeDeps;
+    late MockGgCanCommit mockGgCanCommit;
 
     /// Every call the ordering assertions care about, in the order it
     /// happened, as `<step>:<repo>`.
@@ -7077,6 +7086,22 @@ void main() {
           ggLog: any(named: 'ggLog'),
         ),
       ).thenAnswer((i) async => calls.add('unlocalize:${repoOf(i)}'));
+
+      mockUpgradeDeps = MockGgDoUpgradeDeps();
+      when(
+        () => mockUpgradeDeps.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((i) async => calls.add('upgrade:${repoOf(i)}'));
+
+      mockGgCanCommit = MockGgCanCommit();
+      when(
+        () => mockGgCanCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((i) async => calls.add('cancommit:${repoOf(i)}'));
 
       when(
         () => mockGgDoCommit.exec(
@@ -7154,7 +7179,7 @@ void main() {
     CommandRunner<void> buildRunner() =>
         CommandRunner<void>('test', 'do publish ticket')
           ..addCommand(
-            DoPublishCommand(
+            makePublishCommand(
               ggLog: ggLog,
               ensureInRegistry: mockEnsureInRegistry,
               ggDoPublish: mockGgDoPublish,
@@ -7170,6 +7195,8 @@ void main() {
               setRefVersionCommand: mockSetRefVersion,
               getRefVersionCommand: mockGetRefVersion,
               pubDevChecker: mockPubDevChecker,
+              ggDoUpgradeDeps: mockUpgradeDeps,
+              ggCanCommit: mockGgCanCommit,
             ),
           );
 
@@ -7198,11 +7225,16 @@ void main() {
         'dependencies were published', () async {
       await buildRunner().run(['publish', '--input', ticketDir.path]);
 
-      // Within a repo: the gate sits between the force-commit and the push.
+      // Within a repo: after the refs point at the registry, the
+      // dependencies are upgraded and the repo is re-verified with
+      // `gg can commit` before the bookkeeping commit sweeps everything up;
+      // the gate sits between the force-commit and the push.
       expect(
         calls,
         containsAllInOrder([
           'unlocalize:B',
+          'upgrade:B',
+          'cancommit:B',
           'commit:B',
           'gate:B',
           'push:B',
@@ -7292,6 +7324,68 @@ void main() {
       );
     });
 
+    test('a failing upgrade fails the repo like a rejected gate', () async {
+      when(
+        () => mockUpgradeDeps.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((i) async {
+        calls.add('upgrade:${repoOf(i)}');
+        if (repoOf(i) == 'B') {
+          throw Exception('Failed to upgrade.');
+        }
+      });
+
+      await expectLater(
+        () => buildRunner().run(['publish', '--input', ticketDir.path]),
+        throwsA(
+          isA<Exception>().having(
+            (e) => rmControls(e.toString()),
+            'message',
+            contains('Failed to upgrade.'),
+          ),
+        ),
+      );
+
+      // A got all the way through; B never reached anything irreversible.
+      expect(calls, contains('publish:A'));
+      expect(calls, isNot(contains('cancommit:B')));
+      expect(calls, isNot(contains('gate:B')));
+      expect(calls, isNot(contains('push:B')));
+      expect(calls, isNot(contains('publish:B')));
+    });
+
+    test('a failing can commit fails the repo like a rejected gate', () async {
+      when(
+        () => mockGgCanCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((i) async {
+        calls.add('cancommit:${repoOf(i)}');
+        if (repoOf(i) == 'B') {
+          throw Exception('Cannot commit.');
+        }
+      });
+
+      await expectLater(
+        () => buildRunner().run(['publish', '--input', ticketDir.path]),
+        throwsA(
+          isA<Exception>().having(
+            (e) => rmControls(e.toString()),
+            'message',
+            contains('Cannot commit.'),
+          ),
+        ),
+      );
+
+      expect(calls, contains('publish:A'));
+      expect(calls, isNot(contains('gate:B')));
+      expect(calls, isNot(contains('push:B')));
+      expect(calls, isNot(contains('publish:B')));
+    });
+
     group('on --continue', () {
       /// Marks the run as resumable and gives repo [name] gg_one step
       /// progress, as a repo that failed mid-publish would have.
@@ -7332,6 +7426,13 @@ void main() {
         expect(calls, contains('gate:A'));
         expect(calls, isNot(contains('gate:B')));
         expect(calls, contains('publish:B'));
+
+        // The same holds for the upgrade + can-commit validation: it must
+        // not touch a mid-publish state.
+        expect(calls, contains('upgrade:A'));
+        expect(calls, contains('cancommit:A'));
+        expect(calls, isNot(contains('upgrade:B')));
+        expect(calls, isNot(contains('cancommit:B')));
       });
 
       test('re-checks a repo that made no publish progress', () async {
@@ -7353,6 +7454,12 @@ void main() {
         // Re-validating on resume is the point: B is checked again.
         expect(calls, contains('gate:B'));
       });
+    });
+
+    test('constructs its upgrade and can-commit collaborators by default', () {
+      // makePublishCommand always injects mocks for the two, so the
+      // default construction is exercised here.
+      expect(DoPublishCommand(ggLog: ggLog), isNotNull);
     });
   });
 }
@@ -7460,4 +7567,82 @@ void _stubRepoSnapshot(MockProcessRunner runner) {
       workingDirectory: any(named: 'workingDirectory'),
     ),
   ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+}
+
+/// Builds a [DoPublishCommand] whose upgrade and can-commit collaborators
+/// default to pre-stubbed mocks — otherwise every test reaching
+/// `_publishRepo` would run a real »dart pub upgrade« and real checks.
+DoPublishCommand makePublishCommand({
+  required GgLog ggLog,
+  bool mergeOnly = false,
+  gg.DoCommit? ggDoCommit,
+  gg.DoUpgradeDeps? ggDoUpgradeDeps,
+  gg.CanCommit? ggCanCommit,
+  ChangeRefsToPubDev? unlocalizeRefs,
+  RestorePublishTo? restorePublishTo,
+  gg.DoPush? ggDoPush,
+  gg.DoPublish? ggDoPublish,
+  SortedProcessingList? sortedProcessingList,
+  Future<ProcessResult> Function(
+    String,
+    List<String>, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+  })? processRunner,
+  CanPublishCommand? canPublishCommand,
+  DidReviewCommand? didReviewCommand,
+  GetVersion? getVersionCommand,
+  SetRefVersion? setRefVersionCommand,
+  GetRefVersion? getRefVersionCommand,
+  PubDevChecker? pubDevChecker,
+  NpmRegistryChecker? npmChecker,
+  PublishSkipCheck? publishSkipCheck,
+  DoConfigurePublishCommand? doConfigurePublishCommand,
+  gg.EnsurePublishConfigIgnored? ensureIgnored,
+  EnsureInRegistry? ensureInRegistry,
+}) {
+  if (ggDoUpgradeDeps == null) {
+    final mock = MockGgDoUpgradeDeps();
+    when(
+      () => mock.exec(
+        directory: any(named: 'directory'),
+        ggLog: any(named: 'ggLog'),
+      ),
+    ).thenAnswer((_) async {});
+    ggDoUpgradeDeps = mock;
+  }
+  if (ggCanCommit == null) {
+    final mock = MockGgCanCommit();
+    when(
+      () => mock.exec(
+        directory: any(named: 'directory'),
+        ggLog: any(named: 'ggLog'),
+      ),
+    ).thenAnswer((_) async {});
+    ggCanCommit = mock;
+  }
+  return DoPublishCommand(
+    ggLog: ggLog,
+    mergeOnly: mergeOnly,
+    ggDoCommit: ggDoCommit,
+    ggDoUpgradeDeps: ggDoUpgradeDeps,
+    ggCanCommit: ggCanCommit,
+    unlocalizeRefs: unlocalizeRefs,
+    restorePublishTo: restorePublishTo,
+    ggDoPush: ggDoPush,
+    ggDoPublish: ggDoPublish,
+    sortedProcessingList: sortedProcessingList,
+    processRunner: processRunner,
+    canPublishCommand: canPublishCommand,
+    didReviewCommand: didReviewCommand,
+    getVersionCommand: getVersionCommand,
+    setRefVersionCommand: setRefVersionCommand,
+    getRefVersionCommand: getRefVersionCommand,
+    pubDevChecker: pubDevChecker,
+    npmChecker: npmChecker,
+    publishSkipCheck: publishSkipCheck,
+    doConfigurePublishCommand: doConfigurePublishCommand,
+    ensureIgnored: ensureIgnored,
+    ensureInRegistry: ensureInRegistry,
+  );
 }
