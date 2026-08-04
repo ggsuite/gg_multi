@@ -1,5 +1,12 @@
 # Changelog
 
+## 7.10.0 - 2026-08-04
+
+### Changed
+
+- Rename .master to .ocean with automatic migration at next start
+- Rename ocean workspace -> ocean
+
 ## 7.9.5 - 2026-08-04
 
 ### Changed

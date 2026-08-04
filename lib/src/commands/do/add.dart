@@ -37,11 +37,11 @@ import '../../backend/workspace_utils.dart';
 /// Subset of [fetchDependencyRepoUrl] without named args, for test stubs.
 typedef FetchRepoUrl = Future<String?> Function(String packageName);
 
-/// Command to add a repo or all repos of an organization to master+ticket.
+/// Command to add a repo or all repos of an organization to ocean+ticket.
 /// In ticket mode it also auto-clones transitive deps and re-localizes refs.
-/// Use `--force` to overwrite an existing repo in the master workspace.
+/// Use `--force` to overwrite an existing repo in the ocean.
 /// `--organization` may be given multiple times to add all repos of several
-/// organization folders of the master workspace at once. `--no-localize`
+/// organization folders of the ocean at once. `--no-localize`
 /// copies the repos without rewriting their references to local paths.
 class AddCommand extends Command<dynamic> {
   /// Constructor for AddCommand.
@@ -50,7 +50,7 @@ class AddCommand extends Command<dynamic> {
     GitHandler? gitCloner,
     GitHubPlatform? gitHubPlatform,
     ProcessRunner? processRunner,
-    String? masterWorkspacePath,
+    String? oceanWorkspacePath,
     String? executionPath,
     gg.DoCommit? ggDoCommit,
     SortedProcessingList? sortedProcessingList,
@@ -66,8 +66,8 @@ class AddCommand extends Command<dynamic> {
         gitHubPlatform = gitHubPlatform ?? GitHubPlatform(),
         processRunner = processRunner ?? Process.run,
         executionPath = executionPath ?? Directory.current.path,
-        masterWorkspacePath =
-            masterWorkspacePath ?? WorkspaceUtils.defaultMasterWorkspacePath(),
+        oceanWorkspacePath =
+            oceanWorkspacePath ?? WorkspaceUtils.defaultOceanWorkspacePath(),
         _ggDoCommit = ggDoCommit ?? gg.DoCommit(ggLog: ggLog),
         _sortedProcessingList =
             sortedProcessingList ?? SortedProcessingList(ggLog: ggLog),
@@ -81,7 +81,7 @@ class AddCommand extends Command<dynamic> {
     argParser.addFlag(
       'force',
       abbr: 'f',
-      help: 'Overwrite existing repository in master workspace.',
+      help: 'Overwrite existing repository in ocean.',
       defaultsTo: false,
     );
     argParser.addFlag(
@@ -98,11 +98,11 @@ class AddCommand extends Command<dynamic> {
     );
     argParser.addMultiOption(
       'org',
-      help: 'Add all repos of a master organization folder',
+      help: 'Add all repos of an ocean organization folder',
     );
     argParser.addFlag(
       'all',
-      help: 'Add all repositories of the master workspace to the ticket.',
+      help: 'Add all repositories of the ocean to the ticket.',
       defaultsTo: false,
       negatable: false,
     );
@@ -120,8 +120,8 @@ class AddCommand extends Command<dynamic> {
   /// Instance to handle running general processes.
   final ProcessRunner processRunner;
 
-  /// Resolved master workspace path.
-  final String masterWorkspacePath;
+  /// Resolved ocean path.
+  final String oceanWorkspacePath;
 
   /// The path from which the command was executed.
   final String executionPath;
@@ -172,7 +172,7 @@ class AddCommand extends Command<dynamic> {
       throw UsageException('Missing target parameter.', usage);
     }
 
-    // Both options take their repositories from the master workspace and
+    // Both options take their repositories from the ocean and
     // copy them into a ticket, so outside of one there is nothing to do.
     if (ticketPath == null && (all || orgs.isNotEmpty)) {
       throw UsageException(
@@ -184,7 +184,7 @@ class AddCommand extends Command<dynamic> {
     // Maintenance: a workspace created before gg grouped its repositories by
     // organization still holds them flat. Move them first, so everything
     // below sees a single layout.
-    migrateToOrgFolders(workspacePath: masterWorkspacePath, ggLog: ggLog);
+    migrateToOrgFolders(workspacePath: oceanWorkspacePath, ggLog: ggLog);
     if (ticketPath != null) {
       // The ticket is re-localized at the end of this run, which repairs the
       // relative path references the move invalidates.
@@ -201,7 +201,7 @@ class AddCommand extends Command<dynamic> {
           ggLog: ggLog,
           gitCloner: gitCloner,
           gitHubPlatform: gitHubPlatform,
-          workspacePath: masterWorkspacePath,
+          workspacePath: oceanWorkspacePath,
           force: force,
           logIfAlreadyAdded: true,
           selectOrganization: _selectOrganization,
@@ -210,7 +210,7 @@ class AddCommand extends Command<dynamic> {
       return;
     }
 
-    // Ticket mode: ensure requested repos are present in master first.
+    // Ticket mode: ensure requested repos are present in ocean first.
     final requestedRepoNames = <String>{};
     for (final targetArg in targets) {
       final repoName = extractRepoName(targetArg);
@@ -219,13 +219,13 @@ class AddCommand extends Command<dynamic> {
       }
     }
 
-    // --all and --org name repos that are already in the master workspace, so
+    // --all and --org name repos that are already in the ocean, so
     // they join the requested ones after the cloning step below.
     if (all) {
-      requestedRepoNames.addAll(_allMasterRepoNames());
+      requestedRepoNames.addAll(_allOceanRepoNames());
     }
     if (orgs.isNotEmpty) {
-      requestedRepoNames.addAll(_masterRepoNamesOfOrgs(orgs));
+      requestedRepoNames.addAll(_oceanRepoNamesOfOrgs(orgs));
     }
 
     if (requestedRepoNames.isEmpty) {
@@ -241,7 +241,7 @@ class AddCommand extends Command<dynamic> {
         ggLog: ggLog,
         gitCloner: gitCloner,
         gitHubPlatform: gitHubPlatform,
-        workspacePath: masterWorkspacePath,
+        workspacePath: oceanWorkspacePath,
         force: force,
         // When inside a ticket we do not spam "already added" messages.
         logIfAlreadyAdded: false,
@@ -255,11 +255,11 @@ class AddCommand extends Command<dynamic> {
 
     final ticketDir = Directory(ticketPath);
 
-    // Build dep graph of master + compute nodes between endpoints.
+    // Build dep graph of ocean + compute nodes between endpoints.
     Map<String, Node> allNodes = const {};
     try {
       allNodes = await _graph.get(
-        directory: Directory(masterWorkspacePath),
+        directory: Directory(oceanWorkspacePath),
         ggLog: ggLog,
       );
     } catch (e) {
@@ -358,25 +358,25 @@ class AddCommand extends Command<dynamic> {
     ggLog(cDetail('✔ Successfully added repos'));
   }
 
-  /// Folder names of all repositories of the master workspace.
-  Set<String> _allMasterRepoNames() => <String>{
-        for (final repoDir in RepoFolderResolver.repoDirs(masterWorkspacePath))
+  /// Folder names of all repositories of the ocean.
+  Set<String> _allOceanRepoNames() => <String>{
+        for (final repoDir in RepoFolderResolver.repoDirs(oceanWorkspacePath))
           path.basename(repoDir.path),
       };
 
-  /// Folder names of the repositories that sit in one of the `<master>/<org>`
-  /// folders named in [orgs]. Repositories that still lie flat in the master
+  /// Folder names of the repositories that sit in one of the `<ocean>/<org>`
+  /// folders named in [orgs]. Repositories that still lie flat in the ocean
   /// workspace belong to no organization folder and are never returned.
-  Set<String> _masterRepoNamesOfOrgs(List<String> orgs) {
+  Set<String> _oceanRepoNamesOfOrgs(List<String> orgs) {
     final result = <String>{};
 
     for (final org in orgs) {
       final namesOfOrg = <String>{};
 
-      for (final repoDir in RepoFolderResolver.repoDirs(masterWorkspacePath)) {
+      for (final repoDir in RepoFolderResolver.repoDirs(oceanWorkspacePath)) {
         final segments = path.split(
           RepoFolderResolver.relativePath(
-            workspacePath: masterWorkspacePath,
+            workspacePath: oceanWorkspacePath,
             repoDir: repoDir,
           ),
         );
@@ -392,7 +392,7 @@ class AddCommand extends Command<dynamic> {
       if (namesOfOrg.isEmpty) {
         ggLog(
           cWarn('No repositories found for organization $org '
-              'in the master workspace.'),
+              'in the ocean.'),
         );
       }
       result.addAll(namesOfOrg);
@@ -403,19 +403,19 @@ class AddCommand extends Command<dynamic> {
 
   // Ticket support helpers
   // ...........................................................................
-  /// Clones missing deps of every repo in master that belongs to a known org.
+  /// Clones missing deps of every repo in ocean that belongs to a known org.
   /// Git deps go via [addRepositoryHelper]; hosted deps via pub.dev lookup.
   /// Loops to a fixpoint; failures are swallowed (helper already logs).
   Future<void> _cloneMissingTransitiveDeps({
     required GgLog ggLog,
   }) async {
-    final masterDir = Directory(masterWorkspacePath);
-    if (!masterDir.existsSync()) {
+    final oceanDir = Directory(oceanWorkspacePath);
+    if (!oceanDir.existsSync()) {
       return;
     }
 
     // Normalize known org URLs once (e.g. "https://github.com/ggsuite").
-    final orgs = OrganizationUtils.readOrganizations(masterWorkspacePath);
+    final orgs = OrganizationUtils.readOrganizations(oceanWorkspacePath);
     final orgUrls = orgs
         .map((o) => o.url.replaceAll(RegExp(r'/+$'), '').toLowerCase())
         .toSet();
@@ -428,7 +428,7 @@ class AddCommand extends Command<dynamic> {
     final hostedLookupCache = <String, String?>{};
 
     while (true) {
-      final existingDirs = RepoFolderResolver.repoDirs(masterWorkspacePath);
+      final existingDirs = RepoFolderResolver.repoDirs(oceanWorkspacePath);
 
       // Known names: folder basenames plus manifest package names, so that
       // a cross-language bridge repo (whose folder name differs from its
@@ -514,7 +514,7 @@ class AddCommand extends Command<dynamic> {
       for (final entry in plan.entries) {
         final depName = entry.key;
         Directory? destDir = RepoFolderResolver.resolve(
-          workspacePath: masterWorkspacePath,
+          workspacePath: oceanWorkspacePath,
           repoName: depName,
         );
         if (destDir != null) {
@@ -526,7 +526,7 @@ class AddCommand extends Command<dynamic> {
             ggLog: ggLog,
             gitCloner: gitCloner,
             gitHubPlatform: gitHubPlatform,
-            workspacePath: masterWorkspacePath,
+            workspacePath: oceanWorkspacePath,
             logIfAlreadyAdded: false,
             selectOrganization: _selectOrganization,
           );
@@ -534,7 +534,7 @@ class AddCommand extends Command<dynamic> {
           // Swallow: addRepositoryHelper already logged the failure.
         }
         destDir = RepoFolderResolver.resolve(
-          workspacePath: masterWorkspacePath,
+          workspacePath: oceanWorkspacePath,
           repoName: depName,
         );
         if (destDir != null) {
@@ -556,7 +556,7 @@ class AddCommand extends Command<dynamic> {
   /// This is what makes the transitive clone cross-language: a bridge repo
   /// that is only referenced from a TypeScript package (via its npm name,
   /// e.g. `@tssuite/gg-bridge-dart-typescript`) still gets cloned into the
-  /// master workspace. The bare package name is used as target so that
+  /// ocean. The bare package name is used as target so that
   /// [addRepositoryHelper] resolves it against the known organization URLs.
   void _planNpmDepsFromPackageJson({
     required Directory repoDir,
@@ -641,7 +641,7 @@ class AddCommand extends Command<dynamic> {
     return null;
   }
 
-  /// Copies all [repoNames] from master into the ticket at [ticketPath].
+  /// Copies all [repoNames] from ocean into the ticket at [ticketPath].
   /// Up to [maxParallel] parallel; status via [reportLog], verbose via
   /// [ggLog].
   Future<void> _copyReposToTicket({
@@ -678,7 +678,7 @@ class AddCommand extends Command<dynamic> {
     await Future.wait(workers);
   }
 
-  /// Copies the repository from the master workspace to the [ticketPath] but
+  /// Copies the repository from the ocean to the [ticketPath] but
   /// does not trigger a ticket-wide relocalization.
   Future<void> _copyRepoToTicket({
     required String repoName,
@@ -686,18 +686,18 @@ class AddCommand extends Command<dynamic> {
     required GgLog ggLog,
   }) async {
     final srcDir = RepoFolderResolver.resolve(
-      workspacePath: masterWorkspacePath,
+      workspacePath: oceanWorkspacePath,
       repoName: repoName,
     );
     if (srcDir == null) {
-      ggLog(cError('Repository $repoName not found in master workspace.'));
+      ggLog(cError('Repository $repoName not found in ocean.'));
       return;
     }
 
-    // The ticket copy keeps the location the repo has in the master
+    // The ticket copy keeps the location the repo has in the ocean
     // workspace, i.e. `<ticket>/<org>/<repo>`.
     final relativePath = RepoFolderResolver.relativePath(
-      workspacePath: masterWorkspacePath,
+      workspacePath: oceanWorkspacePath,
       repoDir: srcDir,
     );
     final destDir = Directory(path.join(ticketPath, relativePath));
@@ -706,13 +706,13 @@ class AddCommand extends Command<dynamic> {
       return;
     }
 
-    await _prepareMasterRepositoryForCopy(
+    await _prepareOceanRepositoryForCopy(
       repoDir: srcDir,
       repoName: repoName,
       ggLog: ggLog,
     );
 
-    // Copy from master into ticket -------------------------------------------
+    // Copy from ocean into ticket -------------------------------------------
     await copyDirectory(srcDir, destDir);
 
     final String ticketName = path.basename(ticketPath);
@@ -735,13 +735,13 @@ class AddCommand extends Command<dynamic> {
     ggLog(cDetail('Added repository $repoName to ticket workspace.'));
   }
 
-  /// Prepares the master repository state before copying it into a ticket.
-  Future<void> _prepareMasterRepositoryForCopy({
+  /// Prepares the ocean repository state before copying it into a ticket.
+  Future<void> _prepareOceanRepositoryForCopy({
     required Directory repoDir,
     required String repoName,
     required GgLog ggLog,
   }) async {
-    await _throwIfMasterRepoIsDirty(
+    await _throwIfOceanRepoIsDirty(
       repoDir: repoDir,
       repoName: repoName,
       ggLog: ggLog,
@@ -766,7 +766,7 @@ class AddCommand extends Command<dynamic> {
 
     // The runtime progress of a publish (.gg/gg-publish.json) is gitignored,
     // so the reset above never removes it. It records the progress of a
-    // publish of ANOTHER branch and must not linger in the master workspace —
+    // publish of ANOTHER branch and must not linger in the ocean —
     // and never reach a ticket copy (copyDirectory skips it too).
     final stalePublishProgress = File(
       path.join(repoDir.path, '.gg', 'gg-publish.json'),
@@ -782,14 +782,14 @@ class AddCommand extends Command<dynamic> {
     }
   }
 
-  /// Throws when the master copy of [repoName] carries uncommitted changes.
+  /// Throws when the ocean copy of [repoName] carries uncommitted changes.
   ///
   /// The preparation below runs `git reset --hard origin/main`, which would
-  /// throw away every modification the user made in the master workspace
+  /// throw away every modification the user made in the ocean
   /// without a trace. So a dirty repo stops the `add` instead: the user has
   /// to commit, stash or revert the changes first. Untracked files survive
   /// the reset and are therefore not counted as dirty.
-  Future<void> _throwIfMasterRepoIsDirty({
+  Future<void> _throwIfOceanRepoIsDirty({
     required Directory repoDir,
     required String repoName,
     required GgLog ggLog,
@@ -807,7 +807,7 @@ class AddCommand extends Command<dynamic> {
     if (result.exitCode != 0) {
       ggLog(
         cError(
-          'Failed to execute git status in $repoName in master workspace: '
+          'Failed to execute git status in $repoName in ocean: '
           '${result.stderr}',
         ),
       );
@@ -825,7 +825,7 @@ class AddCommand extends Command<dynamic> {
 
     ggLog(
       cError(
-        'The repository $repoName in the master workspace has uncommitted '
+        'The repository $repoName in the ocean has uncommitted '
         'changes:',
       ),
     );
@@ -841,7 +841,7 @@ class AddCommand extends Command<dynamic> {
 
     throw Exception(
       cError(
-        'Repository $repoName in the master workspace is not clean',
+        'Repository $repoName in the ocean is not clean',
       ),
     );
   }
@@ -878,8 +878,8 @@ class AddCommand extends Command<dynamic> {
     await _runGit(
       repoDir: repoDir,
       arguments: <String>['fetch'],
-      successMessage: 'Executed git fetch in $repoName in master workspace.',
-      failureLabel: 'git fetch in $repoName in master workspace',
+      successMessage: 'Executed git fetch in $repoName in ocean.',
+      failureLabel: 'git fetch in $repoName in ocean',
       ggLog: ggLog,
     );
   }
@@ -894,9 +894,8 @@ class AddCommand extends Command<dynamic> {
       repoDir: repoDir,
       arguments: <String>['reset', '--hard', 'origin/main'],
       successMessage: 'Executed git reset --hard origin/main in '
-          '$repoName in master workspace.',
-      failureLabel:
-          'git reset --hard origin/main in $repoName in master workspace',
+          '$repoName in ocean.',
+      failureLabel: 'git reset --hard origin/main in $repoName in ocean',
       ggLog: ggLog,
     );
   }
@@ -912,8 +911,8 @@ class AddCommand extends Command<dynamic> {
     final list = await _runGit(
       repoDir: repoDir,
       arguments: <String>['tag', '-l'],
-      successMessage: 'Listed local tags in $repoName in master workspace.',
-      failureLabel: 'git tag -l in $repoName in master workspace',
+      successMessage: 'Listed local tags in $repoName in ocean.',
+      failureLabel: 'git tag -l in $repoName in ocean',
       ggLog: ggLog,
     );
 
@@ -930,7 +929,7 @@ class AddCommand extends Command<dynamic> {
     if (tags.isEmpty) {
       ggLog(
         darkGray(
-          'No local tags to delete in $repoName in master workspace.',
+          'No local tags to delete in $repoName in ocean.',
         ),
       );
       return;
@@ -940,9 +939,9 @@ class AddCommand extends Command<dynamic> {
       repoDir: repoDir,
       arguments: <String>['tag', '-d', ...tags],
       successMessage:
-          'Deleted ${tags.length} local tag(s) in $repoName in master '
+          'Deleted ${tags.length} local tag(s) in $repoName in ocean '
           'workspace.',
-      failureLabel: 'git tag -d <tags> in $repoName in master workspace',
+      failureLabel: 'git tag -d <tags> in $repoName in ocean',
       ggLog: ggLog,
     );
   }
@@ -956,9 +955,8 @@ class AddCommand extends Command<dynamic> {
     await _runGit(
       repoDir: repoDir,
       arguments: <String>['fetch', '--tags'],
-      successMessage:
-          'Executed git fetch --tags in $repoName in master workspace.',
-      failureLabel: 'git fetch --tags in $repoName in master workspace',
+      successMessage: 'Executed git fetch --tags in $repoName in ocean.',
+      failureLabel: 'git fetch --tags in $repoName in ocean',
       ggLog: ggLog,
     );
   }
@@ -973,8 +971,8 @@ class AddCommand extends Command<dynamic> {
       repoDir: repoDir,
       arguments: <String>['fetch', '--prune', '--tags'],
       successMessage: 'Executed git fetch --prune --tags in '
-          '$repoName in master workspace.',
-      failureLabel: 'git fetch --prune --tags in $repoName in master workspace',
+          '$repoName in ocean.',
+      failureLabel: 'git fetch --prune --tags in $repoName in ocean',
       ggLog: ggLog,
     );
   }

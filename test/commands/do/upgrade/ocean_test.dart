@@ -15,7 +15,7 @@ import 'package:gg_multi/src/backend/git_handler.dart';
 import 'package:gg_multi/src/backend/git_platform.dart';
 import 'package:gg_multi/src/backend/organization_utils.dart';
 import 'package:gg_multi/src/backend/repository.dart';
-import 'package:gg_multi/src/commands/do/upgrade/master.dart';
+import 'package:gg_multi/src/commands/do/upgrade/ocean.dart';
 import 'package:gg_status_printer/gg_status_printer.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
@@ -28,9 +28,9 @@ class MockGitHubPlatform extends Mock implements GitHubPlatform {}
 class MockAzureDevOpsPlatform extends Mock implements AzureDevOpsPlatform {}
 
 void main() {
-  group('UpdateMasterCommand', () {
+  group('UpdateOceanCommand', () {
     late Directory tempDir;
-    late String masterPath;
+    late String oceanPath;
     late MockGitCloner gitCloner;
     late MockGitHubPlatform gitHub;
     late MockAzureDevOpsPlatform azure;
@@ -39,9 +39,9 @@ void main() {
     void ggLog(String message) => messages.add(rmControls(message));
 
     // .........................................................................
-    /// Creates `<master>/<org>/<repo>` with a git remote pointing at [url].
+    /// Creates `<ocean>/<org>/<repo>` with a git remote pointing at [url].
     Directory createRepo(String org, String repo, String url) {
-      final dir = Directory(path.join(masterPath, org, repo))
+      final dir = Directory(path.join(oceanPath, org, repo))
         ..createSync(recursive: true);
       Directory(path.join(dir.path, '.git')).createSync();
       File(path.join(dir.path, '.git', 'config')).writeAsStringSync(
@@ -52,15 +52,15 @@ void main() {
 
     // .........................................................................
     void writeOrganizations(String json) {
-      File(path.join(masterPath, '.organizations')).writeAsStringSync(json);
+      File(path.join(oceanPath, '.organizations')).writeAsStringSync(json);
       OrganizationUtils.clearCache();
     }
 
     // .........................................................................
-    Future<void> run(List<String> args) async {
-      final runner = CommandRunner<void>('test', 'UpdateMasterCommand Test')
+    Future<void> run(List<String> args, {String command = 'ocean'}) async {
+      final runner = CommandRunner<void>('test', 'UpdateOceanCommand Test')
         ..addCommand(
-          UpdateMasterCommand(
+          UpdateOceanCommand(
             ggLog: ggLog,
             rootPath: tempDir.path,
             gitCloner: gitCloner,
@@ -68,7 +68,7 @@ void main() {
             azureDevOpsPlatform: azure,
           ),
         );
-      await runner.run(['master', ...args]);
+      await runner.run([command, ...args]);
     }
 
     // .........................................................................
@@ -86,9 +86,9 @@ void main() {
       azure = MockAzureDevOpsPlatform();
       when(() => gitCloner.cloneRepo(any(), any())).thenAnswer((_) async {});
 
-      tempDir = Directory.systemTemp.createTempSync('update_master_test');
-      masterPath = path.join(tempDir.path, ggMultiMasterFolder);
-      Directory(masterPath).createSync(recursive: true);
+      tempDir = Directory.systemTemp.createTempSync('update_ocean_test');
+      oceanPath = path.join(tempDir.path, ggMultiOceanFolder);
+      Directory(oceanPath).createSync(recursive: true);
       writeOrganizations(
         '[{"id":"1","name":"ggsuite","url":"https://github.com/ggsuite/"}]',
       );
@@ -103,17 +103,37 @@ void main() {
 
     // .........................................................................
     test('describes itself', () {
-      final command = UpdateMasterCommand(ggLog: ggLog, rootPath: tempDir.path);
-      expect(command.name, 'master');
+      final command = UpdateOceanCommand(ggLog: ggLog, rootPath: tempDir.path);
+      expect(command.name, 'ocean');
+      expect(
+        command.aliases,
+        ['master'],
+        reason: 'The former command name must keep working as an alias.',
+      );
       expect(
         command.description,
-        'Sync master with the registered organizations',
+        'Sync the ocean with the registered organizations',
+      );
+    });
+
+    // .........................................................................
+    test('still answers to the legacy alias »master«', () async {
+      createRepo('ggsuite', 'gg_one', 'git@github.com:ggsuite/gg_one.git');
+      when(() => gitHub.fetchOrgRepos('ggsuite')).thenAnswer(
+        (_) async => [ghRepo('ggsuite', 'gg_one')],
+      );
+
+      await run([], command: 'master');
+
+      expect(
+        messages.join('\n'),
+        contains('The ocean is up to date'),
       );
     });
 
     // .........................................................................
     group('adds repositories', () {
-      test('that the organization has and master lacks', () async {
+      test('that the organization has and ocean lacks', () async {
         createRepo('ggsuite', 'gg_one', 'git@github.com:ggsuite/gg_one.git');
         when(() => gitHub.fetchOrgRepos('ggsuite')).thenAnswer(
           (_) async => [ghRepo('ggsuite', 'gg_one'), ghRepo('ggsuite', 'gg')],
@@ -124,7 +144,7 @@ void main() {
         verify(
           () => gitCloner.cloneRepo(
             'git@github.com:ggsuite/gg.git',
-            path.join(masterPath, 'ggsuite', 'gg'),
+            path.join(oceanPath, 'ggsuite', 'gg'),
           ),
         ).called(1);
         expect(messages, contains('✓ Adding ggsuite/gg'));
@@ -142,7 +162,7 @@ void main() {
         await run([]);
 
         verifyNever(() => gitCloner.cloneRepo(any(), any()));
-        expect(messages.last, contains('master workspace is up to date'));
+        expect(messages.last, contains('ocean is up to date'));
       });
 
       test('matching by remote url, not by folder name', () async {
@@ -181,7 +201,7 @@ void main() {
             path.join(
               tempDir.path,
               ggMultiTrashFolder,
-              ggMultiMasterFolder,
+              ggMultiOceanFolder,
               'ggsuite',
               'gg_gone',
             ),
@@ -205,11 +225,11 @@ void main() {
 
         await run([]);
 
-        expect(Directory(path.join(masterPath, 'other')).existsSync(), isFalse);
+        expect(Directory(path.join(oceanPath, 'other')).existsSync(), isFalse);
       });
 
       test('but never one whose remote url is missing', () async {
-        final noGit = Directory(path.join(masterPath, 'ggsuite', 'no_remote'))
+        final noGit = Directory(path.join(oceanPath, 'ggsuite', 'no_remote'))
           ..createSync(recursive: true);
         File(path.join(noGit.path, 'pubspec.yaml'))
             .writeAsStringSync('name: no_remote\n');
@@ -298,7 +318,7 @@ void main() {
         expect(messages, contains('✓ Would move ggsuite/gg_gone to the trash'));
         expect(
           messages.last,
-          contains('Would update the master workspace: 1 added, '
+          contains('Would update the ocean: 1 added, '
               '1 moved to the trash'),
         );
       });
@@ -359,9 +379,9 @@ void main() {
 
     // .........................................................................
     test('migrates a flat workspace before comparing', () async {
-      // A repo lying flat in the master workspace, as gg created it before
+      // A repo lying flat in the ocean, as gg created it before
       // the organization folders existed.
-      final flat = Directory(path.join(masterPath, 'gg_one'))
+      final flat = Directory(path.join(oceanPath, 'gg_one'))
         ..createSync(recursive: true);
       Directory(path.join(flat.path, '.git')).createSync();
       File(path.join(flat.path, '.git', 'config')).writeAsStringSync(
@@ -373,7 +393,7 @@ void main() {
       await run([]);
 
       expect(
-        Directory(path.join(masterPath, 'ggsuite', 'gg_one')).existsSync(),
+        Directory(path.join(oceanPath, 'ggsuite', 'gg_one')).existsSync(),
         isTrue,
       );
       verifyNever(() => gitCloner.cloneRepo(any(), any()));

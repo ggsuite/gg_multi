@@ -185,26 +185,26 @@ void main() {
       });
     });
 
-    group('moveFromMaster', () {
-      Directory masterRepo(String org, String name) {
-        final dir = Directory(path.join(root.path, '.master', org, name))
+    group('moveFromOcean', () {
+      Directory oceanRepo(String org, String name) {
+        final dir = Directory(path.join(root.path, '.ocean', org, name))
           ..createSync(recursive: true);
         File(path.join(dir.path, 'pubspec.yaml'))
             .writeAsStringSync('name: $name');
         return dir;
       }
 
-      test('moves a repo to <root>/.trash/.master/<org>/<repo>', () async {
-        final dir = masterRepo('ggsuite', 'gg_multi');
+      test('moves a repo to <root>/.trash/.ocean/<org>/<repo>', () async {
+        final dir = oceanRepo('ggsuite', 'gg_multi');
 
-        final target = await Trash.moveFromMaster(
+        final target = await Trash.moveFromOcean(
           source: dir,
           rootPath: root.path,
         );
 
         expect(
           target,
-          path.join(root.path, '.trash', '.master', 'ggsuite', 'gg_multi'),
+          path.join(root.path, '.trash', '.ocean', 'ggsuite', 'gg_multi'),
         );
         expect(dir.existsSync(), isFalse);
         expect(
@@ -213,16 +213,35 @@ void main() {
         );
       });
 
-      test('never overwrites an already trashed copy', () async {
-        await Trash.moveFromMaster(
-          source: masterRepo('ggsuite', 'gg_multi'),
+      test('relates a repo of a legacy ».master« run to that base', () async {
+        // A run that fell back to the legacy folder (rename not possible)
+        // hands in sources below ».master« — the trash target is still
+        // the forward-looking .trash/.ocean.
+        final legacyDir = Directory(
+          path.join(root.path, '.master', 'ggsuite', 'gg_multi'),
+        )..createSync(recursive: true);
+
+        final target = await Trash.moveFromOcean(
+          source: legacyDir,
           rootPath: root.path,
         );
-        final second = masterRepo('ggsuite', 'gg_multi');
+
+        expect(
+          target,
+          path.join(root.path, '.trash', '.ocean', 'ggsuite', 'gg_multi'),
+        );
+      });
+
+      test('never overwrites an already trashed copy', () async {
+        await Trash.moveFromOcean(
+          source: oceanRepo('ggsuite', 'gg_multi'),
+          rootPath: root.path,
+        );
+        final second = oceanRepo('ggsuite', 'gg_multi');
         File(path.join(second.path, 'pubspec.yaml'))
             .writeAsStringSync('name: second');
 
-        final target = await Trash.moveFromMaster(
+        final target = await Trash.moveFromOcean(
           source: second,
           rootPath: root.path,
         );

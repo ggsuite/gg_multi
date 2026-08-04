@@ -4,12 +4,14 @@
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
 
-import 'dart:io';
 import 'dart:convert';
+import 'dart:io';
+
 import 'package:args/command_runner.dart';
 import 'package:gg_console_colors/gg_console_colors.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
+
 import '../../../backend/constants.dart';
 import '../../../backend/workspace_utils.dart';
 
@@ -27,7 +29,7 @@ class ListTicketsCommand extends Command<void> {
   /// The logger function
   final GgLog ggLog;
 
-  /// The resolved master workspace path
+  /// The resolved ocean path
   final String workspacePath;
 
   @override

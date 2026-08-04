@@ -45,7 +45,7 @@ class TicketRepo {
         url: json['url']?.toString() ?? '',
       );
 
-  /// The repository folder name (as used in the master/ticket workspace).
+  /// The repository folder name (as used in the ocean/ticket workspace).
   final String name;
 
   /// The git remote URL the repository is cloned from.
