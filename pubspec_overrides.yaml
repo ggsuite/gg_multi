@@ -12,9 +12,5 @@ dependency_overrides:
     path: ../gg_localize_refs
   gg_version:
     path: ../gg_version
-  gg_merge:
-    path: ../gg_merge
-  gg_lang:
-    path: ../gg_lang
   gg_test:
     path: ../gg_test
