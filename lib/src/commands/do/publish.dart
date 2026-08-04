@@ -922,18 +922,23 @@ class DoPublishCommand extends DirCommand<void> {
     // the entry rides along the force-commit below, no extra commit needed.
     await _ensureIgnored.ensure(directory: repoDir, commit: false);
 
-    await _changeRefsToPubDev(
-      repoDir: repoDir,
-      repoName: repoName,
-      refVersions: refVersions,
-      taskLog: taskLog,
-    );
-
     // A repo that already carries gg_one step progress is past the point
     // where validation is meaningful — its version is bumped and possibly
     // uploaded, so upgrading or re-checking it would touch a mid-publish
     // state. The gate below skips for the same reason.
     final skipValidation = resume && _repoHasStepProgress(repoDir);
+
+    await _changeRefsToPubDev(
+      repoDir: repoDir,
+      repoName: repoName,
+      refVersions: refVersions,
+      taskLog: taskLog,
+      // On the normal path the upgrade below runs »dart pub upgrade« anyway
+      // — refreshing the Dart side here as well would resolve every repo
+      // twice. Only the resume path, which skips the upgrade, still needs
+      // the Dart refresh.
+      refreshDart: skipValidation,
+    );
 
     // Upgrade the dependencies and re-verify with `gg can commit` before
     // anything is published. The refs point at the registry again, so
@@ -1045,6 +1050,7 @@ class DoPublishCommand extends DirCommand<void> {
     required String repoName,
     required Map<String, String> refVersions,
     required GgLog taskLog,
+    bool refreshDart = true,
   }) async {
     try {
       await _unlocalizeRefs.get(directory: repoDir, ggLog: taskLog);
@@ -1092,6 +1098,7 @@ class DoPublishCommand extends DirCommand<void> {
       repoDir: repoDir,
       repoName: repoName,
       ggLog: taskLog,
+      includeDart: refreshDart,
     );
   }
 
@@ -1626,6 +1633,7 @@ class DoPublishCommand extends DirCommand<void> {
     required Directory repoDir,
     required String repoName,
     required GgLog ggLog,
+    bool includeDart = true,
   }) async {
     // Bridge repos refresh via their TypeScript package manager
     // (checkProjectType: bridge → TS).
@@ -1636,6 +1644,11 @@ class DoPublishCommand extends DirCommand<void> {
     switch (projectType) {
       case gg.ProjectType.dart:
       case gg.ProjectType.flutter:
+        // The caller's upgrade step (»gg do upgrade deps«) resolves the
+        // Dart side itself — skip the duplicate resolution here.
+        if (!includeDart) {
+          return;
+        }
         executable = 'dart';
         args = <String>['pub', 'upgrade'];
       case gg.ProjectType.typescript:
@@ -1686,7 +1699,7 @@ class DoPublishCommand extends DirCommand<void> {
     // TypeScript package manager — refresh the Dart side too, so the rewritten
     // references are reflected in pubspec.lock as well. (The pnpm env override
     // is irrelevant to `dart pub upgrade`.)
-    if (gg.isBridgeProject(repoDir)) {
+    if (gg.isBridgeProject(repoDir) && includeDart) {
       await runStep('dart', <String>['pub', 'upgrade'], null);
     }
   }

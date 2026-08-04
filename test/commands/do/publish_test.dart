@@ -3853,7 +3853,9 @@ void main() {
       );
     });
 
-    test('aborts when dart pub upgrade fails for a repo', () async {
+    test(
+        'aborts when the dart refresh fails on a resume with step progress '
+        '— the only path that still runs it', () async {
       final mockGgDoPublish = MockGgDoPublish();
       final mockGgDoCommit = MockGgDoCommit();
       final mockGgDoPush = MockGgDoPush();
@@ -3910,6 +3912,31 @@ void main() {
         (_) async => ProcessResult(0, 1, '', 'pub upgrade exploded'),
       );
 
+      // Give the run resumable progress: A failed and already carries
+      // gg_one step progress, so the upgrade step is skipped and the
+      // Dart refresh of _changeRefsToPubDev runs instead.
+      Directory(path.join(ticketDir.path, '.gg')).createSync(recursive: true);
+      File(path.join(ticketDir.path, '.gg', 'gg-publish.json'))
+          .writeAsStringSync(
+        jsonEncode({
+          'version_increment': 'patch',
+          'merge_message': 'test merge',
+          'repos': {
+            'A': {'status': 'failed'},
+          },
+        }),
+      );
+      Directory(path.join(ticketDir.path, 'A', '.gg'))
+          .createSync(recursive: true);
+      File(path.join(ticketDir.path, 'A', '.gg', 'gg-publish.json'))
+          .writeAsStringSync(
+        jsonEncode({
+          'version_increment': 'patch',
+          'merge_message': 'test merge',
+          'done_steps': ['prepare_version'],
+        }),
+      );
+
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
           makePublishCommand(
@@ -3932,6 +3959,7 @@ void main() {
           'publish',
           '--input',
           ticketDir.path,
+          '--continue',
         ]),
         throwsA(
           isA<Exception>().having(
@@ -4264,10 +4292,11 @@ void main() {
       );
     });
 
-    test('runs BOTH npm install and dart pub upgrade for bridge repos',
-        () async {
-      // Keep pubspec.yaml AND add package.json + tsconfig -> A is a bridge,
-      // whose Dart pubspec.lock must be refreshed alongside node_modules.
+    test(
+        'runs npm install for bridge repos — the Dart side is resolved by '
+        'the upgrade step, not by a duplicate refresh', () async {
+      // Keep pubspec.yaml AND add package.json + tsconfig -> A is a bridge:
+      // node_modules refresh via npm, pubspec.lock via »do upgrade deps«.
       File(path.join(ticketDir.path, 'A', 'package.json')).writeAsStringSync(
         jsonEncode(<String, dynamic>{'name': 'A'}),
       );
@@ -4417,8 +4446,212 @@ void main() {
 
       await runner.run(['publish', '--input', ticketDir.path]);
 
-      // The bridge refreshes BOTH: the TypeScript install (with the pnpm env
-      // override) AND the Dart pubspec.lock via dart pub upgrade.
+      // The refresh handles the TypeScript install (with the pnpm env
+      // override); the Dart side is covered by the upgrade step, so no
+      // duplicate »dart pub upgrade« runs here.
+      final captured = verify(
+        () => mockProcessRunner(
+          'npm',
+          ['install'],
+          workingDirectory: repoADir.path,
+          environment: captureAny(named: 'environment'),
+        ),
+      ).captured;
+      expect(captured.length, 1);
+      final env = captured.single as Map<String, String>;
+      expect(env['PNPM_CONFIG_BLOCK_EXOTIC_SUBDEPS'], 'false');
+
+      verifyNever(
+        () => mockProcessRunner(
+          'dart',
+          ['pub', 'upgrade'],
+          workingDirectory: repoADir.path,
+          environment: any(named: 'environment'),
+        ),
+      );
+    });
+
+    test(
+        'refreshes BOTH sides of a bridge repo on a resume with step '
+        'progress — the path where the upgrade step is skipped', () async {
+      // Keep pubspec.yaml AND add package.json + tsconfig -> A is a bridge:
+      // node_modules refresh via npm, pubspec.lock via »do upgrade deps«.
+      File(path.join(ticketDir.path, 'A', 'package.json')).writeAsStringSync(
+        jsonEncode(<String, dynamic>{'name': 'A'}),
+      );
+      File(path.join(ticketDir.path, 'A', 'tsconfig.json'))
+          .writeAsStringSync('{}');
+
+      final mockGgDoPublish = MockGgDoPublish();
+      final mockGgDoCommit = MockGgDoCommit();
+      final mockGgDoPush = MockGgDoPush();
+      final mockUnlocalizeRefs = MockUnlocalizeRefs();
+      final mockRestorePublishTo = MockRestorePublishTo();
+      final mockSortedProcessingList = MockSortedProcessingList();
+      final mockProcessRunner = MockProcessRunner();
+      _stubRepoSnapshot(mockProcessRunner);
+      final mockCanPublishCommand = MockCanPublishCommand();
+      final mockDidReviewCommand = MockDidReviewCommand();
+      final mockGetVersion = MockGetVersion();
+      final mockGetRefVersion = MockGetRefVersion();
+      final mockSetRefVersion = MockSetRefVersion();
+      final mockPubDevChecker = MockPubDevChecker();
+
+      final repoADir = Directory(path.join(ticketDir.path, 'A'));
+
+      when(
+        () => mockDidReviewCommand.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      stubCanPublish(mockCanPublishCommand);
+      when(
+        () => mockSortedProcessingList.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          Node(
+            name: 'A',
+            directory: repoADir,
+            manifest: TypeScriptPackageManifest(
+              name: 'A',
+              dependencies: const <String>[],
+              devDependencies: const <String>[],
+              rawJson: const <String, dynamic>{'name': 'A'},
+            ),
+          ),
+        ],
+      );
+      when(
+        () => mockUnlocalizeRefs.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockRestorePublishTo.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => mockSetRefVersion.get(
+          directory: any(named: 'directory'),
+          ref: any(named: 'ref'),
+          version: any(named: 'version'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockProcessRunner(
+          'npm',
+          ['install'],
+          workingDirectory: repoADir.path,
+          environment: any(named: 'environment'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => mockProcessRunner(
+          'dart',
+          ['pub', 'upgrade'],
+          workingDirectory: repoADir.path,
+          environment: any(named: 'environment'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+      when(
+        () => mockGgDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          force: any(named: 'force'),
+          updateChangeLog: any(named: 'updateChangeLog'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoPush.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGgDoPublish.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: any(named: 'message'),
+          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
+          verbose: any(named: 'verbose'),
+          versionIncrement: any(named: 'versionIncrement'),
+          channel: any(named: 'channel'),
+          askBeforePublishing: any(named: 'askBeforePublishing'),
+          resume: any(named: 'resume'),
+          pr: any(named: 'pr'),
+          mergeOnly: any(named: 'mergeOnly'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockGetVersion.get(directory: any(named: 'directory')),
+      ).thenAnswer((_) async => null);
+
+      final runner = CommandRunner<void>('test', 'do publish ticket')
+        ..addCommand(
+          makePublishCommand(
+            ggLog: ggLog,
+            ensureInRegistry: mockEnsureInRegistry,
+            ggDoPublish: mockGgDoPublish,
+            ggDoCommit: mockGgDoCommit,
+            ggDoPush: mockGgDoPush,
+            unlocalizeRefs: mockUnlocalizeRefs,
+            restorePublishTo: mockRestorePublishTo,
+            sortedProcessingList: mockSortedProcessingList,
+            processRunner: mockProcessRunner.call,
+            canPublishCommand: mockCanPublishCommand,
+            didReviewCommand: mockDidReviewCommand,
+            getVersionCommand: mockGetVersion,
+            setRefVersionCommand: mockSetRefVersion,
+            getRefVersionCommand: mockGetRefVersion,
+            pubDevChecker: mockPubDevChecker,
+          ),
+        );
+
+      // Give the run resumable progress so the upgrade step is skipped
+      // and the full refresh (incl. the Dart side) runs instead.
+      Directory(path.join(ticketDir.path, '.gg')).createSync(recursive: true);
+      File(path.join(ticketDir.path, '.gg', 'gg-publish.json'))
+          .writeAsStringSync(
+        jsonEncode({
+          'version_increment': 'patch',
+          'merge_message': 'test merge',
+          'repos': {
+            'A': {'status': 'failed'},
+          },
+        }),
+      );
+      Directory(path.join(ticketDir.path, 'A', '.gg'))
+          .createSync(recursive: true);
+      File(path.join(ticketDir.path, 'A', '.gg', 'gg-publish.json'))
+          .writeAsStringSync(
+        jsonEncode({
+          'version_increment': 'patch',
+          'merge_message': 'test merge',
+          'done_steps': ['prepare_version'],
+        }),
+      );
+
+      await runner.run(['publish', '--input', ticketDir.path, '--continue']);
+
+      // On this path the upgrade step is skipped, so the refresh covers
+      // BOTH sides: the TypeScript install (with the pnpm env override)
+      // AND the Dart pubspec.lock via dart pub upgrade.
       final captured = verify(
         () => mockProcessRunner(
           'npm',
@@ -7433,6 +7666,25 @@ void main() {
         expect(calls, contains('cancommit:A'));
         expect(calls, isNot(contains('upgrade:B')));
         expect(calls, isNot(contains('cancommit:B')));
+
+        // The Dart refresh of _changeRefsToPubDev only runs where the
+        // upgrade step is skipped: for B (step progress), not for A.
+        verify(
+          () => mockProcessRunner(
+            'dart',
+            ['pub', 'upgrade'],
+            workingDirectory: path.join(ticketDir.path, 'B'),
+            environment: any(named: 'environment'),
+          ),
+        ).called(1);
+        verifyNever(
+          () => mockProcessRunner(
+            'dart',
+            ['pub', 'upgrade'],
+            workingDirectory: path.join(ticketDir.path, 'A'),
+            environment: any(named: 'environment'),
+          ),
+        );
       });
 
       test('re-checks a repo that made no publish progress', () async {

@@ -75,7 +75,9 @@ class MergeConflictException implements Exception {
 /// 2. The remote main branch is merged into every feature branch, so the
 ///    pushed state always contains the current main.
 /// 3. The dependencies of every repo are upgraded
-///    (»dart pub upgrade [--major-versions] --tighten«).
+///    (»dart pub upgrade [--major-versions] --tighten«). `--no-upgrade`
+///    skips this step — `do publish`'s ticket-wide checks do so, because
+///    the publish upgrades every repo again right before it is published.
 /// 4. `gg can commit` re-verifies every repo — merge and upgrade bring in
 ///    changes, so the checks only make sense after them. Their output stays
 ///    visible on the command line.
@@ -145,6 +147,7 @@ class DoPushCommand extends DirCommand<void> {
     bool? force,
     bool? verbose,
     bool? majorVersions,
+    bool? upgrade,
   }) =>
       get(
         directory: directory,
@@ -152,6 +155,7 @@ class DoPushCommand extends DirCommand<void> {
         force: force,
         verbose: verbose,
         majorVersions: majorVersions,
+        upgrade: upgrade,
       );
 
   @override
@@ -161,11 +165,13 @@ class DoPushCommand extends DirCommand<void> {
     bool? force,
     bool? verbose,
     bool? majorVersions,
+    bool? upgrade,
   }) async {
     // Read verbose/force flags from CLI if not provided programmatically.
     verbose ??= argResults?['verbose'] as bool? ?? false;
     force ??= argResults?['force'] as bool? ?? false;
     majorVersions ??= argResults?['major-versions'] as bool? ?? true;
+    upgrade ??= argResults?['upgrade'] as bool? ?? true;
 
     // Detect if we are inside a ticket folder
     final String? ticketPath = WorkspaceUtils.detectTicketPath(
@@ -243,12 +249,17 @@ class DoPushCommand extends DirCommand<void> {
     );
 
     // Upgrade the dependencies of every repo. The output stays visible —
-    // the user must see what the upgrade changed.
-    await _upgradeDependencies.exec(
-      directory: ticketDir,
-      ggLog: ggLog,
-      majorVersions: majorVersions,
-    );
+    // the user must see what the upgrade changed. `do publish`'s ticket-wide
+    // checks skip this (upgrade: false): the publish upgrades every repo
+    // again right before it is published — after its refs point at the
+    // registry, which is the moment that matters.
+    if (upgrade) {
+      await _upgradeDependencies.exec(
+        directory: ticketDir,
+        ggLog: ggLog,
+        majorVersions: majorVersions,
+      );
+    }
 
     // Re-verify every repo after merge + upgrade — the checks only make
     // sense after those changes came in. The output stays visible.
@@ -264,6 +275,7 @@ class DoPushCommand extends DirCommand<void> {
         nodes: nodes,
         ggLog: taskLog,
         majorVersions: majorVersions!,
+        upgrade: upgrade!,
       ),
     );
 
@@ -282,9 +294,14 @@ class DoPushCommand extends DirCommand<void> {
     required List<Node> nodes,
     required GgLog ggLog,
     required bool majorVersions,
+    required bool upgrade,
   }) async {
-    final message = '${PublishSkipCheck.ggCommitPrefix}dart pub upgrade '
-        '${majorVersions ? '--major-versions ' : ''}--tighten';
+    // Without the upgrade phase only the post-merge `pub get` can have
+    // changed something — name the commit after what actually ran.
+    final message = upgrade
+        ? '${PublishSkipCheck.ggCommitPrefix}dart pub upgrade '
+            '${majorVersions ? '--major-versions ' : ''}--tighten'
+        : '${PublishSkipCheck.ggCommitPrefix}dart pub get';
 
     for (final node in nodes) {
       final repoDir = node.directory;
@@ -861,6 +878,12 @@ class DoPushCommand extends DirCommand<void> {
       'major-versions',
       abbr: 'm',
       help: 'Upgrade dependencies to their latest major versions.',
+      defaultsTo: true,
+      negatable: true,
+    );
+    argParser.addFlag(
+      'upgrade',
+      help: 'Upgrade the dependencies before pushing.',
       defaultsTo: true,
       negatable: true,
     );
