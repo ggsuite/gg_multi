@@ -15,7 +15,7 @@ import 'package:path/path.dart' as path;
 import '../../../backend/constants.dart';
 import '../../../backend/workspace_utils.dart';
 
-/// Command to initialize the master workspace
+/// Command to initialize the ocean workspace
 class InitWorkspaceCommand extends Command<void> {
   /// Constructor
   InitWorkspaceCommand({
@@ -28,7 +28,7 @@ class InitWorkspaceCommand extends Command<void> {
   /// The log function
   final GgLog ggLog;
 
-  /// Optional root path for where to create the master workspace
+  /// Optional root path for where to create the ocean workspace
   final String rootPath;
 
   String _rel(String absPath) => p.relative(absPath, from: rootPath);
@@ -37,17 +37,17 @@ class InitWorkspaceCommand extends Command<void> {
   String get name => 'workspace';
 
   @override
-  String get description => 'Initialize the master workspace';
+  String get description => 'Initialize the ocean workspace';
 
   @override
   Future<void> run() async {
     final rootDir = Directory(rootPath);
 
-    final wsPath = path.join(rootDir.path, ggMultiMasterFolder);
+    final wsPath = path.join(rootDir.path, ggMultiOceanFolder);
     final wsDir = Directory(wsPath);
 
     if (wsDir.existsSync()) {
-      ggLog(cWarn('Master workspace already exists at: ${_rel(wsPath)}'));
+      ggLog(cWarn('Ocean workspace already exists at: ${_rel(wsPath)}'));
       return;
     }
 
@@ -67,6 +67,6 @@ class InitWorkspaceCommand extends Command<void> {
     // -----------------------------------------------------------------------
     // Create the workspace ---------------------------------------------------
     wsDir.createSync(recursive: true);
-    ggLog(cDetail('✓ Master workspace initialized at: ${_rel(wsPath)}'));
+    ggLog(cDetail('✓ Ocean workspace initialized at: ${_rel(wsPath)}'));
   }
 }

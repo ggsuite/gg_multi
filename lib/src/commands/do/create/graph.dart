@@ -70,8 +70,8 @@ class GraphNode {
 /// Writes the dependency graph of the current workspace to stdout.
 ///
 /// Inside a ticket the graph covers the repositories of that ticket plus the
-/// repositories they depend on in the master workspace. Outside a ticket it
-/// covers the whole master workspace. `--org` narrows it down to a single
+/// repositories they depend on in the ocean workspace. Outside a ticket it
+/// covers the whole ocean workspace. `--org` narrows it down to a single
 /// organization.
 /// `--no-group-by-orgs` turns the organization boxes off. They only appear
 /// when more than one organization is shown — one box around everything is
@@ -110,16 +110,16 @@ class GraphCommand extends DirCommand<void> {
     final org = argResults!['org'] as String?;
 
     final root = p.absolute(directory.path);
-    final masterPath = WorkspaceUtils.defaultMasterWorkspacePath(
+    final oceanPath = WorkspaceUtils.defaultOceanWorkspacePath(
       workingDir: root,
     );
     final ticketPath = WorkspaceUtils.detectTicketPath(root);
 
     // Collect the repository folders the graph is built from. Inside a ticket
-    // the checked out repos come first: they shadow the master version of the
-    // same repo, while the remaining master repos stay available so that
+    // the checked out repos come first: they shadow the ocean version of the
+    // same repo, while the remaining ocean repos stay available so that
     // dependencies pointing outside the ticket can still be resolved.
-    final masterDirs = RepoFolderResolver.repoDirs(masterPath);
+    final oceanDirs = RepoFolderResolver.repoDirs(oceanPath);
     final ticketDirs = ticketPath == null
         ? const <Directory>[]
         : RepoFolderResolver.repoDirs(ticketPath);
@@ -127,7 +127,7 @@ class GraphCommand extends DirCommand<void> {
 
     var dirs = <Directory>[
       ...ticketDirs,
-      ...masterDirs.where((d) => !ticketNames.contains(p.basename(d.path))),
+      ...oceanDirs.where((d) => !ticketNames.contains(p.basename(d.path))),
     ];
 
     if (org != null) {
@@ -149,7 +149,7 @@ class GraphCommand extends DirCommand<void> {
     // Build the dependency graph. Warnings about duplicate packages go to
     // stderr so that stdout stays machine readable.
     final roots = await _graph.get(
-      directory: Directory(masterPath),
+      directory: Directory(oceanPath),
       ggLog: _warn,
       packageDirs: dirs,
     );
@@ -181,7 +181,7 @@ class GraphCommand extends DirCommand<void> {
     var visibleEdges = edges.values.toList();
 
     // In a ticket only the part of the graph the ticket repos actually reach
-    // is interesting - the rest of the master workspace is not involved.
+    // is interesting - the rest of the ocean workspace is not involved.
     if (ticketPath != null) {
       final ticketPackages = packages.values
           .where((n) => ticketNames.contains(p.basename(n.directory.path)))
@@ -199,7 +199,7 @@ class GraphCommand extends DirCommand<void> {
     final graphNodes = _describeNodes(
       names: names,
       packages: packages,
-      masterPath: masterPath,
+      oceanPath: oceanPath,
       ticketPath: ticketPath,
       ticketNames: ticketNames,
     );
@@ -439,7 +439,7 @@ class GraphCommand extends DirCommand<void> {
   List<GraphNode> _describeNodes({
     required Set<String> names,
     required Map<String, Node> packages,
-    required String masterPath,
+    required String oceanPath,
     required String? ticketPath,
     required Set<String> ticketNames,
   }) {
@@ -464,7 +464,7 @@ class GraphCommand extends DirCommand<void> {
       final folderName = p.basename(package.directory.path);
       final inTicket =
           ticketPath != null && p.isWithin(ticketPath, package.directory.path);
-      final workspacePath = inTicket ? ticketPath : masterPath;
+      final workspacePath = inTicket ? ticketPath : oceanPath;
       final relative = RepoFolderResolver.relativePath(
         workspacePath: workspacePath,
         repoDir: package.directory,

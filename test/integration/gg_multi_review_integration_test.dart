@@ -74,7 +74,7 @@ void main() {
 
         try {
           // -------------------------------------------------------------------
-          // 1) Initialize master workspace via InitWorkspaceCommand
+          // 1) Initialize ocean workspace via InitWorkspaceCommand
           //    (gg_multi do init workspace)
 
           print('------- Running gg_multi do init workspace -------');
@@ -91,13 +91,13 @@ void main() {
 
           await initRunner.run(<String>['workspace']);
 
-          final masterDir = Directory(
-            path.join(tempRoot.path, ggMultiMasterFolder),
+          final oceanDir = Directory(
+            path.join(tempRoot.path, ggMultiOceanFolder),
           );
-          expect(masterDir.existsSync(), isTrue);
+          expect(oceanDir.existsSync(), isTrue);
 
           // -------------------------------------------------------------------
-          // 2) Copy sample projects a and b into master and set up git remotes
+          // 2) Copy sample projects a and b into ocean and set up git remotes
           final remotesRoot = Directory(path.join(tempRoot.path, 'remotes'))
             ..createSync(recursive: true);
 
@@ -109,28 +109,28 @@ void main() {
               reason: 'Missing sample project $projectName under $sampleRoot',
             );
 
-            final masterRepoDir = Directory(
-              path.join(masterDir.path, projectName),
+            final oceanRepoDir = Directory(
+              path.join(oceanDir.path, projectName),
             );
-            await copyDirectory(sourceDir, masterRepoDir);
+            await copyDirectory(sourceDir, oceanRepoDir);
 
             await _initializeGitRepoWithRemote(
               projectName: projectName,
-              repoDir: masterRepoDir,
+              repoDir: oceanRepoDir,
               remotesRoot: remotesRoot,
             );
           }
 
-          // 2.1 ) Expect both projects in .master Workspace
+          // 2.1 ) Expect both projects in .ocean Workspace
           for (final projectName in <String>['a', 'b']) {
             final pubspecFile = File(
-              path.join(masterDir.path, projectName, 'pubspec.yaml'),
+              path.join(oceanDir.path, projectName, 'pubspec.yaml'),
             );
             expect(
               pubspecFile.existsSync(),
               isTrue,
               reason: 'pubspec.yaml of package $projectName in '
-                  'master workspace does not exist',
+                  'ocean workspace does not exist',
             );
           }
 
@@ -179,7 +179,7 @@ void main() {
           )..addCommand(
               AddCommand(
                 ggLog: ggLog,
-                masterWorkspacePath: masterDir.path,
+                oceanWorkspacePath: oceanDir.path,
                 executionPath: ticketDir.path,
               ),
             );
@@ -437,7 +437,7 @@ void main() {
           )..addCommand(
               AddCommand(
                 ggLog: ggLog,
-                masterWorkspacePath: masterDir.path,
+                oceanWorkspacePath: oceanDir.path,
                 executionPath: ticketDir2.path,
               ),
             );
@@ -535,7 +535,7 @@ Future<void> _initializeGitRepoWithRemote({
     workingDirectory: remotesRoot.path,
   );
 
-  // Initialize git in the master repository directory.
+  // Initialize git in the ocean repository directory.
   await _runGit(<String>['init'], workingDirectory: repoDir.path);
 
   // Configure a local user so that commits succeed even in clean CI images.

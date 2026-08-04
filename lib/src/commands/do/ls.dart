@@ -11,7 +11,7 @@ import 'list/deps.dart';
 import 'list/tickets.dart';
 import 'package:gg_log/gg_log.dart';
 
-/// Command to list items from the master workspace.
+/// Command to list items from the ocean workspace.
 /// If no subcommand is provided, it asks the user to choose.
 class ListCommand extends Command<dynamic> {
   /// Constructor accepting a log function

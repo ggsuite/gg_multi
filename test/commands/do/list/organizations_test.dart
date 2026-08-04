@@ -17,7 +17,7 @@ import 'package:test/test.dart';
 void main() {
   group('ListOrganizationsCommand', () {
     late Directory tempDir;
-    late Directory masterDir;
+    late Directory oceanDir;
     final messages = <String>[];
 
     void ggLog(String message) {
@@ -27,7 +27,7 @@ void main() {
     setUp(() {
       messages.clear();
       tempDir = Directory.systemTemp.createTempSync('list_org_test');
-      masterDir = Directory(path.join(tempDir.path, ggMultiMasterFolder))
+      oceanDir = Directory(path.join(tempDir.path, ggMultiOceanFolder))
         ..createSync(recursive: true);
     });
 
@@ -38,22 +38,22 @@ void main() {
     });
 
     test('lists organizations uniquely sorted', () async {
-      final masterPath = masterDir.path;
-      final repo1 = Directory(path.join(masterPath, 'repo1'))..createSync();
+      final oceanPath = oceanDir.path;
+      final repo1 = Directory(path.join(oceanPath, 'repo1'))..createSync();
       File(path.join(repo1.path, 'pubspec.yaml'))
           .writeAsStringSync('name: repo1\nversion: 3.0.0');
       Directory(path.join(repo1.path, '.git')).createSync();
       File(path.join(repo1.path, '.git', 'config'))
           .writeAsStringSync('url = https://github.com/inlavigo/repo1.git');
 
-      final repo2 = Directory(path.join(masterPath, 'repo2'))..createSync();
+      final repo2 = Directory(path.join(oceanPath, 'repo2'))..createSync();
       File(path.join(repo2.path, 'pubspec.yaml'))
           .writeAsStringSync('name: repo2\nversion: 2.5.0');
       Directory(path.join(repo2.path, '.git')).createSync();
       File(path.join(repo2.path, '.git', 'config'))
           .writeAsStringSync('url = https://github.com/microsoft/repo2.git');
 
-      final repo3 = Directory(path.join(masterPath, 'repo3'))..createSync();
+      final repo3 = Directory(path.join(oceanPath, 'repo3'))..createSync();
       File(path.join(repo3.path, 'pubspec.yaml'))
           .writeAsStringSync('name: repo3\nversion: 1.0.0');
       Directory(path.join(repo3.path, '.git')).createSync();
@@ -67,7 +67,7 @@ void main() {
       runner.addCommand(
         ListOrganizationsCommand(
           ggLog: ggLog,
-          workspacePath: masterPath,
+          workspacePath: oceanPath,
         ),
       );
       await runner.run(['orgs']);
@@ -83,8 +83,8 @@ void main() {
     });
 
     test('handles unknown organization from invalid git config', () async {
-      final masterPath = masterDir.path;
-      final repo = Directory(path.join(masterPath, 'repo_unknown'))
+      final oceanPath = oceanDir.path;
+      final repo = Directory(path.join(oceanPath, 'repo_unknown'))
         ..createSync();
       File(path.join(repo.path, 'pubspec.yaml'))
           .writeAsStringSync('name: repo_unknown\nversion: 1.0.0');
@@ -99,7 +99,7 @@ void main() {
       runner.addCommand(
         ListOrganizationsCommand(
           ggLog: ggLog,
-          workspacePath: masterPath,
+          workspacePath: oceanPath,
         ),
       );
       await runner.run(['orgs']);
@@ -110,7 +110,7 @@ void main() {
 
     test(
         'should print "No organizations found." '
-        'if master workspace is empty', () async {
+        'if ocean workspace is empty', () async {
       final runner = CommandRunner<void>(
         'test',
         'Test ListOrganizationsCommand',
@@ -118,7 +118,7 @@ void main() {
       runner.addCommand(
         ListOrganizationsCommand(
           ggLog: ggLog,
-          workspacePath: masterDir.path,
+          workspacePath: oceanDir.path,
         ),
       );
       await runner.run(['orgs']);
@@ -133,7 +133,7 @@ void main() {
       runner.addCommand(
         ListOrganizationsCommand(
           ggLog: (_) {},
-          workspacePath: masterDir.path,
+          workspacePath: oceanDir.path,
         ),
       );
       final output = await capturePrint(
@@ -143,7 +143,7 @@ void main() {
       );
       expect(
         output.first,
-        contains('List all organizations of the master workspace'),
+        contains('List all organizations of the ocean workspace'),
       );
     });
   });

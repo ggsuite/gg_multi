@@ -160,7 +160,7 @@ void main() {
     group('getAllRepoInfos', () {
       test(
           'should return empty list '
-          'if master directory does not exist', () async {
+          'if ocean directory does not exist', () async {
         // Create and then delete a temporary
         // directory to simulate non-existence
         var nonExistingDir =
@@ -172,12 +172,12 @@ void main() {
       });
 
       test('should return list of repo infos for each subdirectory', () async {
-        // Create a master workspace directory inside the temporary directory
-        var masterWorkspace = Directory(p.join(tempDir.path, 'master'));
-        masterWorkspace.createSync();
+        // Create an ocean workspace directory inside the temporary directory
+        var oceanWorkspace = Directory(p.join(tempDir.path, 'master'));
+        oceanWorkspace.createSync();
 
         // Create Repo1: with pubspec.yaml and .git config (git@ url)
-        var repo1 = Directory(p.join(masterWorkspace.path, 'repo1'));
+        var repo1 = Directory(p.join(oceanWorkspace.path, 'repo1'));
         repo1.createSync();
         File(p.join(repo1.path, 'pubspec.yaml'))
             .writeAsStringSync('name: repo1\nversion: 2.0.0');
@@ -186,17 +186,17 @@ void main() {
             .writeAsStringSync('url = git@github.com:org1/repo1.git');
 
         // Create Repo2: with package.json
-        var repo2 = Directory(p.join(masterWorkspace.path, 'repo2'));
+        var repo2 = Directory(p.join(oceanWorkspace.path, 'repo2'));
         repo2.createSync();
         File(p.join(repo2.path, 'package.json')).writeAsStringSync('{}');
 
         // Create Repo3: with a .py file
-        var repo3 = Directory(p.join(masterWorkspace.path, 'repo3'));
+        var repo3 = Directory(p.join(oceanWorkspace.path, 'repo3'));
         repo3.createSync();
         File(p.join(repo3.path, 'app.py')).writeAsStringSync('print("Hi")');
 
         // Retrieve all repository information
-        var infos = await getAllRepoInfos(masterWorkspace.path);
+        var infos = await getAllRepoInfos(oceanWorkspace.path);
         expect(infos, hasLength(3));
 
         // Verify that repository names match subdirectory names
@@ -205,10 +205,10 @@ void main() {
       });
 
       test('lists the repos inside the organization folders', () async {
-        // `<master>/<org>/<repo>` is the layout of a migrated workspace.
-        final masterWorkspace = Directory(p.join(tempDir.path, 'org_master'))
+        // `<ocean>/<org>/<repo>` is the layout of a migrated workspace.
+        final oceanWorkspace = Directory(p.join(tempDir.path, 'org_ocean'))
           ..createSync();
-        final repo = Directory(p.join(masterWorkspace.path, 'org1', 'repo1'))
+        final repo = Directory(p.join(oceanWorkspace.path, 'org1', 'repo1'))
           ..createSync(recursive: true);
         File(p.join(repo.path, 'pubspec.yaml'))
             .writeAsStringSync('name: repo1\nversion: 2.0.0');
@@ -216,7 +216,7 @@ void main() {
         File(p.join(repo.path, '.git', 'config'))
             .writeAsStringSync('url = git@github.com:org1/repo1.git');
 
-        var infos = await getAllRepoInfos(masterWorkspace.path);
+        var infos = await getAllRepoInfos(oceanWorkspace.path);
 
         expect(infos, hasLength(1));
         expect(infos.first.name, 'repo1');

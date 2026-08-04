@@ -16,18 +16,17 @@ import 'package:gg_multi/src/commands/do/list/deps.dart';
 void main() {
   group('ListDepsCommand', () {
     late Directory tempDir;
-    late Directory masterWorkspace;
+    late Directory oceanWorkspace;
     final messages = <String>[];
 
     setUp(() {
       messages.clear();
       tempDir = Directory.systemTemp.createTempSync('list_deps_test');
-      masterWorkspace = Directory(path.join(tempDir.path, ggMultiMasterFolder))
+      oceanWorkspace = Directory(path.join(tempDir.path, ggMultiOceanFolder))
         ..createSync(recursive: true);
-      // Create a project folder 'project123' inside master workspace
-      final projectDir =
-          Directory(path.join(masterWorkspace.path, 'project123'))
-            ..createSync(recursive: true);
+      // Create a project folder 'project123' inside ocean workspace
+      final projectDir = Directory(path.join(oceanWorkspace.path, 'project123'))
+        ..createSync(recursive: true);
       const pubspecContent = '''
 name: project123
 version: 1.0.0
@@ -51,7 +50,7 @@ dev_dependencies:
       runner.addCommand(
         ListDepsCommand(
           ggLog: messages.add,
-          workspacePath: masterWorkspace.path,
+          workspacePath: oceanWorkspace.path,
         ),
       );
 
@@ -70,7 +69,7 @@ dev_dependencies:
     test('also lists package.json dependencies for a bridge', () async {
       // project123 already has a pubspec.yaml (from setUp); adding a
       // package.json turns it into a cross-language bridge.
-      File(path.join(masterWorkspace.path, 'project123', 'package.json'))
+      File(path.join(oceanWorkspace.path, 'project123', 'package.json'))
           .writeAsStringSync(
         '{"name":"project123","version":"1.0.0",'
         '"dependencies":{"left_pad":"^1.0.0"}}',
@@ -80,7 +79,7 @@ dev_dependencies:
       runner.addCommand(
         ListDepsCommand(
           ggLog: messages.add,
-          workspacePath: masterWorkspace.path,
+          workspacePath: oceanWorkspace.path,
         ),
       );
 
@@ -99,14 +98,14 @@ dev_dependencies:
     });
 
     test('logs an error for a malformed package.json', () async {
-      File(path.join(masterWorkspace.path, 'project123', 'package.json'))
+      File(path.join(oceanWorkspace.path, 'project123', 'package.json'))
           .writeAsStringSync('{ not valid json');
 
       final runner = CommandRunner<void>('test', 'Test ListDepsCommand');
       runner.addCommand(
         ListDepsCommand(
           ggLog: messages.add,
-          workspacePath: masterWorkspace.path,
+          workspacePath: oceanWorkspace.path,
         ),
       );
 
@@ -123,7 +122,7 @@ dev_dependencies:
       runner.addCommand(
         ListDepsCommand(
           ggLog: messages.add,
-          workspacePath: masterWorkspace.path,
+          workspacePath: oceanWorkspace.path,
         ),
       );
       final output = await capturePrint(
@@ -131,7 +130,7 @@ dev_dependencies:
           await runner.run(['deps', '--help']);
         },
       );
-      expect(output.first, contains('List the dependencies of a master repo'));
+      expect(output.first, contains('List the dependencies of an ocean repo'));
     });
 
     test('throws UsageException when target repository parameter is missing',
@@ -140,7 +139,7 @@ dev_dependencies:
       runner.addCommand(
         ListDepsCommand(
           ggLog: messages.add,
-          workspacePath: masterWorkspace.path,
+          workspacePath: oceanWorkspace.path,
         ),
       );
       await expectLater(runner.run(['deps']), throwsA(isA<UsageException>()));

@@ -27,7 +27,7 @@ class ListTicketsCommand extends Command<void> {
   /// The logger function
   final GgLog ggLog;
 
-  /// The resolved master workspace path
+  /// The resolved ocean workspace path
   final String workspacePath;
 
   @override

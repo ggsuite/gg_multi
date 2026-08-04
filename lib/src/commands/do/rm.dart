@@ -22,8 +22,8 @@ import '../../backend/workspace_utils.dart';
 /// Factory for `Directory` instances — overridable in tests.
 typedef DirectoryFactory = Directory Function(String path);
 
-/// Deletes a repo from master (only if no ticket uses it) or from the
-/// invoking ticket. From the workspace root, refuses to delete master if any
+/// Deletes a repo from ocean (only if no ticket uses it) or from the
+/// invoking ticket. From the workspace root, refuses to delete ocean if any
 /// ticket still references the repo and lists the offending tickets. Inside a
 /// ticket it refuses to delete a repo that links to other repos of the
 /// ticket, because that would tear the dependency chain apart.
@@ -47,7 +47,7 @@ class RemoveCommand extends Command<void> {
 
   // ...........................................................................
   @override
-  String get description => 'Delete a repo folder from master or ticket';
+  String get description => 'Delete a repo folder from ocean or ticket';
 
   // ...........................................................................
   @override
@@ -66,7 +66,7 @@ class RemoveCommand extends Command<void> {
     }
 
     _root = WorkspaceUtils.defaultGgMultiWorkspacePath(workingDir: rootPath);
-    _removeFromMasterIfUnused(repoName);
+    _removeFromOceanIfUnused(repoName);
   }
 
   /// Log sink.
@@ -274,18 +274,18 @@ class RemoveCommand extends Command<void> {
   }
 
   // ...........................................................................
-  /// Scans tickets, deletes the master copy iff none reference the repo.
-  void _removeFromMasterIfUnused(String repoName) {
+  /// Scans tickets, deletes the ocean copy iff none reference the repo.
+  void _removeFromOceanIfUnused(String repoName) {
     final ticketsContainingRepo = _ticketsReferencing(repoName);
     final resolved = RepoFolderResolver.resolve(
-      workspacePath: path.join(_root, ggMultiMasterFolder),
+      workspacePath: path.join(_root, ggMultiOceanFolder),
       repoName: repoName,
     );
-    final masterRepoDir = resolved ??
+    final oceanRepoDir = resolved ??
         directoryFactory(
-          path.join(_root, ggMultiMasterFolder, repoName),
+          path.join(_root, ggMultiOceanFolder, repoName),
         );
-    final existsInMaster = masterRepoDir.existsSync();
+    final existsInMaster = oceanRepoDir.existsSync();
 
     if (ticketsContainingRepo.isEmpty && !existsInMaster) {
       ggLog(cError('Repository $repoName not found in any workspace.'));
@@ -293,12 +293,12 @@ class RemoveCommand extends Command<void> {
     }
 
     if (ticketsContainingRepo.isEmpty) {
-      masterRepoDir.deleteSync(recursive: true);
+      oceanRepoDir.deleteSync(recursive: true);
       RepoFolderResolver.removeEmptyOrgFolder(
-        workspacePath: path.join(_root, ggMultiMasterFolder),
-        repoDir: masterRepoDir,
+        workspacePath: path.join(_root, ggMultiOceanFolder),
+        repoDir: oceanRepoDir,
       );
-      ggLog(cDetail('✓ Deleted repository $repoName from master workspace.'));
+      ggLog(cDetail('✓ Deleted repository $repoName from ocean workspace.'));
       return;
     }
 

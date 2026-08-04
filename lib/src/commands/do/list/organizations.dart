@@ -10,7 +10,7 @@ import 'package:gg_log/gg_log.dart';
 import '../../../backend/list_backend.dart';
 import '../../../backend/workspace_utils.dart';
 
-/// Command to list all organizations from repos in the master workspace.
+/// Command to list all organizations from repos in the ocean workspace.
 class ListOrganizationsCommand extends Command<dynamic> {
   /// Constructor with optional workspace path.
   ListOrganizationsCommand({
@@ -18,7 +18,7 @@ class ListOrganizationsCommand extends Command<dynamic> {
     String? workspacePath,
     // coverage:ignore-start
   }) : workspacePath =
-            workspacePath ?? WorkspaceUtils.defaultMasterWorkspacePath();
+            workspacePath ?? WorkspaceUtils.defaultOceanWorkspacePath();
   // coverage:ignore-end
 
   /// The log function.
@@ -31,7 +31,7 @@ class ListOrganizationsCommand extends Command<dynamic> {
   String get name => 'orgs';
 
   @override
-  String get description => 'List all organizations of the master workspace';
+  String get description => 'List all organizations of the ocean workspace';
 
   @override
   Future<void> run() async {

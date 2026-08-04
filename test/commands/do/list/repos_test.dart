@@ -36,8 +36,8 @@ void main() {
 
     test('lists repositories correctly', () async {
       final workspacePath = path.join(tempDir.path, 'workspace_link');
-      final masterPath = path.join(workspacePath, ggMultiMasterFolder);
-      final repo1 = Directory(path.join(masterPath, 'json_dart'))
+      final oceanPath = path.join(workspacePath, ggMultiOceanFolder);
+      final repo1 = Directory(path.join(oceanPath, 'json_dart'))
         ..createSync(
           recursive: true,
         );
@@ -47,8 +47,7 @@ void main() {
       File(path.join(repo1.path, '.git', 'config'))
           .writeAsStringSync('url = https://github.com/inlavigo/json_dart.git');
 
-      final repo2 = Directory(path.join(masterPath, 'project123'))
-        ..createSync();
+      final repo2 = Directory(path.join(oceanPath, 'project123'))..createSync();
       Directory(path.join(repo2.path, '.git')).createSync();
       File(path.join(repo2.path, '.git', 'config')).writeAsStringSync(
         'url = https://github.com/microsoft/project123.git',
@@ -58,7 +57,7 @@ void main() {
       runner.addCommand(
         ListReposCommand(
           ggLog: ggLog,
-          workspacePath: masterPath,
+          workspacePath: oceanPath,
         ),
       );
       await runner.run(['repos']);
@@ -67,24 +66,23 @@ void main() {
       expect(messages, contains('project123 v.1.0.0 (dart) from microsoft'));
     });
 
-    test('handles empty master workspace directory', () async {
+    test('handles empty ocean workspace directory', () async {
       final workspacePath = path.join(tempDir.path, 'workspace_empty');
-      final masterPath =
-          Directory(path.join(workspacePath, ggMultiMasterFolder))
-            ..createSync(
-              recursive: true,
-            );
+      final oceanPath = Directory(path.join(workspacePath, ggMultiOceanFolder))
+        ..createSync(
+          recursive: true,
+        );
       final runner = CommandRunner<void>('test', 'Test ListReposCommand');
       runner.addCommand(
         ListReposCommand(
           ggLog: ggLog,
-          workspacePath: masterPath.path,
+          workspacePath: oceanPath.path,
         ),
       );
       await runner.run(['repos']);
       expect(
         messages,
-        contains('No repositories found in the master workspace.'),
+        contains('No repositories found in the ocean workspace.'),
       );
     });
 

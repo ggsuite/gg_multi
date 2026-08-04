@@ -10,7 +10,7 @@ import 'package:gg_log/gg_log.dart';
 import '../../../backend/list_backend.dart';
 import '../../../backend/workspace_utils.dart';
 
-/// Command to list all repositories in the master workspace.
+/// Command to list all repositories in the ocean workspace.
 class ListReposCommand extends Command<dynamic> {
   /// Constructor with optional workspace path.
   ListReposCommand({
@@ -18,7 +18,7 @@ class ListReposCommand extends Command<dynamic> {
     String? workspacePath,
     // coverage:ignore-start
   }) : workspacePath =
-            workspacePath ?? WorkspaceUtils.defaultMasterWorkspacePath();
+            workspacePath ?? WorkspaceUtils.defaultOceanWorkspacePath();
   // coverage:ignore-end
 
   /// The log function.
@@ -31,14 +31,14 @@ class ListReposCommand extends Command<dynamic> {
   String get name => 'repos';
 
   @override
-  String get description => 'List all repos of the master workspace';
+  String get description => 'List all repos of the ocean workspace';
 
   @override
   Future<void> run() async {
     final repoInfos = await getAllRepoInfos(workspacePath);
     repoInfos.sort((a, b) => a.name.compareTo(b.name));
     if (repoInfos.isEmpty) {
-      ggLog(cDetail('No repositories found in the master workspace.'));
+      ggLog(cDetail('No repositories found in the ocean workspace.'));
     } else {
       for (final repo in repoInfos) {
         ggLog('${repo.name} ${repo.version} '

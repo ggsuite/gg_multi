@@ -11,18 +11,18 @@ import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 import '../../../backend/add_repository_helper.dart';
-import '../../../backend/constants.dart';
 import '../../../backend/repo_folder_resolver.dart';
+import '../../../backend/workspace_utils.dart';
 
-/// Command to list dependencies of a project from the master workspace.
+/// Command to list dependencies of a project from the ocean workspace.
 class ListDepsCommand extends Command<dynamic> {
   /// Constructor
   ListDepsCommand({
     required this.ggLog,
     String? workspacePath,
     // coverage:ignore-start
-  }) : workspacePath = workspacePath ??
-            path.join(Directory.current.path, ggMultiMasterFolder) {
+  }) : workspacePath =
+            workspacePath ?? WorkspaceUtils.defaultOceanWorkspacePath() {
     _addArgs();
   }
   // coverage:ignore-end
@@ -37,7 +37,7 @@ class ListDepsCommand extends Command<dynamic> {
   String get name => 'deps';
 
   @override
-  String get description => 'List the dependencies of a master repo';
+  String get description => 'List the dependencies of an ocean repo';
 
   void _addArgs() {
     argParser.addOption(

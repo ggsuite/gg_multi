@@ -1,7 +1,7 @@
 # gg_multi
 
 `gg_multi` is the multi-repository workspace engine of the Gg Multi
-Suite. It manages a **master workspace** of registered repositories
+Suite. It manages a **ocean workspace** of registered repositories
 and organisations, lets you create **ticket workspaces** that scope a
 subset of those repos to a single feature or bugfix, and orchestrates
 cross-repo actions (commit, push, review, publish, …) in dependency
@@ -16,8 +16,8 @@ executable for direct use and in CI/CD pipelines.
 
 ## What gg_multi gives you
 
-- A persistent master workspace under `.master/` containing every
-  registered repo and organisation, grouped as `.master/<org>/<repo>`.
+- A persistent ocean workspace under `.ocean/` containing every
+  registered repo and organisation, grouped as `.ocean/<org>/<repo>`.
 - Per-ticket workspaces under `tickets/<id>/` that hold scoped clones
   of the repos you need for one feature, in the same `<org>/<repo>`
   layout.
@@ -68,8 +68,8 @@ order.
 
 | Command                                | Purpose                                                            |
 | -------------------------------------- | ------------------------------------------------------------------ |
-| `gg_multi do ls repos`                    | list every repo in the master workspace, sorted by name            |
-| `gg_multi do ls organizations`            | list every GitHub organisation represented in the master workspace |
+| `gg_multi do ls repos`                    | list every repo in the ocean workspace, sorted by name            |
+| `gg_multi do ls organizations`            | list every GitHub organisation represented in the ocean workspace |
 | `gg_multi do ls deps <target>`            | list `dependencies` / `dev_dependencies` of `<target>`             |
 | `gg_multi do ls tickets`                  | list every ticket workspace under `tickets/`                       |
 
@@ -77,10 +77,10 @@ order.
 
 | Command                                                | Purpose                                                                              |
 | ------------------------------------------------------ | ------------------------------------------------------------------------------------ |
-| `gg_multi do init workspace`                                     | initialise the master workspace in the current directory                             |
+| `gg_multi do init workspace`                                     | initialise the ocean workspace in the current directory                             |
 | `gg_multi do add <target> [-f|--force]`                | add a repo or all repos of an organisation to the workspace                          |
-| `gg_multi do rm <target>`                              | remove a repo from the master workspace or delete a ticket workspace                 |
-| `gg_multi do upgrade master [-n|--dry-run]`             | sync `.master` with every registered organisation: clone new repos, trash gone ones   |
+| `gg_multi do rm <target>`                              | remove a repo from the ocean workspace or delete a ticket workspace                 |
+| `gg_multi do upgrade ocean [-n|--dry-run]`             | sync `.ocean` with every registered organisation: clone new repos, trash gone ones   |
 | `gg_multi do create ticket <id> [-m <description>]`    | create `tickets/<id>/` with a `.ticket` file                                         |
 | `gg_multi do create graph [--format=…] [-o <file>]`    | write the dependency graph of the workspace to stdout or a file                      |
 | `gg_multi do code`                                     | open the current ticket in VS Code                                                   |
@@ -90,7 +90,7 @@ order.
 `gg_multi do add` is context-aware:
 
 - run from the workspace root: the repo is cloned into
-  `.master/<org>/`,
+  `.ocean/<org>/`,
 - run from inside a ticket (`tickets/<id>/`): the repo is also
   copied into `tickets/<id>/<org>/` and its local dependencies are
   pulled in.
@@ -131,7 +131,7 @@ requests; a `do push` after the review updates them.
 
 ```
 my_project/
-├── .master/                    # every registered repo (managed by gg_multi)
+├── .ocean/                    # every registered repo (managed by gg_multi)
 │   ├── ggsuite/                # one folder per organization
 │   │   ├── gg/
 │   │   └── gg_multi/
@@ -158,10 +158,10 @@ commands work from any sub-directory inside it.
 ### Organization folders
 
 Every repo lives in a folder named after the organization of its git
-URL — `.master/ggsuite/gg_multi` for
+URL — `.ocean/ggsuite/gg_multi` for
 `https://github.com/ggsuite/gg_multi.git`. This lets same-named repos
 from different organizations coexist on disk. A ticket mirrors the
-master layout, so a repo has the same relative path in both, and the
+ocean layout, so a repo has the same relative path in both, and the
 `.code-workspace` file lists its folders as `<org>/<repo>`.
 
 On **Azure DevOps the folder is the project**, not the account Azure
@@ -184,10 +184,17 @@ when only one organization is known at all, or when the repo is already
 in the workspace.
 
 Workspaces created before this layout hold their repos directly in
-`.master/` (and in the ticket). `gg_multi do add` and `gg_multi do
+`.ocean/` (and in the ticket). `gg_multi do add` and `gg_multi do
 checkout` move them into their organization folder as a first step,
 reading the organization from each repo's git remote; a repo whose
 organization cannot be determined stays where it is and keeps working.
+
+The ocean workspace folder used to be called `.master`. A workspace
+still carrying that name is renamed to `.ocean` automatically the next
+time any gg_multi command resolves the workspace — no manual step
+needed. When both `.master` and `.ocean` exist, nothing is touched:
+`.ocean` wins and a warning asks you to merge or delete the leftover
+`.master` manually.
 
 Note that two packages with the same *manifest* name still collide in
 the dependency graph — the organization folder only solves the on-disk

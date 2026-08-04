@@ -117,15 +117,15 @@ Future<RepoInfo> getRepoInfo(String repoPath) async {
   );
 }
 
-/// Returns list of repository information for repos in [masterWorkspacePath].
+/// Returns list of repository information for repos in [oceanWorkspacePath].
 ///
 /// The repositories inside the organization folders are covered as well as
 /// the ones that still sit directly in the workspace.
 Future<List<RepoInfo>> getAllRepoInfos(
-  String masterWorkspacePath,
+  String oceanWorkspacePath,
 ) async {
   final infos = <RepoInfo>[];
-  for (final d in RepoFolderResolver.repoDirs(masterWorkspacePath)) {
+  for (final d in RepoFolderResolver.repoDirs(oceanWorkspacePath)) {
     infos.add(await getRepoInfo(d.path));
   }
   return infos;

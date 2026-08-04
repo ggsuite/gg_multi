@@ -33,7 +33,7 @@ void main() {
       }
     });
 
-    test('should create master workspace if not exists', () async {
+    test('should create ocean workspace if not exists', () async {
       final runner = CommandRunner<void>('test', 'InitWorkspaceCommand Test')
         ..addCommand(
           InitWorkspaceCommand(
@@ -41,7 +41,7 @@ void main() {
             rootPath: tempDir.path,
           ),
         );
-      final wsPath = path.join(tempDir.path, ggMultiMasterFolder);
+      final wsPath = path.join(tempDir.path, ggMultiOceanFolder);
       expect(Directory(wsPath).existsSync(), isFalse);
 
       await runner.run(['workspace']);
@@ -51,7 +51,7 @@ void main() {
 
     test('should not recreate if already exists, and log accordingly',
         () async {
-      final wsPath = path.join(tempDir.path, ggMultiMasterFolder);
+      final wsPath = path.join(tempDir.path, ggMultiOceanFolder);
       Directory(wsPath).createSync(recursive: true);
       final runner = CommandRunner<void>('test', 'InitWorkspaceCommand Test')
         ..addCommand(
@@ -63,8 +63,8 @@ void main() {
 
       await runner.run(['workspace']);
 
-      expect(messages[0], contains('Master workspace already exists at:'));
-      expect(messages[0], contains(ggMultiMasterFolder));
+      expect(messages[0], contains('Ocean workspace already exists at:'));
+      expect(messages[0], contains(ggMultiOceanFolder));
       expect(Directory(wsPath).existsSync(), isTrue);
     });
 
@@ -91,8 +91,7 @@ void main() {
         ),
       );
       expect(
-        Directory(path.join(nonEmptyDir.path, ggMultiMasterFolder))
-            .existsSync(),
+        Directory(path.join(nonEmptyDir.path, ggMultiOceanFolder)).existsSync(),
         isFalse,
       );
     });
@@ -103,10 +102,10 @@ void main() {
       // Create parent workspace
       final parentWs = Directory(path.join(tempDir.path, 'parent'))
         ..createSync();
-      final masterWs = Directory(path.join(parentWs.path, ggMultiMasterFolder))
+      final oceanWs = Directory(path.join(parentWs.path, ggMultiOceanFolder))
         ..createSync();
       // Create child directory inside parent
-      final childDir = Directory(path.join(masterWs.path, 'child'))
+      final childDir = Directory(path.join(oceanWs.path, 'child'))
         ..createSync();
       final runner = CommandRunner<void>('test', 'InitWorkspaceCommand Nested')
         ..addCommand(
@@ -115,7 +114,7 @@ void main() {
             rootPath: childDir.path,
           ),
         );
-      // Directory is empty; master exists in ancestor
+      // Directory is empty; ocean exists in ancestor
       await runner.run(['workspace']);
       expect(
         messages,
@@ -124,9 +123,9 @@ void main() {
           'inside an existing Gg Multi workspace.',
         ),
       );
-      // No child/master folder created
+      // No child/ocean folder created
       expect(
-        Directory(path.join(childDir.path, ggMultiMasterFolder)).existsSync(),
+        Directory(path.join(childDir.path, ggMultiOceanFolder)).existsSync(),
         isFalse,
       );
     });

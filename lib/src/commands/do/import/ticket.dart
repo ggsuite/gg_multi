@@ -62,7 +62,7 @@ class DoCheckoutCommand extends Command<dynamic> {
     gg_git.ShowFile? showFile,
     gg_git.RemoteBranches? remoteBranches,
     gg_git.RemoteBranchExists? remoteBranchExists,
-    String? masterWorkspacePath,
+    String? oceanWorkspacePath,
     String? executionPath,
     ProcessRunner? processRunner,
     BranchSelector? selectBranch,
@@ -76,8 +76,8 @@ class DoCheckoutCommand extends Command<dynamic> {
         _remoteBranches = remoteBranches ?? gg_git.RemoteBranches(ggLog: ggLog),
         _remoteBranchExists =
             remoteBranchExists ?? gg_git.RemoteBranchExists(ggLog: ggLog),
-        masterWorkspacePath =
-            masterWorkspacePath ?? WorkspaceUtils.defaultMasterWorkspacePath(),
+        oceanWorkspacePath =
+            oceanWorkspacePath ?? WorkspaceUtils.defaultOceanWorkspacePath(),
         executionPath = executionPath ?? Directory.current.path,
         processRunner = processRunner ?? Process.run,
         _selectBranch = selectBranch ?? _defaultSelectBranch,
@@ -88,7 +88,7 @@ class DoCheckoutCommand extends Command<dynamic> {
   /// The log function.
   final GgLog ggLog;
 
-  /// Clones repositories that are missing from the master workspace.
+  /// Clones repositories that are missing from the ocean workspace.
   final GitHandler gitHandler;
 
   final gg_git.Fetch _fetch;
@@ -97,8 +97,8 @@ class DoCheckoutCommand extends Command<dynamic> {
   final gg_git.RemoteBranches _remoteBranches;
   final gg_git.RemoteBranchExists _remoteBranchExists;
 
-  /// Resolved master workspace path.
-  final String masterWorkspacePath;
+  /// Resolved ocean workspace path.
+  final String oceanWorkspacePath;
 
   /// The path from which the command was executed.
   final String executionPath;
@@ -152,9 +152,9 @@ class DoCheckoutCommand extends Command<dynamic> {
     }
     final arg = argResults!.rest.first;
 
-    // Maintenance: move the repositories of an old master workspace into
+    // Maintenance: move the repositories of an old ocean workspace into
     // their organization folders before resolving anything.
-    migrateToOrgFolders(workspacePath: masterWorkspacePath, ggLog: ggLog);
+    migrateToOrgFolders(workspacePath: oceanWorkspacePath, ggLog: ggLog);
 
     // Mode URL: arg points to a downloadable ticket.json.
     final url = _ticketJsonUrl(arg);
@@ -174,8 +174,8 @@ class DoCheckoutCommand extends Command<dynamic> {
       return;
     }
 
-    // Mode 1: executed inside a master repo → arg is the ticket name.
-    final currentRepo = _currentMasterRepoPath();
+    // Mode 1: executed inside an ocean repo → arg is the ticket name.
+    final currentRepo = _currentOceanRepoPath();
     if (currentRepo != null) {
       await _reproduceFromBranch(
         repoPath: currentRepo,
@@ -185,9 +185,9 @@ class DoCheckoutCommand extends Command<dynamic> {
       return;
     }
 
-    // Mode 2: arg is a known master repo → interactive branch selection.
+    // Mode 2: arg is a known ocean repo → interactive branch selection.
     final repoDir = RepoFolderResolver.resolve(
-      workspacePath: masterWorkspacePath,
+      workspacePath: oceanWorkspacePath,
       repoName: arg,
     );
     if (repoDir != null) {
@@ -195,8 +195,8 @@ class DoCheckoutCommand extends Command<dynamic> {
       return;
     }
 
-    // Mode 3: arg is a ticket name → search all master repos for the branch.
-    for (final repo in _listMasterRepos()) {
+    // Mode 3: arg is a ticket name → search all ocean repos for the branch.
+    for (final repo in _listOceanRepos()) {
       try {
         await _fetch.get(directory: repo, ggLog: ggLog);
       } catch (e) {
@@ -221,7 +221,7 @@ class DoCheckoutCommand extends Command<dynamic> {
     throw Exception(
       cError(
         '"$arg" is neither a ticket.json path, an http(s) URL, a repository of '
-        'the master workspace, nor a branch of one of its repositories.',
+        'the ocean workspace, nor a branch of one of its repositories.',
       ),
     );
   }
@@ -356,7 +356,7 @@ class DoCheckoutCommand extends Command<dynamic> {
       throw Exception(cError('The ticket marker has no issue_id.'));
     }
 
-    final root = path.dirname(masterWorkspacePath);
+    final root = path.dirname(oceanWorkspacePath);
     final ticketDir = Directory(
       path.join(root, ggMultiTicketFolder, ticketName),
     );
@@ -375,15 +375,15 @@ class DoCheckoutCommand extends Command<dynamic> {
     final succeeded = <String>[];
     final failed = <String>[];
     for (final repo in ticket.repositories) {
-      final masterRepoDir = await _ensureMasterRepo(repo);
-      if (masterRepoDir == null) {
+      final oceanRepoDir = await _ensureOceanRepo(repo);
+      if (oceanRepoDir == null) {
         ggLog(cError('Could not obtain repository ${repo.name}; skipping.'));
         failed.add(repo.name);
         continue;
       }
       final repoPath = await _setupTicketRepo(
         ticketDir: ticketDir,
-        masterRepoDir: masterRepoDir,
+        oceanRepoDir: oceanRepoDir,
         branch: ticketName,
         repoName: repo.name,
       );
@@ -413,11 +413,11 @@ class DoCheckoutCommand extends Command<dynamic> {
   }
 
   // ...........................................................................
-  /// Returns the master repository at [repo] (cloning it from its URL when it
+  /// Returns the ocean repository at [repo] (cloning it from its URL when it
   /// is missing), or null when it cannot be obtained.
-  Future<Directory?> _ensureMasterRepo(TicketRepo repo) async {
+  Future<Directory?> _ensureOceanRepo(TicketRepo repo) async {
     final existing = RepoFolderResolver.resolve(
-      workspacePath: masterWorkspacePath,
+      workspacePath: oceanWorkspacePath,
       repoName: repo.name,
     );
     if (existing != null) {
@@ -427,7 +427,7 @@ class DoCheckoutCommand extends Command<dynamic> {
       return null;
     }
     final target = RepoFolderResolver.destination(
-      workspacePath: masterWorkspacePath,
+      workspacePath: oceanWorkspacePath,
       repoUrl: repo.url,
       repoName: repo.name,
     );
@@ -441,29 +441,29 @@ class DoCheckoutCommand extends Command<dynamic> {
   }
 
   // ...........................................................................
-  /// Copies [masterRepoDir] into the ticket (when not already present) and
+  /// Copies [oceanRepoDir] into the ticket (when not already present) and
   /// checks out the existing feature [branch] there, then installs deps.
   /// Returns the path of the repo relative to the ticket root, or null when
   /// the branch could not be checked out.
   Future<String?> _setupTicketRepo({
     required Directory ticketDir,
-    required Directory masterRepoDir,
+    required Directory oceanRepoDir,
     required String branch,
     required String repoName,
   }) async {
-    // The ticket mirrors the layout of the master workspace, so the repo ends
+    // The ticket mirrors the layout of the ocean workspace, so the repo ends
     // up in the organization folder it has there.
     final relativePath = RepoFolderResolver.relativePath(
-      workspacePath: masterWorkspacePath,
-      repoDir: masterRepoDir,
+      workspacePath: oceanWorkspacePath,
+      repoDir: oceanRepoDir,
     );
     final destDir = Directory(path.join(ticketDir.path, relativePath));
 
     if (!(destDir.existsSync() && destDir.listSync().isNotEmpty)) {
       // Fetch the master clone so its `origin/<branch>` is available in the
       // copy, then copy it into the ticket.
-      await _fetch.get(directory: masterRepoDir, ggLog: ggLog);
-      await _copyDir(masterRepoDir, destDir);
+      await _fetch.get(directory: oceanRepoDir, ggLog: ggLog);
+      await _copyDir(oceanRepoDir, destDir);
     }
 
     try {
@@ -484,20 +484,20 @@ class DoCheckoutCommand extends Command<dynamic> {
   }
 
   // ...........................................................................
-  /// Returns the path of the `.master` repository that contains
+  /// Returns the path of the `.ocean` repository that contains
   /// [executionPath], or null when the command is not run inside one.
   ///
-  /// The repository is either a direct child of the master workspace or sits
+  /// The repository is either a direct child of the ocean workspace or sits
   /// one level deeper inside its organization folder, so the first two
   /// segments below the workspace are checked.
-  String? _currentMasterRepoPath() {
-    final master = path.normalize(masterWorkspacePath);
+  String? _currentOceanRepoPath() {
+    final ocean = path.normalize(oceanWorkspacePath);
     final exec = path.normalize(executionPath);
-    if (exec == master || !path.isWithin(master, exec)) {
+    if (exec == ocean || !path.isWithin(ocean, exec)) {
       return null;
     }
-    final segments = path.split(path.relative(exec, from: master));
-    var repoPath = path.join(master, segments.first);
+    final segments = path.split(path.relative(exec, from: ocean));
+    var repoPath = path.join(ocean, segments.first);
     if (!Directory(repoPath).existsSync()) {
       return null;
     }
@@ -514,9 +514,9 @@ class DoCheckoutCommand extends Command<dynamic> {
   }
 
   // ...........................................................................
-  /// Lists the git repositories of the master workspace.
-  List<Directory> _listMasterRepos() {
-    return RepoFolderResolver.repoDirs(masterWorkspacePath)
+  /// Lists the git repositories of the ocean workspace.
+  List<Directory> _listOceanRepos() {
+    return RepoFolderResolver.repoDirs(oceanWorkspacePath)
         .where((d) => Directory(path.join(d.path, '.git')).existsSync())
         .toList();
   }
