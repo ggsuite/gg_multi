@@ -58,7 +58,16 @@ class VSCodeLauncher {
     List<String> arguments, {
     bool runInShell = false,
   }) async {
-    await Process.start(executable, arguments, runInShell: runInShell);
+    // Detached: VS Code keeps running after gg exits, and — the reason it
+    // matters here — its stdio is not connected to our terminal. An attached
+    // `code` writes into the same line gg just printed and cuts the
+    // confirmation in half.
+    await Process.start(
+      executable,
+      arguments,
+      runInShell: runInShell,
+      mode: ProcessStartMode.detached,
+    );
   }
   // coverage:ignore-end
 }

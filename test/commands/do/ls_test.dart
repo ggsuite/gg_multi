@@ -17,14 +17,14 @@ import 'package:gg_multi/src/commands/do/ls.dart';
 void main() {
   group('ListCommand', () {
     late Directory tempDir;
-    late Directory masterDir;
+    late Directory oceanDir;
     final messages = <String>[];
 
     setUp(() {
       messages.clear();
       tempDir = Directory.systemTemp.createTempSync('list_test');
-      masterDir = Directory(
-        path.join(tempDir.path, ggMultiMasterFolder),
+      oceanDir = Directory(
+        path.join(tempDir.path, ggMultiOceanFolder),
       )..createSync(recursive: true);
     });
 
@@ -37,7 +37,7 @@ void main() {
     test('should show all sub commands', () async {
       final listCommand = ListCommand(
         ggLog: messages.add,
-        workspacePath: masterDir.path,
+        workspacePath: oceanDir.path,
       );
       // Update the directory path to use the correct path separator
       final commandsDir = Directory(
@@ -59,7 +59,7 @@ void main() {
       runner.addCommand(
         ListCommand(
           ggLog: (_) {},
-          workspacePath: masterDir.path,
+          workspacePath: oceanDir.path,
         ),
       );
       final output = await capturePrint(

@@ -5,6 +5,19 @@
 ### Changed
 
 - Improve push and publish workflow
+## 7.10.0 - 2026-08-04
+
+### Changed
+
+- Rename .master to .ocean with automatic migration at next start
+- Rename ocean workspace -> ocean
+
+## 7.9.5 - 2026-08-04
+
+### Changed
+
+- Finetune command line output
+- Update dependencies
 
 ## 7.9.4 - 2026-08-03
 

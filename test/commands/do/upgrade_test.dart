@@ -29,7 +29,7 @@ void main() {
       expect(subCommands, isEmpty, reason: errorMessage);
     });
 
-    test('prints help message including master', () async {
+    test('prints help message including ocean', () async {
       final runner = CommandRunner<void>(
         'test',
         'UpgradeCommand Help',
@@ -43,8 +43,8 @@ void main() {
 
       expect(
         output.last,
-        contains('master'),
-        reason: 'Help should mention the master subcommand.',
+        contains('ocean'),
+        reason: 'Help should mention the ocean subcommand.',
       );
 
       expect(

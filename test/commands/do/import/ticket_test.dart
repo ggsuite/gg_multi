@@ -44,7 +44,7 @@ void main() {
   setUpAll(() => registerFallbackValue(_FakeDir()));
 
   late Directory tempDir;
-  late String masterPath;
+  late String oceanPath;
   final messages = <String>[];
   final ggLog = messages.add;
   late MockGitHandler gitHandler;
@@ -82,7 +82,7 @@ void main() {
   }
 
   Directory makeMasterRepo(String name) {
-    final d = Directory(path.join(masterPath, name))
+    final d = Directory(path.join(oceanPath, name))
       ..createSync(recursive: true);
     Directory(path.join(d.path, '.git')).createSync();
     File(path.join(d.path, 'pubspec.yaml')).writeAsStringSync('name: x\n');
@@ -100,8 +100,8 @@ void main() {
     copyCalls.clear();
     fetchedUrls.clear();
     tempDir = Directory.systemTemp.createTempSync('do_checkout_test');
-    masterPath = path.join(tempDir.path, '.master');
-    Directory(masterPath).createSync(recursive: true);
+    oceanPath = path.join(tempDir.path, '.ocean');
+    Directory(oceanPath).createSync(recursive: true);
 
     gitHandler = MockGitHandler();
     fetch = MockFetch();
@@ -170,7 +170,7 @@ void main() {
         showFile: showFile,
         remoteBranches: remoteBranches,
         remoteBranchExists: remoteBranchExists,
-        masterWorkspacePath: masterPath,
+        oceanWorkspacePath: oceanPath,
         executionPath: executionPath ?? tempDir.path,
         processRunner: proc.call,
         selectBranch: selectBranch ?? (b) async => b.first,
@@ -343,7 +343,7 @@ void main() {
       });
     });
 
-    group('mode 1 (inside a master repo)', () {
+    group('mode 1 (inside an ocean repo)', () {
       test('reproduces the ticket from the current repo branch', () async {
         final repoA = makeMasterRepo('repo_a');
         await runCmd(build(executionPath: repoA.path), ['feat_x']);
@@ -369,7 +369,7 @@ void main() {
         expect(logged('Checked out ticket feat_x'), isTrue);
       });
 
-      test('an exec at master root is not treated as mode 1', () async {
+      test('an exec at ocean root is not treated as mode 1', () async {
         makeMasterRepo('repo_a');
         when(
           () => remoteBranchExists.get(
@@ -379,14 +379,14 @@ void main() {
           ),
         ).thenAnswer((_) async => false);
         await expectLater(
-          runCmd(build(executionPath: masterPath), ['nope']),
+          runCmd(build(executionPath: oceanPath), ['nope']),
           throwsA(isA<Exception>()),
         );
       });
 
-      test('an exec in a non-existent master subdir is not mode 1', () async {
+      test('an exec in a non-existent ocean subdir is not mode 1', () async {
         await expectLater(
-          runCmd(build(executionPath: path.join(masterPath, 'ghost')), [
+          runCmd(build(executionPath: path.join(oceanPath, 'ghost')), [
             'nope',
           ]),
           throwsA(isA<Exception>()),
@@ -463,7 +463,7 @@ void main() {
     });
 
     group('mode 3 (search by ticket name)', () {
-      test('finds the branch across master repos and reproduces', () async {
+      test('finds the branch across ocean repos and reproduces', () async {
         makeMasterRepo('repo_a');
         await runCmd(build(), ['feat_x']);
 
@@ -513,8 +513,8 @@ void main() {
         expect(logged('Failed to fetch repo_a'), isTrue);
       });
 
-      test('throws cleanly when the master workspace is missing', () async {
-        Directory(masterPath).deleteSync(recursive: true);
+      test('throws cleanly when the ocean is missing', () async {
+        Directory(oceanPath).deleteSync(recursive: true);
         await expectLater(
           runCmd(build(), ['nope']),
           throwsA(isA<Exception>()),
@@ -622,7 +622,7 @@ void main() {
         verify(
           () => gitHandler.cloneRepo(
             'https://x/new_repo.git',
-            path.join(masterPath, 'new_repo'),
+            path.join(oceanPath, 'new_repo'),
           ),
         ).called(1);
       });
@@ -746,9 +746,9 @@ void main() {
     });
 
     group('organization folders', () {
-      // Creates `<master>/<org>/<repo>` with a git remote of that org.
+      // Creates `<ocean>/<org>/<repo>` with a git remote of that org.
       Directory makeOrgRepo(String org, String repo) {
-        final d = Directory(path.join(masterPath, org, repo))
+        final d = Directory(path.join(oceanPath, org, repo))
           ..createSync(recursive: true);
         final gitDir = Directory(path.join(d.path, '.git'))..createSync();
         File(path.join(gitDir.path, 'config')).writeAsStringSync(
@@ -796,7 +796,7 @@ void main() {
             ],
           ),
         );
-        // A second repo makes the command find a master repo to read the
+        // A second repo makes the command find an ocean repo to read the
         // marker from without providing repo_a itself.
         final other = makeOrgRepo('ggsuite', 'repo_b');
 
@@ -805,13 +805,13 @@ void main() {
         verify(
           () => gitHandler.cloneRepo(
             'https://github.com/ggsuite/repo_a.git',
-            path.join(masterPath, 'ggsuite', 'repo_a'),
+            path.join(oceanPath, 'ggsuite', 'repo_a'),
           ),
         ).called(1);
       });
 
-      test('moves the repos of an old master into their org folders', () async {
-        final flat = Directory(path.join(masterPath, 'repo_a'))
+      test('moves the repos of an old ocean into their org folders', () async {
+        final flat = Directory(path.join(oceanPath, 'repo_a'))
           ..createSync(recursive: true);
         final gitDir = Directory(path.join(flat.path, '.git'))..createSync();
         File(path.join(gitDir.path, 'config')).writeAsStringSync(
@@ -823,17 +823,17 @@ void main() {
         await runCmd(build(executionPath: tempDir.path), ['feat_x']);
 
         expect(
-          Directory(path.join(masterPath, 'ggsuite', 'repo_a')).existsSync(),
+          Directory(path.join(oceanPath, 'ggsuite', 'repo_a')).existsSync(),
           isTrue,
         );
         expect(
-          Directory(path.join(masterPath, 'repo_a')).existsSync(),
+          Directory(path.join(oceanPath, 'repo_a')).existsSync(),
           isFalse,
         );
       });
 
-      test('detects the master repo the command runs in', () async {
-        // Executed inside `<master>/<org>/<repo>`, the argument is the ticket
+      test('detects the ocean repo the command runs in', () async {
+        // Executed inside `<ocean>/<org>/<repo>`, the argument is the ticket
         // name, so the marker is read from that repo instead of searching.
         final repoA = makeOrgRepo('ggsuite', 'repo_a');
 

@@ -10,7 +10,7 @@ import 'package:path/path.dart' as path;
 
 import 'constants.dart';
 
-/// The trash workspace `<root>/.trash`, the sibling of `.master` and
+/// The trash workspace `<root>/.trash`, the sibling of `.ocean` and
 /// `tickets` that holds everything gg removed from a ticket.
 ///
 /// Nothing gg deletes on behalf of the user is lost right away: a published
@@ -25,7 +25,7 @@ class Trash {
   /// Returns `<root>/.trash/<ticket>` for the ticket directory [ticketDir].
   ///
   /// [ticketDir] is `<root>/tickets/<ticket>`, so the root is its
-  /// grandparent — the same folder that holds `.master`.
+  /// grandparent — the same folder that holds `.ocean`.
   static Directory dirForTicket(Directory ticketDir) => Directory(
         path.join(
           ticketDir.parent.parent.path,
@@ -59,27 +59,32 @@ class Trash {
     return _moveInto(source, path.join(trashDir.path, relative));
   }
 
-  /// Moves [source] — a repository of the master workspace — into
-  /// `<root>/.trash/.master/<org>/<repo>`, keeping the path it had relative to
-  /// `<root>/.master`. Returns the path it was moved to.
+  /// Moves [source] — a repository of the ocean — into
+  /// `<root>/.trash/.ocean/<org>/<repo>`, keeping the path it had relative to
+  /// `<root>/.ocean`. Returns the path it was moved to.
   ///
-  /// The trash mirrors the master layout under its own `.master` folder, so a
-  /// trashed master repository can never collide with the
+  /// The trash mirrors the ocean layout under its own `.ocean` folder, so a
+  /// trashed ocean repository can never collide with the
   /// `<root>/.trash/<ticket>/…` entries a published ticket leaves behind. An
   /// already occupied target gets the same ` (2)`, ` (3)`, … suffix
   /// [moveFromTicket] uses — nothing in the trash is ever overwritten.
-  static Future<String> moveFromMaster({
+  static Future<String> moveFromOcean({
     required FileSystemEntity source,
     required String rootPath,
   }) async {
-    final masterPath = path.join(rootPath, ggMultiMasterFolder);
-    final relative = path.relative(source.path, from: masterPath);
+    final oceanPath = path.join(rootPath, ggMultiOceanFolder);
+    // A run that fell back to the legacy folder (rename not possible) hands
+    // in sources below ».master« — relate them to that base then.
+    final base = path.isWithin(oceanPath, source.path)
+        ? oceanPath
+        : path.join(rootPath, ggMultiLegacyMasterFolder);
+    final relative = path.relative(source.path, from: base);
     return _moveInto(
       source,
       path.join(
         rootPath,
         ggMultiTrashFolder,
-        ggMultiMasterFolder,
+        ggMultiOceanFolder,
         relative,
       ),
     );

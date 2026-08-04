@@ -6,12 +6,13 @@
 
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:path/path.dart' as path;
 
 import 'organization.dart';
 
 /// A utility class to manage organizations
-/// associated with the master workspace. Caches entries in a buffer.
+/// associated with the ocean. Caches entries in a buffer.
 class OrganizationUtils {
   static List<Organization>? _cache;
   static String? _cachePath;

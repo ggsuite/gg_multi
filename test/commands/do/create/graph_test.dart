@@ -72,31 +72,31 @@ void main() {
       runner = CommandRunner<void>('test', 'GraphCommand Test')
         ..addCommand(GraphCommand(ggLog: ggLog));
 
-      // The master workspace: `a` depends on `b` and - redundantly - on `c`,
+      // The ocean: `a` depends on `b` and - redundantly - on `c`,
       // `b` depends on `c`. `a` also has a dev dependency on `d` and a third
       // party dependency that is no local repository.
       writePackage(
-        root: '.master',
+        root: '.ocean',
         org: 'org_a',
         name: 'a',
         dependencies: <String>['b', 'c', 'external_pkg'],
         devDependencies: <String>['d'],
       );
       writePackage(
-        root: '.master',
+        root: '.ocean',
         org: 'org_a',
         name: 'b',
         dependencies: <String>['c'],
       );
-      writePackage(root: '.master', org: 'org_a', name: 'c');
-      writePackage(root: '.master', org: 'org_a', name: 'd');
+      writePackage(root: '.ocean', org: 'org_a', name: 'c');
+      writePackage(root: '.ocean', org: 'org_a', name: 'd');
 
       // A second organization, only reachable via `--org`.
-      writePackage(root: '.master', org: 'org_b', name: 'e');
+      writePackage(root: '.ocean', org: 'org_b', name: 'e');
 
       // A TypeScript repo depending on two npm packages whose names collapse
       // to the same mermaid node id.
-      final ts = Directory(p.join(tempDir.path, '.master', 'org_a', 'ts_pkg'))
+      final ts = Directory(p.join(tempDir.path, '.ocean', 'org_a', 'ts_pkg'))
         ..createSync(recursive: true);
       File(p.join(ts.path, 'package.json')).writeAsStringSync(
         jsonEncode(<String, dynamic>{
@@ -127,12 +127,12 @@ void main() {
     Future<void> run(String workingDir, [List<String> args = const []]) =>
         runner.run(<String>['graph', '--input', workingDir, ...args]);
 
-    String masterDir() => tempDir.path;
+    String oceanDir() => tempDir.path;
     String ticketDir() => p.join(tempDir.path, 'tickets', '1');
 
     group('outside a ticket', () {
-      test('graphs the whole master workspace', () async {
-        await run(masterDir(), <String>['--no-transitive-reduction']);
+      test('graphs the whole ocean', () async {
+        await run(oceanDir(), <String>['--no-transitive-reduction']);
 
         expect(output(), startsWith('flowchart LR'));
         expect(output(), contains('a["a"]'));
@@ -143,7 +143,7 @@ void main() {
       });
 
       test('--org narrows the graph down to one organization', () async {
-        await run(masterDir(), <String>['--org', 'org_b']);
+        await run(oceanDir(), <String>['--org', 'org_b']);
 
         expect(output(), contains('e["e"]'));
         expect(output(), isNot(contains('a["a"]')));
@@ -151,7 +151,7 @@ void main() {
 
       test('--org throws for an unknown organization', () async {
         await expectLater(
-          run(masterDir(), <String>['--org', 'nope']),
+          run(oceanDir(), <String>['--org', 'nope']),
           throwsA(
             isA<UsageException>().having(
               (e) => e.message,
@@ -175,7 +175,7 @@ void main() {
         expect(output(), contains('class b ticket;'));
       });
 
-      test('takes the checked out repo instead of the master one', () async {
+      test('takes the checked out repo instead of the ocean one', () async {
         await run(ticketDir(), <String>['--format=json']);
 
         final json = jsonDecode(output()) as Map<String, dynamic>;
@@ -191,7 +191,7 @@ void main() {
 
     group('--transitive-reduction', () {
       test('hides the edge that a longer path already implies', () async {
-        await run(masterDir());
+        await run(oceanDir());
 
         expect(mermaidEdges(), contains('b --> a'));
         expect(mermaidEdges(), contains('c --> b'));
@@ -199,7 +199,7 @@ void main() {
       });
 
       test('--no-transitive-reduction keeps it', () async {
-        await run(masterDir(), <String>['--no-transitive-reduction']);
+        await run(oceanDir(), <String>['--no-transitive-reduction']);
 
         expect(mermaidEdges(), contains('c --> a'));
       });
@@ -207,13 +207,13 @@ void main() {
 
     group('--dev-dependencies', () {
       test('shows dev dependencies as dashed edges by default', () async {
-        await run(masterDir());
+        await run(oceanDir());
 
         expect(mermaidEdges(), contains('d -.-> a'));
       });
 
       test('--no-dev-dependencies drops them', () async {
-        await run(masterDir(), <String>['--no-dev-dependencies']);
+        await run(oceanDir(), <String>['--no-dev-dependencies']);
 
         // `d` stays a node of the workspace, but the edge to it is gone.
         expect(output(), contains('d["d"]'));
@@ -223,13 +223,13 @@ void main() {
 
     group('--3rdparty-deps', () {
       test('are hidden by default', () async {
-        await run(masterDir());
+        await run(oceanDir());
 
         expect(output(), isNot(contains('external_pkg')));
       });
 
       test('are shown when requested', () async {
-        await run(masterDir(), <String>['--3rdparty-deps']);
+        await run(oceanDir(), <String>['--3rdparty-deps']);
 
         expect(mermaidEdges(), contains('external_pkg --> a'));
         expect(
@@ -239,7 +239,7 @@ void main() {
       });
 
       test('get a unique id even when their names collapse', () async {
-        await run(masterDir(), <String>['--3rdparty-deps']);
+        await run(oceanDir(), <String>['--3rdparty-deps']);
 
         // `@scope/pkg` and `_scope_pkg` both sanitize to `_scope_pkg`.
         expect(output(), contains('_scope_pkg["@scope/pkg"]'));
@@ -249,7 +249,7 @@ void main() {
       });
 
       test('are marked as external in json', () async {
-        await run(masterDir(), <String>['--3rdparty-deps', '--format=json']);
+        await run(oceanDir(), <String>['--3rdparty-deps', '--format=json']);
 
         final json = jsonDecode(output()) as Map<String, dynamic>;
         final nodes = (json['nodes'] as List).cast<Map<String, dynamic>>();
@@ -261,7 +261,7 @@ void main() {
 
     group('edge direction', () {
       test('points from the dependency to the dependent', () async {
-        await run(masterDir());
+        await run(oceanDir());
 
         // `a` depends on `b`, so the arrow leaves `b`: in a `LR` flowchart the
         // dependencies end up left of the packages that need them.
@@ -270,7 +270,7 @@ void main() {
       });
 
       test('json carries the same direction as the arrows', () async {
-        await run(masterDir(), <String>['--format=json']);
+        await run(oceanDir(), <String>['--format=json']);
 
         final json = jsonDecode(output()) as Map<String, dynamic>;
         final edges = (json['edges'] as List).cast<Map<String, dynamic>>();
@@ -286,7 +286,7 @@ void main() {
       test('writes the graph to the file instead of stdout', () async {
         final target = p.join(tempDir.path, 'out', 'graph.mmd');
 
-        await run(masterDir(), <String>['--output', target]);
+        await run(oceanDir(), <String>['--output', target]);
 
         final file = File(target);
         expect(file.existsSync(), isTrue);
@@ -304,7 +304,7 @@ void main() {
       test('creates missing parent directories', () async {
         final target = p.join(tempDir.path, 'deeply', 'nested', 'graph.json');
 
-        await run(masterDir(), <String>['--format=json', '-o', target]);
+        await run(oceanDir(), <String>['--format=json', '-o', target]);
 
         final content = File(target).readAsStringSync();
         expect(jsonDecode(content), isA<Map<String, dynamic>>());
@@ -314,7 +314,7 @@ void main() {
         final target = p.join(tempDir.path, 'graph.mmd');
         File(target).writeAsStringSync('stale content');
 
-        await run(masterDir(), <String>['--output', target]);
+        await run(oceanDir(), <String>['--output', target]);
 
         expect(File(target).readAsStringSync(), isNot(contains('stale')));
       });
@@ -322,7 +322,7 @@ void main() {
 
     group('--group-by-orgs', () {
       test('boxes the repositories per organization by default', () async {
-        await run(masterDir());
+        await run(oceanDir());
 
         expect(output(), contains('subgraph org_org_a["org_a"]'));
         expect(output(), contains('subgraph org_org_b["org_b"]'));
@@ -336,7 +336,7 @@ void main() {
       });
 
       test('--no-group-by-orgs keeps the flat list', () async {
-        await run(masterDir(), <String>['--no-group-by-orgs']);
+        await run(oceanDir(), <String>['--no-group-by-orgs']);
 
         expect(output(), isNot(contains('subgraph')));
         expect(output(), contains('  a["a"]'));
@@ -344,14 +344,14 @@ void main() {
       });
 
       test('does not box a single organization', () async {
-        await run(masterDir(), <String>['--org', 'org_a']);
+        await run(oceanDir(), <String>['--org', 'org_a']);
 
         expect(output(), isNot(contains('subgraph')));
         expect(output(), contains('a["a"]'));
       });
 
       test('leaves third party packages outside the boxes', () async {
-        await run(masterDir(), <String>['--3rdparty-deps']);
+        await run(oceanDir(), <String>['--3rdparty-deps']);
 
         final lines = output().split('\n');
         expect(lines, contains('  external_pkg["external_pkg"]'));
@@ -362,17 +362,17 @@ void main() {
         // Mermaid keeps subgraph and node ids in one namespace. An
         // organization `a` would produce the id `org_a`, which the package of
         // that name already occupies.
-        writePackage(root: '.master', org: 'org_b', name: 'org_a');
-        writePackage(root: '.master', org: 'a', name: 'inside_a');
+        writePackage(root: '.ocean', org: 'org_b', name: 'org_a');
+        writePackage(root: '.ocean', org: 'a', name: 'inside_a');
 
-        await run(masterDir());
+        await run(oceanDir());
 
         expect(output(), contains('  org_a["org_a"]'));
         expect(output(), contains('subgraph org_a_2["a"]'));
       });
 
       test('is ignored by the json format', () async {
-        await run(masterDir(), <String>['--format=json']);
+        await run(oceanDir(), <String>['--format=json']);
 
         final json = jsonDecode(output()) as Map<String, dynamic>;
         final nodes = (json['nodes'] as List).cast<Map<String, dynamic>>();
@@ -383,19 +383,19 @@ void main() {
 
     group('--orientation', () {
       test('is horizontal by default', () async {
-        await run(masterDir());
+        await run(oceanDir());
         expect(output(), startsWith('flowchart LR'));
       });
 
       test('vertical renders top down', () async {
-        await run(masterDir(), <String>['--orientation=vertical']);
+        await run(oceanDir(), <String>['--orientation=vertical']);
         expect(output(), startsWith('flowchart TD'));
       });
     });
 
     group('--format=json', () {
       test('writes a deterministically sorted document', () async {
-        await run(masterDir(), <String>['--format=json']);
+        await run(oceanDir(), <String>['--format=json']);
 
         final json = jsonDecode(output()) as Map<String, dynamic>;
         expect(json['orientation'], 'horizontal');
@@ -423,7 +423,7 @@ void main() {
 
     test('throws when the workspace holds no repositories', () async {
       final empty = Directory.systemTemp.createTempSync('graph_empty_');
-      Directory(p.join(empty.path, '.master')).createSync();
+      Directory(p.join(empty.path, '.ocean')).createSync();
       try {
         await expectLater(
           run(empty.path),

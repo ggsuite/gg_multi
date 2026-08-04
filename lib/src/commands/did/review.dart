@@ -95,6 +95,7 @@ class DidReviewCommand extends DirCommand<void> {
     final wasReviewed = await GgStatusPrinter<bool>(
       message: 'The current state was reviewed',
       ggLog: ggLog,
+      dark: true,
     ).logTask(
       task: () => _ticketState.readSuccess(
         ticketDir: ticketDir,

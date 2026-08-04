@@ -12,7 +12,6 @@ import 'package:gg_log/gg_log.dart';
 import 'package:path/path.dart' as path;
 
 import '../../../backend/add_repository_helper.dart';
-import '../../../backend/constants.dart';
 import '../../../backend/git_handler.dart';
 import '../../../backend/git_platform.dart';
 import '../../../backend/organization.dart';
@@ -24,17 +23,17 @@ import '../../../backend/url_parser.dart';
 import '../../../backend/workspace_migration.dart';
 import '../../../backend/workspace_utils.dart';
 
-/// Brings the master workspace in sync with the git platforms.
+/// Brings the ocean in sync with the git platforms.
 ///
 /// Every organization registered in `<root>/.organizations` is asked for its
-/// current repository list. A repository the organization has but the master
-/// workspace lacks is cloned; a repository the master workspace holds but the
-/// organization no longer offers is moved to `<root>/.trash/.master`, never
+/// current repository list. A repository the organization has but the ocean
+/// workspace lacks is cloned; a repository the ocean holds but the
+/// organization no longer offers is moved to `<root>/.trash/.ocean`, never
 /// deleted. Tickets are not consulted: a ticket owns its own clone, so
-/// removing the master copy does not break it.
-class UpdateMasterCommand extends Command<void> {
+/// removing the ocean copy does not break it.
+class UpdateOceanCommand extends Command<void> {
   /// Constructor.
-  UpdateMasterCommand({
+  UpdateOceanCommand({
     required this.ggLog,
     String? rootPath,
     GitHandler? gitCloner,
@@ -56,11 +55,17 @@ class UpdateMasterCommand extends Command<void> {
 
   // ...........................................................................
   @override
-  String get name => 'master';
+  String get name => 'ocean';
+
+  // ...........................................................................
+  /// The former command name, kept as a hidden alias so muscle memory and
+  /// scripts using »do upgrade master« keep working.
+  @override
+  List<String> get aliases => ['master'];
 
   // ...........................................................................
   @override
-  String get description => 'Sync master with the registered organizations';
+  String get description => 'Sync the ocean with the registered organizations';
 
   /// Log sink.
   final GgLog ggLog;
@@ -81,21 +86,21 @@ class UpdateMasterCommand extends Command<void> {
   @override
   Future<void> run() async {
     final dryRun = argResults!['dry-run'] as bool;
-    final root = WorkspaceUtils.defaultGgMultiWorkspacePath(
+    final oceanPath = WorkspaceUtils.defaultOceanWorkspacePath(
       workingDir: rootPath,
     );
-    final masterPath = path.join(root, ggMultiMasterFolder);
+    final root = path.dirname(oceanPath);
 
     // A workspace created before gg grouped its repositories by organization
     // still holds them flat, which makes them uncomparable to the remote
     // list. Move them first — but not on a dry run, which changes nothing.
     if (!dryRun) {
-      migrateToOrgFolders(workspacePath: masterPath, ggLog: ggLog);
+      migrateToOrgFolders(workspacePath: oceanPath, ggLog: ggLog);
     }
 
-    // `.organizations` lives inside the master workspace — that is the path
+    // `.organizations` lives inside the ocean — that is the path
     // `do add` hands to `addRepositoryHelper`, which maintains the file.
-    final organizations = OrganizationUtils.readOrganizations(masterPath);
+    final organizations = OrganizationUtils.readOrganizations(oceanPath);
     if (organizations.isEmpty) {
       ggLog(
         cAction('No organizations registered. Run ') +
@@ -112,12 +117,12 @@ class UpdateMasterCommand extends Command<void> {
 
     final added = await _addMissing(
       fetched: fetched,
-      masterPath: masterPath,
+      oceanPath: oceanPath,
       dryRun: dryRun,
     );
     final removed = await _removeOrphans(
       fetched: fetched,
-      masterPath: masterPath,
+      oceanPath: oceanPath,
       root: root,
       dryRun: dryRun,
     );
@@ -187,21 +192,21 @@ class UpdateMasterCommand extends Command<void> {
 
   // ...........................................................................
   /// Clones every repository that is offered by an organization but missing
-  /// in the master workspace. Returns the `<org>/<repo>` names it added.
+  /// in the ocean. Returns the `<org>/<repo>` names it added.
   ///
   /// A repository is looked up by the identity of its remote url, not by its
   /// folder name: the folder may carry the package name instead, and two
   /// organizations may own a repository of the same name.
   Future<List<String>> _addMissing({
     required List<_OrgRepos> fetched,
-    required String masterPath,
+    required String oceanPath,
     required bool dryRun,
   }) async {
     final missing = <_OrgRepo>[];
     for (final entry in fetched) {
       for (final repo in entry.repos) {
         final existing = RepoFolderResolver.resolveByRemoteUrl(
-          workspacePath: masterPath,
+          workspacePath: oceanPath,
           repoUrl: repo.cloneUrl,
         );
         if (existing == null) {
@@ -226,7 +231,7 @@ class UpdateMasterCommand extends Command<void> {
         gitCloner: gitCloner,
         gitHubPlatform: gitHubPlatform,
         azureDevOpsPlatform: azureDevOpsPlatform,
-        workspacePath: masterPath,
+        workspacePath: oceanPath,
         logIfAlreadyAdded: false,
       ),
     );
@@ -235,7 +240,7 @@ class UpdateMasterCommand extends Command<void> {
   }
 
   // ...........................................................................
-  /// Moves every master repository whose organization no longer offers it to
+  /// Moves every ocean repository whose organization no longer offers it to
   /// the trash. Returns the `<org>/<repo>` names it removed.
   ///
   /// Only repositories belonging to an organization that answered are
@@ -244,13 +249,13 @@ class UpdateMasterCommand extends Command<void> {
   /// unparsable: gg cannot tell whether it is gone, so it stays.
   Future<List<String>> _removeOrphans({
     required List<_OrgRepos> fetched,
-    required String masterPath,
+    required String oceanPath,
     required String root,
     required bool dryRun,
   }) async {
     final removed = <String>[];
 
-    for (final dir in RepoFolderResolver.repoDirs(masterPath)) {
+    for (final dir in RepoFolderResolver.repoDirs(oceanPath)) {
       final url = RepoFolderResolver.remoteUrl(dir);
       if (url == null) {
         continue;
@@ -265,21 +270,25 @@ class UpdateMasterCommand extends Command<void> {
       }
 
       final label = RepoFolderResolver.relativePath(
-        workspacePath: masterPath,
+        workspacePath: oceanPath,
         repoDir: dir,
       ).replaceAll(r'\', '/');
 
+      // Moving a repo to the trash removes it from the ocean —
+      // worth a warning, not a dimmed detail.
       ggLog(
-        cDetail('${dryRun ? '✓ Would move' : 'Moving'} $label to the trash'),
+        dryRun
+            ? cDetail('✓ Would move $label to the trash')
+            : cDetail('🗑️ Moving $label to the trash'),
       );
       removed.add(label);
       if (dryRun) {
         continue;
       }
 
-      await Trash.moveFromMaster(source: dir, rootPath: root);
+      await Trash.moveFromOcean(source: dir, rootPath: root);
       RepoFolderResolver.removeEmptyOrgFolder(
-        workspacePath: masterPath,
+        workspacePath: oceanPath,
         repoDir: dir,
       );
     }
@@ -323,14 +332,14 @@ class UpdateMasterCommand extends Command<void> {
   }) {
     if (added.isEmpty && removed.isEmpty) {
       ggLog(
-        darkGray('The master workspace is up to date '
+        darkGray('The ocean is up to date '
             '($organizations organization(s)).'),
       );
       return;
     }
     ggLog(
       darkGray(
-        '${dryRun ? 'Would update' : 'Updated'} the master workspace: '
+        '${dryRun ? 'Would update' : 'Updated'} the ocean: '
         '${added.length} added, ${removed.length} moved to the trash, '
         '$organizations organization(s).',
       ),

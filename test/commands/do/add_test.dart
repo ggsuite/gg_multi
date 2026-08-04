@@ -60,7 +60,7 @@ void main() {
     late List<String> logMessages;
     late CommandRunner<void> runner;
     late Directory tempDir;
-    late String masterWorkspacePath;
+    late String oceanWorkspacePath;
 
     void ggLog(String message) {
       logMessages.add(rmControls(message));
@@ -85,7 +85,7 @@ void main() {
           ggLog: ggLog,
           gitCloner: mockGitCloner,
           processRunner: processRunner,
-          masterWorkspacePath: masterWorkspacePath,
+          oceanWorkspacePath: oceanWorkspacePath,
           executionPath: executionPath ?? execPath,
           ggDoCommit: ggDoCommit,
           sortedProcessingList: sortedProcessingList,
@@ -105,8 +105,8 @@ void main() {
       when(() => mockGitCloner.cloneRepo(any(), any()))
           .thenAnswer((_) async {});
       tempDir = Directory.systemTemp.createTempSync('add_test');
-      masterWorkspacePath = path.join(tempDir.path, ggMultiMasterFolder);
-      Directory(masterWorkspacePath).createSync(recursive: true);
+      oceanWorkspacePath = path.join(tempDir.path, ggMultiOceanFolder);
+      Directory(oceanWorkspacePath).createSync(recursive: true);
       final mockDoCommit = MockGgDoCommit();
       when(
         () => mockDoCommit.exec(
@@ -144,7 +144,7 @@ void main() {
         ),
       );
 
-      final orgFile = File(path.join(masterWorkspacePath, '.organizations'));
+      final orgFile = File(path.join(oceanWorkspacePath, '.organizations'));
       expect(orgFile.existsSync(), isTrue);
       final orgMap = (jsonDecode(orgFile.readAsStringSync()) as List<dynamic>)
           .map((e) => Organization.fromMap(e as Map<String, dynamic>))
@@ -273,7 +273,7 @@ void main() {
             ggLog: ggLog,
             gitCloner: mockGitCloner,
             gitHubPlatform: mockGitHubPlatform,
-            masterWorkspacePath: masterWorkspacePath,
+            oceanWorkspacePath: oceanWorkspacePath,
             // Without an execution path the command would resolve the ticket
             // of the checkout the tests run in and modify it.
             executionPath: tempDir.path,
@@ -342,7 +342,7 @@ void main() {
         AddCommand(
           ggLog: ggLog,
           gitCloner: mockGitCloner,
-          masterWorkspacePath: masterWorkspacePath,
+          oceanWorkspacePath: oceanWorkspacePath,
           // Without an execution path the command would resolve the ticket of
           // the checkout the tests run in and modify it.
           executionPath: tempDir.path,
@@ -361,7 +361,7 @@ void main() {
       'exists and --force not provided',
       () async {
         const repoName = 'gg_multi';
-        final destination = path.join(masterWorkspacePath, repoName);
+        final destination = path.join(oceanWorkspacePath, repoName);
         Directory(destination).createSync(recursive: true);
         File(path.join(destination, 'dummy.txt')).writeAsStringSync('data');
 
@@ -380,7 +380,7 @@ void main() {
       'is provided even if destination exists',
       () async {
         const repoName = 'gg_multi';
-        final destination = path.join(masterWorkspacePath, repoName);
+        final destination = path.join(oceanWorkspacePath, repoName);
         Directory(destination).createSync(recursive: true);
         File(path.join(destination, 'dummy.txt')).writeAsStringSync('data');
 
@@ -400,7 +400,7 @@ void main() {
       () async {
         const repoName = 'testRepoCommit';
         final repoDir = Directory(
-          path.join(masterWorkspacePath, repoName),
+          path.join(oceanWorkspacePath, repoName),
         )..createSync(recursive: true);
         File(path.join(repoDir.path, 'target.txt'))
             .writeAsStringSync('content');
@@ -544,11 +544,11 @@ dev_dependencies:
     );
 
     test(
-      'removes stale publish progress from the master repo before the copy',
+      'removes stale publish progress from the ocean repo before the copy',
       () async {
         const repoName = 'staleProgressRepo';
         final repoDir = Directory(
-          path.join(masterWorkspacePath, repoName),
+          path.join(oceanWorkspacePath, repoName),
         )..createSync(recursive: true);
         File(path.join(repoDir.path, 'target.txt'))
             .writeAsStringSync('content');
@@ -564,7 +564,7 @@ dev_dependencies:
         pubspecFile.writeAsStringSync(pubspecContent);
 
         // A leftover runtime file of an aborted publish: it is gitignored,
-        // so none of the git operations preparing the master repo removes
+        // so none of the git operations preparing the ocean repo removes
         // it — carried into a ticket it would block the next publish there.
         final ggDir = Directory(path.join(repoDir.path, '.gg'))
           ..createSync(recursive: true);
@@ -663,7 +663,7 @@ dev_dependencies:
 
         await runner.run(['add', '--verbose', repoName]);
 
-        // The stale file is gone from the master repo …
+        // The stale file is gone from the ocean repo …
         expect(
           File(path.join(ggDir.path, 'gg-publish.json')).existsSync(),
           isFalse,
@@ -699,7 +699,7 @@ dev_dependencies:
         const existingRepoName = 'tx_existing';
         const gitDepName = 'tx_git_dep';
         final existingRepoDir = Directory(
-          path.join(masterWorkspacePath, existingRepoName),
+          path.join(oceanWorkspacePath, existingRepoName),
         )..createSync(recursive: true);
         File(
           path.join(existingRepoDir.path, 'pubspec.yaml'),
@@ -772,7 +772,7 @@ dev_dependencies:
         const existingRepoName = 'tx_existing_hosted';
         const hostedDepName = 'tx_hosted_dep';
         final existingRepoDir = Directory(
-          path.join(masterWorkspacePath, existingRepoName),
+          path.join(oceanWorkspacePath, existingRepoName),
         )..createSync(recursive: true);
         File(
           path.join(existingRepoDir.path, 'pubspec.yaml'),
@@ -850,7 +850,7 @@ dev_dependencies:
         const hostedDepName = 'tx_known_org_dep';
         const orgUrl = 'https://github.com/myorg/';
         final existingRepoDir = Directory(
-          path.join(masterWorkspacePath, existingRepoName),
+          path.join(oceanWorkspacePath, existingRepoName),
         )..createSync(recursive: true);
         File(
           path.join(existingRepoDir.path, 'pubspec.yaml'),
@@ -861,7 +861,7 @@ dev_dependencies:
           '  $hostedDepName: ^1.0.0\n',
         );
         File(
-          path.join(masterWorkspacePath, '.organizations'),
+          path.join(oceanWorkspacePath, '.organizations'),
         ).writeAsStringSync(
           jsonEncode(<Map<String, dynamic>>[
             Organization(name: 'myorg', url: orgUrl).toMap(),
@@ -926,7 +926,7 @@ dev_dependencies:
         const existingRepoName = 'tx_existing_unknown';
         const hostedDepName = 'tx_unknown_org_dep';
         final existingRepoDir = Directory(
-          path.join(masterWorkspacePath, existingRepoName),
+          path.join(oceanWorkspacePath, existingRepoName),
         )..createSync(recursive: true);
         File(
           path.join(existingRepoDir.path, 'pubspec.yaml'),
@@ -937,7 +937,7 @@ dev_dependencies:
           '  $hostedDepName: ^1.0.0\n',
         );
         File(
-          path.join(masterWorkspacePath, '.organizations'),
+          path.join(oceanWorkspacePath, '.organizations'),
         ).writeAsStringSync(
           jsonEncode(<Map<String, dynamic>>[
             Organization(
@@ -1001,7 +1001,7 @@ dev_dependencies:
 
     test('creates .code-workspace for ticket with one repo', () async {
       const repoName = 'workspaceRepo';
-      final repoDir = Directory(path.join(masterWorkspacePath, repoName))
+      final repoDir = Directory(path.join(oceanWorkspacePath, repoName))
         ..createSync(recursive: true);
       File(path.join(repoDir.path, 'pubspec.yaml')).writeAsStringSync('''
 name: $repoName
@@ -1113,12 +1113,12 @@ version: 1.0.0
       expect(paths, equals(<String>{repoName}));
     });
 
-    test('throws when the master repo has uncommitted changes', () async {
+    test('throws when the ocean repo has uncommitted changes', () async {
       const repoName = 'dirtyRepo';
-      final masterRepoDir = Directory(
-        path.join(masterWorkspacePath, repoName),
+      final oceanRepoDir = Directory(
+        path.join(oceanWorkspacePath, repoName),
       )..createSync(recursive: true);
-      File(path.join(masterRepoDir.path, 'file.txt')).writeAsStringSync('x');
+      File(path.join(oceanRepoDir.path, 'file.txt')).writeAsStringSync('x');
 
       final ticketDir = Directory(
         path.join(tempDir.path, ggMultiTicketFolder, 'TICKET_DIRTY'),
@@ -1137,7 +1137,7 @@ version: 1.0.0
         () => mockProc(
           'git',
           ['status', '--porcelain', '--untracked-files=no'],
-          workingDirectory: masterRepoDir.path,
+          workingDirectory: oceanRepoDir.path,
           runInShell: true,
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, ' M file.txt\n', ''));
@@ -1154,7 +1154,7 @@ version: 1.0.0
             (e) => rmControls(e.toString()),
             'message',
             contains(
-              'Repository $repoName in the master workspace is not clean',
+              'Repository $repoName in the ocean is not clean',
             ),
           ),
         ),
@@ -1163,7 +1163,7 @@ version: 1.0.0
       expect(
         logMessages.any(
           (m) => m.contains(
-            'The repository $repoName in the master workspace has '
+            'The repository $repoName in the ocean has '
             'uncommitted changes:',
           ),
         ),
@@ -1176,7 +1176,7 @@ version: 1.0.0
         () => mockProc(
           'git',
           ['reset', '--hard', 'origin/main'],
-          workingDirectory: masterRepoDir.path,
+          workingDirectory: oceanRepoDir.path,
           runInShell: true,
         ),
       );
@@ -1188,10 +1188,10 @@ version: 1.0.0
 
     test('logs when git status fails and continues', () async {
       const repoName = 'statusFailRepo';
-      final masterRepoDir = Directory(
-        path.join(masterWorkspacePath, repoName),
+      final oceanRepoDir = Directory(
+        path.join(oceanWorkspacePath, repoName),
       )..createSync(recursive: true);
-      File(path.join(masterRepoDir.path, 'file.txt')).writeAsStringSync('x');
+      File(path.join(oceanRepoDir.path, 'file.txt')).writeAsStringSync('x');
 
       final ticketDir = Directory(
         path.join(tempDir.path, ggMultiTicketFolder, 'TICKET_STATUS_FAIL'),
@@ -1210,7 +1210,7 @@ version: 1.0.0
         () => mockProc(
           'git',
           ['status', '--porcelain', '--untracked-files=no'],
-          workingDirectory: masterRepoDir.path,
+          workingDirectory: oceanRepoDir.path,
           runInShell: true,
         ),
       ).thenAnswer((_) async => ProcessResult(0, 1, '', 'status error'));
@@ -1225,8 +1225,7 @@ version: 1.0.0
       expect(
         logMessages.any(
           (m) => m.contains(
-            'Failed to execute git status in $repoName in master '
-            'workspace: status error',
+            'Failed to execute git status in $repoName in ocean: status error',
           ),
         ),
         isTrue,
@@ -1239,10 +1238,10 @@ version: 1.0.0
 
     test('logs error when git reset fails but still copies repo', () async {
       const repoName = 'pullFailRepo';
-      final masterRepoDir = Directory(
-        path.join(masterWorkspacePath, repoName),
+      final oceanRepoDir = Directory(
+        path.join(oceanWorkspacePath, repoName),
       )..createSync(recursive: true);
-      File(path.join(masterRepoDir.path, 'file.txt')).writeAsStringSync('x');
+      File(path.join(oceanRepoDir.path, 'file.txt')).writeAsStringSync('x');
 
       final ticketDir = Directory(
         path.join(tempDir.path, ggMultiTicketFolder, 'TICKET_PULL_FAIL'),
@@ -1282,7 +1281,7 @@ version: 1.0.0
         () => mockProc(
           'git',
           ['fetch'],
-          workingDirectory: masterRepoDir.path,
+          workingDirectory: oceanRepoDir.path,
           runInShell: true,
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
@@ -1290,7 +1289,7 @@ version: 1.0.0
         () => mockProc(
           'git',
           ['reset', '--hard', 'origin/main'],
-          workingDirectory: masterRepoDir.path,
+          workingDirectory: oceanRepoDir.path,
           runInShell: true,
         ),
       ).thenAnswer(
@@ -1300,7 +1299,7 @@ version: 1.0.0
         () => mockProc(
           'git',
           ['tag', '-l'],
-          workingDirectory: masterRepoDir.path,
+          workingDirectory: oceanRepoDir.path,
           runInShell: true,
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
@@ -1308,7 +1307,7 @@ version: 1.0.0
         () => mockProc(
           'git',
           ['fetch', '--tags'],
-          workingDirectory: masterRepoDir.path,
+          workingDirectory: oceanRepoDir.path,
           runInShell: true,
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
@@ -1316,7 +1315,7 @@ version: 1.0.0
         () => mockProc(
           'git',
           ['fetch', '--prune', '--tags'],
-          workingDirectory: masterRepoDir.path,
+          workingDirectory: oceanRepoDir.path,
           runInShell: true,
         ),
       ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
@@ -1352,7 +1351,7 @@ version: 1.0.0
             ggLog: ggLog,
             gitCloner: mockGitCloner,
             processRunner: mockProc.call,
-            masterWorkspacePath: masterWorkspacePath,
+            oceanWorkspacePath: oceanWorkspacePath,
             executionPath: ticketDir.path,
             ggDoCommit: mockDoCommit,
             sortedProcessingList: mockSorted,
@@ -1368,7 +1367,7 @@ version: 1.0.0
         logMessages.any(
           (m) => m.contains(
             'Failed to execute git reset --hard origin/main in '
-            'pullFailRepo in master workspace: reset error',
+            'pullFailRepo in ocean: reset error',
           ),
         ),
         isTrue,
@@ -1377,7 +1376,7 @@ version: 1.0.0
         () => mockProc(
           'git',
           ['fetch'],
-          workingDirectory: masterRepoDir.path,
+          workingDirectory: oceanRepoDir.path,
           runInShell: true,
         ),
       ).called(1);
@@ -1385,7 +1384,7 @@ version: 1.0.0
         () => mockProc(
           'git',
           ['reset', '--hard', 'origin/main'],
-          workingDirectory: masterRepoDir.path,
+          workingDirectory: oceanRepoDir.path,
           runInShell: true,
         ),
       ).called(1);
@@ -1393,7 +1392,7 @@ version: 1.0.0
         () => mockProc(
           'git',
           ['tag', '-l'],
-          workingDirectory: masterRepoDir.path,
+          workingDirectory: oceanRepoDir.path,
           runInShell: true,
         ),
       ).called(1);
@@ -1401,7 +1400,7 @@ version: 1.0.0
         () => mockProc(
           'git',
           ['fetch', '--tags'],
-          workingDirectory: masterRepoDir.path,
+          workingDirectory: oceanRepoDir.path,
           runInShell: true,
         ),
       ).called(1);
@@ -1409,13 +1408,13 @@ version: 1.0.0
         () => mockProc(
           'git',
           ['fetch', '--prune', '--tags'],
-          workingDirectory: masterRepoDir.path,
+          workingDirectory: oceanRepoDir.path,
           runInShell: true,
         ),
       ).called(1);
     });
 
-    test('logs error when repo not found in master workspace', () async {
+    test('logs error when repo not found in ocean', () async {
       final ticketDir = Directory(
         path.join(tempDir.path, ggMultiTicketFolder, 'TICKET-MISSING'),
       )..createSync(recursive: true);
@@ -1423,7 +1422,7 @@ version: 1.0.0
       await runner.run(['add', '--verbose', 'nonexistent']);
       expect(
         logMessages,
-        contains('Repository nonexistent not found in master workspace.'),
+        contains('Repository nonexistent not found in ocean.'),
       );
     });
 
@@ -1431,7 +1430,7 @@ version: 1.0.0
       'logs already exists in ticket workspace if copied before',
       () async {
         const repoName = 'someGreyRepo';
-        final repoDir = Directory(path.join(masterWorkspacePath, repoName))
+        final repoDir = Directory(path.join(oceanWorkspacePath, repoName))
           ..createSync(recursive: true);
         File(path.join(repoDir.path, 'foo.txt')).writeAsStringSync('hi');
 
@@ -1456,7 +1455,7 @@ version: 1.0.0
         'does not set status if localization fails in ticket '
         'relocalization', () async {
       const repoName = 'failStatusRepo';
-      final repoDir = Directory(path.join(masterWorkspacePath, repoName))
+      final repoDir = Directory(path.join(oceanWorkspacePath, repoName))
         ..createSync(recursive: true);
       File(path.join(repoDir.path, 'dummy.txt')).writeAsStringSync('data');
 
@@ -1499,7 +1498,7 @@ version: 1.0.0
 
       setUp(() async {
         mockProcessRunner = MockProcessRunner();
-        repoDir = Directory(path.join(masterWorkspacePath, repoName))
+        repoDir = Directory(path.join(oceanWorkspacePath, repoName))
           ..createSync(recursive: true);
         File(path.join(repoDir.path, 'dummy.txt')).writeAsStringSync('data');
         ticketDir = Directory(
@@ -1685,7 +1684,7 @@ version: 1.0.0
           // Covers the npm scan branch of `_cloneMissingTransitiveDeps`.
           // Register a known organization so the npm scope resolves.
           File(
-            path.join(masterWorkspacePath, '.organizations'),
+            path.join(oceanWorkspacePath, '.organizations'),
           ).writeAsStringSync(
             '[{"name":"tssuite","url":"https://github.com/tssuite/"}]',
           );
@@ -1693,18 +1692,18 @@ version: 1.0.0
           // A simple Dart repo is the add target ...
           const targetName = 'npm_scan_target';
           final targetDir = Directory(
-            path.join(masterWorkspacePath, targetName),
+            path.join(oceanWorkspacePath, targetName),
           )..createSync(recursive: true);
           File(
             path.join(targetDir.path, 'pubspec.yaml'),
           ).writeAsStringSync('name: $targetName\nversion: 1.0.0\n');
 
-          // ... a TypeScript repo only present in master gets its
+          // ... a TypeScript repo only present in ocean gets its
           // package.json scanned for cross-language deps. The dependency
           // entries cover every branch of the scan.
           const consumerName = 'npm_consumer';
           final consumerDir = Directory(
-            path.join(masterWorkspacePath, consumerName),
+            path.join(oceanWorkspacePath, consumerName),
           )..createSync(recursive: true);
           File(path.join(consumerDir.path, 'package.json'))
               .writeAsStringSync('''
@@ -1797,7 +1796,7 @@ version: 1.0.0
           // Covers the "decoded is not a Map" guard of the npm scan.
           const consumerName = 'npm_array_consumer';
           final consumerDir = Directory(
-            path.join(masterWorkspacePath, consumerName),
+            path.join(oceanWorkspacePath, consumerName),
           )..createSync(recursive: true);
           File(
             path.join(consumerDir.path, 'package.json'),
@@ -1805,7 +1804,7 @@ version: 1.0.0
 
           const targetName = 'array_target';
           final targetDir = Directory(
-            path.join(masterWorkspacePath, targetName),
+            path.join(oceanWorkspacePath, targetName),
           )..createSync(recursive: true);
           File(
             path.join(targetDir.path, 'pubspec.yaml'),
@@ -1862,7 +1861,7 @@ version: 1.0.0
           // Covers running both package managers for a dual-manifest repo.
           const repoName = 'bridgeRepo';
           final repoDir = Directory(
-            path.join(masterWorkspacePath, repoName),
+            path.join(oceanWorkspacePath, repoName),
           )..createSync(recursive: true);
           File(
             path.join(repoDir.path, 'pubspec.yaml'),
@@ -1951,7 +1950,7 @@ version: 1.0.0
 
     test('commit failures are logged and aborts immediately', () async {
       const repoName = 'commitFailRepo';
-      final repoDir = Directory(path.join(masterWorkspacePath, repoName))
+      final repoDir = Directory(path.join(oceanWorkspacePath, repoName))
         ..createSync(recursive: true);
       File(path.join(repoDir.path, 'dummy.txt')).writeAsStringSync('data');
       File(path.join(repoDir.path, 'pubspec.yaml'))
@@ -2111,7 +2110,7 @@ version: 1.0.0
       'relocalization aborts and logs when localize fails',
       () async {
         const repoName = 'localizeFailRepo';
-        final repoDir = Directory(path.join(masterWorkspacePath, repoName))
+        final repoDir = Directory(path.join(oceanWorkspacePath, repoName))
           ..createSync(recursive: true);
         File(path.join(repoDir.path, 'pubspec.yaml'))
             .writeAsStringSync('name: $repoName');
@@ -2229,11 +2228,11 @@ version: 1.0.0
     test(
       'adds between nodes into ticket when executed inside a ticket',
       () async {
-        final aDir = Directory(path.join(masterWorkspacePath, 'a'))
+        final aDir = Directory(path.join(oceanWorkspacePath, 'a'))
           ..createSync(recursive: true);
-        final bDir = Directory(path.join(masterWorkspacePath, 'b'))
+        final bDir = Directory(path.join(oceanWorkspacePath, 'b'))
           ..createSync(recursive: true);
-        final cDir = Directory(path.join(masterWorkspacePath, 'c'))
+        final cDir = Directory(path.join(oceanWorkspacePath, 'c'))
           ..createSync(recursive: true);
 
         File(path.join(aDir.path, 'pubspec.yaml')).writeAsStringSync('''
@@ -2349,11 +2348,11 @@ version: 1.0.0
     test(
       'adds between nodes using existing ticket repos as endpoints',
       () async {
-        final aDir = Directory(path.join(masterWorkspacePath, 'a'))
+        final aDir = Directory(path.join(oceanWorkspacePath, 'a'))
           ..createSync(recursive: true);
-        final bDir = Directory(path.join(masterWorkspacePath, 'b'))
+        final bDir = Directory(path.join(oceanWorkspacePath, 'b'))
           ..createSync(recursive: true);
-        final cDir = Directory(path.join(masterWorkspacePath, 'c'))
+        final cDir = Directory(path.join(oceanWorkspacePath, 'c'))
           ..createSync(recursive: true);
 
         File(path.join(aDir.path, 'pubspec.yaml')).writeAsStringSync('''
@@ -2466,7 +2465,7 @@ version: 1.0.0
       'logs when dependency graph building fails and continues',
       () async {
         const repoName = 'graphFailRepo';
-        final repoDir = Directory(path.join(masterWorkspacePath, repoName))
+        final repoDir = Directory(path.join(oceanWorkspacePath, repoName))
           ..createSync(recursive: true);
         File(path.join(repoDir.path, 'file.txt')).writeAsStringSync('x');
 
@@ -2497,7 +2496,7 @@ version: 1.0.0
             AddCommand(
               ggLog: ggLog,
               gitCloner: mockGitCloner,
-              masterWorkspacePath: masterWorkspacePath,
+              oceanWorkspacePath: oceanWorkspacePath,
               executionPath: ticketDir.path,
               processRunner: mockProc.call,
               graph: mockGraph,
@@ -2521,7 +2520,7 @@ version: 1.0.0
       test('executes dart pub upgrade after localize and logs success',
           () async {
         const repoName = 'upgradeRepo';
-        final repoDir = Directory(path.join(masterWorkspacePath, repoName))
+        final repoDir = Directory(path.join(oceanWorkspacePath, repoName))
           ..createSync(recursive: true);
         File(path.join(repoDir.path, 'pubspec.yaml')).writeAsStringSync(
           'name: $repoName',
@@ -2631,7 +2630,7 @@ version: 1.0.0
           'logs error and aborts when dart pub upgrade '
           'fails in relocalization', () async {
         const repoName = 'upgradeFailRepo';
-        final repoDir = Directory(path.join(masterWorkspacePath, repoName))
+        final repoDir = Directory(path.join(oceanWorkspacePath, repoName))
           ..createSync(recursive: true);
         File(path.join(repoDir.path, 'pubspec.yaml')).writeAsStringSync(
           'name: $repoName',
@@ -2747,16 +2746,16 @@ version: 1.0.0
       'unlocalizes when backup file exists in ticket repository',
       () async {
         const repoName = 'backupRepo';
-        final masterRepoDir = Directory(
-          path.join(masterWorkspacePath, repoName),
+        final oceanRepoDir = Directory(
+          path.join(oceanWorkspacePath, repoName),
         )..createSync(recursive: true);
 
-        File(path.join(masterRepoDir.path, 'pubspec.yaml'))
+        File(path.join(oceanRepoDir.path, 'pubspec.yaml'))
             .writeAsStringSync('name: $repoName');
 
         File(
           path.join(
-            masterRepoDir.path,
+            oceanRepoDir.path,
             '.gg_localize_refs_backup.json',
           ),
         ).writeAsStringSync('{}');
@@ -2880,16 +2879,16 @@ version: 1.0.0
       'in relocalization pass',
       () async {
         const repoName = 'unlocFailRepo';
-        final masterRepoDir = Directory(
-          path.join(masterWorkspacePath, repoName),
+        final oceanRepoDir = Directory(
+          path.join(oceanWorkspacePath, repoName),
         )..createSync(recursive: true);
 
-        File(path.join(masterRepoDir.path, 'pubspec.yaml'))
+        File(path.join(oceanRepoDir.path, 'pubspec.yaml'))
             .writeAsStringSync('name: $repoName');
 
         File(
           path.join(
-            masterRepoDir.path,
+            oceanRepoDir.path,
             '.gg_localize_refs_backup.json',
           ),
         ).writeAsStringSync('{}');
@@ -3014,30 +3013,30 @@ version: 1.0.0
       () async {
         const repoName = 'hooksRepo';
 
-        final masterRepoDir = Directory(
-          path.join(masterWorkspacePath, repoName),
+        final oceanRepoDir = Directory(
+          path.join(oceanWorkspacePath, repoName),
         )..createSync(recursive: true);
-        File(path.join(masterRepoDir.path, 'pubspec.yaml'))
+        File(path.join(oceanRepoDir.path, 'pubspec.yaml'))
             .writeAsStringSync('name: $repoName');
-        Directory(path.join(masterRepoDir.path, '.git')).createSync();
+        Directory(path.join(oceanRepoDir.path, '.git')).createSync();
 
         // An older gg version installed a pre-push hook here. The copy into
         // the ticket carries it along, so `do add` must clean it up.
-        Directory(path.join(masterRepoDir.path, '.git', 'hooks'))
+        Directory(path.join(oceanRepoDir.path, '.git', 'hooks'))
             .createSync(recursive: true);
-        File(path.join(masterRepoDir.path, '.git', 'hooks', 'pre-push'))
+        File(path.join(oceanRepoDir.path, '.git', 'hooks', 'pre-push'))
             .writeAsStringSync(
           '#!/bin/sh\nset -e\n\ndart run .gg/verify_push.dart',
         );
-        Directory(path.join(masterRepoDir.path, '.gg'))
+        Directory(path.join(oceanRepoDir.path, '.gg'))
             .createSync(recursive: true);
-        File(path.join(masterRepoDir.path, '.gg', 'verify_push.dart'))
+        File(path.join(oceanRepoDir.path, '.gg', 'verify_push.dart'))
             .writeAsStringSync('void main() {}');
 
         // A hook gg never generated. It proves the copy really carries
         // .git/hooks over, so the missing pre-push below is a deletion and
         // not just a file that never arrived.
-        File(path.join(masterRepoDir.path, '.git', 'hooks', 'pre-commit'))
+        File(path.join(oceanRepoDir.path, '.git', 'hooks', 'pre-commit'))
             .writeAsStringSync('#!/bin/sh\necho "my own hook"');
 
         final ticketDir = Directory(
@@ -3049,7 +3048,7 @@ version: 1.0.0
           () => mockProc(
             'git',
             ['fetch'],
-            workingDirectory: masterRepoDir.path,
+            workingDirectory: oceanRepoDir.path,
             runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
@@ -3057,7 +3056,7 @@ version: 1.0.0
           () => mockProc(
             'git',
             ['reset', '--hard', 'origin/main'],
-            workingDirectory: masterRepoDir.path,
+            workingDirectory: oceanRepoDir.path,
             runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
@@ -3065,7 +3064,7 @@ version: 1.0.0
           () => mockProc(
             'git',
             ['tag', '-l'],
-            workingDirectory: masterRepoDir.path,
+            workingDirectory: oceanRepoDir.path,
             runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
@@ -3073,7 +3072,7 @@ version: 1.0.0
           () => mockProc(
             'git',
             ['fetch', '--tags'],
-            workingDirectory: masterRepoDir.path,
+            workingDirectory: oceanRepoDir.path,
             runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
@@ -3081,7 +3080,7 @@ version: 1.0.0
           () => mockProc(
             'git',
             ['fetch', '--prune', '--tags'],
-            workingDirectory: masterRepoDir.path,
+            workingDirectory: oceanRepoDir.path,
             runInShell: true,
           ),
         ).thenAnswer((_) async => ProcessResult(0, 0, 'ok', ''));
@@ -3163,7 +3162,7 @@ version: 1.0.0
       'invokes BackupPublishTo before localize for each repo',
       () async {
         const repoName = 'backupRepo';
-        final repoDir = Directory(path.join(masterWorkspacePath, repoName))
+        final repoDir = Directory(path.join(oceanWorkspacePath, repoName))
           ..createSync(recursive: true);
         File(
           path.join(repoDir.path, 'pubspec.yaml'),
@@ -3293,9 +3292,9 @@ version: 1.0.0
         return mockDoCommit;
       }
 
-      // Creates a master repo at [relativePath] carrying a git remote.
+      // Creates an ocean repo at [relativePath] carrying a git remote.
       Directory makeMasterRepo(String relativePath, String remoteUrl) {
-        final dir = Directory(path.join(masterWorkspacePath, relativePath))
+        final dir = Directory(path.join(oceanWorkspacePath, relativePath))
           ..createSync(recursive: true);
         File(path.join(dir.path, 'pubspec.yaml')).writeAsStringSync(
           'name: ${path.basename(relativePath)}\nversion: 1.0.0\n',
@@ -3311,7 +3310,7 @@ version: 1.0.0
             path.join(tempDir.path, ggMultiTicketFolder, name),
           )..createSync(recursive: true);
 
-      test('copies a master repo into its org folder of the ticket', () async {
+      test('copies an ocean repo into its org folder of the ticket', () async {
         makeMasterRepo(
           path.join('ggsuite', 'gg_foo'),
           'https://github.com/ggsuite/gg_foo.git',
@@ -3347,7 +3346,7 @@ version: 1.0.0
         expect(paths, <String>{'ggsuite/gg_foo'});
       });
 
-      test('moves the repos of an old master into their org folders', () async {
+      test('moves the repos of an old ocean into their org folders', () async {
         makeMasterRepo('gg_foo', 'https://github.com/ggsuite/gg_foo.git');
         final ticketDir = makeTicketDir('TICKET_MIGRATE');
 
@@ -3361,12 +3360,12 @@ version: 1.0.0
 
         expect(
           Directory(
-            path.join(masterWorkspacePath, 'ggsuite', 'gg_foo'),
+            path.join(oceanWorkspacePath, 'ggsuite', 'gg_foo'),
           ).existsSync(),
           isTrue,
         );
         expect(
-          Directory(path.join(masterWorkspacePath, 'gg_foo')).existsSync(),
+          Directory(path.join(oceanWorkspacePath, 'gg_foo')).existsSync(),
           isFalse,
         );
         expect(
@@ -3480,9 +3479,9 @@ version: 1.0.0
         ).thenAnswer((_) async {});
       });
 
-      // Creates a master repo at [relativePath] carrying a git remote.
+      // Creates an ocean repo at [relativePath] carrying a git remote.
       void makeMasterRepo(String relativePath, String remoteUrl) {
-        final dir = Directory(path.join(masterWorkspacePath, relativePath))
+        final dir = Directory(path.join(oceanWorkspacePath, relativePath))
           ..createSync(recursive: true);
         File(path.join(dir.path, 'pubspec.yaml')).writeAsStringSync(
           'name: ${path.basename(relativePath)}\nversion: 1.0.0\n',
@@ -3505,7 +3504,7 @@ version: 1.0.0
             localizeRefs: mockLoc,
           );
 
-      // Creates orgA/repo1, orgA/repo2 and orgB/repo3 in the master.
+      // Creates orgA/repo1, orgA/repo2 and orgB/repo3 in the ocean.
       void makeTwoOrgs() {
         makeMasterRepo(
           path.join('orgA', 'repo1'),
@@ -3632,14 +3631,14 @@ version: 1.0.0
           logMessages,
           contains(
             'No repositories found for organization orgX '
-            'in the master workspace.',
+            'in the ocean.',
           ),
         );
         expect(logMessages, contains('No repositories to add.'));
         expect(ticketRepoPaths(ticketDir), isEmpty);
       });
 
-      test('--all adds all repos of the master workspace', () async {
+      test('--all adds all repos of the ocean', () async {
         makeTwoOrgs();
         final ticketDir = makeTicketDir('TICKET_ALL');
         createTicketRunner(ticketDir);

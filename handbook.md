@@ -41,7 +41,6 @@ Bevor du Gg Multi installierst, benötigst du
    ```
 
 2. Installation ausführen
-
    - unter Linux und macOS
 
      ```bash
@@ -90,17 +89,17 @@ gg_multi init
 Was passiert dabei?
 
 - Gg Multi prüft, ob der Ordner leer ist und nicht bereits innerhalb eines anderen Gg Multi Workspaces liegt.
-- Es wird ein Unterordner `.master` angelegt. Dieser stellt den Master Workspace dar und enthält später die zentralen Klone deiner Repositories.
+- Es wird ein Unterordner `.ocean` angelegt. Dieser stellt den ocean dar und enthält später die zentralen Klone deiner Repositories.
 
 Ab jetzt erkennt Gg Multi deinen Workspace automatisch, wenn du Befehle irgendwo innerhalb dieses Projektordners ausführst.
 
 ---
 
-## 4. Repositories zum Master Workspace hinzufügen
+## 4. Repositories zum ocean hinzufügen
 
 ### 4.1 `gg_multi add <group_url>`
 
-Mit `gg_multi add` fügst du Repositories in den Master Workspace unter `.master` hinzu.
+Mit `gg_multi add` fügst du Repositories in den ocean unter `.ocean` hinzu.
 
 Ein typischer erster Schritt ist das Hinzufügen aller Repositories einer Organisation oder Gruppe.
 
@@ -121,11 +120,11 @@ gg_multi add https://github.com/meine-org
 Was passiert?
 
 - Gg Multi erkennt, dass es sich um eine Organisations- oder Projektadresse handelt.
-- Alle Repositories dieser Gruppe werden in `.master/<organisation>` geklont, also zum Beispiel nach `.master/meine-org/app_core`.
+- Alle Repositories dieser Gruppe werden in `.ocean/<organisation>` geklont, also zum Beispiel nach `.ocean/meine-org/app_core`.
 
 ### 4.2 Einzelne Repositories hinzufügen
 
-Du kannst auch einzelne Repositories in `.master` hinzufügen:
+Du kannst auch einzelne Repositories in `.ocean` hinzufügen:
 
 - vollständige Git URL (https oder ssh), zum Beispiel
   - `gg_multi add https://github.com/meine-org/app_core.git`
@@ -137,9 +136,9 @@ Du kannst auch einzelne Repositories in `.master` hinzufügen:
 
 ### 4.3 Verhalten bei bereits vorhandenen Repositories
 
-Wenn ein Repository im Master Workspace bereits existiert und nicht leer ist, wird es standardmäßig nicht überschrieben. Gg Multi protokolliert dann nur, dass das Repository schon vorhanden ist.
+Wenn ein Repository im ocean bereits existiert und nicht leer ist, wird es standardmäßig nicht überschrieben. Gg Multi protokolliert dann nur, dass das Repository schon vorhanden ist.
 
-Mit der Option `--force` kannst du das Repository im Master Workspace trotzdem neu klonen:
+Mit der Option `--force` kannst du das Repository im ocean trotzdem neu klonen:
 
 ```bash
 gg_multi add --force https://github.com/meine-org/app_core.git
@@ -149,13 +148,13 @@ Nutze `--force` nur, wenn du sicher bist, dass du den bestehenden Klon ersetzen 
 
 ---
 
-## 5. Ordnerstruktur verstehen (`.master` und `tickets`)
+## 5. Ordnerstruktur verstehen (`.ocean` und `tickets`)
 
 Nach `gg_multi init` und den ersten `add` Befehlen sieht eine typische Struktur so aus:
 
 ```text
 mein_projekt/
-  .master/
+  .ocean/
     meine-org/
       app_core/
       ui_core/
@@ -165,14 +164,14 @@ mein_projekt/
     (noch leer)
 ```
 
-- `.master` enthält die zentralen Repositories deines Projekts.
+- `.ocean` enthält die zentralen Repositories deines Projekts.
 - `tickets` ist der Bereich für deine Ticket Workspaces. Für jedes Ticket wird hier ein eigener Unterordner angelegt.
 
 Wichtig: Ob Gg Multi im Master Kontext oder im Ticket Kontext arbeitet, hängt vom aktuellen Arbeitsverzeichnis ab. Befehle aus einem Ticketordner heraus verhalten sich anders als Befehle aus dem Projekt- oder Masterordner.
 
 ### 5.1 Organisationsordner
 
-Jedes Repository liegt in einem Ordner, der nach der Organisation aus seiner Git URL benannt ist — `https://github.com/meine-org/app_core.git` landet also unter `.master/meine-org/app_core`. Dadurch können gleichnamige Repositories aus verschiedenen Organisationen nebeneinander existieren. Ticketordner haben denselben Aufbau, ein Repository hat also im Master Workspace und im Ticket denselben relativen Pfad.
+Jedes Repository liegt in einem Ordner, der nach der Organisation aus seiner Git URL benannt ist — `https://github.com/meine-org/app_core.git` landet also unter `.ocean/meine-org/app_core`. Dadurch können gleichnamige Repositories aus verschiedenen Organisationen nebeneinander existieren. Ticketordner haben denselben Aufbau, ein Repository hat also im ocean und im Ticket denselben relativen Pfad.
 
 Bei **Azure DevOps ist der Ordner das Projekt**, nicht die Organisation: Reponamen sind dort pro Projekt eindeutig, zwei Projekte einer Organisation können also je ein `common` enthalten. `https://dev.azure.com/meine-org/mein-projekt` legt seine Repositories daher unter `mein-projekt/` ab.
 
@@ -182,7 +181,9 @@ Gibst du beim Hinzufügen nur den Reponamen an und mehrere bekannte Organisation
 
 ### 5.2 Wartung: alte Workspaces umziehen
 
-Workspaces, die vor den Organisationsordnern angelegt wurden, haben ihre Repositories direkt in `.master` bzw. im Ticketordner liegen. `gg_multi add` und `gg_multi checkout` verschieben sie als ersten Schritt in ihren Organisationsordner. Die Organisation wird dabei aus dem Git Remote des jeweiligen Repositories gelesen; lässt sie sich nicht bestimmen, bleibt das Repository liegen und funktioniert unverändert weiter.
+Workspaces, die vor den Organisationsordnern angelegt wurden, haben ihre Repositories direkt in `.ocean` bzw. im Ticketordner liegen. `gg_multi add` und `gg_multi checkout` verschieben sie als ersten Schritt in ihren Organisationsordner. Die Organisation wird dabei aus dem Git Remote des jeweiligen Repositories gelesen; lässt sie sich nicht bestimmen, bleibt das Repository liegen und funktioniert unverändert weiter.
+
+Der Ocean-Ordner hieß früher `.master`. Ein Workspace, der noch einen `.master`-Ordner trägt, wird beim nächsten Start eines gg-Kommandos automatisch in `.ocean` umbenannt — du musst nichts tun. Existieren `.master` und `.ocean` nebeneinander, wird nichts angefasst: `.ocean` gewinnt, und eine Warnung bittet dich, den übrig gebliebenen `.master`-Ordner manuell zusammenzuführen oder zu löschen.
 
 ---
 
@@ -217,7 +218,7 @@ Ab jetzt arbeitest du in diesem Ticketordner weiter.
 
 ## 7. Repositories zum Ticket hinzufügen mit `gg_multi add <repo1> <repo2> ...`
 
-Befindest du dich im Ticketordner (zum Beispiel `tickets/PROJ-123`), verhält sich `gg_multi add` anders als im Master Workspace:
+Befindest du dich im Ticketordner (zum Beispiel `tickets/PROJ-123`), verhält sich `gg_multi add` anders als im ocean:
 
 ```bash
 cd tickets/PROJ-123
@@ -226,19 +227,19 @@ gg_multi add app_core ui_core
 
 ### 7.1 Vereinfachte Angabe der Repositories
 
-Wenn die Repositories bereits in `.master` vorhanden sind, reicht es im Ticketkontext aus, nur die Reponamen anzugeben:
+Wenn die Repositories bereits in `.ocean` vorhanden sind, reicht es im Ticketkontext aus, nur die Reponamen anzugeben:
 
 - `gg_multi add app_core ui_core`
 
 Gg Multi
 
-- kopiert die Repositories aus `.master` in den Ticketordner, und zwar in denselben Organisationsordner, in dem sie im Master Workspace liegen (`tickets/PROJ-123/meine-org/app_core`),
+- kopiert die Repositories aus `.ocean` in den Ticketordner, und zwar in denselben Organisationsordner, in dem sie im ocean liegen (`tickets/PROJ-123/meine-org/app_core`),
 - legt für jedes kopierte Repository einen Branch mit dem Ticketnamen an (hier `PROJ-123`),
 - führt in jedem Repository `dart pub get` aus, sofern eine `pubspec.yaml` vorhanden ist.
 
 ### 7.2 Automatische Berücksichtigung von Abhängigkeiten
 
-Gg Multi analysiert die Abhängigkeiten deiner Repositories im Master Workspace und betrachtet
+Gg Multi analysiert die Abhängigkeiten deiner Repositories im ocean und betrachtet
 
 - die Repositories, die du im Ticket mit `add` angibst, und
 - die Repositories, die bereits im Ticketordner liegen,
@@ -422,7 +423,7 @@ Zum Abschluss eine kompakte Übersicht über einen typischen Alltagseinsatz.
    gg_multi init
    ```
 
-2. Repositories der Organisation in den Master Workspace holen
+2. Repositories der Organisation in den ocean holen
 
    ```bash
    gg_multi add https://github.com/meine-org

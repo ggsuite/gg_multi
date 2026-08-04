@@ -7,38 +7,42 @@
 import 'dart:io';
 
 import 'package:gg_multi/src/backend/constants.dart';
+import 'package:gg_multi/src/backend/ocean_migration.dart';
+import 'package:gg_multi/src/backend/workspace_utils.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
-import 'package:gg_multi/src/backend/workspace_utils.dart';
 
 void main() {
-  group('WorkspaceUtils.defaultMasterWorkspacePath', () {
+  group('WorkspaceUtils.defaultOceanWorkspacePath', () {
     late Directory tempRoot;
+    final messages = <String>[];
 
     setUp(() async {
       tempRoot = await Directory.systemTemp.createTemp('workspace_utils_test_');
+      messages.clear();
+      oceanMigrationLog = messages.add;
     });
 
     tearDown(() async {
+      oceanMigrationLog = print;
       await tempRoot.delete(recursive: true);
     });
 
-    test('returns existing master workspace in current folder', () async {
+    test('returns existing ocean in current folder', () async {
       // Arrange ---------------------------------------------------------------
-      final masterDir =
-          Directory(path.join(tempRoot.path, ggMultiMasterFolder));
-      await masterDir.create();
+      final oceanDir = Directory(path.join(tempRoot.path, ggMultiOceanFolder));
+      await oceanDir.create();
 
       // Act -------------------------------------------------------------------
-      final result = WorkspaceUtils.defaultMasterWorkspacePath(
+      final result = WorkspaceUtils.defaultOceanWorkspacePath(
         workingDir: tempRoot.path,
       );
 
       // Assert ----------------------------------------------------------------
-      expect(result, masterDir.path);
+      expect(result, oceanDir.path);
     });
 
-    test('resolves master workspace from a ticket workspace', () async {
+    test('resolves ocean from a ticket workspace', () async {
       // Arrange ---------------------------------------------------------------
       final ticketsDir = Directory(
         path.join(tempRoot.path, ggMultiTicketFolder),
@@ -46,10 +50,10 @@ void main() {
       final ticketDir = Directory(path.join(ticketsDir.path, 'ticket_123'));
       await ticketDir.create(recursive: true);
 
-      final expectedMaster = path.join(tempRoot.path, ggMultiMasterFolder);
+      final expectedMaster = path.join(tempRoot.path, ggMultiOceanFolder);
 
       // Act -------------------------------------------------------------------
-      final result = WorkspaceUtils.defaultMasterWorkspacePath(
+      final result = WorkspaceUtils.defaultOceanWorkspacePath(
         workingDir: ticketDir.path,
       );
 
@@ -57,15 +61,74 @@ void main() {
       expect(result, expectedMaster);
     });
 
+    test('renames a legacy .master folder and returns the .ocean path',
+        () async {
+      // Arrange ---------------------------------------------------------------
+      final legacyDir = Directory(
+        path.join(tempRoot.path, ggMultiLegacyMasterFolder),
+      );
+      await legacyDir.create();
+
+      // Act -------------------------------------------------------------------
+      final result = WorkspaceUtils.defaultOceanWorkspacePath(
+        workingDir: tempRoot.path,
+      );
+
+      // Assert ----------------------------------------------------------------
+      expect(result, path.join(tempRoot.path, ggMultiOceanFolder));
+      expect(Directory(result).existsSync(), isTrue);
+      expect(legacyDir.existsSync(), isFalse);
+      expect(messages.join('\n'), contains('Renamed workspace folder'));
+    });
+
+    test('prefers .ocean when both folders exist', () async {
+      // Arrange ---------------------------------------------------------------
+      final oceanDir = Directory(path.join(tempRoot.path, ggMultiOceanFolder));
+      final legacyDir = Directory(
+        path.join(tempRoot.path, ggMultiLegacyMasterFolder),
+      );
+      await oceanDir.create();
+      await legacyDir.create();
+
+      // Act -------------------------------------------------------------------
+      final result = WorkspaceUtils.defaultOceanWorkspacePath(
+        workingDir: tempRoot.path,
+      );
+
+      // Assert ----------------------------------------------------------------
+      expect(result, oceanDir.path);
+      expect(legacyDir.existsSync(), isTrue, reason: 'never merged or deleted');
+    });
+
+    test('returns the legacy path when the rename is not possible', () async {
+      // Arrange ---------------------------------------------------------------
+      final legacyDir = Directory(
+        path.join(tempRoot.path, ggMultiLegacyMasterFolder),
+      );
+      await legacyDir.create();
+      // A FILE named .ocean blocks the rename but is no ocean directory.
+      File(path.join(tempRoot.path, ggMultiOceanFolder)).writeAsStringSync('');
+
+      // Act -------------------------------------------------------------------
+      final result = WorkspaceUtils.defaultOceanWorkspacePath(
+        workingDir: tempRoot.path,
+      );
+
+      // Assert ----------------------------------------------------------------
+      expect(result, legacyDir.path);
+      expect(legacyDir.existsSync(), isTrue);
+      expect(messages.join('\n'), contains('Failed to rename'));
+    });
+
     test('falls back to cwd when nothing is found', () async {
       // Arrange ---------------------------------------------------------------
       final randomDir =
           Directory(path.join(tempRoot.path, 'random', 'sub', 'folder'));
       await randomDir.create(recursive: true);
-      final expectedMaster = path.join(randomDir.path, ggMultiMasterFolder);
+      final expectedMaster = path.join(randomDir.path, ggMultiOceanFolder);
 
       // Act -------------------------------------------------------------------
-      final result = WorkspaceUtils.defaultMasterWorkspacePath(
+      final result = WorkspaceUtils.defaultOceanWorkspacePath(
         workingDir: randomDir.path,
       );
 
@@ -86,11 +149,10 @@ void main() {
       await tempRoot.delete(recursive: true);
     });
 
-    test('returns parent of master workspace if existing', () async {
+    test('returns parent of ocean if existing', () async {
       final wsParent = Directory(path.join(tempRoot.path, 'the_workspace'));
-      final masterDir =
-          Directory(path.join(wsParent.path, ggMultiMasterFolder));
-      await masterDir.create(recursive: true);
+      final oceanDir = Directory(path.join(wsParent.path, ggMultiOceanFolder));
+      await oceanDir.create(recursive: true);
 
       final result = WorkspaceUtils.defaultGgMultiWorkspacePath(
         workingDir: wsParent.path,
@@ -98,7 +160,7 @@ void main() {
       expect(result, equals(wsParent.path));
     });
 
-    test('returns parent of resolved master workspace path', () async {
+    test('returns parent of resolved ocean path', () async {
       final ticketDir = Directory(
         path.join(tempRoot.path, 'parent', ggMultiTicketFolder, 'TICKET-42'),
       )..createSync(recursive: true);
@@ -111,7 +173,7 @@ void main() {
     });
 
     test(
-        'uses the parent of fallback cwd/.master '
+        'uses the parent of fallback cwd/.ocean '
         'when nothing is found', () async {
       final customCwd = Directory(path.join(tempRoot.path, 'zombie'));
       await customCwd.create(recursive: true);
@@ -135,8 +197,7 @@ void main() {
       }
     });
 
-    test('returns false for directory not in or under any master workspace',
-        () async {
+    test('returns false for directory not in or under any ocean', () async {
       // Arrange -----------------------------------------------------------
       final randomDir = Directory(path.join(tempRoot.path, 'random', 'sub'));
       await randomDir.create(recursive: true);
@@ -148,10 +209,9 @@ void main() {
       expect(isInside, isFalse);
     });
 
-    test('returns true for direct child of a folder with master workspace',
-        () async {
+    test('returns true for direct child of a folder with ocean', () async {
       final root = Directory(path.join(tempRoot.path, 'myroot'));
-      final ws = Directory(path.join(root.path, ggMultiMasterFolder));
+      final ws = Directory(path.join(root.path, ggMultiOceanFolder));
       await ws.create(recursive: true);
 
       final child = Directory(path.join(root.path, 'foo'));
@@ -165,7 +225,7 @@ void main() {
     test('returns true for nested grandchild inside workspace', () async {
       // Arrange --------------------------------------------------------------
       final root = Directory(path.join(tempRoot.path, 'parent'));
-      final ws = Directory(path.join(root.path, ggMultiMasterFolder));
+      final ws = Directory(path.join(root.path, ggMultiOceanFolder));
       await ws.create(recursive: true);
       final grandChild = Directory(path.join(root.path, 'nested', 'sub'));
       await grandChild.create(recursive: true);
@@ -181,7 +241,7 @@ void main() {
     test('returns true if searching at the workspace root itself', () async {
       // Arrange ---------------------------------------------------------------
       final root = Directory(path.join(tempRoot.path, 'x'));
-      final ws = Directory(path.join(root.path, ggMultiMasterFolder));
+      final ws = Directory(path.join(root.path, ggMultiOceanFolder));
       await ws.create(recursive: true);
 
       // Act ------------------------------------------------------------------
@@ -192,20 +252,42 @@ void main() {
       expect(isInside, isTrue);
     });
 
-    test('returns true when rootPath is the actual master workspace folder',
-        () async {
+    test('returns true when rootPath is the actual ocean folder', () async {
       // Arrange ------------------------------------------------------------
       final root = Directory(path.join(tempRoot.path, 'top'));
-      final ws = Directory(path.join(root.path, ggMultiMasterFolder));
+      final ws = Directory(path.join(root.path, ggMultiOceanFolder));
       await ws.create(recursive: true);
 
       // Act ---------------------------------------------------------------
-      // Call on the master workspace folder directly
+      // Call on the ocean folder directly
       final isInside = WorkspaceUtils.isInsideExistingWorkspace(ws.path);
 
       // Assert ------------------------------------------------------------
       // Should be false: isInside means being a child or deeper
       expect(isInside, isTrue);
+    });
+
+    test('detects a legacy .master workspace and does not rename it', () async {
+      // Arrange ------------------------------------------------------------
+      final root = Directory(path.join(tempRoot.path, 'legacy_root'));
+      final legacy = Directory(
+        path.join(root.path, ggMultiLegacyMasterFolder),
+      );
+      await legacy.create(recursive: true);
+      final child = Directory(path.join(root.path, 'foo'));
+      await child.create();
+
+      // Act ---------------------------------------------------------------
+      final isInside = WorkspaceUtils.isInsideExistingWorkspace(child.path);
+
+      // Assert ------------------------------------------------------------
+      // A pure predicate: the legacy folder counts but stays untouched.
+      expect(isInside, isTrue);
+      expect(legacy.existsSync(), isTrue);
+      expect(
+        Directory(path.join(root.path, ggMultiOceanFolder)).existsSync(),
+        isFalse,
+      );
     });
   });
 
