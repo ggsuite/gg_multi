@@ -276,10 +276,9 @@ packages:
   gg_one:
     dependency: "direct main"
     description:
-      name: gg_one
-      sha256: c322e67e436b6f304baf8bf7d104e532324d75146f8a7cdc6193190b968dadd2
-      url: "https://pub.dev"
-    source: hosted
+      path: "../gg_one"
+      relative: true
+    source: path
     version: "12.8.0"
   gg_process:
     dependency: transitive
