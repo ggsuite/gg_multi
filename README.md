@@ -21,10 +21,11 @@ executable for direct use and in CI/CD pipelines.
 - Per-ticket workspaces under `tickets/<id>/` that hold scoped clones
   of the repos you need for one feature, in the same `<org>/<repo>`
   layout.
-- A trash under `.trash/<id>/`: when a ticket is published, its repos
-  and its `.code-workspace` file are moved there instead of being
-  deleted, so nothing you forgot to commit is lost. Emptying it is up
-  to you.
+- A trash under `.trash/<id>/`: when a ticket is closed — via
+  `do rm ticket`, or by accepting the offer `do publish` makes once
+  everything is published — its repos and its `.code-workspace` file
+  are moved there as they are instead of being deleted, so nothing you
+  forgot to commit is lost. Emptying it is up to you.
 - Automatic dependency resolution: every cross-repo command runs in
   dependency order so downstream packages see consistent upstream
   state.
@@ -79,7 +80,8 @@ order.
 | --------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | `gg_multi do init workspace`                        | initialise the ocean in the current directory                       |
 | `gg_multi do add <target> [-f                       | --force]`                                                           | add a repo or all repos of an organisation to the workspace                        |
-| `gg_multi do rm <target>`                           | remove a repo from the ocean or delete a ticket workspace           |
+| `gg_multi do rm repo <name…> [--from-master]`       | delete repos from the current ticket (or, with the flag, from the ocean) |
+| `gg_multi do rm ticket [--no-delete-remote-branch]` | close the current ticket: delete remote branches, move it to `.trash` |
 | `gg_multi do upgrade ocean [-n                      | --dry-run]`                                                         | sync `.ocean` with every registered organisation: clone new repos, trash gone ones |
 | `gg_multi do create ticket <id> [-m <description>]` | create `tickets/<id>/` with a `.ticket` file                        |
 | `gg_multi do create graph [--format=…] [-o <file>]` | write the dependency graph of the workspace to stdout or a file     |
@@ -145,7 +147,7 @@ my_project/
 │       └── acme/
 │           └── app_core/
 └── .trash/
-    └── PROJ-123/               # what `do publish` removed from the ticket
+    └── PROJ-123/               # what closing the ticket moved out of it
         ├── PROJ-123.code-workspace
         └── ggsuite/
             └── gg_multi/
@@ -171,8 +173,9 @@ projects of one account can each own a `common` repo. Adding
 `ds_cdm/`.
 
 You address a repo by its plain name everywhere — `gg_multi do add
-gg_test`, `gg_multi do rm gg_test`, `gg_multi do code PROJ-123/gg_test`
-— gg_multi finds it in whichever organization folder it sits. A repo is
+gg_test`, `gg_multi do rm repo gg_test`, `gg_multi do code
+PROJ-123/gg_test` — gg_multi finds it in whichever organization folder
+it sits. A repo is
 resolved by exact folder name first, then by the package name in its
 manifest, then by its git remote URL. An organization folder that loses
 its last repo is removed.
@@ -297,6 +300,32 @@ Publish is meant to be triggered manually by a human after review
 approval. It refuses to run when the current ticket state was not
 reviewed — commits made after the last `gg_multi do review` require
 another review round first.
+
+#### The ticket stays workable
+
+Publishing no longer dismantles the ticket. After each repo is
+released, `do publish` brings it back into its working state: the
+feature branch is checked out again, the released main state is merged
+back into it, the local references return (`pubspec_overrides.yaml` is
+restored from the backup taken before the release; TypeScript repos
+get their `link:` references re-localized into `package.json`) and the
+state is recorded as `didPublish` in the repo's `.gg/gg.json`. You can
+keep working — and publish again from the same branch; repos whose
+content is already released are skipped automatically.
+
+A run that actually published something leaves the ticket in place and
+prints how to close it. Only a run that finds **nothing left to
+publish** offers to close the ticket right away: move it to
+`.trash/<id>/` as it is and delete the remote branches, or keep it and
+close it later with:
+
+```bash
+gg_multi do rm ticket
+```
+
+After the ticket folder is gone, the `cd` command back to the
+workspace root is printed in blue — your shell sits inside a deleted
+folder at that point.
 
 #### Unchanged repos are not published
 

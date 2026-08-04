@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:gg_console_colors/gg_console_colors.dart';
 // ignore: lines_longer_than_80_chars
 import 'package:gg_local_package_dependencies/gg_local_package_dependencies.dart';
 import 'package:gg_localize_refs/gg_localize_refs.dart';
@@ -17,6 +18,7 @@ import 'package:gg_multi/src/backend/ensure_in_registry.dart';
 import 'package:gg_multi/src/backend/npm_registry_checker.dart';
 import 'package:gg_multi/src/backend/pub_dev_checker.dart';
 import 'package:gg_multi/src/backend/publish_skip_check.dart';
+import 'package:gg_multi/src/backend/ticket_state.dart';
 import 'package:gg_multi/src/commands/can/publish.dart';
 import 'package:gg_multi/src/commands/do/configure_publish.dart'
     show DoConfigurePublishCommand;
@@ -61,6 +63,18 @@ class MockConfigurePublishCommand extends Mock
 
 /// Mock for UnlocalizeRefs
 class MockUnlocalizeRefs extends Mock implements ChangeRefsToPubDev {}
+
+/// Mock for ChangeRefsToLocal (the post-publish re-localization)
+class MockLocalizeRefs extends Mock implements ChangeRefsToLocal {}
+
+/// Mock for gg DidPublish
+class MockGgDidPublish extends Mock implements gg.DidPublish {}
+
+/// Mock for TicketState
+class MockTicketState extends Mock implements TicketState {}
+
+/// Mock for the cleanup-offer prompt
+class MockInteractAdapter extends Mock implements gg.InteractAdapter {}
 
 /// Mock for RestorePublishTo
 class MockRestorePublishTo extends Mock implements RestorePublishTo {}
@@ -431,14 +445,18 @@ void main() {
       );
     });
 
-    test('publishes all repos, then trashes them and the ticket', () async {
-      // The VS Code workspace file of the ticket must end up in the trash.
+    test(
+        'publishes all repos, restores their workspace state and keeps '
+        'the ticket', () async {
+      // The VS Code workspace file of the ticket must survive the run.
       File(path.join(ticketDir.path, 'TICKPB.code-workspace'))
           .writeAsStringSync('{"folders": []}');
       final mockGgDoPublish = MockGgDoPublish();
       final mockGgDoCommit = MockGgDoCommit();
       final mockGgDoPush = MockGgDoPush();
       final mockUnlocalizeRefs = MockUnlocalizeRefs();
+      final mockLocalizeRefs = MockLocalizeRefs();
+      final mockGgDidPublish = MockGgDidPublish();
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       _stubPubUpgrade(mockProcessRunner);
@@ -449,6 +467,17 @@ void main() {
       final mockSetRefVersion = MockSetRefVersion();
       final mockGetRefVersion = MockGetRefVersion();
       final mockPubDevChecker = MockPubDevChecker();
+
+      when(
+        () => mockLocalizeRefs.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).thenAnswer((_) async {});
+
+      when(
+        () => mockGgDidPublish.set(directory: any(named: 'directory')),
+      ).thenAnswer((_) async {});
 
       when(
         () => mockDidReviewCommand.exec(
@@ -573,14 +602,6 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      when(
-        () => mockProcessRunner(
-          'git',
-          ['push', 'origin', '--delete', 'TICKPB'],
-          workingDirectory: any(named: 'workingDirectory'),
-        ),
-      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
-
       final runner = CommandRunner<void>('test', 'do publish ticket')
         ..addCommand(
           makePublishCommand(
@@ -590,6 +611,8 @@ void main() {
             ggDoCommit: mockGgDoCommit,
             ggDoPush: mockGgDoPush,
             unlocalizeRefs: mockUnlocalizeRefs,
+            localizeRefs: mockLocalizeRefs,
+            ggDidPublish: mockGgDidPublish,
             sortedProcessingList: mockSortedProcessingList,
             processRunner: mockProcessRunner.call,
             canPublishCommand: mockCanPublishCommand,
@@ -622,436 +645,21 @@ void main() {
         isTrue,
       );
 
-      // The repositories move to <root>/.trash/<ticket> and the emptied
-      // ticket folder itself is removed.
-      final trashDir = Directory(
-        path.join(tempDir.path, '.trash', 'TICKPB'),
-      );
-      expect(Directory(path.join(trashDir.path, 'A')).existsSync(), isTrue);
-      expect(Directory(path.join(trashDir.path, 'B')).existsSync(), isTrue);
-      expect(ticketDir.existsSync(), isFalse);
-
-      // The VS Code workspace of the published ticket travels along.
+      // A productive run keeps the ticket: nothing moves to the trash and
+      // the folder — VS Code workspace included — stays where it is.
       expect(
-        File(path.join(trashDir.path, 'TICKPB.code-workspace')).existsSync(),
-        isTrue,
-      );
-
-      // Every remote feature branch is deleted by default.
-      verify(
-        () => mockProcessRunner(
-          'git',
-          ['push', 'origin', '--delete', 'TICKPB'],
-          workingDirectory: any(named: 'workingDirectory'),
-        ),
-      ).called(2);
-    });
-
-    test('reports a VS Code workspace that cannot be trashed', () async {
-      File(path.join(ticketDir.path, 'TICKPB.code-workspace'))
-          .writeAsStringSync('{"folders": []}');
-      // A *file* where the trash folder belongs makes every move fail.
-      File(path.join(tempDir.path, '.trash')).writeAsStringSync('blocked');
-      final mockGgDoPublish = MockGgDoPublish();
-      final mockGgDoCommit = MockGgDoCommit();
-      final mockGgDoPush = MockGgDoPush();
-      final mockUnlocalizeRefs = MockUnlocalizeRefs();
-      final mockSortedProcessingList = MockSortedProcessingList();
-      final mockProcessRunner = MockProcessRunner();
-      _stubPubUpgrade(mockProcessRunner);
-      _stubRepoSnapshot(mockProcessRunner);
-      final mockCanPublishCommand = MockCanPublishCommand();
-      final mockDidReviewCommand = MockDidReviewCommand();
-      final mockGetVersion = MockGetVersion();
-      final mockSetRefVersion = MockSetRefVersion();
-      final mockGetRefVersion = MockGetRefVersion();
-      final mockPubDevChecker = MockPubDevChecker();
-
-      when(
-        () => mockDidReviewCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-
-      stubCanPublish(mockCanPublishCommand);
-
-      when(
-        () => mockSortedProcessingList.get(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer(
-        (_) async => [
-          Node(
-            name: 'A',
-            directory: Directory(path.join(ticketDir.path, 'A')),
-            manifest: DartPackageManifest(pubspec: Pubspec('A')),
-          ),
-          Node(
-            name: 'B',
-            directory: Directory(path.join(ticketDir.path, 'B')),
-            manifest: DartPackageManifest(
-              pubspec: Pubspec(
-                'B',
-                dependencies: <String, Dependency>{
-                  'A': HostedDependency(
-                    version: VersionConstraint.parse('^1.0.0'),
-                  ),
-                },
-              ),
-            ),
-          ),
-        ],
-      );
-
-      when(
-        () => mockUnlocalizeRefs.get(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockGgDoCommit.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          message: any(named: 'message'),
-          force: any(named: 'force'),
-          updateChangeLog: any(named: 'updateChangeLog'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockGgDoPush.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          force: any(named: 'force'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockGgDoPublish.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          message: any(named: 'message'),
-          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
-          verbose: any(named: 'verbose'),
-          versionIncrement: any(named: 'versionIncrement'),
-          channel: any(named: 'channel'),
-          askBeforePublishing: any(named: 'askBeforePublishing'),
-          resume: any(named: 'resume'),
-          pr: any(named: 'pr'),
-          mergeOnly: any(named: 'mergeOnly'),
-          force: any(named: 'force'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockGetVersion.get(
-          directory: any(named: 'directory'),
-        ),
-      ).thenAnswer((_) async => '1.0.0');
-
-      when(
-        () => mockGetRefVersion.get(
-          directory: any(named: 'directory'),
-          ref: any(named: 'ref'),
-        ),
-      ).thenAnswer((_) async => null);
-
-      when(
-        () => mockSetRefVersion.get(
-          directory: any(named: 'directory'),
-          ref: any(named: 'ref'),
-          version: any(named: 'version'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockPubDevChecker.getPackagePublishInfo(
-          packageName: any(named: 'packageName'),
-        ),
-      ).thenAnswer(
-        (invocation) async {
-          final packageName = invocation.namedArguments[#packageName] as String;
-          return PackagePublishInfo(
-            packageName: packageName,
-            waitsForPubDev: true,
-          );
-        },
-      );
-
-      when(
-        () => mockPubDevChecker.waitUntilVersionAvailable(
-          packageName: any(named: 'packageName'),
-          version: any(named: 'version'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockProcessRunner(
-          'git',
-          ['push', 'origin', '--delete', 'TICKPB'],
-          workingDirectory: any(named: 'workingDirectory'),
-        ),
-      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
-
-      final runner = CommandRunner<void>('test', 'do publish ticket')
-        ..addCommand(
-          makePublishCommand(
-            ggLog: ggLog,
-            ensureInRegistry: mockEnsureInRegistry,
-            ggDoPublish: mockGgDoPublish,
-            ggDoCommit: mockGgDoCommit,
-            ggDoPush: mockGgDoPush,
-            unlocalizeRefs: mockUnlocalizeRefs,
-            sortedProcessingList: mockSortedProcessingList,
-            processRunner: mockProcessRunner.call,
-            canPublishCommand: mockCanPublishCommand,
-            didReviewCommand: mockDidReviewCommand,
-            getVersionCommand: mockGetVersion,
-            setRefVersionCommand: mockSetRefVersion,
-            getRefVersionCommand: mockGetRefVersion,
-            pubDevChecker: mockPubDevChecker,
-          ),
-        );
-      await runner.run([
-        'publish',
-        '--input',
-        ticketDir.path,
-        '--verbose',
-      ]);
-
-      expect(
-        messages,
-        contains(
-          '\nAll repos published\n',
-        ),
-      );
-      expect(
-        messages.any((m) => m.contains('A:')),
-        isTrue,
-      );
-      expect(
-        messages.any((m) => m.contains('B:')),
-        isTrue,
-      );
-
-      // The repositories move to <root>/.trash/<ticket> and the emptied
-      // ticket folder itself is removed.
-      expect(
-        messages.any(
-          (m) => m.contains('Failed to move the VS Code workspace of TICKPB'),
-        ),
-        isTrue,
-      );
-      expect(
-        messages.any(
-          (m) => m.contains(
-            'Ticket TICKPB was not deleted because not everything could '
-            'be moved to the trash.',
-          ),
-        ),
-        isTrue,
+        Directory(path.join(tempDir.path, '.trash', 'TICKPB')).existsSync(),
+        isFalse,
       );
       expect(ticketDir.existsSync(), isTrue);
-    });
-
-    test('--no-delete-remote-branch keeps the branches but still trashes',
-        () async {
-      final mockGgDoPublish = MockGgDoPublish();
-      final mockGgDoCommit = MockGgDoCommit();
-      final mockGgDoPush = MockGgDoPush();
-      final mockUnlocalizeRefs = MockUnlocalizeRefs();
-      final mockSortedProcessingList = MockSortedProcessingList();
-      final mockProcessRunner = MockProcessRunner();
-      _stubPubUpgrade(mockProcessRunner);
-      _stubRepoSnapshot(mockProcessRunner);
-      final mockCanPublishCommand = MockCanPublishCommand();
-      final mockDidReviewCommand = MockDidReviewCommand();
-      final mockGetVersion = MockGetVersion();
-      final mockSetRefVersion = MockSetRefVersion();
-      final mockGetRefVersion = MockGetRefVersion();
-      final mockPubDevChecker = MockPubDevChecker();
-
-      when(
-        () => mockDidReviewCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-
-      stubCanPublish(mockCanPublishCommand);
-
-      when(
-        () => mockSortedProcessingList.get(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer(
-        (_) async => [
-          Node(
-            name: 'A',
-            directory: Directory(path.join(ticketDir.path, 'A')),
-            manifest: DartPackageManifest(pubspec: Pubspec('A')),
-          ),
-          Node(
-            name: 'B',
-            directory: Directory(path.join(ticketDir.path, 'B')),
-            manifest: DartPackageManifest(
-              pubspec: Pubspec(
-                'B',
-                dependencies: <String, Dependency>{
-                  'A': HostedDependency(
-                    version: VersionConstraint.parse('^1.0.0'),
-                  ),
-                },
-              ),
-            ),
-          ),
-        ],
-      );
-
-      when(
-        () => mockUnlocalizeRefs.get(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockGgDoCommit.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          message: any(named: 'message'),
-          force: any(named: 'force'),
-          updateChangeLog: any(named: 'updateChangeLog'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockGgDoPush.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          force: any(named: 'force'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockGgDoPublish.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          message: any(named: 'message'),
-          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
-          verbose: any(named: 'verbose'),
-          versionIncrement: any(named: 'versionIncrement'),
-          channel: any(named: 'channel'),
-          askBeforePublishing: any(named: 'askBeforePublishing'),
-          resume: any(named: 'resume'),
-          pr: any(named: 'pr'),
-          mergeOnly: any(named: 'mergeOnly'),
-          force: any(named: 'force'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockGetVersion.get(
-          directory: any(named: 'directory'),
-        ),
-      ).thenAnswer((_) async => '1.0.0');
-
-      when(
-        () => mockGetRefVersion.get(
-          directory: any(named: 'directory'),
-          ref: any(named: 'ref'),
-        ),
-      ).thenAnswer((_) async => null);
-
-      when(
-        () => mockSetRefVersion.get(
-          directory: any(named: 'directory'),
-          ref: any(named: 'ref'),
-          version: any(named: 'version'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockPubDevChecker.getPackagePublishInfo(
-          packageName: any(named: 'packageName'),
-        ),
-      ).thenAnswer(
-        (invocation) async {
-          final packageName = invocation.namedArguments[#packageName] as String;
-          return PackagePublishInfo(
-            packageName: packageName,
-            waitsForPubDev: true,
-          );
-        },
-      );
-
-      when(
-        () => mockPubDevChecker.waitUntilVersionAvailable(
-          packageName: any(named: 'packageName'),
-          version: any(named: 'version'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-
-      when(
-        () => mockProcessRunner(
-          'git',
-          ['push', 'origin', '--delete', 'TICKPB'],
-          workingDirectory: any(named: 'workingDirectory'),
-        ),
-      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
-
-      final runner = CommandRunner<void>('test', 'do publish ticket')
-        ..addCommand(
-          makePublishCommand(
-            ggLog: ggLog,
-            ensureInRegistry: mockEnsureInRegistry,
-            ggDoPublish: mockGgDoPublish,
-            ggDoCommit: mockGgDoCommit,
-            ggDoPush: mockGgDoPush,
-            unlocalizeRefs: mockUnlocalizeRefs,
-            sortedProcessingList: mockSortedProcessingList,
-            processRunner: mockProcessRunner.call,
-            canPublishCommand: mockCanPublishCommand,
-            didReviewCommand: mockDidReviewCommand,
-            getVersionCommand: mockGetVersion,
-            setRefVersionCommand: mockSetRefVersion,
-            getRefVersionCommand: mockGetRefVersion,
-            pubDevChecker: mockPubDevChecker,
-          ),
-        );
-      await runner.run([
-        'publish',
-        '--input',
-        ticketDir.path,
-        '--verbose',
-        '--no-delete-remote-branch',
-      ]);
-
+      expect(Directory(path.join(ticketDir.path, 'A')).existsSync(), isTrue);
+      expect(Directory(path.join(ticketDir.path, 'B')).existsSync(), isTrue);
       expect(
-        messages,
-        contains(
-          '\nAll repos published\n',
-        ),
-      );
-      expect(
-        messages.any((m) => m.contains('A:')),
-        isTrue,
-      );
-      expect(
-        messages.any((m) => m.contains('B:')),
+        File(path.join(ticketDir.path, 'TICKPB.code-workspace')).existsSync(),
         isTrue,
       );
 
-      // The repositories move to <root>/.trash/<ticket> and the emptied
-      // ticket folder itself is removed.
-      // Kept on the remote …
+      // The remote feature branches survive — work can simply continue.
       verifyNever(
         () => mockProcessRunner(
           'git',
@@ -1059,230 +667,55 @@ void main() {
           workingDirectory: any(named: 'workingDirectory'),
         ),
       );
-      expect(
-        messages.any((m) => m.contains('Kept remote branch TICKPB for A.')),
-        isTrue,
-      );
 
-      // The registry gate ran for every repo before its »gg do publish« —
-      // a never-published package is published manually by the user first.
-      Matcher repoDir(String name) => isA<Directory>().having(
-            (dir) => path.basename(dir.path),
-            'basename',
-            name,
-          );
-      verifyInOrder([
-        () => mockEnsureInRegistry.ensure(
-              directory: any(named: 'directory', that: repoDir('A')),
-              ggLog: any(named: 'ggLog'),
-            ),
-        () => mockGgDoPublish.exec(
-              directory: any(named: 'directory', that: repoDir('A')),
-              ggLog: any(named: 'ggLog'),
-              message: any(named: 'message'),
-              deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
-              verbose: any(named: 'verbose'),
-              versionIncrement: any(named: 'versionIncrement'),
-              channel: any(named: 'channel'),
-              askBeforePublishing: any(named: 'askBeforePublishing'),
-              resume: any(named: 'resume'),
-              pr: any(named: 'pr'),
-              mergeOnly: any(named: 'mergeOnly'),
-              force: any(named: 'force'),
-            ),
-        () => mockEnsureInRegistry.ensure(
-              directory: any(named: 'directory', that: repoDir('B')),
-              ggLog: any(named: 'ggLog'),
-            ),
-        () => mockGgDoPublish.exec(
-              directory: any(named: 'directory', that: repoDir('B')),
-              ggLog: any(named: 'ggLog'),
-              message: any(named: 'message'),
-              deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
-              verbose: any(named: 'verbose'),
-              versionIncrement: any(named: 'versionIncrement'),
-              channel: any(named: 'channel'),
-              askBeforePublishing: any(named: 'askBeforePublishing'),
-              resume: any(named: 'resume'),
-              pr: any(named: 'pr'),
-              mergeOnly: any(named: 'mergeOnly'),
-              force: any(named: 'force'),
-            ),
-      ]);
-
-      // … but moved to the trash locally all the same.
-      final trashDir = Directory(
-        path.join(tempDir.path, '.trash', 'TICKPB'),
-      );
-      expect(Directory(path.join(trashDir.path, 'A')).existsSync(), isTrue);
-      expect(Directory(path.join(trashDir.path, 'B')).existsSync(), isTrue);
-      expect(ticketDir.existsSync(), isFalse);
-    });
-
-    test(
-      'trashes the ticket also when the config still carries delete_ticket',
-      () async {
-        // delete_ticket is a leftover of the old prompt and simply ignored.
-        File(path.join(ticketDir.path, '.gg-publish.json'))
-            .writeAsStringSync('''
-{
-  "version_increment": "patch",
-  "merge_message": "via --config",
-  "delete_ticket": false
-}
-''');
-
-        final mockGgDoPublish = MockGgDoPublish();
-        final mockGgDoCommit = MockGgDoCommit();
-        final mockGgDoPush = MockGgDoPush();
-        final mockUnlocalizeRefs = MockUnlocalizeRefs();
-        final mockSortedProcessingList = MockSortedProcessingList();
-        final mockProcessRunner = MockProcessRunner();
-        _stubPubUpgrade(mockProcessRunner);
-        _stubRepoSnapshot(mockProcessRunner);
-        final mockCanPublishCommand = MockCanPublishCommand();
-        final mockDidReviewCommand = MockDidReviewCommand();
-        final mockGetVersion = MockGetVersion();
-        final mockSetRefVersion = MockSetRefVersion();
-        final mockGetRefVersion = MockGetRefVersion();
-        final mockPubDevChecker = MockPubDevChecker();
-
-        when(
-          () => mockDidReviewCommand.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-          ),
-        ).thenAnswer((_) async {});
-        stubCanPublish(mockCanPublishCommand);
-        when(
-          () => mockSortedProcessingList.get(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-          ),
-        ).thenAnswer(
-          (_) async => [
-            Node(
-              name: 'A',
-              directory: Directory(path.join(ticketDir.path, 'A')),
-              manifest: DartPackageManifest(pubspec: Pubspec('A')),
-            ),
+      // Every published repo went back to its feature branch, merged the
+      // released main state, re-localized its references, recorded
+      // didPublish and committed the restore as gg bookkeeping.
+      verify(
+        () => mockProcessRunner(
+          'git',
+          ['checkout', 'TICKPB'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).called(2);
+      verify(
+        () => mockProcessRunner(
+          'git',
+          [
+            'merge',
+            '-m',
+            '#gg: merge the published main back into TICKPB',
+            'main',
           ],
-        );
-        when(
-          () => mockUnlocalizeRefs.get(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-          ),
-        ).thenAnswer((_) async {});
-        when(
-          () => mockGgDoCommit.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-            message: any(named: 'message'),
-            force: any(named: 'force'),
-            updateChangeLog: any(named: 'updateChangeLog'),
-          ),
-        ).thenAnswer((_) async {});
-        when(
-          () => mockGgDoPush.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-            force: any(named: 'force'),
-          ),
-        ).thenAnswer((_) async {});
-        when(
-          () => mockGgDoPublish.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-            message: any(named: 'message'),
-            deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
-            verbose: any(named: 'verbose'),
-            versionIncrement: any(named: 'versionIncrement'),
-            channel: any(named: 'channel'),
-            askBeforePublishing: any(named: 'askBeforePublishing'),
-            resume: any(named: 'resume'),
-            pr: any(named: 'pr'),
-            mergeOnly: any(named: 'mergeOnly'),
-            force: any(named: 'force'),
-          ),
-        ).thenAnswer((_) async {});
-        when(
-          () => mockGetVersion.get(
-            directory: any(named: 'directory'),
-          ),
-        ).thenAnswer((_) async => '1.0.0');
-        when(
-          () => mockGetRefVersion.get(
-            directory: any(named: 'directory'),
-            ref: any(named: 'ref'),
-          ),
-        ).thenAnswer((_) async => null);
-        when(
-          () => mockSetRefVersion.get(
-            directory: any(named: 'directory'),
-            ref: any(named: 'ref'),
-            version: any(named: 'version'),
-          ),
-        ).thenAnswer((_) async {});
-        when(
-          () => mockPubDevChecker.getPackagePublishInfo(
-            packageName: any(named: 'packageName'),
-          ),
-        ).thenAnswer(
-          (invocation) async {
-            final packageName =
-                invocation.namedArguments[#packageName] as String;
-            return PackagePublishInfo(
-              packageName: packageName,
-              waitsForPubDev: false,
-            );
-          },
-        );
-        when(
-          () => mockProcessRunner(
-            'git',
-            ['push', 'origin', '--delete', 'TICKPB'],
-            workingDirectory: any(named: 'workingDirectory'),
-          ),
-        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).called(2);
+      verify(
+        () => mockLocalizeRefs.get(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+        ),
+      ).called(2);
+      verify(
+        () => mockGgDidPublish.set(directory: any(named: 'directory')),
+      ).called(2);
+      verify(
+        () => mockGgDoCommit.exec(
+          directory: any(named: 'directory'),
+          ggLog: any(named: 'ggLog'),
+          message: '#gg: restored local workspace references',
+          force: true,
+          updateChangeLog: false,
+        ),
+      ).called(2);
 
-        final runner = CommandRunner<void>('test', 'do publish ticket')
-          ..addCommand(
-            makePublishCommand(
-              ggLog: ggLog,
-              ensureInRegistry: mockEnsureInRegistry,
-              ggDoPublish: mockGgDoPublish,
-              ggDoCommit: mockGgDoCommit,
-              ggDoPush: mockGgDoPush,
-              unlocalizeRefs: mockUnlocalizeRefs,
-              sortedProcessingList: mockSortedProcessingList,
-              processRunner: mockProcessRunner.call,
-              canPublishCommand: mockCanPublishCommand,
-              didReviewCommand: mockDidReviewCommand,
-              getVersionCommand: mockGetVersion,
-              setRefVersionCommand: mockSetRefVersion,
-              getRefVersionCommand: mockGetRefVersion,
-              pubDevChecker: mockPubDevChecker,
-            ),
-          );
-
-        await runner.run([
-          'publish',
-          '--input',
-          ticketDir.path,
-          '--config',
-          '.gg-publish.json',
-        ]);
-
-        expect(
-          Directory(path.join(tempDir.path, '.trash', 'TICKPB', 'A'))
-              .existsSync(),
-          isTrue,
-          reason: 'delete_ticket: false must not stop the move to the trash',
-        );
-        expect(ticketDir.existsSync(), isFalse);
-      },
-    );
+      // The user is told how to go on — the closing command in blue.
+      expect(
+        messages.join('\n'),
+        contains('The ticket stays in place'),
+      );
+      expect(coloredMessages, contains(cCmd('  gg do rm ticket')));
+    });
 
     test('waits on npm for a published TypeScript dependency', () async {
       // Make repo A a TypeScript project; B (Dart) depends on A.
@@ -3119,511 +2552,6 @@ void main() {
       },
     );
 
-    test(
-      'logs error when moving a repository of the ticket to the trash fails',
-      () async {
-        final mockGgDoPublish = MockGgDoPublish();
-        final mockGgDoCommit = MockGgDoCommit();
-        final mockGgDoPush = MockGgDoPush();
-        final mockUnlocalizeRefs = MockUnlocalizeRefs();
-        final mockSortedProcessingList = MockSortedProcessingList();
-        final mockProcessRunner = MockProcessRunner();
-        _stubPubUpgrade(mockProcessRunner);
-        _stubRepoSnapshot(mockProcessRunner);
-        final mockCanPublishCommand = MockCanPublishCommand();
-        final mockDidReviewCommand = MockDidReviewCommand();
-        final mockGetVersion = MockGetVersion();
-        final mockSetRefVersion = MockSetRefVersion();
-        final mockGetRefVersion = MockGetRefVersion();
-        final mockPubDevChecker = MockPubDevChecker();
-        final mockDirB = MockDirectory();
-
-        when(
-          () => mockDidReviewCommand.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-          ),
-        ).thenAnswer((_) async {});
-
-        stubCanPublish(mockCanPublishCommand);
-
-        final dirA = Directory(path.join(ticketDir.path, 'A'));
-        when(
-          () => mockSortedProcessingList.get(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-          ),
-        ).thenAnswer(
-          (_) async => [
-            Node(
-              name: 'A',
-              directory: dirA,
-              manifest: DartPackageManifest(pubspec: Pubspec('A')),
-            ),
-            Node(
-              name: 'B',
-              directory: mockDirB,
-              manifest: DartPackageManifest(pubspec: Pubspec('B')),
-            ),
-          ],
-        );
-
-        when(
-          () => mockUnlocalizeRefs.get(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-          ),
-        ).thenAnswer((_) async {});
-
-        when(
-          () => mockGetVersion.get(
-            directory: any(named: 'directory'),
-          ),
-        ).thenAnswer((_) async => '1.0.0');
-
-        when(
-          () => mockGetRefVersion.get(
-            directory: any(named: 'directory'),
-            ref: any(named: 'ref'),
-          ),
-        ).thenAnswer((_) async => null);
-
-        when(
-          () => mockSetRefVersion.get(
-            directory: any(named: 'directory'),
-            ref: any(named: 'ref'),
-            version: any(named: 'version'),
-          ),
-        ).thenAnswer((_) async {});
-
-        when(
-          () => mockGgDoCommit.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-            message: any(named: 'message'),
-            force: any(named: 'force'),
-            updateChangeLog: any(named: 'updateChangeLog'),
-          ),
-        ).thenAnswer((_) async {});
-
-        when(
-          () => mockGgDoPush.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-            force: any(named: 'force'),
-          ),
-        ).thenAnswer((_) async {});
-
-        when(
-          () => mockGgDoPublish.exec(
-            directory: any(named: 'directory'),
-            ggLog: any(named: 'ggLog'),
-            message: any(named: 'message'),
-            deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
-            verbose: any(named: 'verbose'),
-            versionIncrement: any(named: 'versionIncrement'),
-            channel: any(named: 'channel'),
-            askBeforePublishing: any(named: 'askBeforePublishing'),
-            resume: any(named: 'resume'),
-            pr: any(named: 'pr'),
-            mergeOnly: any(named: 'mergeOnly'),
-            force: any(named: 'force'),
-          ),
-        ).thenAnswer((_) async {});
-        when(
-          () => mockPubDevChecker.getPackagePublishInfo(
-            packageName: any(named: 'packageName'),
-          ),
-        ).thenAnswer(
-          (invocation) async {
-            final packageName =
-                invocation.namedArguments[#packageName] as String;
-            return PackagePublishInfo(
-              packageName: packageName,
-              waitsForPubDev: true,
-            );
-          },
-        );
-        when(
-          () => mockPubDevChecker.waitUntilVersionAvailable(
-            packageName: any(named: 'packageName'),
-            version: any(named: 'version'),
-            ggLog: any(named: 'ggLog'),
-          ),
-        ).thenAnswer((_) async {});
-
-        when(() => mockDirB.path).thenReturn(
-          path.join(ticketDir.path, 'B'),
-        );
-        when(() => mockDirB.existsSync()).thenReturn(true);
-        when(() => mockDirB.rename(any())).thenThrow(Exception('move failed'));
-        when(
-          () => mockProcessRunner(
-            'git',
-            ['push', 'origin', '--delete', 'TICKPB'],
-            workingDirectory: any(named: 'workingDirectory'),
-          ),
-        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
-
-        final runner = CommandRunner<void>('test', 'do publish ticket')
-          ..addCommand(
-            makePublishCommand(
-              ggLog: ggLog,
-              ensureInRegistry: mockEnsureInRegistry,
-              ggDoPublish: mockGgDoPublish,
-              ggDoCommit: mockGgDoCommit,
-              ggDoPush: mockGgDoPush,
-              unlocalizeRefs: mockUnlocalizeRefs,
-              sortedProcessingList: mockSortedProcessingList,
-              processRunner: mockProcessRunner.call,
-              canPublishCommand: mockCanPublishCommand,
-              didReviewCommand: mockDidReviewCommand,
-              getVersionCommand: mockGetVersion,
-              setRefVersionCommand: mockSetRefVersion,
-              getRefVersionCommand: mockGetRefVersion,
-              pubDevChecker: mockPubDevChecker,
-            ),
-          );
-
-        await runner.run([
-          'publish',
-          '--input',
-          ticketDir.path,
-        ]);
-
-        expect(
-          messages.any(
-            (m) => m.contains(
-              'Failed to move repository B of ticket TICKPB to the trash: '
-              'Exception: move failed',
-            ),
-          ),
-          isTrue,
-        );
-
-        // A ticket that could not be emptied is kept, so nothing is lost.
-        expect(
-          messages.any(
-            (m) => m.contains(
-              'Ticket TICKPB was not deleted because not everything could '
-              'be moved to the trash.',
-            ),
-          ),
-          isTrue,
-        );
-        expect(ticketDir.existsSync(), isTrue);
-      },
-    );
-
-    test('logs error when remote branch deletion fails', () async {
-      final mockGgDoPublish = MockGgDoPublish();
-      final mockGgDoCommit = MockGgDoCommit();
-      final mockGgDoPush = MockGgDoPush();
-      final mockUnlocalizeRefs = MockUnlocalizeRefs();
-      final mockSortedProcessingList = MockSortedProcessingList();
-      final mockProcessRunner = MockProcessRunner();
-      _stubPubUpgrade(mockProcessRunner);
-      _stubRepoSnapshot(mockProcessRunner);
-      final mockCanPublishCommand = MockCanPublishCommand();
-      final mockDidReviewCommand = MockDidReviewCommand();
-      final mockGetVersion = MockGetVersion();
-      final mockSetRefVersion = MockSetRefVersion();
-      final mockGetRefVersion = MockGetRefVersion();
-      final mockPubDevChecker = MockPubDevChecker();
-
-      when(
-        () => mockDidReviewCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-      stubCanPublish(mockCanPublishCommand);
-      when(
-        () => mockSortedProcessingList.get(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer(
-        (_) async => [
-          Node(
-            name: 'A',
-            directory: Directory(path.join(ticketDir.path, 'A')),
-            manifest: DartPackageManifest(pubspec: Pubspec('A')),
-          ),
-        ],
-      );
-      when(
-        () => mockUnlocalizeRefs.get(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-      when(
-        () => mockGgDoCommit.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          message: any(named: 'message'),
-          force: any(named: 'force'),
-          updateChangeLog: any(named: 'updateChangeLog'),
-        ),
-      ).thenAnswer((_) async {});
-      when(
-        () => mockGgDoPush.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          force: any(named: 'force'),
-        ),
-      ).thenAnswer((_) async {});
-      when(
-        () => mockGgDoPublish.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          message: any(named: 'message'),
-          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
-          verbose: any(named: 'verbose'),
-          versionIncrement: any(named: 'versionIncrement'),
-          channel: any(named: 'channel'),
-          askBeforePublishing: any(named: 'askBeforePublishing'),
-          resume: any(named: 'resume'),
-          pr: any(named: 'pr'),
-          mergeOnly: any(named: 'mergeOnly'),
-          force: any(named: 'force'),
-        ),
-      ).thenAnswer((_) async {});
-      when(
-        () => mockGetVersion.get(
-          directory: any(named: 'directory'),
-        ),
-      ).thenAnswer((_) async => '1.0.0');
-      when(
-        () => mockGetRefVersion.get(
-          directory: any(named: 'directory'),
-          ref: any(named: 'ref'),
-        ),
-      ).thenAnswer((_) async => null);
-      when(
-        () => mockSetRefVersion.get(
-          directory: any(named: 'directory'),
-          ref: any(named: 'ref'),
-          version: any(named: 'version'),
-        ),
-      ).thenAnswer((_) async {});
-      when(
-        () => mockPubDevChecker.getPackagePublishInfo(
-          packageName: any(named: 'packageName'),
-        ),
-      ).thenAnswer(
-        (_) async => const PackagePublishInfo(
-          packageName: 'A',
-          waitsForPubDev: false,
-        ),
-      );
-      when(
-        () => mockProcessRunner(
-          'git',
-          ['push', 'origin', '--delete', 'TICKPB'],
-          workingDirectory: any(named: 'workingDirectory'),
-        ),
-      ).thenAnswer((_) async => ProcessResult(1, 1, '', 'branch delete fail'));
-
-      final runner = CommandRunner<void>('test', 'do publish ticket')
-        ..addCommand(
-          makePublishCommand(
-            ggLog: ggLog,
-            ensureInRegistry: mockEnsureInRegistry,
-            ggDoPublish: mockGgDoPublish,
-            ggDoCommit: mockGgDoCommit,
-            ggDoPush: mockGgDoPush,
-            unlocalizeRefs: mockUnlocalizeRefs,
-            sortedProcessingList: mockSortedProcessingList,
-            processRunner: mockProcessRunner.call,
-            canPublishCommand: mockCanPublishCommand,
-            didReviewCommand: mockDidReviewCommand,
-            getVersionCommand: mockGetVersion,
-            setRefVersionCommand: mockSetRefVersion,
-            getRefVersionCommand: mockGetRefVersion,
-            pubDevChecker: mockPubDevChecker,
-          ),
-        );
-
-      await runner.run([
-        'publish',
-        '--input',
-        ticketDir.path,
-      ]);
-
-      expect(
-        messages.any(
-          (m) => m.contains(
-            'Failed to move repository A of ticket TICKPB to the trash: '
-            'Exception: Failed to delete remote branch TICKPB '
-            'for A: branch delete fail',
-          ),
-        ),
-        isTrue,
-      );
-      // The branch deletion failed before the move, so the repo stays put.
-      expect(Directory(path.join(ticketDir.path, 'A')).existsSync(), isTrue);
-      expect(ticketDir.existsSync(), isTrue);
-    });
-
-    test('does not log an error when the remote branch is already deleted',
-        () async {
-      final mockGgDoPublish = MockGgDoPublish();
-      final mockGgDoCommit = MockGgDoCommit();
-      final mockGgDoPush = MockGgDoPush();
-      final mockUnlocalizeRefs = MockUnlocalizeRefs();
-      final mockSortedProcessingList = MockSortedProcessingList();
-      final mockProcessRunner = MockProcessRunner();
-      _stubPubUpgrade(mockProcessRunner);
-      _stubRepoSnapshot(mockProcessRunner);
-      final mockCanPublishCommand = MockCanPublishCommand();
-      final mockDidReviewCommand = MockDidReviewCommand();
-      final mockGetVersion = MockGetVersion();
-      final mockSetRefVersion = MockSetRefVersion();
-      final mockGetRefVersion = MockGetRefVersion();
-      final mockPubDevChecker = MockPubDevChecker();
-
-      when(
-        () => mockDidReviewCommand.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-      stubCanPublish(mockCanPublishCommand);
-      when(
-        () => mockSortedProcessingList.get(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer(
-        (_) async => [
-          Node(
-            name: 'A',
-            directory: Directory(path.join(ticketDir.path, 'A')),
-            manifest: DartPackageManifest(pubspec: Pubspec('A')),
-          ),
-        ],
-      );
-      when(
-        () => mockUnlocalizeRefs.get(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-        ),
-      ).thenAnswer((_) async {});
-      when(
-        () => mockGgDoCommit.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          message: any(named: 'message'),
-          force: any(named: 'force'),
-          updateChangeLog: any(named: 'updateChangeLog'),
-        ),
-      ).thenAnswer((_) async {});
-      when(
-        () => mockGgDoPush.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          force: any(named: 'force'),
-        ),
-      ).thenAnswer((_) async {});
-      when(
-        () => mockGgDoPublish.exec(
-          directory: any(named: 'directory'),
-          ggLog: any(named: 'ggLog'),
-          message: any(named: 'message'),
-          deleteFeatureBranch: any(named: 'deleteFeatureBranch'),
-          verbose: any(named: 'verbose'),
-          versionIncrement: any(named: 'versionIncrement'),
-          channel: any(named: 'channel'),
-          askBeforePublishing: any(named: 'askBeforePublishing'),
-          resume: any(named: 'resume'),
-          pr: any(named: 'pr'),
-          mergeOnly: any(named: 'mergeOnly'),
-          force: any(named: 'force'),
-        ),
-      ).thenAnswer((_) async {});
-      when(
-        () => mockGetVersion.get(
-          directory: any(named: 'directory'),
-        ),
-      ).thenAnswer((_) async => '1.0.0');
-      when(
-        () => mockGetRefVersion.get(
-          directory: any(named: 'directory'),
-          ref: any(named: 'ref'),
-        ),
-      ).thenAnswer((_) async => null);
-      when(
-        () => mockSetRefVersion.get(
-          directory: any(named: 'directory'),
-          ref: any(named: 'ref'),
-          version: any(named: 'version'),
-        ),
-      ).thenAnswer((_) async {});
-      when(
-        () => mockPubDevChecker.getPackagePublishInfo(
-          packageName: any(named: 'packageName'),
-        ),
-      ).thenAnswer(
-        (_) async => const PackagePublishInfo(
-          packageName: 'A',
-          waitsForPubDev: false,
-        ),
-      );
-      when(
-        () => mockProcessRunner(
-          'git',
-          ['push', 'origin', '--delete', 'TICKPB'],
-          workingDirectory: any(named: 'workingDirectory'),
-        ),
-      ).thenAnswer(
-        (_) async => ProcessResult(
-          1,
-          1,
-          '',
-          "error: unable to delete 'TICKPB': remote ref does not exist",
-        ),
-      );
-
-      final runner = CommandRunner<void>('test', 'do publish ticket')
-        ..addCommand(
-          makePublishCommand(
-            ggLog: ggLog,
-            ensureInRegistry: mockEnsureInRegistry,
-            ggDoPublish: mockGgDoPublish,
-            ggDoCommit: mockGgDoCommit,
-            ggDoPush: mockGgDoPush,
-            unlocalizeRefs: mockUnlocalizeRefs,
-            sortedProcessingList: mockSortedProcessingList,
-            processRunner: mockProcessRunner.call,
-            canPublishCommand: mockCanPublishCommand,
-            didReviewCommand: mockDidReviewCommand,
-            getVersionCommand: mockGetVersion,
-            setRefVersionCommand: mockSetRefVersion,
-            getRefVersionCommand: mockGetRefVersion,
-            pubDevChecker: mockPubDevChecker,
-          ),
-        );
-
-      await runner.run([
-        'publish',
-        '--input',
-        ticketDir.path,
-      ]);
-
-      expect(
-        messages.any((m) => m.contains('Failed to delete remote branch')),
-        isFalse,
-      );
-      expect(
-        messages.any((m) => m.contains('Failed to delete repository A')),
-        isFalse,
-      );
-      // The repo is cleaned up as if we had deleted the branch ourselves.
-      expect(Directory(path.join(ticketDir.path, 'A')).existsSync(), isFalse);
-    });
-
     test('invokes RestorePublishTo after unlocalize for each repo', () async {
       final mockGgDoPublish = MockGgDoPublish();
       final mockGgDoCommit = MockGgDoCommit();
@@ -3770,7 +2698,8 @@ void main() {
         ticketDir.path,
       ]);
 
-      expect(order, ['unlocalize', 'restore', 'commit']);
+      // The second commit is the workspace restore after the publish.
+      expect(order, ['unlocalize', 'restore', 'commit', 'commit']);
     });
 
     test('aborts when RestorePublishTo throws', () async {
@@ -4126,7 +3055,9 @@ void main() {
 
       await runner.run(['publish', '--input', ticketDir.path]);
 
-      // Capture env to assert PNPM_CONFIG_BLOCK_EXOTIC_SUBDEPS=false.
+      // Two installs: one while the refs are pointed at the registry, one
+      // when the workspace state is restored after the publish. Capture env
+      // to assert PNPM_CONFIG_BLOCK_EXOTIC_SUBDEPS=false.
       final captured = verify(
         () => mockProcessRunner(
           'npm',
@@ -4135,9 +3066,10 @@ void main() {
           environment: captureAny(named: 'environment'),
         ),
       ).captured;
-      expect(captured.length, 1);
-      final env = captured.single as Map<String, String>;
-      expect(env['PNPM_CONFIG_BLOCK_EXOTIC_SUBDEPS'], 'false');
+      expect(captured.length, 2);
+      for (final env in captured.cast<Map<String, String>>()) {
+        expect(env['PNPM_CONFIG_BLOCK_EXOTIC_SUBDEPS'], 'false');
+      }
 
       verifyNever(
         () => mockProcessRunner(
@@ -4311,6 +3243,8 @@ void main() {
       final mockSortedProcessingList = MockSortedProcessingList();
       final mockProcessRunner = MockProcessRunner();
       _stubRepoSnapshot(mockProcessRunner);
+      // The workspace restore resolves the Dart side of the bridge.
+      _stubPubUpgrade(mockProcessRunner);
       final mockCanPublishCommand = MockCanPublishCommand();
       final mockDidReviewCommand = MockDidReviewCommand();
       final mockGetVersion = MockGetVersion();
@@ -4446,9 +3380,10 @@ void main() {
 
       await runner.run(['publish', '--input', ticketDir.path]);
 
-      // The refresh handles the TypeScript install (with the pnpm env
-      // override); the Dart side is covered by the upgrade step, so no
-      // duplicate »dart pub upgrade« runs here.
+      // The pre-publish refresh handles the TypeScript install only (the
+      // Dart side is covered by the upgrade step); the workspace restore
+      // after the publish installs the TypeScript side again and resolves
+      // the Dart side once.
       final captured = verify(
         () => mockProcessRunner(
           'npm',
@@ -4457,18 +3392,19 @@ void main() {
           environment: captureAny(named: 'environment'),
         ),
       ).captured;
-      expect(captured.length, 1);
-      final env = captured.single as Map<String, String>;
-      expect(env['PNPM_CONFIG_BLOCK_EXOTIC_SUBDEPS'], 'false');
+      expect(captured.length, 2);
+      for (final env in captured.cast<Map<String, String>>()) {
+        expect(env['PNPM_CONFIG_BLOCK_EXOTIC_SUBDEPS'], 'false');
+      }
 
-      verifyNever(
+      verify(
         () => mockProcessRunner(
           'dart',
           ['pub', 'upgrade'],
           workingDirectory: repoADir.path,
           environment: any(named: 'environment'),
         ),
-      );
+      ).called(1);
     });
 
     test(
@@ -4649,9 +3585,10 @@ void main() {
 
       await runner.run(['publish', '--input', ticketDir.path, '--continue']);
 
-      // On this path the upgrade step is skipped, so the refresh covers
-      // BOTH sides: the TypeScript install (with the pnpm env override)
-      // AND the Dart pubspec.lock via dart pub upgrade.
+      // On this path the upgrade step is skipped, so the pre-publish
+      // refresh covers BOTH sides: the TypeScript install (with the pnpm
+      // env override) AND the Dart pubspec.lock via dart pub upgrade. The
+      // second call of each is the workspace restore after the publish.
       final captured = verify(
         () => mockProcessRunner(
           'npm',
@@ -4660,9 +3597,10 @@ void main() {
           environment: captureAny(named: 'environment'),
         ),
       ).captured;
-      expect(captured.length, 1);
-      final env = captured.single as Map<String, String>;
-      expect(env['PNPM_CONFIG_BLOCK_EXOTIC_SUBDEPS'], 'false');
+      expect(captured.length, 2);
+      for (final env in captured.cast<Map<String, String>>()) {
+        expect(env['PNPM_CONFIG_BLOCK_EXOTIC_SUBDEPS'], 'false');
+      }
 
       verify(
         () => mockProcessRunner(
@@ -4671,7 +3609,7 @@ void main() {
           workingDirectory: repoADir.path,
           environment: any(named: 'environment'),
         ),
-      ).called(1);
+      ).called(2);
     });
   });
 
@@ -6541,7 +5479,12 @@ void main() {
     });
 
     /// Builds the command under test with all mocks wired up.
-    CommandRunner<void> buildRunner() =>
+    CommandRunner<void> buildRunner({
+      gg.DidPublish? ggDidPublish,
+      gg.InteractAdapter? interactAdapter,
+      gg.HasTerminal? hasTerminal,
+      TicketState? ticketState,
+    }) =>
         CommandRunner<void>('test', 'do publish ticket')
           ..addCommand(
             makePublishCommand(
@@ -6560,6 +5503,10 @@ void main() {
               getRefVersionCommand: mockGetRefVersion,
               pubDevChecker: mockPubDevChecker,
               publishSkipCheck: mockSkipCheck,
+              ggDidPublish: ggDidPublish,
+              interactAdapter: interactAdapter,
+              hasTerminal: hasTerminal,
+              ticketState: ticketState,
             ),
           );
 
@@ -6642,14 +5589,19 @@ void main() {
       );
     });
 
-    test('points the refs of a skipped repo at the published versions',
+    test('keeps the localized refs of a skipped repo and records didPublish',
         () async {
-      // The ticket cleanup deletes the feature branch the review pinned the
-      // refs to, so a repo that was not published must leave that mode too -
-      // otherwise its next »dart pub get« cannot resolve anything.
+      // A skipped repo stays workable: its references keep pointing at the
+      // sibling checkouts, because the ticket stays in place. Only the
+      // published repo is unlocalized for its release.
       stubSkipCheck({'A'});
+      final mockGgDidPublish = MockGgDidPublish();
+      when(
+        () => mockGgDidPublish.set(directory: any(named: 'directory')),
+      ).thenAnswer((_) async {});
 
-      await buildRunner().run(['publish', '--input', ticketDir.path]);
+      await buildRunner(ggDidPublish: mockGgDidPublish)
+          .run(['publish', '--input', ticketDir.path]);
 
       final unlocalized = verify(
         () => mockUnlocalizeRefs.get(
@@ -6657,30 +5609,45 @@ void main() {
           ggLog: any(named: 'ggLog'),
         ),
       ).captured.cast<Directory>().map((d) => path.basename(d.path));
+      expect(unlocalized, isNot(contains('A')));
+      expect(unlocalized, contains('B'));
 
-      expect(unlocalized, contains('A'));
+      // Both repos are recorded as published: B by its publish, the
+      // skipped A because its content is already released.
+      final recorded = verify(
+        () => mockGgDidPublish.set(directory: captureAny(named: 'directory')),
+      ).captured.cast<Directory>().map((d) => path.basename(d.path));
+      expect(recorded, containsAll(<String>['A', 'B']));
     });
 
-    test('reports a repo whose refs could not be changed and continues',
-        () async {
+    test(
+        'reports a didPublish marker that could not be written and '
+        'continues', () async {
       stubSkipCheck({'A'});
+      final mockGgDidPublish = MockGgDidPublish();
       when(
-        () => mockUnlocalizeRefs.get(
+        () => mockGgDidPublish.set(
           directory: any(
             named: 'directory',
             that: predicate<Directory>((d) => path.basename(d.path) == 'A'),
           ),
-          ggLog: any(named: 'ggLog'),
         ),
-      ).thenThrow(Exception('no remote'));
+      ).thenThrow(Exception('no commits yet'));
+      when(
+        () => mockGgDidPublish.set(
+          directory: any(
+            named: 'directory',
+            that: predicate<Directory>((d) => path.basename(d.path) == 'B'),
+          ),
+        ),
+      ).thenAnswer((_) async {});
 
-      await buildRunner().run(['publish', '--input', ticketDir.path]);
+      await buildRunner(ggDidPublish: mockGgDidPublish)
+          .run(['publish', '--input', ticketDir.path, '--verbose']);
 
       expect(
         messages.any(
-          (m) => m.contains(
-            'Could not point the references of A at the published versions',
-          ),
+          (m) => m.contains('Could not record didPublish for A'),
         ),
         isTrue,
       );
@@ -6690,6 +5657,281 @@ void main() {
         File(path.join(ticketDir.path, '.gg', 'gg-publish.json')).existsSync(),
         isFalse,
       );
+    });
+
+    test('saves and restores pubspec_overrides.yaml around a publish',
+        () async {
+      stubSkipCheck({'A'});
+      const overrides = 'dependency_overrides:\n  A:\n    path: ../A\n';
+      File(path.join(ticketDir.path, 'B', 'pubspec_overrides.yaml'))
+          .writeAsStringSync(overrides);
+
+      await buildRunner()
+          .run(['publish', '--input', ticketDir.path, '--verbose']);
+
+      final log = messages.join('\n');
+      expect(
+        log,
+        contains(
+          '✓ B: saved pubspec_overrides.yaml to '
+          '.gg/pubspec_overrides_backup.yaml.',
+        ),
+      );
+      expect(log, contains('✓ B: restored pubspec_overrides.yaml.'));
+
+      // The overrides file is back and the backup is consumed.
+      expect(
+        File(path.join(ticketDir.path, 'B', 'pubspec_overrides.yaml'))
+            .readAsStringSync(),
+        overrides,
+      );
+      expect(
+        File(
+          path.join(
+            ticketDir.path,
+            'B',
+            '.gg',
+            'pubspec_overrides_backup.yaml',
+          ),
+        ).existsSync(),
+        isFalse,
+      );
+    });
+
+    test('warns when the workspace state could not be restored', () async {
+      stubSkipCheck(<String>{});
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['checkout', 'TICKPB'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 1, '', 'checkout broken'));
+
+      await buildRunner().run(['publish', '--input', ticketDir.path]);
+
+      // The publish itself succeeded — the restore failure is a warning,
+      // and the run still completes.
+      final log = messages.join('\n');
+      expect(
+        log,
+        contains('workspace state could not be restored'),
+      );
+      expect(log, contains('All repos published'));
+    });
+
+    test('aborts the merge and warns when the sync-back conflicts', () async {
+      stubSkipCheck(<String>{});
+      when(
+        () => mockProcessRunner(
+          'git',
+          [
+            'merge',
+            '-m',
+            '#gg: merge the published main back into TICKPB',
+            'main',
+          ],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 1, '', 'conflict'));
+      when(
+        () => mockProcessRunner(
+          'git',
+          ['merge', '--abort'],
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+      await buildRunner().run(['publish', '--input', ticketDir.path]);
+
+      final log = messages.join('\n');
+      expect(log, contains('Could not merge main back into TICKPB'));
+      // The rest of the restore still ran.
+      expect(log, contains('back on TICKPB — local references restored'));
+    });
+
+    test('warns when the didReview state cannot be refreshed', () async {
+      stubSkipCheck({'A', 'B'});
+      final ticketState = MockTicketState();
+      when(
+        () => ticketState.writeSuccess(
+          ticketDir: any(named: 'ticketDir'),
+          subs: any(named: 'subs'),
+          key: any(named: 'key'),
+          ignoreUnstaged: any(named: 'ignoreUnstaged'),
+        ),
+      ).thenThrow(Exception('no git'));
+
+      await buildRunner(ticketState: ticketState)
+          .run(['publish', '--input', ticketDir.path]);
+
+      expect(
+        messages.join('\n'),
+        contains('Could not refresh the didReview state'),
+      );
+    });
+
+    test('re-blesses didReview at the end of a successful run', () async {
+      stubSkipCheck({'A', 'B'});
+      final ticketState = MockTicketState();
+      when(
+        () => ticketState.writeSuccess(
+          ticketDir: any(named: 'ticketDir'),
+          subs: any(named: 'subs'),
+          key: any(named: 'key'),
+          ignoreUnstaged: any(named: 'ignoreUnstaged'),
+        ),
+      ).thenAnswer((_) async {});
+
+      await buildRunner(ticketState: ticketState)
+          .run(['publish', '--input', ticketDir.path]);
+
+      verify(
+        () => ticketState.writeSuccess(
+          ticketDir: any(named: 'ticketDir'),
+          subs: any(named: 'subs'),
+          key: 'didReview',
+        ),
+      ).called(1);
+    });
+
+    group('when nothing is left to publish', () {
+      test('offers the cleanup and trashes the ticket on accept', () async {
+        // Both repos skip — the run publishes nothing.
+        stubSkipCheck({'A', 'B'});
+        File(path.join(ticketDir.path, 'TICKPB.code-workspace'))
+            .writeAsStringSync('{"folders": []}');
+        when(
+          () => mockProcessRunner(
+            'git',
+            ['push', 'origin', '--delete', 'TICKPB'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+        final adapter = MockInteractAdapter();
+        when(
+          () => adapter.choose(
+            message: any(named: 'message'),
+            options: any(named: 'options'),
+          ),
+        ).thenAnswer((_) async => 0);
+
+        await buildRunner(
+          interactAdapter: adapter,
+          hasTerminal: () => true,
+        ).run(['publish', '--input', ticketDir.path]);
+
+        // The offer names both ways out.
+        final options = verify(
+          () => adapter.choose(
+            message: any(named: 'message'),
+            options: captureAny(named: 'options'),
+          ),
+        ).captured.single as List<String>;
+        expect(options, hasLength(2));
+        expect(options.first, contains('.trash'));
+        expect(options.last, contains('gg do rm ticket'));
+
+        // Everything moved to the trash, the remote branches are gone and
+        // the way to the workspace root is printed in blue.
+        final trashDir = Directory(
+          path.join(tempDir.path, '.trash', 'TICKPB'),
+        );
+        expect(Directory(path.join(trashDir.path, 'A')).existsSync(), isTrue);
+        expect(Directory(path.join(trashDir.path, 'B')).existsSync(), isTrue);
+        expect(
+          File(path.join(trashDir.path, 'TICKPB.code-workspace')).existsSync(),
+          isTrue,
+        );
+        expect(ticketDir.existsSync(), isFalse);
+        verify(
+          () => mockProcessRunner(
+            'git',
+            ['push', 'origin', '--delete', 'TICKPB'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).called(2);
+        expect(
+          messages.join('\n'),
+          contains('Change to the workspace root with:'),
+        );
+        expect(coloredMessages, contains(cCmd('  cd ${tempDir.path}')));
+      });
+
+      test('keeps the ticket when the user declines', () async {
+        stubSkipCheck({'A', 'B'});
+        final adapter = MockInteractAdapter();
+        when(
+          () => adapter.choose(
+            message: any(named: 'message'),
+            options: any(named: 'options'),
+          ),
+        ).thenAnswer((_) async => 1);
+
+        await buildRunner(
+          interactAdapter: adapter,
+          hasTerminal: () => true,
+        ).run(['publish', '--input', ticketDir.path]);
+
+        expect(ticketDir.existsSync(), isTrue);
+        expect(
+          Directory(path.join(tempDir.path, '.trash', 'TICKPB')).existsSync(),
+          isFalse,
+        );
+        expect(coloredMessages, contains(cCmd('  gg do rm ticket')));
+      });
+
+      test('keeps the ticket without asking when stdin is no terminal',
+          () async {
+        stubSkipCheck({'A', 'B'});
+        final adapter = MockInteractAdapter();
+
+        await buildRunner(
+          interactAdapter: adapter,
+          hasTerminal: () => false,
+        ).run(['publish', '--input', ticketDir.path]);
+
+        verifyNever(
+          () => adapter.choose(
+            message: any(named: 'message'),
+            options: any(named: 'options'),
+          ),
+        );
+        expect(ticketDir.existsSync(), isTrue);
+      });
+
+      test('--no-delete-remote-branch keeps the branches when trashing',
+          () async {
+        stubSkipCheck({'A', 'B'});
+        final adapter = MockInteractAdapter();
+        when(
+          () => adapter.choose(
+            message: any(named: 'message'),
+            options: any(named: 'options'),
+          ),
+        ).thenAnswer((_) async => 0);
+
+        await buildRunner(
+          interactAdapter: adapter,
+          hasTerminal: () => true,
+        ).run([
+          'publish',
+          '--input',
+          ticketDir.path,
+          '--no-delete-remote-branch',
+        ]);
+
+        // Trashed, but no branch deletion was attempted.
+        expect(ticketDir.existsSync(), isFalse);
+        verifyNever(
+          () => mockProcessRunner(
+            'git',
+            ['push', 'origin', '--delete', 'TICKPB'],
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        );
+      });
     });
 
     test('--publish-unchanged publishes every repo unchecked', () async {
@@ -7077,13 +6319,15 @@ void main() {
         ),
       );
 
-      // A merge trashes the ticket exactly like a publish does.
+      // A merge keeps the ticket exactly like a publish does — the repos
+      // stay in place and workable.
       expect(
-        Directory(path.join(tempDir.path, '.trash', 'TICKPB', 'A'))
-            .existsSync(),
-        isTrue,
+        Directory(path.join(tempDir.path, '.trash', 'TICKPB')).existsSync(),
+        isFalse,
       );
-      expect(ticketDir.existsSync(), isFalse);
+      expect(ticketDir.existsSync(), isTrue);
+      expect(messages.join('\n'), contains('All repos merged'));
+      expect(messages.join('\n'), contains('The ticket stays in place'));
     });
 
     test('refuses while a repo redirects refs to a working copy', () async {
@@ -7668,7 +6912,8 @@ void main() {
         expect(calls, isNot(contains('cancommit:B')));
 
         // The Dart refresh of _changeRefsToPubDev only runs where the
-        // upgrade step is skipped: for B (step progress), not for A.
+        // upgrade step is skipped: for B (step progress), not for A. The
+        // workspace restore after each publish adds one resolve per repo.
         verify(
           () => mockProcessRunner(
             'dart',
@@ -7676,15 +6921,15 @@ void main() {
             workingDirectory: path.join(ticketDir.path, 'B'),
             environment: any(named: 'environment'),
           ),
-        ).called(1);
-        verifyNever(
+        ).called(2);
+        verify(
           () => mockProcessRunner(
             'dart',
             ['pub', 'upgrade'],
             workingDirectory: path.join(ticketDir.path, 'A'),
             environment: any(named: 'environment'),
           ),
-        );
+        ).called(1);
       });
 
       test('re-checks a repo that made no publish progress', () async {
@@ -7819,11 +7064,39 @@ void _stubRepoSnapshot(MockProcessRunner runner) {
       workingDirectory: any(named: 'workingDirectory'),
     ),
   ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+
+  // The post-publish workspace restore: back to the feature branch, then
+  // merge the released main state into it.
+  when(
+    () => runner(
+      'git',
+      ['checkout', 'TICKPB'],
+      workingDirectory: any(named: 'workingDirectory'),
+    ),
+  ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
+  when(
+    () => runner(
+      'git',
+      [
+        'merge',
+        '-m',
+        '#gg: merge the published main back into TICKPB',
+        'main',
+      ],
+      workingDirectory: any(named: 'workingDirectory'),
+    ),
+  ).thenAnswer((_) async => ProcessResult(0, 0, '', ''));
 }
 
 /// Builds a [DoPublishCommand] whose upgrade and can-commit collaborators
 /// default to pre-stubbed mocks — otherwise every test reaching
 /// `_publishRepo` would run a real »dart pub upgrade« and real checks.
+///
+/// The post-publish collaborators (re-localization, didPublish, ticket
+/// state) default to pre-stubbed mocks as well, and [hasTerminal] defaults
+/// to `false`, so runs behave headless: the cleanup offer is skipped and
+/// the ticket is kept. Tests about the offer inject an adapter plus
+/// `hasTerminal: () => true`.
 DoPublishCommand makePublishCommand({
   required GgLog ggLog,
   bool mergeOnly = false,
@@ -7831,9 +7104,11 @@ DoPublishCommand makePublishCommand({
   gg.DoUpgradeDeps? ggDoUpgradeDeps,
   gg.CanCommit? ggCanCommit,
   ChangeRefsToPubDev? unlocalizeRefs,
+  ChangeRefsToLocal? localizeRefs,
   RestorePublishTo? restorePublishTo,
   gg.DoPush? ggDoPush,
   gg.DoPublish? ggDoPublish,
+  gg.DidPublish? ggDidPublish,
   SortedProcessingList? sortedProcessingList,
   Future<ProcessResult> Function(
     String,
@@ -7852,6 +7127,9 @@ DoPublishCommand makePublishCommand({
   DoConfigurePublishCommand? doConfigurePublishCommand,
   gg.EnsurePublishConfigIgnored? ensureIgnored,
   EnsureInRegistry? ensureInRegistry,
+  TicketState? ticketState,
+  gg.InteractAdapter? interactAdapter,
+  gg.HasTerminal? hasTerminal,
 }) {
   if (ggDoUpgradeDeps == null) {
     final mock = MockGgDoUpgradeDeps();
@@ -7873,6 +7151,35 @@ DoPublishCommand makePublishCommand({
     ).thenAnswer((_) async {});
     ggCanCommit = mock;
   }
+  if (localizeRefs == null) {
+    final mock = MockLocalizeRefs();
+    when(
+      () => mock.get(
+        directory: any(named: 'directory'),
+        ggLog: any(named: 'ggLog'),
+      ),
+    ).thenAnswer((_) async {});
+    localizeRefs = mock;
+  }
+  if (ggDidPublish == null) {
+    final mock = MockGgDidPublish();
+    when(
+      () => mock.set(directory: any(named: 'directory')),
+    ).thenAnswer((_) async {});
+    ggDidPublish = mock;
+  }
+  if (ticketState == null) {
+    final mock = MockTicketState();
+    when(
+      () => mock.writeSuccess(
+        ticketDir: any(named: 'ticketDir'),
+        subs: any(named: 'subs'),
+        key: any(named: 'key'),
+        ignoreUnstaged: any(named: 'ignoreUnstaged'),
+      ),
+    ).thenAnswer((_) async {});
+    ticketState = mock;
+  }
   return DoPublishCommand(
     ggLog: ggLog,
     mergeOnly: mergeOnly,
@@ -7880,9 +7187,11 @@ DoPublishCommand makePublishCommand({
     ggDoUpgradeDeps: ggDoUpgradeDeps,
     ggCanCommit: ggCanCommit,
     unlocalizeRefs: unlocalizeRefs,
+    localizeRefs: localizeRefs,
     restorePublishTo: restorePublishTo,
     ggDoPush: ggDoPush,
     ggDoPublish: ggDoPublish,
+    ggDidPublish: ggDidPublish,
     sortedProcessingList: sortedProcessingList,
     processRunner: processRunner,
     canPublishCommand: canPublishCommand,
@@ -7896,5 +7205,8 @@ DoPublishCommand makePublishCommand({
     doConfigurePublishCommand: doConfigurePublishCommand,
     ensureIgnored: ensureIgnored,
     ensureInRegistry: ensureInRegistry,
+    ticketState: ticketState,
+    interactAdapter: interactAdapter ?? MockInteractAdapter(),
+    hasTerminal: hasTerminal ?? () => false,
   );
 }
