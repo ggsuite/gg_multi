@@ -4,10 +4,7 @@
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
 
-import 'dart:io';
-
 import 'package:args/command_runner.dart';
-import 'package:gg_args/gg_args.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:gg_multi/src/commands/do/upgrade.dart';
 import 'package:test/test.dart';
@@ -17,16 +14,15 @@ void main() {
     final messages = <String>[];
 
     test('should register all subcommands', () async {
+      // The subcommand implementations live in gg_multi_commit (deps)
+      // and gg_multi_workspace (ocean), so the expected set is pinned
+      // here instead of being derived from a directory listing.
       final upgradeCommand = UpgradeCommand(ggLog: messages.add);
-      final commandsDir = Directory(
-        'lib${Platform.pathSeparator}src${Platform.pathSeparator}'
-        'commands${Platform.pathSeparator}do${Platform.pathSeparator}upgrade',
+      // 'master' is the legacy alias of the ocean subcommand.
+      expect(
+        upgradeCommand.subcommands.keys,
+        unorderedEquals(['deps', 'ocean', 'master']),
       );
-      final (subCommands, errorMessage) = await missingSubCommands(
-        directory: commandsDir,
-        command: upgradeCommand,
-      );
-      expect(subCommands, isEmpty, reason: errorMessage);
     });
 
     test('prints help message including ocean', () async {

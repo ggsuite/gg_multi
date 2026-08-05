@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.13.1 - 2026-08-05
+
+### Changed
+
+- Split gg_multi into multiple packages
+
 ## 7.13.0 - 2026-08-04
 
 ### Changed

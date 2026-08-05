@@ -7,9 +7,7 @@
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
 
-import 'did/commit.dart';
-import 'did/push.dart';
-import 'did/review.dart';
+import 'package:gg_multi_commit/gg_multi_commit.dart';
 
 /// Commands to check whether actions were already completed.
 class Did extends Command<void> {

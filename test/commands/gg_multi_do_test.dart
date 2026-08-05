@@ -7,7 +7,6 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg_args/gg_args.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:gg_multi/src/commands/gg_multi_do.dart';
 import 'package:test/test.dart';
@@ -29,32 +28,28 @@ void main() {
     });
 
     test('should show all sub commands', () async {
+      // The subcommand implementations live in the gg_multi_* packages,
+      // so the expected set is pinned here instead of being derived from
+      // a directory listing. configure-publish is deliberately not
+      // registered — `do publish` runs it automatically when needed.
       final doCommand = Do(ggLog: messages.add);
-      // Update the directory path to use the correct path separator
-      final commandsDir = Directory(
-        'lib${Platform.pathSeparator}src${Platform.pathSeparator}'
-        'commands${Platform.pathSeparator}do',
-      );
-      final (subCommands, errorMessage) = await missingSubCommands(
-        directory: commandsDir,
-        command: doCommand,
-        additionalSubCommands: [
-          'commit',
-          'push',
-          'publish',
-          'review',
-        ],
-      );
-
-      // Files in do/ that are deliberately not registered as subcommands.
-      // missingSubCommands derives its expectation from the file names, so
-      // it reports them although that is exactly what we want.
-      const notRegistered = ['configure-publish'];
-
       expect(
-        subCommands.where((c) => !notRegistered.contains(c)),
-        isEmpty,
-        reason: errorMessage,
+        doCommand.subcommands.keys,
+        unorderedEquals([
+          'add',
+          'code',
+          'commit',
+          'create',
+          'exec',
+          'import',
+          'init',
+          'ls',
+          'publish',
+          'push',
+          'review',
+          'rm',
+          'upgrade',
+        ]),
       );
     });
 

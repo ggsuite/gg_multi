@@ -7,8 +7,8 @@
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
 
-import 'upgrade/deps.dart';
-import 'upgrade/ocean.dart';
+import 'package:gg_multi_commit/gg_multi_commit.dart';
+import 'package:gg_multi_workspace/gg_multi_workspace.dart';
 
 /// Command to bring parts of the workspace in sync with their remotes.
 class UpgradeCommand extends Command<void> {
