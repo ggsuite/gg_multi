@@ -6,20 +6,11 @@
 
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
-import 'package:gg_multi/src/commands/do/add.dart';
-import 'package:gg_multi/src/commands/do/code.dart';
-import 'package:gg_multi/src/commands/do/create.dart';
-import 'package:gg_multi/src/commands/do/import.dart';
-import 'package:gg_multi/src/commands/do/init.dart';
-import 'package:gg_multi/src/commands/do/rm.dart';
+import 'package:gg_multi_workspace/gg_multi_workspace.dart';
 import 'package:gg_multi/src/commands/do/upgrade.dart';
 
-import 'do/commit.dart';
-import 'do/exec.dart';
-import 'do/ls.dart';
-import 'do/publish.dart';
-import 'do/push.dart';
-import 'do/review.dart';
+import 'package:gg_multi_commit/gg_multi_commit.dart';
+import 'package:gg_multi_do_publish/gg_multi_do_publish.dart';
 
 /// Command to perform actions such as committing
 /// and pushing across ticket repositories.

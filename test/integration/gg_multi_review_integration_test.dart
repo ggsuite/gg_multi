@@ -9,17 +9,10 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg_multi/src/backend/constants.dart';
-import 'package:gg_multi/src/backend/filesystem_utils.dart';
-import 'package:gg_multi/src/commands/can/commit.dart';
-import 'package:gg_multi/src/commands/can/review.dart';
-import 'package:gg_multi/src/commands/do/add.dart';
-import 'package:gg_multi/src/commands/do/commit.dart';
-import 'package:gg_multi/src/commands/do/create/ticket.dart';
-import 'package:gg_multi/src/commands/do/init/workspace.dart';
-import 'package:gg_multi/src/commands/do/publish.dart';
-import 'package:gg_multi/src/commands/do/push.dart';
-import 'package:gg_multi/src/commands/do/review.dart';
+import 'package:gg_multi_core/gg_multi_core.dart';
+import 'package:gg_multi_commit/gg_multi_commit.dart';
+import 'package:gg_multi_workspace/gg_multi_workspace.dart';
+import 'package:gg_multi_do_publish/gg_multi_do_publish.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_publish/gg_publish.dart';
 import 'package:gg_status_printer/gg_status_printer.dart';

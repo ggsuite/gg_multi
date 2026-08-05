@@ -7,7 +7,6 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:gg_args/gg_args.dart';
 import 'package:gg_capture_print/gg_capture_print.dart';
 import 'package:gg_multi/src/commands/gg_multi_can.dart';
 import 'package:test/test.dart';
@@ -29,19 +28,14 @@ void main() {
     });
 
     test('should show all sub commands', () async {
+      // The subcommand implementations live in gg_multi_commit and
+      // gg_multi_do_publish, so the expected set is pinned here instead
+      // of being derived from a directory listing.
       final canCommand = Can(ggLog: messages.add);
-      // Update the directory path to use the correct path separator
-      final commandsDir = Directory(
-        'lib${Platform.pathSeparator}src${Platform.pathSeparator}'
-        'commands${Platform.pathSeparator}can',
+      expect(
+        canCommand.subcommands.keys,
+        unorderedEquals(['commit', 'push', 'publish', 'review']),
       );
-      final (subCommands, errorMessage) = await missingSubCommands(
-        directory: commandsDir,
-        command: canCommand,
-        additionalSubCommands: ['commit', 'push', 'publish', 'review'],
-      );
-
-      expect(subCommands, isEmpty, reason: errorMessage);
     });
 
     test('prints help message when --help is passed', () async {

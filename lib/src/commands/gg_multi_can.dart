@@ -6,10 +6,8 @@
 
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
-import 'package:gg_multi/src/commands/can/commit.dart';
-import 'package:gg_multi/src/commands/can/publish.dart';
-import 'package:gg_multi/src/commands/can/push.dart';
-import 'package:gg_multi/src/commands/can/review.dart';
+import 'package:gg_multi_commit/gg_multi_commit.dart';
+import 'package:gg_multi_do_publish/gg_multi_do_publish.dart';
 
 /// Commands to check if actions can be performed for the current ticket
 class Can extends Command<void> {
