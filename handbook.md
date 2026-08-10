@@ -416,7 +416,7 @@ Gg Multi führt dann im Wesentlichen folgende Schritte aus:
    - Gg Multi ermittelt, welche Repositories das Ticket überhaupt veröffentlicht. Repositories ohne eigene Änderungen — sie sind oft nur im Ticket, weil sie in der Abhängigkeitskette zwischen zwei geänderten Paketen liegen — werden mit Begründung übersprungen.
    - Für jedes Repository, das veröffentlicht wird, fragt Gg Multi nach dem Versionssprung (`patch` / `minor` / `major`) und nach der Merge Nachricht.
    - Die Antworten landen in `<repo>/.gg/publish_config.json` — pro Repository eine Datei. `gg_multi do publish` liest sie später.
-   - **Gefragt wird jedes Mal wieder**: Ein zweiter `do review` Lauf zeigt die zuvor gegebenen Antworten als Vorauswahl an, sodass du sie bestätigen oder korrigieren kannst. Nur ein Lauf ohne Terminal (CI) übernimmt sie ungefragt.
+   - **Ein zweiter `do review` Lauf fragt alles wieder** und zeigt die zuvor gegebenen Antworten als Vorauswahl an — so korrigierst du eine Entscheidung. `gg_multi do publish` fragt danach nur noch das, was offen geblieben ist; es wiederholt die Fragen des Reviews nicht. Ein Lauf ohne Terminal (CI) übernimmt die Antworten ungefragt.
 
 3. Pull Requests
    - Für jedes Repository, das veröffentlicht wird, wird ein Pull Request geöffnet (oder ein bestehender wiederverwendet) und seine Url ausgegeben. Titel ist die Merge Nachricht, Beschreibung sind die in `commits` gesammelten Commit-Messages dieses Repositories.
