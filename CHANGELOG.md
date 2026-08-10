@@ -1,5 +1,12 @@
 # Changelog
 
+## 9.1.0 - 2026-08-10
+
+### Changed
+
+- CLAUDE.md and handbook document the per-repo `.gg/publish_config.json` the AI maintains
+- Refactor commit messages, version increment
+
 ## 9.0.0 - 2026-08-10
 
 ### Changed
