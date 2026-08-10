@@ -5,6 +5,11 @@
 ### Changed
 
 - CLAUDE.md and handbook document the per-repo `.gg/publish_config.json` the AI maintains
+## 9.0.0 - 2026-08-10
+
+### Changed
+
+- No tickets folder anymore. Plain repos in ticket.
 
 ## 8.3.2 - 2026-08-10
 
