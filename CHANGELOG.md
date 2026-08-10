@@ -5,6 +5,11 @@
 ### Changed
 
 - No tickets folder anymore. Plain repos in ticket.
+## 8.3.2 - 2026-08-10
+
+### Fixed
+
+- Various fixes
 
 ## 8.3.1 - 2026-08-10
 
