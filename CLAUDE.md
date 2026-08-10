@@ -37,9 +37,9 @@ Since ticket 96 the implementation lives in four sub-packages; this repo is the 
 
 | Package               | Role                                                                                                                                                      |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `gg_multi_core`       | The workspace model: ocean/tickets/trash layout, organization folders, url parsing, git platforms, ticket metadata & state, git snapshot helpers, the publish skip check, the shared `ProcessRunner`/`EditMessage` typedefs. |
+| `gg_multi_core`       | The workspace model: ocean/tickets/trash layout, organization folders, url parsing, git platforms, ticket metadata & state, git snapshot helpers, the publish skip check, the `PublishPlanner` shared by `do review` and `do publish`, the shared `ProcessRunner`/`EditMessage` typedefs. |
 | `gg_multi_workspace`  | Workspace management commands: `do add`, `do import ticket`, `do rm repo/ticket`, `do create ticket/graph`, `do upgrade ocean`, `do init workspace/claude`, `do code`, `do ls …`, `do exec cmd`. Depends on core. |
-| `gg_multi_commit`     | Daily ticket flows: `can/did/do commit`, `push`, `review` and `do upgrade deps`. Depends on core.                                                          |
+| `gg_multi_commit`     | Daily ticket flows: `can/did/do commit`, `push`, `review` — which also plans the release, asks the version increments and opens the pull requests of the repos that are actually published — and `do upgrade deps`. Depends on core. |
 | `gg_multi_do_publish` | The publish orchestrator: `do publish` (+ `--merge-only`), `do configure-publish`, `can publish`, `EnsureInRegistry`, the registry checkers. Depends on core + commit. |
 
 Each sub-package carries its own `CLAUDE.md` with the detailed behavior notes for its commands; consult those when working on the respective flows.
