@@ -117,7 +117,7 @@ when a repo is in a bad state.
 | ----------------------------------- | ----------------------------------------------------------------------------------- |
 | `gg_multi do commit [-m <message>]` | commit every ticket repo with the same message (defaults to the ticket description) |
 | `gg_multi do push [--force]`        | merge the main branches into the feature branches and push every ticket repo        |
-| `gg_multi do review`                | push (incl. main merge), open a pull request per repo and record the review         |
+| `gg_multi do review`                | push (incl. main merge), plan the release, open a pull request per released repo and record the review |
 | `gg_multi do publish`               | publish every publishable package of the ticket (requires `did review`)             |
 
 `do review` runs `do push` automatically before it opens the pull
@@ -275,8 +275,27 @@ This runs:
 1. `can review` — every repo must be on a feature branch and committed.
 2. `do push` — the remote main branch is merged into every feature
    branch, then every repo is pushed.
-3. A pull request is opened (or reused) per repo and its url printed.
-4. The ticket state is recorded as reviewed (`did review`).
+3. The release is planned: which repos does the ticket actually publish?
+   For each of them you are asked for the version increment
+   (`patch` / `minor` / `major`) and the merge message.
+4. A pull request is opened (or reused) for each of *those* repos, titled
+   with its merge message, and its url printed.
+5. The ticket state is recorded as reviewed (`did review`).
+
+Repos that are only part of the ticket because they sit between two
+changed packages get **no question and no pull request** — they are not
+released, so there is nothing to decide and nothing to review. Each one
+is reported with the reason instead:
+
+```
+gg_multi_workspace
+✓ Not published — no pull request. Nothing changed. Skip publishing.
+```
+
+The answers are stored in `<ticket>/.gg/gg-publish.json`, so the later
+`gg_multi do publish` finds them and asks nothing again. Running
+`do review` a second time only asks for what is still unanswered — a
+repo that just became releasable, for instance.
 
 The repos keep their local path references — a reviewer who wants to
 run the ticket recreates the whole setup with
@@ -317,7 +336,7 @@ state is recorded as `didPublish` in the repo's `.gg/gg.json`. You can
 keep working — and publish again from the same branch; repos whose
 content is already released are skipped automatically.
 
-Right after the version increments — and before anything is published —
+Right after the release is planned — and before anything is published —
 a menu asks what should happen to the ticket once the run is through.
 Pick with the cursor keys:
 
@@ -370,14 +389,14 @@ publish every repo of the ticket.
 
 #### Configuration up front, and resuming after a failure
 
-`gg_multi do publish` gathers **all** interactive input before the long,
-unattended publish starts. When no config is supplied it runs
-`gg_multi do configure-publish`, which asks — per repo, in dependency
-order — for the version increment (`patch` / `minor` / `major`) and the
-merge message, plus a single "delete the ticket?" choice, and writes the
-answers to `<ticket>/.gg/.gg-publish.json`. You can also run
-`gg_multi do configure-publish` on its own to prepare that file ahead of
-time.
+`gg_multi do review` already collected the version increments and merge
+messages and wrote them to `<ticket>/.gg/gg-publish.json`, so a reviewed
+ticket publishes without a single question. Should an answer be missing
+— no review wrote the file, `--restart` discarded it, or a repo only
+became releasable afterwards — `do publish` asks for it **up front**,
+before the long unattended part starts, and only for the repos it really
+publishes. You can also run `gg_multi do configure-publish` on its own to
+(re-)write that file ahead of time; it asks every question afresh.
 
 Pass `-m`/`--message` to set the **default merge message** that pre-fills
 each repo's prompt (hit enter to accept it, or edit per repo):
