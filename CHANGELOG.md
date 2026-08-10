@@ -1,5 +1,11 @@
 # Changelog
 
+## 9.0.0 - 2026-08-10
+
+### Changed
+
+- No tickets folder anymore. Plain repos in ticket.
+
 ## 8.3.2 - 2026-08-10
 
 ### Fixed

@@ -277,34 +277,34 @@ packages:
     dependency: "direct main"
     description:
       name: gg_multi_commit
-      sha256: aa311704a8201b55abfbddc0feb399ebbeae98254ed245ea02325a6f14a8a307
+      sha256: eaf994e74d3820e7e0bab5526e8ad8db89b7c5b85b00650148b100c05eb80545
       url: "https://pub.dev"
     source: hosted
-    version: "2.3.1"
+    version: "3.0.0"
   gg_multi_core:
     dependency: "direct main"
     description:
       name: gg_multi_core
-      sha256: "29b8d49a85e667c6587a3bfb28712305910048537af2c45869486cdff09151e7"
+      sha256: "908da430a99b69ddf85422e5fbf53f544c617929808eda13947f3536cfae1d61"
       url: "https://pub.dev"
     source: hosted
-    version: "2.3.1"
+    version: "3.0.0"
   gg_multi_do_publish:
     dependency: "direct main"
     description:
       name: gg_multi_do_publish
-      sha256: "6d5a8717ca86271f15cc09bce4424d7657635945c09b93c1004cee417d5ca995"
+      sha256: a271beacff4f4b74430890b86e01a25e19d7d2b6cffa85c25962a27ce4b70f3e
       url: "https://pub.dev"
     source: hosted
-    version: "2.4.2"
+    version: "3.0.0"
   gg_multi_workspace:
     dependency: "direct main"
     description:
       name: gg_multi_workspace
-      sha256: "36402145945d7e5624a4bc64c62dd2e362a3d8e36cd560d362d6a1cad74dd7de"
+      sha256: ea4263dbdf0131f5558cb215d831a424e27a84bcc3a2393a9ec021e9ef636377
       url: "https://pub.dev"
     source: hosted
-    version: "2.3.3"
+    version: "3.0.0"
   gg_one:
     dependency: "direct main"
     description:
