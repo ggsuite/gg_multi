@@ -253,10 +253,10 @@ packages:
     dependency: transitive
     description:
       name: gg_localize_refs
-      sha256: "4ae05832470a388cd6ccec799ddcd95299c6b8c4c3c4144cc0ca510a42d03d2e"
+      sha256: "16172e7f8198d3b8ae3442ebfd4059978f225d21b30ddefb960fb0c4659bdf6b"
       url: "https://pub.dev"
     source: hosted
-    version: "4.2.1"
+    version: "4.2.2"
   gg_log:
     dependency: "direct main"
     description:
@@ -293,18 +293,18 @@ packages:
     dependency: "direct main"
     description:
       name: gg_multi_do_publish
-      sha256: c9a002b5a293ab2b14a90c38e7333fa6411a2c77d98be16c58f4c33ce5f33996
+      sha256: e947c8f275b4ac482a1dab923d457bbfa42c9f4004dbb99a9643d17d5779633d
       url: "https://pub.dev"
     source: hosted
-    version: "2.4.0"
+    version: "2.4.1"
   gg_multi_workspace:
     dependency: "direct main"
     description:
       name: gg_multi_workspace
-      sha256: e6c8d7abf260ba8122183d684344b8fcdf3460a69e0096629435ba3b528cbbc8
+      sha256: "31e1da1585e74318de1757c4a948e29583f6e8148c2cb74e709d234f522895ba"
       url: "https://pub.dev"
     source: hosted
-    version: "2.3.1"
+    version: "2.3.2"
   gg_one:
     dependency: "direct main"
     description:

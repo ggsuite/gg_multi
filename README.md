@@ -82,7 +82,7 @@ order.
 | --------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | `gg_multi do init workspace`                        | initialise the ocean in the current directory                       |
 | `gg_multi do add <target> [-f                       | --force]`                                                           | add a repo or all repos of an organisation to the workspace                        |
-| `gg_multi do rm repo <name…> [--from-master]`       | delete repos from the current ticket (or, with the flag, from the ocean) |
+| `gg_multi do rm repo <name…>`                       | delete repos from the current ticket (never from the ocean)             |
 | `gg_multi do rm ticket [<ticket-id>...]`            | close tickets (default: the current one): delete remote branches, move them to `.trash` |
 | `gg_multi do upgrade ocean [-n                      | --dry-run]`                                                         | sync `.ocean` with every registered organisation: clone new repos, trash gone ones |
 | `gg_multi do create ticket <id> [-m <description>]` | create `tickets/<id>/` with a `.ticket` file                        |
