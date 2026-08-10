@@ -5,6 +5,7 @@
 ### Changed
 
 - Don't review skipped packages
+- Merge origin/main
 
 ## 8.2.0 - 2026-08-09
 
