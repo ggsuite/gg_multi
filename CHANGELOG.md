@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- CLAUDE.md and handbook document the per-repo `.gg/publish_config.json` the AI maintains
+
 ## 8.3.2 - 2026-08-10
 
 ### Fixed
