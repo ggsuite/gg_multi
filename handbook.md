@@ -386,22 +386,24 @@ cd tickets/PROJ-123
 gg_multi do review
 ```
 
-Für jedes Repository im Ticket führt Gg Multi dann im Wesentlichen folgende Schritte aus:
+Gg Multi führt dann im Wesentlichen folgende Schritte aus:
 
-1. Unlocalize
-   - Referenzen werden mithilfe von `gg_localize_refs` wieder von lokalen Pfaden auf ihre ursprünglichen Formen zurückgeführt.
-   - Der interne Status wird auf `unlocalized` gesetzt.
+1. Push
+   - `gg_multi do push` merged den Main Branch in jeden Feature Branch, aktualisiert die Abhängigkeiten und pusht alle Repositories.
 
-2. Localize mit Git Referenzen
-   - Referenzen werden erneut lokalisiert, diesmal so, dass sie auf Git Referenzen zeigen.
-   - Der Status wird auf `git-localized` gesetzt.
+2. Release planen
+   - Gg Multi ermittelt, welche Repositories das Ticket überhaupt veröffentlicht. Repositories ohne eigene Änderungen — sie sind oft nur im Ticket, weil sie in der Abhängigkeitskette zwischen zwei geänderten Paketen liegen — werden mit Begründung übersprungen.
+   - Für jedes Repository, das veröffentlicht wird, fragt Gg Multi nach dem Versionssprung (`patch` / `minor` / `major`) und nach der Merge Nachricht.
+   - Die Antworten landen in `<ticket>/.gg/gg-publish.json`. `gg_multi do publish` liest sie später und fragt nichts erneut. Ein zweiter `do review` Lauf fragt nur noch das, was offen ist.
 
-3. Abhängigkeiten aktualisieren
-   - Wenn `pubspec.yaml` vorhanden ist, wird `dart pub upgrade` ausgeführt.
+3. Pull Requests
+   - Für jedes Repository, das veröffentlicht wird, wird ein Pull Request geöffnet (oder ein bestehender wiederverwendet) und seine Url ausgegeben. Titel ist die Merge Nachricht.
+   - Übersprungene Repositories bekommen bewusst keinen Pull Request: Es gibt dort nichts zu reviewen.
 
-4. Commit und Push
-   - Gg Multi führt automatisiert `gg do commit` mit einer Standardnachricht aus.
-   - Anschließend wird `gg do push` aufgerufen, um die Änderungen zu pushen.
+4. Reviewstatus festhalten
+   - Der Ticketzustand wird als `didReview` gespeichert. `gg_multi do publish` verweigert einen Zustand, der nicht reviewt wurde.
+
+Die Referenzen der Repositories bleiben unangetastet: Die Feature Branches behalten ihre lokalen Pfadreferenzen. Wer einen Branch auscheckt, stellt das gesamte Setup mit `gg_multi do import ticket <pfad|url>` aus der `ticket.json` des Tickets wieder her.
 
 Wenn alle Repositories erfolgreich durchlaufen wurden, ist das Ticket technisch für weitere Schritte wie Merge oder Publish vorbereitet.
 

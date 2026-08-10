@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Don't review skipped packages
+
 ## 8.2.0 - 2026-08-09
 
 ## 8.1.0 - 2026-08-08
