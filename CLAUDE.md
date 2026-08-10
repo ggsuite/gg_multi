@@ -60,6 +60,35 @@ lib/src/commands/do/upgrade.dart     – `do upgrade` group (deps → commit pkg
 
 `test/integration/gg_multi_review_integration_test.dart` exercises the composed CLI across the packages (init workspace → add → commit → review), and `test/sample_folder/` holds its fixture packages.
 
+## Maintain `<repo>/.gg/publish_config.json` — per repository
+
+Every repository of a ticket carries `.gg/publish_config.json`. It is where you record what you changed, and gg reads it back: `gg do commit` proposes `nextCommitMessage`, `gg do review` proposes `versionIncrement` and uses `mergeMessage` as the pull-request title with `commits` as its description. Both files are gitignored and are removed before the merge into main.
+
+```json
+{
+  "publishConfig": {
+    "mergeMessage": "Add tracking",
+    "versionIncrement": "major|minor|patch",
+    "nextCommitMessage": {
+      "firstLine": "Adapt message.json",
+      "details": ["Detail 0", "Detail 1"]
+    },
+    "commits": [
+      { "firstLine": "Adapt message.json", "details": ["Detail 0"] }
+    ]
+  }
+}
+```
+
+Your obligations:
+
+- **Keep `nextCommitMessage` current at all times.** After every change to a repository, rewrite its `firstLine` and `details` so they describe the work that is currently uncommitted. gg neither clears nor consumes the field — it is a standing proposal, not a buffer — so there must never be a moment where the default the next `gg do commit` shows is out of date.
+- **`firstLine`: at most 60 characters**, imperative mood. gg rejects a longer one and re-opens the editor. `details`: one array entry per notable change.
+- **`versionIncrement`** follows the strictest rule the change hits: breaking change → `major`, new feature → `minor`, bugfix/refactor/docs → `patch`. Never lower an increment already recorded within the ticket.
+- **`mergeMessage`** is the pull-request title of that repository. It is initialized from the ticket description; sharpen it when the repository's change deserves a more precise title.
+- **No cross-talk between packages.** A repository's file describes that repository's changes and nothing else. When one edit touches three repositories, write three different files with three different messages.
+- **Never hand-edit `commits`** — `gg do commit` appends there — and never create `.gg/publish_state.json`, which belongs to the publish run.
+
 ## Code Standards
 
 - **Line length**: 80 characters maximum.

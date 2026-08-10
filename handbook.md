@@ -347,6 +347,27 @@ gg_multi do commit
 
 Die bearbeitete Message gilt dann für alle Repositories des Tickets. Löschst du sie komplett, wird wieder die Ticket-Beschreibung verwendet. Für nicht-interaktive Läufe (CI, Skripte) gibst du die Message weiterhin mit `-m` an – dann erscheint kein Editor.
 
+#### Eigene Commit-Message pro Repository
+
+Trägt ein Repository in `<repo>/.gg/publish_config.json` unter `nextCommitMessage` einen Vorschlag ein, fragt Gg Multi für dieses Repository separat – mit genau diesem Vorschlag vorbelegt:
+
+```json
+{
+  "publishConfig": {
+    "nextCommitMessage": {
+      "firstLine": "Adapt message.json",
+      "details": ["Detail 0", "Detail 1"]
+    }
+  }
+}
+```
+
+`firstLine` wird die erste Zeile des Commits, die `details` sein Rumpf. Die erste Zeile darf **höchstens 60 Zeichen** lang sein; ist sie länger, meldet Gg Multi das und öffnet den Editor erneut mit deinem Text.
+
+Nach einem erfolgreichen Commit hängt Gg Multi die Message an die Liste `commits` desselben Repositories an – aber nur, wenn sie dort noch nicht steht. `nextCommitMessage` bleibt dabei stehen: Sie ist der laufend aktualisierte Vorschlag, kein Einweg-Puffer. Die gesammelten `commits` werden später zur Beschreibung des Pull Requests.
+
+Repositories ohne eigenen Vorschlag bekommen weiterhin die eine gemeinsame Ticket-Message.
+
 ### 9.3 Prüfen und ausführen von Pushes: `gg_multi can push` und `gg_multi do push`
 
 Analog zu `can/do commit` gibt es im Ticketkontext auch `can push` und `do push`:
@@ -394,10 +415,11 @@ Gg Multi führt dann im Wesentlichen folgende Schritte aus:
 2. Release planen
    - Gg Multi ermittelt, welche Repositories das Ticket überhaupt veröffentlicht. Repositories ohne eigene Änderungen — sie sind oft nur im Ticket, weil sie in der Abhängigkeitskette zwischen zwei geänderten Paketen liegen — werden mit Begründung übersprungen.
    - Für jedes Repository, das veröffentlicht wird, fragt Gg Multi nach dem Versionssprung (`patch` / `minor` / `major`) und nach der Merge Nachricht.
-   - Die Antworten landen in `<ticket>/.gg/gg-publish.json`. `gg_multi do publish` liest sie später und fragt nichts erneut. Ein zweiter `do review` Lauf fragt nur noch das, was offen ist.
+   - Die Antworten landen in `<repo>/.gg/publish_config.json` — pro Repository eine Datei. `gg_multi do publish` liest sie später.
+   - **Gefragt wird jedes Mal wieder**: Ein zweiter `do review` Lauf zeigt die zuvor gegebenen Antworten als Vorauswahl an, sodass du sie bestätigen oder korrigieren kannst. Nur ein Lauf ohne Terminal (CI) übernimmt sie ungefragt.
 
 3. Pull Requests
-   - Für jedes Repository, das veröffentlicht wird, wird ein Pull Request geöffnet (oder ein bestehender wiederverwendet) und seine Url ausgegeben. Titel ist die Merge Nachricht.
+   - Für jedes Repository, das veröffentlicht wird, wird ein Pull Request geöffnet (oder ein bestehender wiederverwendet) und seine Url ausgegeben. Titel ist die Merge Nachricht, Beschreibung sind die in `commits` gesammelten Commit-Messages dieses Repositories.
    - Übersprungene Repositories bekommen bewusst keinen Pull Request: Es gibt dort nichts zu reviewen.
 
 4. Reviewstatus festhalten
