@@ -155,7 +155,7 @@ void main() {
           ]);
 
           final ticketDir = Directory(
-            path.join(tempRoot.path, ggMultiTicketFolder, ticketName),
+            path.join(tempRoot.path, ggMultiLegacyTicketFolder, ticketName),
           );
           expect(ticketDir.existsSync(), isTrue);
 
@@ -416,7 +416,7 @@ void main() {
           ]);
 
           final ticketDir2 = Directory(
-            path.join(tempRoot.path, ggMultiTicketFolder, ticketName2),
+            path.join(tempRoot.path, ggMultiLegacyTicketFolder, ticketName2),
           );
           expect(ticketDir2.existsSync(), isTrue);
 
