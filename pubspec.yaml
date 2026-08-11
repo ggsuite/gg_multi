@@ -1,6 +1,6 @@
 name: gg_multi
 description: gg_multi manages multi package workspaces and supports orchestrated editing and publishing
-version: 9.1.0
+version: 9.1.1
 repository: https://github.com/ggsuite/gg_multi.git
 
 environment:
@@ -8,22 +8,22 @@ environment:
 
 dependencies:
   args: ^2.7.0
-  gg_args: ^3.0.0
-  gg_log: ^1.0.6
-  gg_multi_commit: ^3.1.0
-  gg_multi_core: ^3.1.0
-  gg_multi_do_publish: ^3.1.0
-  gg_multi_workspace: ^3.1.0
-  gg_one: ^14.2.0
-  gg_publish: ^4.3.1
-  gg_status_printer: ^1.4.2
+  gg_args: ^3.0.1
+  gg_log: ^1.0.7
+  gg_multi_commit: ^3.1.1
+  gg_multi_core: ^3.1.1
+  gg_multi_do_publish: ^3.1.1
+  gg_multi_workspace: ^3.1.1
+  gg_one: ^14.2.1
+  gg_publish: ^4.3.2
+  gg_status_printer: ^1.4.3
   mocktail: ^1.0.5
   path: ^1.9.1
   pub_semver: ^2.2.0
   pubspec_parse: ^1.5.0
   recase: ^4.1.0
 dev_dependencies:
-  gg_capture_print: ^1.0.9
+  gg_capture_print: ^1.0.10
   lints: ^6.1.0
   test: ^1.31.2
 
