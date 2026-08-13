@@ -250,12 +250,13 @@ packages:
     source: hosted
     version: "0.5.1"
   gg_local_package_dependencies:
-    dependency: "direct overridden"
+    dependency: transitive
     description:
-      path: "../gg_local_package_dependencies"
-      relative: true
-    source: path
-    version: "3.0.1"
+      name: gg_local_package_dependencies
+      sha256: "65df351df62873a5562ca9b9735025f95a6e47d64952e9f6f0b933acc7aed3d3"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.0.0"
   gg_localize_refs:
     dependency: transitive
     description:
@@ -283,31 +284,35 @@ packages:
   gg_multi_commit:
     dependency: "direct main"
     description:
-      path: "../gg_multi_commit"
-      relative: true
-    source: path
-    version: "3.1.1"
+      name: gg_multi_commit
+      sha256: "0bf3ea23a4b878127b27e76605d6aa390b701dcd0cc3742a6dc2391d451363dd"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.0.0"
   gg_multi_core:
     dependency: "direct main"
     description:
-      path: "../gg_multi_core"
-      relative: true
-    source: path
-    version: "3.1.1"
+      name: gg_multi_core
+      sha256: b26dec5c71c3c5a0d8363a5c86eae2f7d66dd493d4db215f62493c5284823132
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.0.0"
   gg_multi_do_publish:
     dependency: "direct main"
     description:
-      path: "../gg_multi_do_publish"
-      relative: true
-    source: path
-    version: "3.1.1"
+      name: gg_multi_do_publish
+      sha256: "69b876d750ec72c1c78df014de455fbd8c6bb5d53074e06349fd2505415e108d"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.0.0"
   gg_multi_workspace:
     dependency: "direct main"
     description:
-      path: "../gg_multi_workspace"
-      relative: true
-    source: path
-    version: "3.1.2"
+      name: gg_multi_workspace
+      sha256: "8898eb7fb43dd6bb7dfbe56a1914d7af4ce484c62d6045c3ac19fbc876648980"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.0.0"
   gg_one:
     dependency: "direct main"
     description:
