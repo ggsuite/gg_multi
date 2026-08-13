@@ -14,12 +14,8 @@ import 'package:gg_multi_workspace/gg_multi_workspace.dart';
 class UpgradeCommand extends Command<void> {
   /// Constructor accepting a log function.
   UpgradeCommand({required this.ggLog}) {
-    addSubcommand(
-      UpdateOceanCommand(ggLog: ggLog),
-    );
-    addSubcommand(
-      UpgradeDepsCommand(ggLog: ggLog),
-    );
+    addSubcommand(UpdateOceanCommand(ggLog: ggLog));
+    addSubcommand(UpgradeDepsCommand(ggLog: ggLog));
   }
 
   /// Log function

@@ -24,9 +24,7 @@ void main() {
       );
 
       // Match independent of the platform's line ending.
-      final expectedMessages = [
-        'Missing target parameter.',
-      ];
+      final expectedMessages = ['Missing target parameter.'];
 
       // Concatenate stdout and stderr
       final output = (result.stdout as String) + (result.stderr as String);

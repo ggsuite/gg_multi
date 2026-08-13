@@ -54,22 +54,14 @@ void main() {
     });
 
     test('prints help message when --help is passed', () async {
-      final runner = CommandRunner<void>(
-        'test',
-        'DoCommand Help',
-      );
-      runner.addCommand(
-        Do(ggLog: (_) {}),
-      );
+      final runner = CommandRunner<void>('test', 'DoCommand Help');
+      runner.addCommand(Do(ggLog: (_) {}));
       final output = await capturePrint(
         code: () async {
           await runner.run(['do', '--help']);
         },
       );
-      expect(
-        output.first,
-        contains('Act on all repos of the current ticket'),
-      );
+      expect(output.first, contains('Act on all repos of the current ticket'));
     });
   });
 }

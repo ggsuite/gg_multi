@@ -2,6 +2,7 @@
 // `dart test` run (where `package:a` is not on the resolution path). It still
 // resolves correctly when the fixture is run in its own package context.
 import '../lib/src/a.dart';
+
 import 'package:test/test.dart';
 
 void main() {

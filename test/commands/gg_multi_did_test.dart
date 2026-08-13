@@ -39,13 +39,8 @@ void main() {
     });
 
     test('prints help message when --help is passed', () async {
-      final runner = CommandRunner<void>(
-        'test',
-        'DidCommand Help',
-      );
-      runner.addCommand(
-        Did(ggLog: (_) {}),
-      );
+      final runner = CommandRunner<void>('test', 'DidCommand Help');
+      runner.addCommand(Did(ggLog: (_) {}));
       final output = await capturePrint(
         code: () async {
           await runner.run(['did', '--help']);

@@ -39,22 +39,14 @@ void main() {
     });
 
     test('prints help message when --help is passed', () async {
-      final runner = CommandRunner<void>(
-        'test',
-        'CanCommand Help',
-      );
-      runner.addCommand(
-        Can(ggLog: (_) {}),
-      );
+      final runner = CommandRunner<void>('test', 'CanCommand Help');
+      runner.addCommand(Can(ggLog: (_) {}));
       final output = await capturePrint(
         code: () async {
           await runner.run(['can', '--help']);
         },
       );
-      expect(
-        output.first,
-        contains('Perform checks on the ticket'),
-      );
+      expect(output.first, contains('Perform checks on the ticket'));
     });
   });
 }

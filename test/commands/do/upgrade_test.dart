@@ -26,10 +26,8 @@ void main() {
     });
 
     test('prints help message including ocean', () async {
-      final runner = CommandRunner<void>(
-        'test',
-        'UpgradeCommand Help',
-      )..addCommand(UpgradeCommand(ggLog: (_) {}));
+      final runner = CommandRunner<void>('test', 'UpgradeCommand Help')
+        ..addCommand(UpgradeCommand(ggLog: (_) {}));
 
       final output = await capturePrint(
         code: () async {
