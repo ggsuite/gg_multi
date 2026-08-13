@@ -10,3 +10,7 @@ dependency_overrides:
     path: ../gg_local_package_dependencies
   gg_multi_workspace:
     path: ../gg_multi_workspace
+  gg_multi_commit:
+    path: ../gg_multi_commit
+  gg_multi_do_publish:
+    path: ../gg_multi_do_publish
