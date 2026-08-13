@@ -309,10 +309,10 @@ packages:
     dependency: "direct main"
     description:
       name: gg_multi_workspace
-      sha256: "8898eb7fb43dd6bb7dfbe56a1914d7af4ce484c62d6045c3ac19fbc876648980"
+      sha256: "0800cf84992258b87f3a78b79df0bc4a20fb10b4fb69e753c3f5a5dc5aa074dc"
       url: "https://pub.dev"
     source: hosted
-    version: "4.0.0"
+    version: "4.0.1"
   gg_one:
     dependency: "direct main"
     description:
