@@ -1,5 +1,5 @@
 // @license
-// Copyright (c) 2019 - 2025 Dr. Gabriel Gatzsche. All Rights Reserved.
+// Copyright (c) ggsuite
 //
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
@@ -54,22 +54,14 @@ void main() {
     });
 
     test('prints help message when --help is passed', () async {
-      final runner = CommandRunner<void>(
-        'test',
-        'DoCommand Help',
-      );
-      runner.addCommand(
-        Do(ggLog: (_) {}),
-      );
+      final runner = CommandRunner<void>('test', 'DoCommand Help');
+      runner.addCommand(Do(ggLog: (_) {}));
       final output = await capturePrint(
         code: () async {
           await runner.run(['do', '--help']);
         },
       );
-      expect(
-        output.first,
-        contains('Act on all repos of the current ticket'),
-      );
+      expect(output.first, contains('Act on all repos of the current ticket'));
     });
   });
 }

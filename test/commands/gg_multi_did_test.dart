@@ -1,5 +1,5 @@
 // @license
-// Copyright (c) 2025 Göran Hegenberg. All Rights Reserved.
+// Copyright (c) ggsuite
 //
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
@@ -39,13 +39,8 @@ void main() {
     });
 
     test('prints help message when --help is passed', () async {
-      final runner = CommandRunner<void>(
-        'test',
-        'DidCommand Help',
-      );
-      runner.addCommand(
-        Did(ggLog: (_) {}),
-      );
+      final runner = CommandRunner<void>('test', 'DidCommand Help');
+      runner.addCommand(Did(ggLog: (_) {}));
       final output = await capturePrint(
         code: () async {
           await runner.run(['did', '--help']);

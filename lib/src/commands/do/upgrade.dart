@@ -1,5 +1,5 @@
 // @license
-// Copyright (c) 2019 - 2025 Dr. Gabriel Gatzsche. All Rights Reserved.
+// Copyright (c) ggsuite
 //
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
@@ -14,12 +14,8 @@ import 'package:gg_multi_workspace/gg_multi_workspace.dart';
 class UpgradeCommand extends Command<void> {
   /// Constructor accepting a log function.
   UpgradeCommand({required this.ggLog}) {
-    addSubcommand(
-      UpdateOceanCommand(ggLog: ggLog),
-    );
-    addSubcommand(
-      UpgradeDepsCommand(ggLog: ggLog),
-    );
+    addSubcommand(UpdateOceanCommand(ggLog: ggLog));
+    addSubcommand(UpgradeDepsCommand(ggLog: ggLog));
   }
 
   /// Log function
