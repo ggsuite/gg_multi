@@ -1,6 +1,6 @@
 name: gg_multi
 description: gg_multi manages multi package workspaces and supports orchestrated editing and publishing
-version: 10.0.0
+version: 10.1.0
 repository: https://github.com/ggsuite/gg_multi.git
 
 environment:
