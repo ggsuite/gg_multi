@@ -81,7 +81,7 @@ order.
 | Command                                             | Purpose                                                             |
 | --------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | `gg_multi do init workspace`                        | initialise the ocean in the current directory                       |
-| `gg_multi do add <target> [-f                       | --force]`                                                           | add a repo or all repos of an organisation to the workspace                        |
+| `gg_multi do add <target> [-f                       | --force]`                                                           | add a repo, a regexp match or all repos of an organisation to the workspace        |
 | `gg_multi do rm repo <name…>`                       | delete repos from the current ticket (never from the ocean)             |
 | `gg_multi do rm ticket [<ticket-id>...]`            | close tickets (default: the current one): delete remote branches, move them to `.trash` |
 | `gg_multi do upgrade ocean [-n                      | --dry-run]`                                                         | sync `.ocean` with every registered organisation: clone new repos, trash gone ones |
@@ -182,6 +182,16 @@ it sits. A repo is
 resolved by exact folder name first, then by the package name in its
 manifest, then by its git remote URL. An organization folder that loses
 its last repo is removed.
+
+A target may also be a **regular expression** selecting several repos of
+the ocean at once — `gg_multi do add "ds_.+"` adds every repo whose name
+starts with `ds_`. The pattern is anchored, so it has to describe the
+whole name: `gg_multi do add gg` still means the repo named `gg`, not
+every name containing those two letters. A target matching no ocean repo
+keeps its old meaning — a name, an `owner/repo` or a url — which is what
+lets you add a repo the ocean does not hold yet. Patterns select only
+what the ocean already has; they discover nothing on the git platform,
+so run `gg_multi do upgrade ocean` first if a repo may be missing.
 
 When you add a repo by its plain name and several known organizations
 own a repo of that name, gg_multi lists them and lets you pick one with
