@@ -9,4 +9,4 @@
 // coverage:ignore-file
 
 /// The version of the `gg_multi` package.
-const String ggMultiVersion = '10.1.1';
+const String ggMultiVersion = '10.1.2';
