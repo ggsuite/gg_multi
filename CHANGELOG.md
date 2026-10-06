@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Document that the commit message's first line has no length limit
+
 ## 10.2.1 - 2026-09-11
 
 ### Fixed

@@ -362,7 +362,7 @@ Trägt ein Repository in `<repo>/.gg/publish_config.json` unter `nextCommitMessa
 }
 ```
 
-`firstLine` wird die erste Zeile des Commits, die `details` sein Rumpf. Die erste Zeile darf **höchstens 60 Zeichen** lang sein; ist sie länger, meldet Gg Multi das und öffnet den Editor erneut mit deinem Text.
+`firstLine` wird die erste Zeile des Commits, die `details` sein Rumpf. Die Länge der ersten Zeile ist nicht begrenzt; eine kurze erste Zeile bleibt aber in `git log --oneline` und auf GitHub ungekürzt lesbar.
 
 Nach einem erfolgreichen Commit hängt Gg Multi die Message an die Liste `commits` desselben Repositories an – aber nur, wenn sie dort noch nicht steht. `nextCommitMessage` bleibt dabei stehen: Sie ist der laufend aktualisierte Vorschlag, kein Einweg-Puffer. Die gesammelten `commits` werden später zur Beschreibung des Pull Requests.
 
