@@ -37,8 +37,8 @@ Since ticket 96 the implementation lives in four sub-packages; this repo is the 
 
 | Package               | Role                                                                                                                                                      |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `gg_multi_core`       | The workspace model: ocean/tickets/trash layout, organization folders, url parsing, git platforms, ticket metadata & state, git snapshot helpers, the publish skip check, the `PublishPlanner` shared by `do review` and `do publish`, the shared `ProcessRunner`/`EditMessage` typedefs. |
-| `gg_multi_workspace`  | Workspace management commands: `do add`, `do import ticket`, `do rm repo/ticket`, `do create ticket/graph`, `do upgrade ocean`, `do init workspace/claude`, `do code`, `do ls …`, `do exec cmd`. Depends on core. |
+| `gg_multi_core`       | The workspace model: ocean/tickets/trash layout, organization folders, url parsing, git platforms, ticket metadata & state, git snapshot helpers, the publish skip check, the `PublishPlanner` shared by `do review` and `do publish`, the `TicketLocalizer` shared by `do add`, `do localize`, `can commit`, `do commit` and `do push` (localized refs + repos missing between the ticket repos), the shared `ProcessRunner`/`EditMessage` typedefs. |
+| `gg_multi_workspace`  | Workspace management commands: `do add`, `do import ticket`, `do rm repo/ticket`, `do create ticket/graph`, `do upgrade ocean`, `do init workspace/claude`, `do code`, `do ls …`, `do exec cmd`, `do localize`. Depends on core. |
 | `gg_multi_commit`     | Daily ticket flows: `can/did/do commit`, `push`, `review` — which also plans the release, asks the version increments and opens the pull requests of the repos that are actually published — and `do upgrade deps`. Depends on core. |
 | `gg_multi_do_publish` | The publish orchestrator: `do publish` (+ `--merge-only`), `do configure-publish`, `can publish`, `EnsureInRegistry`, the registry checkers. Depends on core + commit. |
 
