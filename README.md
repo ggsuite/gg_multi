@@ -90,6 +90,7 @@ order.
 | `gg_multi do code`                                  | open the current ticket in VS Code                                  |
 | `gg_multi do init claude`                           | aggregate each repo's `CLAUDE.md` into one ticket-level `CLAUDE.md` |
 | `gg_multi do exec cmd <cmd>`                        | run a shell command in every ticket repo                            |
+| `gg_multi do localize`                              | point every ticket repo at the checkouts of its sibling repos       |
 
 `gg_multi do add` is context-aware:
 
@@ -98,6 +99,20 @@ order.
 - run from inside a ticket (`tickets/<id>/`): the repo is also
   copied into `tickets/<id>/<org>/` and its local dependencies are
   pulled in.
+
+  Afterwards the references between all ticket repos are localized and
+  only gg's own files (overrides, lock files, `.gitattributes`, …) are
+  committed as a `#gg:` commit — unfinished work in the ticket repos,
+  including a dependency you just added by hand, stays uncommitted.
+
+`gg_multi do localize` localizes the references of the current ticket
+without adding anything — run it after adding a dependency on a sibling
+repo by hand. It touches only the repos whose references are out of sync,
+commits gg's files as `#gg:` commits, leaves your own changes uncommitted
+and says »All references are already localized« when there is nothing to
+do. When a repo of the ocean lies between two ticket repos but is not in
+the ticket, `do localize`, `can commit`, `do commit` and `do push` ask you
+to run `gg_multi do add <repo>`.
 
 ### `gg_multi can` — preflight checks
 
