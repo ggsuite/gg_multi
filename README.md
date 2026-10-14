@@ -19,8 +19,8 @@ executable for direct use and in CI/CD pipelines.
 - A persistent ocean under `.ocean/` containing every
   registered repo and organisation, grouped as `.ocean/<org>/<repo>`.
 - Per-ticket workspaces under `tickets/<id>/` that hold scoped clones
-  of the repos you need for one feature, in the same `<org>/<repo>`
-  layout.
+  of the repos you need for one feature, side by side in the ticket
+  folder.
 - A trash under `.trash/<id>/`: when a ticket is closed — via
   `do rm ticket`, or by accepting the offer `do publish` makes up
   front — the whole ticket folder is moved there in one piece
@@ -90,14 +90,30 @@ order.
 | `gg_multi do code`                                  | open the current ticket in VS Code                                  |
 | `gg_multi do init claude`                           | aggregate each repo's `CLAUDE.md` into one ticket-level `CLAUDE.md` |
 | `gg_multi do exec cmd <cmd>`                        | run a shell command in every ticket repo                            |
+| `gg_multi do localize`                              | point every ticket repo at the checkouts of its sibling repos       |
 
 `gg_multi do add` is context-aware:
 
 - run from the workspace root: the repo is cloned into
   `.ocean/<org>/`,
 - run from inside a ticket (`tickets/<id>/`): the repo is also
-  copied into `tickets/<id>/<org>/` and its local dependencies are
-  pulled in.
+  copied into `tickets/<id>/<repo>` — into `tickets/<id>/<org>/<repo>`
+  only when a repo of another organization already took that name — and
+  its local dependencies are pulled in.
+
+  Afterwards the references between all ticket repos are localized and
+  only gg's own files (overrides, lock files, `.gitattributes`, …) are
+  committed as a `#gg:` commit — unfinished work in the ticket repos,
+  including a dependency you just added by hand, stays uncommitted.
+
+`gg_multi do localize` localizes the references of the current ticket
+without adding anything — run it after adding a dependency on a sibling
+repo by hand. It touches only the repos whose references are out of sync,
+commits gg's files as `#gg:` commits, leaves your own changes uncommitted
+and says »All references are already localized« when there is nothing to
+do. When a repo of the ocean lies between two ticket repos but is not in
+the ticket, `do localize`, `can commit`, `do commit` and `do push` ask you
+to run `gg do add <repo>`.
 
 ### `gg_multi can` — preflight checks
 
@@ -165,9 +181,10 @@ commands work from any sub-directory inside it.
 Every repo lives in a folder named after the organization of its git
 URL — `.ocean/ggsuite/gg_multi` for
 `https://github.com/ggsuite/gg_multi.git`. This lets same-named repos
-from different organizations coexist on disk. A ticket mirrors the
-ocean layout, so a repo has the same relative path in both, and the
-`.code-workspace` file lists its folders as `<org>/<repo>`.
+from different organizations coexist on disk. A ticket keeps its repos
+flat — `tickets/<id>/gg_multi` — and only puts a repo into its
+organization folder when another organization's repo of the same name
+is already there.
 
 On **Azure DevOps the folder is the project**, not the account Azure
 calls the organization: repository names are unique per project, so two

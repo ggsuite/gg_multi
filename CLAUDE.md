@@ -37,8 +37,8 @@ Since ticket 96 the implementation lives in four sub-packages; this repo is the 
 
 | Package               | Role                                                                                                                                                      |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `gg_multi_core`       | The workspace model: ocean/tickets/trash layout, organization folders, url parsing, git platforms, ticket metadata & state, git snapshot helpers, the publish skip check, the `PublishPlanner` shared by `do review` and `do publish`, the shared `ProcessRunner`/`EditMessage` typedefs. |
-| `gg_multi_workspace`  | Workspace management commands: `do add`, `do import ticket`, `do rm repo/ticket`, `do create ticket/graph`, `do upgrade ocean`, `do init workspace/claude`, `do code`, `do ls …`, `do exec cmd`. Depends on core. |
+| `gg_multi_core`       | The workspace model: ocean/tickets/trash layout, organization folders, url parsing, git platforms, ticket metadata & state, git snapshot helpers, the publish skip check, the `PublishPlanner` shared by `do review` and `do publish`, the `TicketLocalizer` shared by `do add`, `do localize`, `can commit`, `do commit` and `do push` (localized refs + repos missing between the ticket repos), the shared `ProcessRunner`/`EditMessage` typedefs. |
+| `gg_multi_workspace`  | Workspace management commands: `do add`, `do import ticket`, `do rm repo/ticket`, `do create ticket/graph`, `do upgrade ocean`, `do init workspace/claude`, `do code`, `do ls …`, `do exec cmd`, `do localize`. Depends on core. |
 | `gg_multi_commit`     | Daily ticket flows: `can/did/do commit`, `push`, `review` — which also plans the release, asks the version increments and opens the pull requests of the repos that are actually published — and `do upgrade deps`. Depends on core. |
 | `gg_multi_do_publish` | The publish orchestrator: `do publish` (+ `--merge-only`), `do configure-publish`, `can publish`, `EnsureInRegistry`, the registry checkers. Depends on core + commit. |
 
@@ -100,3 +100,19 @@ Your obligations:
 - **Test coverage**: 100% required. Every file under `lib/src/` must have a matching test at the same relative path under `test/`. Use `// coverage:ignore-line` and `// coverage:ignore-start/end` only when unavoidable.
 - **Mocks**: Mock classes live in the same file as the class they mock, extending `MockDirCommand`.
 - **Commits/pushes**: Always go through `gg do commit` / `gg do push`, never raw `git commit` / `git push`.
+
+<!-- helix:claude_md:start -->
+
+# gg workflow
+
+This repo is developed ticket by ticket with the `gg` CLI. Follow the
+development guide, it tells you when to ask the user and which command
+comes next:
+
+@doc/guides/for-ai/ai-dev-guide.md
+
+The steps are also available as skills: `/gg-ticket`, `/gg-commit`,
+`/gg-push`, `/gg-publish`, `/gg-cleanup`. `/gg` lists them and says which
+one comes next.
+
+<!-- helix:claude_md:end -->

@@ -39,6 +39,7 @@ class Do extends Command<void> {
     addSubcommand(DoReviewCommand(ggLog: ggLog));
     addSubcommand(ExecCommand(ggLog: ggLog));
     addSubcommand(AddCommand(ggLog: ggLog));
+    addSubcommand(DoLocalizeCommand(ggLog: ggLog));
     addSubcommand(ImportCommand(ggLog: ggLog));
     addSubcommand(CodeCommand(ggLog: ggLog));
     addSubcommand(CreateCommand(ggLog: ggLog));
