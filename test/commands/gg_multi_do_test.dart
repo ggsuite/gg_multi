@@ -43,6 +43,7 @@ void main() {
           'exec',
           'import',
           'init',
+          'localize',
           'ls',
           'publish',
           'push',

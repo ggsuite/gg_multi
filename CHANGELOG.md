@@ -1,5 +1,11 @@
 # Changelog
 
+## 10.3.0 - 2026-10-14
+
+### Changed
+
+- Register do localize
+
 ## 10.2.2 - 2026-10-06
 
 ### Changed
