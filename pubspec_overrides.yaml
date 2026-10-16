@@ -22,3 +22,5 @@ dependency_overrides:
     path: ../gg_multi_do_publish
   gg_multi_workspace:
     path: ../gg_multi_workspace
+  gg_interact:
+    path: ../gg_interact
