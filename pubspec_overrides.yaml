@@ -24,3 +24,5 @@ dependency_overrides:
     path: ../gg_multi_workspace
   gg_interact:
     path: ../gg_interact
+  gg_create_repo:
+    path: ../gg_create_repo
