@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Make gg checks work on Windows
+
 ## 10.3.2 - 2026-10-19
 
 ## 10.3.1 - 2026-10-16
