@@ -131,13 +131,18 @@ when a repo is in a bad state.
 
 | Command                             | Purpose                                                                             |
 | ----------------------------------- | ----------------------------------------------------------------------------------- |
-| `gg_multi do commit [-m <message>]` | commit every ticket repo with the same message (defaults to the ticket description) |
+| `gg_multi do commit [-m <message>]` | commit every ticket repo with its proposed message or one shared message           |
 | `gg_multi do push [--force]`        | merge the main branches into the feature branches and push every ticket repo        |
 | `gg_multi do review`                | push (incl. main merge), plan the release, open a pull request per released repo and record the review |
 | `gg_multi do publish`               | publish every publishable package of the ticket (requires `did review`)             |
 
 `do review` runs `do push` automatically before it opens the pull
 requests; a `do push` after the review updates them.
+
+`do push` and `do review` upgrade the dependencies without tightening their
+constraints: inside a ticket the overrides point at the local checkouts,
+and pub crashes when it tightens against a sibling that is newer than the
+constraint. `do publish` tightens them, once the overrides are gone.
 
 ### `gg_multi did` — reporting
 
@@ -279,12 +284,14 @@ gg_multi do commit -m 'Simplify login flow'
 ```
 
 `can commit` runs the per-repo check pipeline in dependency order and
-aborts on the first failure; `do commit` then commits each repo with
-the same message.
+aborts on the first failure; `do commit` then commits each repo that has
+something to commit. A repo whose `.gg/publish_config.json` proposes a
+`nextCommitMessage` is asked on its own, with the proposal pre-filled; all
+other repos share one message. `-m` sets the message of every repo.
 
-Without `-m`, `do commit` reuses the ticket description from the
-`.ticket` file and opens it in the same editor `do publish` uses for its
-merge messages — so you can adjust it before it is applied to every repo:
+Without `-m`, the shared message starts from the ticket description and
+opens in the same editor `do publish` uses for its merge messages — so you
+can adjust it before it is applied to those repos:
 
 ```bash
 gg_multi do commit
