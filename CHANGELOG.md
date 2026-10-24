@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Add the blog post of ticket gg-1
+
+Describe in the README how do commit picks the messages
+Say in the README that push and review do not tighten, publish does
+
+### Changed
+
+- Make gg checks work on Windows
+
 ## 10.3.2 - 2026-10-19
 
 ## 10.3.1 - 2026-10-16
