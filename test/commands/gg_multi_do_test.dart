@@ -45,6 +45,7 @@ void main() {
           'init',
           'localize',
           'ls',
+          'maintain',
           'publish',
           'push',
           'review',

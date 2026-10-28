@@ -85,6 +85,7 @@ order.
 | `gg_multi do rm repo <name…>`                       | delete repos from the current ticket (never from the ocean)             |
 | `gg_multi do rm ticket [<ticket-id>...]`            | close tickets (default: the current one): delete remote branches, move them to `.trash` |
 | `gg_multi do upgrade ocean [-n                      | --dry-run]`                                                         | sync `.ocean` with every registered organisation: clone new repos, trash gone ones |
+| `gg_multi do maintain --upgrade-sdk\|--upgrade-deps\|--upgrade-dna\|--all` | upgrade the SDK, the dependencies or the DNA of every ocean repo in parallel and publish each changed repo on its own, see `gg_multi_maintain` |
 | `gg_multi do create ticket <id> [-m <description>]` | create `tickets/<id>/` with a `.ticket` file                        |
 | `gg_multi do create graph [--format=…] [-o <file>]` | write the dependency graph of the workspace to stdout or a file     |
 | `gg_multi do code`                                  | open the current ticket in VS Code                                  |
