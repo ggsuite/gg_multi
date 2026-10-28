@@ -11,6 +11,7 @@ import 'package:gg_multi/src/commands/do/upgrade.dart';
 
 import 'package:gg_multi_commit/gg_multi_commit.dart';
 import 'package:gg_multi_do_publish/gg_multi_do_publish.dart';
+import 'package:gg_multi_maintain/gg_multi_maintain.dart' show DoMaintain;
 
 /// Command to perform actions such as committing
 /// and pushing across ticket repositories.
@@ -47,5 +48,6 @@ class Do extends Command<void> {
     addSubcommand(RmCommand(ggLog: ggLog));
     addSubcommand(UpgradeCommand(ggLog: ggLog));
     addSubcommand(ListCommand(ggLog: ggLog));
+    addSubcommand(DoMaintain(ggLog: ggLog));
   }
 }

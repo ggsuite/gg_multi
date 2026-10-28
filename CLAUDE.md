@@ -31,7 +31,7 @@ gg do push
 
 Gg Multi is a multi-repository workspace management CLI for Dart/Flutter projects. It orchestrates actions (commit, push, publish, review) across all repos in a ticket workspace, resolving them in dependency order.
 
-Since ticket 96 the implementation lives in four sub-packages; this repo is the **umbrella**: it wires the command tree, ships the `gg_multi` executable and re-exports the family's public API.
+Since ticket 96 the implementation lives in sub-packages; this repo is the **umbrella**: it wires the command tree, ships the `gg_multi` executable and re-exports the family's public API.
 
 ### The gg_multi tool family
 
@@ -41,6 +41,7 @@ Since ticket 96 the implementation lives in four sub-packages; this repo is the 
 | `gg_multi_workspace`  | Workspace management commands: `do add`, `do import ticket`, `do rm repo/ticket`, `do create ticket/graph`, `do upgrade ocean`, `do init workspace/claude`, `do code`, `do ls …`, `do exec cmd`, `do localize`. Depends on core. |
 | `gg_multi_commit`     | Daily ticket flows: `can/did/do commit`, `push`, `review` — which also plans the release, asks the version increments and opens the pull requests of the repos that are actually published — and `do upgrade deps`. Depends on core. |
 | `gg_multi_do_publish` | The publish orchestrator: `do publish` (+ `--merge-only`), `do configure-publish`, `can publish`, `EnsureInRegistry`, the registry checkers. Depends on core + commit. |
+| `gg_multi_maintain`   | `do maintain`: runs maintenance tasks (SDK, dependency, DNA upgrades) in fresh clones of all ocean repos in parallel, in dependency order, and publishes each changed repo with `gg one do publish`. Depends on core + gg_one. |
 
 Each sub-package carries its own `CLAUDE.md` with the detailed behavior notes for its commands; consult those when working on the respective flows.
 
@@ -48,7 +49,7 @@ Each sub-package carries its own `CLAUDE.md` with the detailed behavior notes fo
 
 ```
 bin/gg_multi.dart                    – executable entry point
-lib/gg_multi.dart                    – re-exports the four sub-packages + GgMulti
+lib/gg_multi.dart                    – re-exports the sub-packages (gg_multi_maintain: only DoMaintain) + GgMulti
 lib/src/gg_multi.dart                – GgMulti command (adds Can, Did, Do)
 lib/src/commands/gg_multi_can.dart   – `can` group: commit, publish, push, review
 lib/src/commands/gg_multi_did.dart   – `did` group: commit, push, review

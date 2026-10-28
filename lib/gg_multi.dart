@@ -9,6 +9,7 @@ library;
 export 'package:gg_multi_commit/gg_multi_commit.dart';
 export 'package:gg_multi_core/gg_multi_core.dart';
 export 'package:gg_multi_do_publish/gg_multi_do_publish.dart';
+export 'package:gg_multi_maintain/gg_multi_maintain.dart' show DoMaintain;
 export 'package:gg_multi_workspace/gg_multi_workspace.dart';
 
 export 'src/gg_multi.dart';

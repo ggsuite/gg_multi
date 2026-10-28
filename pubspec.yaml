@@ -13,6 +13,7 @@ dependencies:
   gg_multi_commit: ^4.7.2
   gg_multi_core: ^4.11.0
   gg_multi_do_publish: ^4.4.7
+  gg_multi_maintain: ^0.0.1
   gg_multi_workspace: ^4.14.0
   gg_one: ^14.4.11
   gg_publish: ^4.10.2
