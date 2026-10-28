@@ -428,10 +428,9 @@ packages:
   gg_multi_maintain:
     dependency: "direct main"
     description:
-      name: gg_multi_maintain
-      sha256: "569d3f863389f082a014c75ed0f86e6f5d5dcbffbdc1b21fd315854114c2ebc7"
-      url: "https://pub.dev"
-    source: hosted
+      path: "../gg_multi_maintain"
+      relative: true
+    source: path
     version: "0.0.2"
   gg_multi_workspace:
     dependency: "direct main"
