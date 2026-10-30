@@ -112,9 +112,37 @@ without adding anything — run it after adding a dependency on a sibling
 repo by hand. It touches only the repos whose references are out of sync,
 commits gg's files as `#gg:` commits, leaves your own changes uncommitted
 and says »All references are already localized« when there is nothing to
-do. When a repo of the ocean lies between two ticket repos but is not in
-the ticket, `do localize`, `can commit`, `do commit` and `do push` ask you
-to run `gg do add <repo>`.
+do. When a ticket repo is released with a **breaking** version and a repo
+of the ocean lies between it and a ticket repo depending on it, `do
+localize`, `can commit`, `do commit` and `do push` ask you to run
+`gg do add transitive for <repo>`; `gg do publish` refuses to start.
+
+#### Lean tickets: `~/.gg_rc` and `gg do add transitive`
+
+By default `gg do add` also adds the repos *between* the ticket repos
+(`a → b → c`: adding `a` and `c` pulls `b` in). They are only needed when a
+release **breaks** its dependents — a major increment, below 1.0.0 a minor
+one: then `b`'s published constraint cannot take the new `c`. Any other
+release fits the `^` constraint `b` already has.
+
+`~/.gg_rc` holds your own defaults as JSON. gg writes it with every
+default the first time `gg do add` runs; an existing file is never
+rewritten. `$GG_RC` names another file.
+
+```json
+{ "do": { "add": { "transitive": false } } }
+```
+
+With it, `gg do add a c` adds only `a` and `c` (`--transitive` still adds
+`b` for one run). The repos between are added later, exactly when needed:
+
+```bash
+gg do add transitive for c   # the repos between c and the ticket repos depending on it
+gg do add transitive         # the repos between all ticket repos
+```
+
+`gg do review` does this by itself: when the plan gives a repo a breaking
+increment, it adds the repos between and reviews again with them.
 
 ### `gg_multi can` — preflight checks
 

@@ -6,6 +6,7 @@
 
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
+import 'package:gg_multi_core/gg_multi_core.dart' show GgRc;
 import 'package:gg_multi_workspace/gg_multi_workspace.dart';
 import 'package:gg_multi/src/commands/do/upgrade.dart';
 
@@ -37,9 +38,16 @@ class Do extends Command<void> {
     addSubcommand(DoCommitCommand(ggLog: ggLog));
     addSubcommand(DoPushCommand(ggLog: ggLog));
     addSubcommand(DoPublishCommand(ggLog: ggLog));
-    addSubcommand(DoReviewCommand(ggLog: ggLog));
+    addSubcommand(
+      DoReviewCommand(
+        ggLog: ggLog,
+        // A breaking release brings its dependents into the ticket.
+        addReposBetween: addReposBetweenWithAddCommand,
+      ),
+    );
     addSubcommand(ExecCommand(ggLog: ggLog));
-    addSubcommand(AddCommand(ggLog: ggLog));
+    // `gg do add` presets its flags from ~/.gg_rc.
+    addSubcommand(AddCommand(ggLog: ggLog, readSettings: GgRc.load));
     addSubcommand(DoLocalizeCommand(ggLog: ggLog));
     addSubcommand(ImportCommand(ggLog: ggLog));
     addSubcommand(CodeCommand(ggLog: ggLog));
