@@ -1,5 +1,11 @@
 # Changelog
 
+## 10.5.0 - 2026-10-30
+
+### Changed
+
+- Read ~/.gg_rc in gg do add and let gg do review add the repos a breaking release needs
+
 ## 10.4.0 - 2026-10-28
 
 ### Added
