@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- Add index.jsonc and a blog post about the tighter constraints
+
 ### Changed
 
 - Require the gg_multi packages that share one ReadSettings
