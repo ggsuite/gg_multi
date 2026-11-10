@@ -1,5 +1,15 @@
 # Changelog
 
+## 10.5.1 - 2026-11-10
+
+### Added
+
+- Add index.jsonc and a blog post about the tighter constraints
+
+### Changed
+
+- Require the gg_multi packages that share one ReadSettings
+
 ## 10.5.0 - 2026-10-30
 
 ### Changed
