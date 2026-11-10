@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Require the gg_multi packages that share one ReadSettings
+
 ## 10.5.0 - 2026-10-30
 
 ### Changed
