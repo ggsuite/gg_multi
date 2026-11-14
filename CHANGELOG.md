@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Document that gg do add leaves the repos between out
+
+README: --transitive or ~/.gg_rc adds them, gg do add transitive for <repo> later
+
 ## 10.5.1 - 2026-11-10
 
 ### Added

@@ -119,22 +119,24 @@ localize`, `can commit`, `do commit` and `do push` ask you to run
 
 #### Lean tickets: `~/.gg_rc` and `gg do add transitive`
 
-By default `gg do add` also adds the repos *between* the ticket repos
-(`a → b → c`: adding `a` and `c` pulls `b` in). They are only needed when a
-release **breaks** its dependents — a major increment, below 1.0.0 a minor
-one: then `b`'s published constraint cannot take the new `c`. Any other
-release fits the `^` constraint `b` already has.
+`gg do add a c` adds only `a` and `c`, not the repos *between* them
+(`a → b → c`: `b` stays out). They are only needed when a release
+**breaks** its dependents — a major increment, below 1.0.0 a minor one:
+then `b`'s published constraint cannot take the new `c`. Any other
+release fits the `^` constraint `b` already has. `--transitive` adds `b`
+for one run.
 
 `~/.gg_rc` holds your own defaults as JSON. gg writes it with every
-default the first time `gg do add` runs; an existing file is never
-rewritten. `$GG_RC` names another file.
+default the first time `gg do add` runs; an existing file is not
+rewritten — unless it still holds exactly what an older gg wrote there:
+then gg writes the new defaults into it. `$GG_RC` names another file.
+To add the repos between with every `gg do add`:
 
 ```json
-{ "do": { "add": { "transitive": false } } }
+{ "do": { "add": { "transitive": true } } }
 ```
 
-With it, `gg do add a c` adds only `a` and `c` (`--transitive` still adds
-`b` for one run). The repos between are added later, exactly when needed:
+Without it, the repos between are added later, exactly when needed:
 
 ```bash
 gg do add transitive for c   # the repos between c and the ticket repos depending on it
