@@ -6,11 +6,12 @@
 
 - Add a blog post on gg do add without the repos between
 
-doc/blog/2026/2026-11-14-gg-do-add-leaves-the-repos-between-out.md
-
 ### Changed
 
 - Document that gg do add leaves the repos between out
+- Raise the constraints of the gg_multi sub-packages to their newest
+versions
+- Tidy up the unreleased CHANGELOG entries
 
 ## 10.5.1 - 2026-11-10
 
