@@ -14,7 +14,7 @@ dependencies:
   gg_multi_core: ^4.20.0
   gg_multi_do_publish: ^4.8.0
   gg_multi_maintain: ^0.0.2
-  gg_multi_workspace: ^4.25.0
+  gg_multi_workspace: ^4.26.0
   gg_one: ^14.4.13
   gg_publish: ^4.10.4
   gg_status_printer: ^1.6.4
