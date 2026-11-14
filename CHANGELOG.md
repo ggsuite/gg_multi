@@ -1,5 +1,16 @@
 # Changelog
 
+## 10.5.2 - 2026-11-14
+
+### Added
+
+- Add a blog post on gg do add without the repos between
+
+### Changed
+
+- Document that gg do add leaves the repos between out
+- Raise the constraints of the gg_multi sub-packages to their newest versions
+
 ## 10.5.1 - 2026-11-10
 
 ### Added
