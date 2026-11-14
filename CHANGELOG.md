@@ -9,9 +9,7 @@
 ### Changed
 
 - Document that gg do add leaves the repos between out
-- Raise the constraints of the gg_multi sub-packages to their newest
-versions
-- Tidy up the unreleased CHANGELOG entries
+- Raise the constraints of the gg_multi sub-packages to their newest versions
 
 ## 10.5.1 - 2026-11-10
 
