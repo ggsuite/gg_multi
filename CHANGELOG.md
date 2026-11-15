@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 10.6.1 - 2026-11-15
 
 ### Added
 
