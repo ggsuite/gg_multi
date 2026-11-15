@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Document that gg do maintain merges without publishing
+
+README: maintain merges into main, releases go through tickets
+
 ## 10.6.0 - 2026-11-15
 
 ### Added
