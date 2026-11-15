@@ -1,5 +1,15 @@
 # Changelog
 
+## 10.6.1 - 2026-11-15
+
+### Added
+
+- Add the blog post on maintain merging without publishing
+
+### Changed
+
+- Document that gg do maintain merges without publishing
+
 ## 10.6.0 - 2026-11-15
 
 ### Added

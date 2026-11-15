@@ -429,10 +429,10 @@ packages:
     dependency: "direct main"
     description:
       name: gg_multi_maintain
-      sha256: e99f2b785c474f3a6f5ca25572db7504ecf1871b54e5e856866fb36017de197c
+      sha256: "6c12eb65162e4be3fa24d08acede291cc8c98911267c54891d750f2cf9c2ee56"
       url: "https://pub.dev"
     source: hosted
-    version: "0.1.0"
+    version: "0.2.0"
   gg_multi_workspace:
     dependency: "direct main"
     description:
