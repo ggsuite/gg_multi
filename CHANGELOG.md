@@ -1,5 +1,15 @@
 # Changelog
 
+## 10.6.0 - 2026-11-15
+
+### Added
+
+- Add the blog post about the nightly build
+
+### Changed
+
+- Document --nightly and push and publish without upgrades
+
 ## 10.5.2 - 2026-11-14
 
 ### Added
