@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Document --nightly and push and publish without upgrades
+
+Use the gg_multi_maintain that brings --nightly
+
 ## 10.5.2 - 2026-11-14
 
 ### Added

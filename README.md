@@ -85,7 +85,7 @@ order.
 | `gg_multi do rm repo <name…>`                       | delete repos from the current ticket (never from the ocean)             |
 | `gg_multi do rm ticket [<ticket-id>...]`            | close tickets (default: the current one): delete remote branches, move them to `.trash` |
 | `gg_multi do upgrade ocean [-n                      | --dry-run]`                                                         | sync `.ocean` with every registered organisation: clone new repos, trash gone ones |
-| `gg_multi do maintain --upgrade-sdk\|--upgrade-deps\|--upgrade-dna\|--all` | upgrade the SDK, the dependencies or the DNA of every ocean repo in parallel and publish each changed repo on its own, see `gg_multi_maintain` |
+| `gg_multi do maintain --upgrade-sdk\|--upgrade-deps\|--upgrade-dna\|--all\|--nightly` | upgrade the SDK, the dependencies or the DNA of every ocean repo in parallel and publish each changed repo on its own; `--nightly` is the nightly build (`--upgrade-deps --major`), see `gg_multi_maintain` |
 | `gg_multi do create ticket <id> [-m <description>]` | create `tickets/<id>/` with a `.ticket` file                        |
 | `gg_multi do create graph [--format=…] [-o <file>]` | write the dependency graph of the workspace to stdout or a file     |
 | `gg_multi do code`                                  | open the current ticket in VS Code                                  |
@@ -169,6 +169,12 @@ when a repo is in a bad state.
 
 `do review` runs `do push` automatically before it opens the pull
 requests; a `do push` after the review updates them.
+
+Neither `do push` nor `do publish` upgrades a dependency: `do push`
+upgrades only with `--upgrade`, and `do publish` resolves (`dart pub get`,
+`<pm> install`) and analyzes instead of upgrading and testing again. New
+versions, major versions included, arrive through the nightly build,
+`gg_multi do maintain --nightly`.
 
 ### `gg_multi did` — reporting
 
