@@ -35,20 +35,18 @@ class Do extends Command<void> {
 
   // ...........................................................................
   void _initSubCommands() {
-    addSubcommand(DoCommitCommand(ggLog: ggLog));
-    addSubcommand(DoPushCommand(ggLog: ggLog));
-    addSubcommand(DoPublishCommand(ggLog: ggLog));
-    addSubcommand(
-      DoReviewCommand(
-        ggLog: ggLog,
-        // A breaking release brings its dependents into the ticket.
-        addReposBetween: addReposBetweenWithAddCommand,
-      ),
-    );
+    // A breaking release brings the repos between it and the ticket repos
+    // depending on it into the ticket — added by gg_multi_workspace's
+    // `gg do add`, which the commands below do not depend on.
+    const addBetween = addReposBetweenWithAddCommand;
+    addSubcommand(DoCommitCommand(ggLog: ggLog, addReposBetween: addBetween));
+    addSubcommand(DoPushCommand(ggLog: ggLog, addReposBetween: addBetween));
+    addSubcommand(DoPublishCommand(ggLog: ggLog, addReposBetween: addBetween));
+    addSubcommand(DoReviewCommand(ggLog: ggLog, addReposBetween: addBetween));
     addSubcommand(ExecCommand(ggLog: ggLog));
     // `gg do add` presets its flags from ~/.gg_rc.
     addSubcommand(AddCommand(ggLog: ggLog, readSettings: GgRc.load));
-    addSubcommand(DoLocalizeCommand(ggLog: ggLog));
+    addSubcommand(DoLocalizeCommand(ggLog: ggLog, addReposBetween: addBetween));
     addSubcommand(ImportCommand(ggLog: ggLog));
     addSubcommand(CodeCommand(ggLog: ggLog));
     addSubcommand(CreateCommand(ggLog: ggLog));

@@ -114,8 +114,9 @@ commits gg's files as `#gg:` commits, leaves your own changes uncommitted
 and says »All references are already localized« when there is nothing to
 do. When a ticket repo is released with a **breaking** version and a repo
 of the ocean lies between it and a ticket repo depending on it, `do
-localize`, `can commit`, `do commit` and `do push` ask you to run
-`gg do add transitive for <repo>`; `gg do publish` refuses to start.
+localize`, `do commit`, `do push`, `do review` and `do publish` add that
+repo to the ticket by themselves — `do publish` reviews again with it and
+starts over. `can commit` only reports it.
 
 #### Lean tickets: `~/.gg_rc` and `gg do add transitive`
 
@@ -136,15 +137,16 @@ To add the repos between with every `gg do add`:
 { "do": { "add": { "transitive": true } } }
 ```
 
-Without it, the repos between are added later, exactly when needed:
+Without it, the repos between are added later, exactly when needed —
+`gg do commit`, `push`, `review`, `localize` and `publish` do it by
+themselves as soon as a recorded increment breaks. `gg do review` also
+adds them when its plan gives a repo a breaking increment, and reviews
+again with them. To add them by hand:
 
 ```bash
 gg do add transitive for c   # the repos between c and the ticket repos depending on it
 gg do add transitive         # the repos between all ticket repos
 ```
-
-`gg do review` does this by itself: when the plan gives a repo a breaking
-increment, it adds the repos between and reviews again with them.
 
 ### `gg_multi can` — preflight checks
 
