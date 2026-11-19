@@ -1,5 +1,11 @@
 # Changelog
 
+## 10.6.2 - 2026-11-19
+
+### Added
+
+- Add the repos between a breaking release everywhere
+
 ## 10.6.1 - 2026-11-15
 
 ### Added
