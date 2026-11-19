@@ -404,42 +404,37 @@ packages:
   gg_multi_commit:
     dependency: "direct main"
     description:
-      name: gg_multi_commit
-      sha256: "634152ecd420d483e32b88f92bd0aed0665f0b90b8b80f0cd3f3baaf1bc8a26b"
-      url: "https://pub.dev"
-    source: hosted
+      path: "../gg_multi_commit"
+      relative: true
+    source: path
     version: "4.12.0"
   gg_multi_core:
     dependency: "direct main"
     description:
-      name: gg_multi_core
-      sha256: "6cbdda5f2c4d8eecb85668c88cb54af81b8268e5dc71ebad92e03f9f8e30a358"
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.20.0"
+      path: "../gg_multi_core"
+      relative: true
+    source: path
+    version: "4.20.1"
   gg_multi_do_publish:
     dependency: "direct main"
     description:
-      name: gg_multi_do_publish
-      sha256: c5459bcc05c9bbaf1629731e33620cc5a56b990ab9683407b2d0728babc382b1
-      url: "https://pub.dev"
-    source: hosted
+      path: "../gg_multi_do_publish"
+      relative: true
+    source: path
     version: "4.9.0"
   gg_multi_maintain:
     dependency: "direct main"
     description:
-      name: gg_multi_maintain
-      sha256: "6c12eb65162e4be3fa24d08acede291cc8c98911267c54891d750f2cf9c2ee56"
-      url: "https://pub.dev"
-    source: hosted
+      path: "../gg_multi_maintain"
+      relative: true
+    source: path
     version: "0.2.0"
   gg_multi_workspace:
     dependency: "direct main"
     description:
-      name: gg_multi_workspace
-      sha256: "1b9453b4a22b5963c060a8e0179c4a893c9a5c0081cd3776c030cc554e2ec8d5"
-      url: "https://pub.dev"
-    source: hosted
+      path: "../gg_multi_workspace"
+      relative: true
+    source: path
     version: "4.26.0"
   gg_one:
     dependency: "direct main"
