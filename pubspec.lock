@@ -422,7 +422,7 @@ packages:
       path: "../gg_multi_maintain"
       relative: true
     source: path
-    version: "0.2.0"
+    version: "0.2.1"
   gg_multi_workspace:
     dependency: "direct main"
     description:
