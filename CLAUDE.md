@@ -103,7 +103,4 @@ Your obligations:
 - **Commits/pushes**: Always go through `gg do commit` / `gg do push`, never raw `git commit` / `git push`.
 
 <!-- helix:claude_md:start -->
-
-@.claude/CLAUDE_dna_gg.md
-
 <!-- helix:claude_md:end -->
